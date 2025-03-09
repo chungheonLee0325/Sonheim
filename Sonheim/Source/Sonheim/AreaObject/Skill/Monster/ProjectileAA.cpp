@@ -3,8 +3,19 @@
 
 #include "ProjectileAA.h"
 
+#include "Sonheim/AreaObject/Base/AreaObject.h"
+#include "Sonheim/Element/Derived/SandBlast.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
+UProjectileAA::UProjectileAA()
+{
+	static ConstructorHelpers::FClassFinder<ASandBlast> SandBlastClass
+		(TEXT("/Script/Engine.Blueprint'/Game/_BluePrint/Element/SandBlast/BP_SandBlast.BP_SandBlast_C'"));
+	if (SandBlastClass.Succeeded())
+	{
+		SandBlastFactory = SandBlastClass.Class;
+	}
+}
 
 void UProjectileAA::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
 {
@@ -29,6 +40,7 @@ void UProjectileAA::OnCastFire()
 {
 	Super::OnCastFire();
 
-	//LOG_SCREEN_MY(5.f, FColor::Magenta, "UProjectileAA::OnCastFire");
-	LogUtils::Log("UProjectileAA::OnCastFire");
+	FLog::Log("UProjectileAA::OnCastFire");
+
+	GetWorld()->SpawnActor<ASandBlast>(SandBlastFactory, m_Caster->GetActorLocation(), m_Caster->GetActorRotation());
 }

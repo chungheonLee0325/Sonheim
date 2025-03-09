@@ -17,8 +17,6 @@ AGumoss::AGumoss()
 void AGumoss::BeginPlay()
 {
 	Super::BeginPlay();
-
-	//UpdateCurrentSkill()
 }
 
 // Called every frame
@@ -32,4 +30,3 @@ void AGumoss::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 }
-

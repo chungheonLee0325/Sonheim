@@ -32,17 +32,17 @@ FString Msg = FString::Printf(TEXT("[%s] " Format), *Obj->GetName(), ##__VA_ARGS
 GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, Msg); \
 }
 
-class LogUtils {
+class FLog {
 public:
-	// LogUtils::Log()
-	// LogUtils::Log("Hello")
+	// FLog::Log()
+	// FLog::Log("Hello")
 	static void Log(const FString& Message = TEXT("LOG!"))
 	{
 		if (GEngine) {
 			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Magenta, Message);
 		}
 	}
-	// LogUtils::Log("Speed", SpeedA, SpeedB, SpeedC)  --> Speed : 10.0, 20.0, 30.0
+	// FLog::Log("Speed", SpeedA, SpeedB, SpeedC)  --> Speed : 10.0, 20.0, 30.0
 	template<typename... Args>
 	static void Log(const FString& Prefix, Args... args) {
 		if (GEngine){
