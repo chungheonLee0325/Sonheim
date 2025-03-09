@@ -3,6 +3,7 @@
 
 #include "BaseItem.h"
 
+#include "IMovieSceneObjectSpawner.h"
 #include "Components/SphereComponent.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Kismet/GameplayStatics.h"
@@ -16,16 +17,28 @@ ABaseItem::ABaseItem()
 
 	// 컴포넌트 초기화
 	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
+
+	// 임시 객체 ToDo : BeginPlay에서 Data Table Driven 변환
+	ConstructorHelpers::FObjectFinder<UStaticMesh> tempMesh(
+		TEXT("/Script/Engine.StaticMesh'/Engine/BasicShapes/Sphere.Sphere'"));
+	if (tempMesh.Succeeded())
+	{
+		ItemMesh->SetStaticMesh(tempMesh.Object);
+	}
 	RootComponent = ItemMesh;
 
 	CollectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollectionSphere"));
 	CollectionSphere->SetupAttachment(RootComponent);
 	CollectionSphere->SetCollisionProfileName("Item");
-	
+
 	// 멤버 변수 초기화
 	m_IsCollected = false;
 }
 
+// ToDo : 메서드 완성
+void ABaseItem::InitializeItem(int ItemID, int ItemValue)
+{
+}
 
 
 // Called when the game starts or when spawned
@@ -79,11 +92,11 @@ void ABaseItem::OnCollected(ASonheimPlayer* Player)
 }
 
 void ABaseItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent,
-	AActor* OtherActor,
-	UPrimitiveComponent* OtherComp,
-	int32 OtherBodyIndex,
-	bool bFromSweep,
-	const FHitResult& SweepResult)
+                               AActor* OtherActor,
+                               UPrimitiveComponent* OtherComp,
+                               int32 OtherBodyIndex,
+                               bool bFromSweep,
+                               const FHitResult& SweepResult)
 {
 	if (ASonheimPlayer* Player = Cast<ASonheimPlayer>(OtherActor))
 	{
@@ -93,6 +106,3 @@ void ABaseItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent,
 		}
 	}
 }
-
-
-

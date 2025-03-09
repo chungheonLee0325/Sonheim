@@ -4,6 +4,7 @@
 #include "MeleeAttack.h"
 
 #include "Sonheim/AreaObject/Base/AreaObject.h"
+#include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 
 void UMeleeAttack::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
 {
@@ -200,6 +201,13 @@ void UMeleeAttack::ProcessHitDetection(int AttackDataIndex)
 		if (hitAreaObject != nullptr)
 		{
 			m_Caster->CalcDamage(*AttackCollision->IndexedAttackData, m_Caster, hitActor, Hit);
+			continue;
+		}
+		ABaseResourceObject* hitResourceObject = Cast<ABaseResourceObject>(hitActor);
+		if (hitResourceObject != nullptr)
+		{
+			m_Caster->CalcDamage(*AttackCollision->IndexedAttackData, m_Caster, hitActor, Hit);
+			continue;
 		}
 	}
 }
