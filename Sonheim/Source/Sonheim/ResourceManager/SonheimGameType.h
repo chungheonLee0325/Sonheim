@@ -188,7 +188,47 @@ struct FAreaObjectData : public FTableRowBase
 	int HitSoundID = 0;
 };
 
+// HitBox 동적으로 생성하기 위한 구조체 정보, FAttackData 멤버 변수
+USTRUCT(BlueprintType)
+struct FHitBoxData
+{
+	GENERATED_BODY()
+
+	// 히트 박스 타입
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EHitDetectionType DetectionType = EHitDetectionType::Line;
+
+	// 소켓이 있는 메시 컴포넌트 지정
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName MeshComponentTag = NAME_None;
+
+	// 소켓 정보
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName StartSocketName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName EndSocketName;
+
+	// 크기 정보
+	UPROPERTY(EditAnywhere, BlueprintReadWrite,
+		meta = (EditCondition = "DetectionType != EHitDetectionType::Line || DetectionType != EHitDetectionType::Box"))
+	float Radius = 15.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "DetectionType == EHitDetectionType::Capsule"))
+	float HalfHeight = 30.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "DetectionType == EHitDetectionType::Box"))
+	FVector BoxExtent = FVector(15.0f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bUseInterpolation = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bUseInterpolation"))
+	int32 InterpolationSteps = 4;
+};
+
 // FSkill의 멤버 변수, 전투에서 공격에 관련된 데이터 담당
+// ToDo : 속성 & 특화 데미지 타입 추가(곡괭이, 나무)
 USTRUCT(BlueprintType)
 struct FAttackData
 {
@@ -203,6 +243,10 @@ struct FAttackData
 	// 스테미나 데미지
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float StaminaDamageAmount = 0.0f;
+
+	// 공격 히트 박스 정보 구조체
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FHitBoxData HitBoxData;
 
 	// HitStop 관련 데이터
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

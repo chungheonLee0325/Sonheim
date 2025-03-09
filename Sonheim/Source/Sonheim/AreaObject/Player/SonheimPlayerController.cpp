@@ -14,38 +14,45 @@ ASonheimPlayerController::ASonheimPlayerController()
 {
 	// Enhanced Input Setting
 	static ConstructorHelpers::FObjectFinder<UInputMappingContext> tempInputMapping(
-		TEXT("/Script/EnhancedInput.InputMappingContext'/Game/_Input/IMC_Kazan.IMC_Kazan'"));
+		TEXT("/Script/EnhancedInput.InputMappingContext'/Game/_BluePrint/AreaObject/Player/Input/IMC_Default.IMC_Default'"));
 	if (tempInputMapping.Succeeded())
 	{
 		DefaultMappingContext = tempInputMapping.Object;
 	}
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempMoveAction(
-		TEXT("/Script/EnhancedInput.InputAction'/Game/_Input/IA_KazanMove.IA_KazanMove'"));
+		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Move.IA_Move'"));
 	if (tempMoveAction.Succeeded())
 	{
 		MoveAction = tempMoveAction.Object;
 	}
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempLookAction(
-		TEXT("/Script/EnhancedInput.InputAction'/Game/_Input/IA_KazanLook.IA_KazanLook'"));
+		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Look.IA_Look'"));
 	if (tempLookAction.Succeeded())
 	{
 		LookAction = tempLookAction.Object;
 	}
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempLeftMouseAction(
-		TEXT("/Script/EnhancedInput.InputAction'/Game/_Input/IA_KazanAttack_C.IA_KazanAttack_C'"));
+		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_LeftButton.IA_LeftButton'"));
 	if (tempLeftMouseAction.Succeeded())
 	{
 		LeftMouseAction = tempLeftMouseAction.Object;
 	}
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempRightMouseAction(
-		TEXT("/Script/EnhancedInput.InputAction'/Game/_Input/IA_KazanAttack_S.IA_KazanAttack_S'"));
+		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_RightButton.IA_RightButton'"));
 	if (tempRightMouseAction.Succeeded())
 	{
 		RightMouseAction = tempRightMouseAction.Object;
 	}
 
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempJumpAction(
+	TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Jump.IA_Jump'"));
+	if (tempJumpAction.Succeeded())
+	{
+		JumpAction = tempJumpAction.Object;
+	}
+
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempEvadeAction(
-		TEXT("/Script/EnhancedInput.InputAction'/Game/_Input/IA_KazanEvade.IA_KazanEvade'"));
+		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Dodge.IA_Dodge'"));
 	if (tempEvadeAction.Succeeded())
 	{
 		EvadeAction = tempEvadeAction.Object;
@@ -147,6 +154,12 @@ void ASonheimPlayerController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(RightMouseAction, ETriggerEvent::Started, this,
 		                                   &ASonheimPlayerController::On_Mouse_Right_Pressed);
 
+		// Jump
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this,
+										   &ASonheimPlayerController::On_Jump_Pressed);
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this,
+										   &ASonheimPlayerController::On_Jump_Released);
+		
 		// Evade
 		EnhancedInputComponent->BindAction(EvadeAction, ETriggerEvent::Started, this,
 		                                   &ASonheimPlayerController::On_Dodge_Pressed);
@@ -192,10 +205,12 @@ void ASonheimPlayerController::On_Dodge_Pressed(const FInputActionValue& InputAc
 
 void ASonheimPlayerController::On_Jump_Pressed(const FInputActionValue& InputActionValue)
 {
+	m_Player->Jump_Pressed();
 }
 
 void ASonheimPlayerController::On_Jump_Released(const FInputActionValue& InputActionValue)
 {
+	m_Player->Jump_Released();
 }
 
 void ASonheimPlayerController::On_Restart_Pressed(const FInputActionValue& Value)
