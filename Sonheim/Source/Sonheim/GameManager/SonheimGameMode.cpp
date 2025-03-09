@@ -16,12 +16,12 @@ ASonheimGameMode::ASonheimGameMode()
 	SoundDataMap.Empty();
 
 	// set default pawn class to our Blueprinted character
-	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnBPClass(TEXT("/Script/Engine.Blueprint'/Game/_BluePrint/AreaObject/BP_ThirdPersonCharacter.BP_ThirdPersonCharacter_c'"));
+	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnBPClass(TEXT("/Script/Engine.Blueprint'/Game/_BluePrint/AreaObject/Player/BP_Player.BP_Player_c'"));
 	if (PlayerPawnBPClass.Succeeded())
 	{
 		DefaultPawnClass = PlayerPawnBPClass.Class;
 	}
-	static ConstructorHelpers::FClassFinder<AController> PlayerControllerBPClass(TEXT("/Script/Engine.Blueprint'/Game/_BluePrints/AreaObject/Player/BP_KazanPlayerController.BP_KazanPlayerController_c'"));
+	static ConstructorHelpers::FClassFinder<AController> PlayerControllerBPClass(TEXT("/Script/Engine.Blueprint'/Game/_BluePrint/AreaObject/Player/BP_PlayerController.BP_PlayerController_c'"));
 	if (PlayerControllerBPClass.Succeeded())
 	{
 		PlayerControllerClass = PlayerControllerBPClass.Class;
