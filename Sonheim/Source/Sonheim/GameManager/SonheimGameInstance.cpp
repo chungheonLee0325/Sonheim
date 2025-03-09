@@ -13,7 +13,7 @@ void USonheimGameInstance::Init()
 
 	// AreaObject Data
 	UDataTable* AreaObjectTable = LoadObject<UDataTable>(
-		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrints/ResourceManager/db_AreaObject.db_AreaObject'"));
+		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_AreaObject.dt_AreaObject'"));
 	if (nullptr != AreaObjectTable)
 	{
 		TArray<FName> RowNames = AreaObjectTable->GetRowNames();
@@ -29,7 +29,7 @@ void USonheimGameInstance::Init()
 	}
 	// Skill Data
 	UDataTable* SkillTable = LoadObject<UDataTable>(
-		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrints/ResourceManager/db_Skill.db_Skill'"));
+		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_Skill.dt_Skill'"));
 	if (nullptr != SkillTable)
 	{
 		TArray<FName> RowNames = SkillTable->GetRowNames();
@@ -45,7 +45,7 @@ void USonheimGameInstance::Init()
 	}
 	// SkillBag Data
 	UDataTable* SkillBagTable = LoadObject<UDataTable>(
-		nullptr, TEXT("/Game/_BluePrints/ResourceManager/db_Skillbag.db_Skillbag"));
+		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_SkillBag.dt_SkillBag'"));
 	if (nullptr != SkillTable)
 	{
 		TArray<FName> RowNames = SkillBagTable->GetRowNames();
@@ -62,7 +62,7 @@ void USonheimGameInstance::Init()
 
 	// Sound Data
 	UDataTable* SoundTable = LoadObject<UDataTable>(
-		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrints/ResourceManager/db_Sound.db_Sound'"));
+		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_Sound.dt_Sound'"));
 	if (nullptr != SoundTable)
 	{
 		TArray<FName> RowNames = SoundTable->GetRowNames();
