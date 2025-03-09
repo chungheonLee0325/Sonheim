@@ -5,7 +5,7 @@
 
 
 // Sets default values for this component's properties
-UConditionComponent::UConditionComponent()
+UConditionComponent::UConditionComponent(): ConditionFlags(0)
 {
 	PrimaryComponentTick.bCanEverTick = false;
 }

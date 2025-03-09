@@ -47,21 +47,6 @@ ASonheimPlayer::ASonheimPlayer()
 	WeaponComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
 	WeaponComponent->SetupAttachment(GetMesh(),TEXT("Weapon_R"));
 
-	static ConstructorHelpers::FObjectFinder<USkeletalMesh> tempWeaponSkeletalMesh(TEXT(
-		"/Script/Engine.SkeletalMesh'/Game/_Resource/Weapon/Gsword_C_I_GSword_Ruins001.Gsword_C_I_GSword_Ruins001'"));
-	if (tempWeaponSkeletalMesh.Succeeded())
-	{
-		WeaponComponent->SetSkeletalMesh(tempWeaponSkeletalMesh.Object);
-		WeaponComponent->SetRelativeScale3D(FVector(0.4f));
-		WeaponComponent->ComponentTags.Add(TEXT("WeaponMesh"));
-		static ConstructorHelpers::FObjectFinder<UMaterial> tempWeaponMaterial(
-			TEXT("/Script/Engine.Material'/Game/_Resource/Weapon/CM_I_GSword_Ruins001.CM_I_GSword_Ruins001'"));
-		if (tempWeaponMaterial.Succeeded())
-		{
-			WeaponComponent->SetMaterial(0, tempWeaponMaterial.Object);
-		}
-	}
-
 	// Set Animation Blueprint
 	ConstructorHelpers::FClassFinder<UAnimInstance> TempABP(TEXT(
 		"/Script/Engine.AnimBlueprint'/Game/_BluePrints/AreaObject/Player/ABP_Player_Kazan_AnimInstance.ABP_Player_Kazan_AnimInstance_C'"));
@@ -86,6 +71,8 @@ ASonheimPlayer::ASonheimPlayer()
 	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.f;
+	GetCharacterMovement()->JumpZVelocity = 700.f;
+	GetCharacterMovement()->AirControl = 0.35f;
 
 	// Create Camera Boom
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -104,6 +91,10 @@ ASonheimPlayer::ASonheimPlayer()
 	// Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 	FollowCamera->FieldOfView = 100;
+
+	//
+	GetCharacterMovement()->JumpZVelocity = 700.f;
+	GetCharacterMovement()->AirControl = 0.35f;
 }
 
 // Called when the game starts or when spawned
@@ -331,10 +322,12 @@ void ASonheimPlayer::Dodge_Pressed()
 
 void ASonheimPlayer::Jump_Pressed()
 {
+	Jump();
 }
 
 void ASonheimPlayer::Jump_Released()
 {
+	StopJumping();
 }
 
 

@@ -63,6 +63,7 @@ void AAreaObject::BeginPlay()
 	float maxStamina = 100.0f; // Assuming a default value, actual implementation needed
 	float staminaRecoveryRate = 20.f;
 	float groggyDuration = 5.f;
+	float walkSpeed = 400.0f;
 
 	if (dt_AreaObject != nullptr)
 	{
@@ -71,10 +72,12 @@ void AAreaObject::BeginPlay()
 		maxStamina = dt_AreaObject->StaminaMax;
 		staminaRecoveryRate = dt_AreaObject->StaminaRecoveryRate;
 		groggyDuration = dt_AreaObject->GroggyDuration;
+		walkSpeed = dt_AreaObject->WalkSpeed;
 	}
 
 	m_HealthComponent->InitHealth(hpMax);
 	m_StaminaComponent->InitStamina(maxStamina, staminaRecoveryRate, groggyDuration);
+	GetCharacterMovement()->MaxWalkSpeed = walkSpeed;
 
 	// 스킬 인스턴스 생성
 	for (auto& skill : m_OwnSkillIDSet)

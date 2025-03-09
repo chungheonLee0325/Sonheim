@@ -161,9 +161,8 @@ struct FAreaObjectData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	float HPMax = 1.0f;
 
-	// 방어 기본 강인도 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	int BasePoise = 0;
+	float WalkSpeed = 400.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	UAnimMontage* Die_AnimMontage = nullptr;
