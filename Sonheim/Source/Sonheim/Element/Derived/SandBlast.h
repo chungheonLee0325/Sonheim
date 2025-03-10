@@ -16,22 +16,18 @@ public:
 	// Sets default values for this actor's properties
 	ASandBlast();
 
-	//
-	virtual void InitElement(AAreaObject* Caster, AAreaObject* Target,const FVector& TargetLocation, FAttackData* AttackData);
+	// fire actor
+	virtual void InitElement(AAreaObject* Caster, AAreaObject* Target,const FVector& TargetLocation, FAttackData* AttackData) override;
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-	
 
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 public:
-	virtual FVector Throw(AAreaObject* Caster, AAreaObject* Target, FVector TargetLocation) override;
-	
 	virtual void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent,
 									AActor* OtherActor,
 									UPrimitiveComponent* OtherComp,

@@ -41,6 +41,9 @@ void ABaseElement::InitElement(AAreaObject* Caster, AAreaObject* Target, const F
 	m_Target = Target;
 	m_TargetLocation = TargetLocation;
 	m_AttackData = AttackData;
+	
+	// Collision
+	Root->SetCollisionProfileName(TEXT("MonsterProjectile"));
 }
 
 // Called when the game starts or when spawned
@@ -56,12 +59,11 @@ void ABaseElement::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-FVector ABaseElement::Throw(AAreaObject* Caster, AAreaObject* Target, FVector TargetLocation)
+FVector ABaseElement::Fire(AAreaObject* Caster, AAreaObject* Target, FVector TargetLocation, float ArcValue)
 {
 	// Todo : 가까우면 너무 느림, 속도 최소값 정하긴 해야할듯
 	FVector StartLoc{Caster->GetActorLocation()};
 	FVector TargetLoc{StartLoc + GetActorForwardVector() * (GetActorLocation() - TargetLocation).Length()};
-	float ArcValue{FMath::RandRange(0.5f, 0.6f)};
 	FVector OutVelocity{FVector::ZeroVector};
 	if (UGameplayStatics::SuggestProjectileVelocity_CustomArc(this, OutVelocity, StartLoc, TargetLoc,
 															  GetWorld()->GetGravityZ(), ArcValue))

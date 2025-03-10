@@ -30,10 +30,9 @@ void ASandBlast::BeginPlay()
 void ASandBlast::InitElement(AAreaObject* Caster, AAreaObject* Target, const FVector& TargetLocation, FAttackData* AttackData)
 {
 	Super::InitElement(Caster, Target, TargetLocation, AttackData);
-	// Collision
-	Root->SetCollisionProfileName(TEXT("MonsterProjectile"));
-	// Derived
-	Root->AddImpulse(Throw(m_Caster, m_Target, m_TargetLocation));
+
+	float ArcValue{FMath::RandRange(0.5f, 0.6f)};
+	Root->AddImpulse(Fire(m_Caster, m_Target, m_TargetLocation, ArcValue));
 }
 
 // Called every frame
@@ -41,11 +40,6 @@ void ASandBlast::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
-}
-
-FVector ASandBlast::Throw(AAreaObject* Caster, AAreaObject* Target, FVector TargetLocation)
-{
-	return Super::Throw(Caster, Target, TargetLocation);
 }
 
 void ASandBlast::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,

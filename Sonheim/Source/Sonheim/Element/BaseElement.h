@@ -17,7 +17,8 @@ class SONHEIM_API ABaseElement : public AActor
 public:
 	// Sets default values for this actor's properties
 	ABaseElement();
-	
+
+	// define parameters, change collision profile
 	virtual void InitElement(AAreaObject* Caster, AAreaObject* Target,const FVector& TargetLocation, FAttackData* AttackData);
 
 protected:
@@ -41,7 +42,7 @@ public:
 	FAttackData* m_AttackData;
 	
 	UFUNCTION()
-	virtual FVector Throw(AAreaObject* Caster, AAreaObject* Target, FVector TargetLocation);
+	virtual FVector Fire(AAreaObject* Caster, AAreaObject* Target, FVector TargetLocation, float ArcValue);
 
 	UFUNCTION(BlueprintCallable)
 	virtual void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent,
