@@ -293,8 +293,11 @@ struct FAttackData
 	float StaminaDamageAmount = 0.0f;
 
 	// 공격 타입
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EAttackType AttackType = EAttackType::Normal;
+	
 	// 공격 속성
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	ElementalAttribute ElementalAttribute = ElementalAttribute::None;
 
 	// 공격 히트 박스 정보 구조체
