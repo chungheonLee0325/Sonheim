@@ -30,4 +30,8 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	class ASandBlast* SandBlast;
+	
+// public:
+// 	UFUNCTION()
+// 	FVector Throw(AAreaObject* Caster, AAreaObject* Target, FVector TargetLocation);
 };

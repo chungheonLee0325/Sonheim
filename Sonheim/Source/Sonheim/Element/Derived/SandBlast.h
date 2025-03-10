@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Sonheim/Element/BaseElement.h"
+#include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "SandBlast.generated.h"
 
 UCLASS()
@@ -15,19 +16,28 @@ public:
 	// Sets default values for this actor's properties
 	ASandBlast();
 
+	//
+	virtual void InitElement(AAreaObject* Caster, AAreaObject* Target,const FVector& TargetLocation, FAttackData* AttackData);
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	
 
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	class USphereComponent* Root;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	class UStaticMeshComponent* Mesh;
+public:
+	virtual FVector Throw(AAreaObject* Caster, AAreaObject* Target, FVector TargetLocation) override;
 	
-	UPROPERTY(EditAnywhere)
-	class UProjectileMovementComponent* SkillProjectileMovement;
+	virtual void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent,
+									AActor* OtherActor,
+									UPrimitiveComponent* OtherComp,
+									int32 OtherBodyIndex,
+									bool bFromSweep,
+									const FHitResult& SweepResult) override;
+
+
 };

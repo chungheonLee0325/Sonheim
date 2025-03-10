@@ -23,7 +23,7 @@ public:
 	// Sets default values for this character's properties
 	AAreaObject();
 
-	UPROPERTY(EditDefaultsOnly, Category = "Debug Setting")
+	UPROPERTY(EditAnywhere, Category = "Debug Setting")
 	bool bShowDebug = false;
 
 	UPROPERTY(BlueprintReadWrite)

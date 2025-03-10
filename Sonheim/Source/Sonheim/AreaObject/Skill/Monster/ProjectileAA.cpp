@@ -3,7 +3,10 @@
 
 #include "ProjectileAA.h"
 
+#include "Components/SphereComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/Element/Derived/SandBlast.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
@@ -41,6 +44,52 @@ void UProjectileAA::OnCastFire()
 	Super::OnCastFire();
 
 	FLog::Log("UProjectileAA::OnCastFire");
+	// 
+	ASandBlast* SpawnedSandBlast{
+		GetWorld()->SpawnActor<ASandBlast>(SandBlastFactory, m_Caster->GetActorLocation(), m_Caster->GetActorRotation())
+	};
 
-	GetWorld()->SpawnActor<ASandBlast>(SandBlastFactory, m_Caster->GetActorLocation(), m_Caster->GetActorRotation());
+	// ToDo : Notify에서 Index 주입
+	FAttackData* AttackData = GetAttackDataByIndex(0);
+	// ToDo : TempTarget -> m_Target으로 수정
+	ASonheimPlayer* TempTarget{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
+	//SpawnedSandBlast->InitElement(m_Caster, m_Target, m_Target->GetActorLocation(), AttackData);
+
+	if (TempTarget)
+	{
+		// FLog::Log("Yes Target");
+		if (m_Caster)
+		{
+			if (AttackData)
+			{
+				if (TempTarget)
+				{
+					if (SpawnedSandBlast)
+					{
+						SpawnedSandBlast->InitElement(m_Caster, TempTarget, TempTarget->GetActorLocation(), AttackData);
+					}
+					else
+					{
+						FLog::Log("No SpawnedSandBlast");
+					}
+				}
+				else
+				{
+					FLog::Log("No TempTarget");
+				}
+			}
+			else
+			{
+				FLog::Log("No AttackData");
+			}
+		}
+		else
+		{
+			FLog::Log("No m_Caster");
+		}
+	}
+	else
+	{
+		FLog::Log("No Target");
+	}
 }

@@ -5,6 +5,8 @@
 
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
 
@@ -14,38 +16,50 @@ ASandBlast::ASandBlast()
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	
-	Root = CreateDefaultSubobject<USphereComponent>(TEXT("Root"));
-	RootComponent = Root;
-	Root->SetSphereRadius(50.f);
-	Root->SetSimulatePhysics(true);
-	Root->SetCollisionProfileName(TEXT("MonsterProjectile"));
-	
-	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
-	Mesh->SetupAttachment(RootComponent);
-
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> BaseMeshObject
-		(TEXT("/Script/Engine.StaticMesh'/Game/_BluePrint/Element/SandBlast/Model/SM_SandBlast.SM_SandBlast'"));
-	if (BaseMeshObject.Succeeded()) {
-		Mesh->SetStaticMesh(BaseMeshObject.Object);
-	}
-
-	SkillProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("SkillProjectileMovement"));
-	SkillProjectileMovement->InitialSpeed = 500.f;
-	SkillProjectileMovement->MaxSpeed = 500.f;
-	SkillProjectileMovement->ProjectileGravityScale = 0.f;
 }
 
 // Called when the game starts or when spawned
 void ASandBlast::BeginPlay()
 {
 	Super::BeginPlay();
-
+	Root->OnComponentBeginOverlap.AddDynamic(this, &ASandBlast::OnBeginOverlap);
+	
 	FLog::Log("ASandBlast::BeginPlay");
+}
+
+void ASandBlast::InitElement(AAreaObject* Caster, AAreaObject* Target, const FVector& TargetLocation, FAttackData* AttackData)
+{
+	Super::InitElement(Caster, Target, TargetLocation, AttackData);
+	// Collision
+	Root->SetCollisionProfileName(TEXT("MonsterProjectile"));
+	// Derived
+	Root->AddImpulse(Throw(m_Caster, m_Target, m_TargetLocation));
 }
 
 // Called every frame
 void ASandBlast::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
 }
 
+FVector ASandBlast::Throw(AAreaObject* Caster, AAreaObject* Target, FVector TargetLocation)
+{
+	return Super::Throw(Caster, Target, TargetLocation);
+}
+
+void ASandBlast::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	FHitResult Hit;
+	if (m_Caster)
+	{
+		m_Caster->CalcDamage(*m_AttackData, m_Caster, OtherActor, Hit);
+	}
+	else
+	{
+		FLog::Log("No m_Caster");
+	}
+	
+	DestroySelf();
+}
