@@ -5,12 +5,19 @@
 #include "FloatingDamageWidget.generated.h"
 
 UENUM(BlueprintType)
-enum class EFloatingDamageType : uint8
+enum class EFloatingOutLineDamageType : uint8
 {
     Normal,
-    PlayerDamaged,
-    WeakPointDamage
+    WeakPointDamage,
+    CriticalDamaged,
 };
+enum class EFloatingTextDamageType : uint8
+{
+    Normal,
+    InefficientElementDamage,
+    EffectiveElementDamage,
+};
+
 
 UCLASS()
 class SONHEIM_API UFloatingDamageWidget : public UUserWidget
@@ -18,7 +25,9 @@ class SONHEIM_API UFloatingDamageWidget : public UUserWidget
     GENERATED_BODY()
 
 public:
-    void SetDamageInfo(float Damage, EFloatingDamageType Type);
+    virtual bool Initialize() override;
+
+    void SetDamageInfo(float Damage, EFloatingOutLineDamageType WeakPointType,  EFloatingTextDamageType ElementAttributeType);
     void PlayFadeAnimation();
 
 protected:
@@ -29,5 +38,6 @@ protected:
     UWidgetAnimation* FadeOutAnimation;
 
     UPROPERTY(EditDefaultsOnly, Category = "Appearance")
-    TMap<EFloatingDamageType, FLinearColor> DamageColors;
+    TMap<EFloatingOutLineDamageType, FLinearColor> DamageWeakPointColors;
+    TMap<EFloatingTextDamageType, FLinearColor> DamageElementAttributeColors;
 }; 

@@ -60,6 +60,41 @@ void USonheimGameInstance::Init()
 		}
 	}
 
+	// Resource Data
+	UDataTable* ResourceDataTable = LoadObject<UDataTable>(
+		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_ResourceObject.dt_ResourceObject'"));
+	if (nullptr != ResourceDataTable)
+	{
+		TArray<FName> RowNames = ResourceDataTable->GetRowNames();
+
+		for (const FName& RowName : RowNames)
+		{
+			FResourceObjectData* Row = ResourceDataTable->FindRow<FResourceObjectData>(RowName, TEXT(""));
+			if (nullptr != Row)
+			{
+				dt_ResourceObject.Add(Row->ResourceObjectID, *Row);
+			}
+		}
+	}
+
+	
+	// Item Data
+	UDataTable* ItemDataTable = LoadObject<UDataTable>(
+		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_Item.dt_Item'"));
+	if (nullptr != ItemDataTable)
+	{
+		TArray<FName> RowNames = ItemDataTable->GetRowNames();
+
+		for (const FName& RowName : RowNames)
+		{
+			FItemData* Row = ResourceDataTable->FindRow<FItemData>(RowName, TEXT(""));
+			if (nullptr != Row)
+			{
+				dt_Item.Add(Row->ItemID, *Row);
+			}
+		}
+	}
+
 	// Sound Data
 	UDataTable* SoundTable = LoadObject<UDataTable>(
 		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_Sound.dt_Sound'"));
@@ -94,7 +129,7 @@ FSkillData* USonheimGameInstance::GetDataSkill(int SkillID)
 	{
 		return data;
 	}
-	
+
 	return nullptr;
 }
 
@@ -104,6 +139,26 @@ FSkillBagData* USonheimGameInstance::GetDataSkillBag(int SkillBagID)
 	{
 		return data;
 	}
-	
+
+	return nullptr;
+}
+
+FResourceObjectData* USonheimGameInstance::GetDataResourceObject(int ResourceObjectID)
+{
+	if (FResourceObjectData* data = dt_ResourceObject.Find(ResourceObjectID))
+	{
+		return data;
+	}
+
+	return nullptr;
+}
+
+FItemData* USonheimGameInstance::GetDataItem(int ItemID)
+{
+	if (FItemData* data = dt_Item.Find(ItemID))
+	{
+		return data;
+	}
+
 	return nullptr;
 }

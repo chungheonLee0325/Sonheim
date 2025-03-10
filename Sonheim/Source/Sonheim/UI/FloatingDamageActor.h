@@ -13,8 +13,8 @@ class SONHEIM_API AFloatingDamageActor : public AActor
 public:
     AFloatingDamageActor();
 
-    void Initialize(float Damage, EFloatingDamageType DamageType = EFloatingDamageType::Normal, 
-                   float Duration = 2.0f, float RiseSpeed = 30.0f);
+    void Initialize(float Damage, EFloatingOutLineDamageType WeakPointType = EFloatingOutLineDamageType::Normal,  EFloatingTextDamageType ElementAttributeType = EFloatingTextDamageType::Normal, 
+                   float Duration = 2.0f, float RiseSpeed = 10.0f);
 
 protected:
     virtual void Tick(float DeltaTime) override;

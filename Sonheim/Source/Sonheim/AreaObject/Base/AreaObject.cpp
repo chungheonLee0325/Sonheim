@@ -15,6 +15,7 @@
 #include "Sonheim/AreaObject/Utility/RotateUtilComponent.h"
 #include "Sonheim/GameManager/SonheimGameMode.h"
 #include "Sonheim/UI/FloatingDamageActor.h"
+#include "Sonheim/Utilities/SonheimUtility.h"
 
 // Sets default values
 AAreaObject::AAreaObject()
@@ -220,8 +221,17 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 
 	ActualDamage = Super::TakeDamage(ActualDamage, DamageEvent, EventInstigator, DamageCauser);
 
-	// damage multiply by weakpoint Hit
+	// damage multiply by weak point Hit
 	ActualDamage = bIsWeakPointHit ? ActualDamage * 1.5f : ActualDamage;
+
+	// damage multiply by Element Attribute Type
+	float elementDamageMultiplier = 1.0f;
+	for (auto defectElementalAttribute : dt_AreaObject->DefenceElementalAttributes)
+	{
+		elementDamageMultiplier *= USonheimUtility::CalculateDamageMultiplier(
+			defectElementalAttribute, attackData.AttackElementalAttribute);
+	}
+	ActualDamage *= elementDamageMultiplier; 
 
 	// apply actual hp damage
 	float CurrentHP = DecreaseHP(ActualDamage);
@@ -240,7 +250,7 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 	FVector SpawnLocation;
 	if (hitResult.Location == FVector::ZeroVector)
 	{
-		// 캐릭터 중앙에서d 생성
+		// 캐릭터 중앙에서 생성
 		SpawnLocation = GetActorLocation();
 	}
 	else
@@ -255,10 +265,20 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 		AFloatingDamageActor::StaticClass(), SpawnTransform))
 	{
 		// FloatingDamageType 계산
-		EFloatingDamageType damageType = bIsWeakPointHit
-			                                 ? EFloatingDamageType::WeakPointDamage
-			                                 : m_DefaultDamageType;
-		DamageActor->Initialize(ActualDamage, damageType);
+		// 약점 계산
+		EFloatingOutLineDamageType weakPointDamageType = bIsWeakPointHit
+			                                 ? EFloatingOutLineDamageType::WeakPointDamage
+			                                 : EFloatingOutLineDamageType::Normal;
+		EFloatingTextDamageType elementAttributeDamageType = EFloatingTextDamageType::Normal;
+		if ( elementDamageMultiplier > 1.0f)
+		{
+			elementAttributeDamageType= EFloatingTextDamageType::EffectiveElementDamage;
+		}
+		else if (elementDamageMultiplier < 1.0f)
+		{
+			elementAttributeDamageType= EFloatingTextDamageType::InefficientElementDamage;
+		}
+		DamageActor->Initialize(ActualDamage, weakPointDamageType, elementAttributeDamageType);
 	}
 
 	// Spawn Hit SFX

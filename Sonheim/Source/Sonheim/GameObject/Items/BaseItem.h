@@ -15,6 +15,7 @@ class SONHEIM_API ABaseItem : public AActor
 public:
 	// Sets default values for this actor's properties
 	ABaseItem();
+	void InitializeItem(int ItemID, int ItemValue);
 
 	virtual bool CanBeCollectedBy(ASonheimPlayer* Player);
 	virtual void OnCollected(ASonheimPlayer* Player);

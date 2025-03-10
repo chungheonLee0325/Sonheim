@@ -13,7 +13,8 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
-#include "Sonheim/UI/Widget/PlayerStatusWidget.h"
+#include "Sonheim/UI/Widget/BaseStatusWidget.h"
+#include "Sonheim/UI/Widget/Monster/MonsterStatusWidget.h"
 
 
 class AYetuga;
@@ -59,8 +60,8 @@ ABaseMonster::ABaseMonster()
 	HPWidgetComponent->SetupAttachment(RootComponent);
 	HPWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, HeightHPUI));
 
-	ConstructorHelpers::FClassFinder<UPlayerStatusWidget> monsterHPWidget(TEXT(
-		"/Script/UMG.WidgetBlueprintGeneratedClass'/Game/_BluePrints/Widget/WB_BasicMonsterStatusWidget.WB_BasicMonsterStatusWidget_C'"));
+	ConstructorHelpers::FClassFinder<UMonsterStatusWidget> monsterHPWidget(TEXT(
+		"/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/WB_MonsterStatusWidget.WB_MonsterStatusWidget_C'"));
 	if (monsterHPWidget.Succeeded())
 	{
 		HPWidgetComponent->SetWidgetClass(monsterHPWidget.Class);
@@ -125,7 +126,8 @@ void ABaseMonster::BeginPlay()
 	{
 		HeightHPUI = GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 10;
 		HPWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, HeightHPUI));
-		HPWidgetComponent->SetVisibility(false);
+		InitializeHUD();
+		//HPWidgetComponent->SetVisibility(false);
 	}
 
 	USonheimGameInstance* gameInstance = Cast<USonheimGameInstance>(GetGameInstance());
@@ -248,25 +250,20 @@ void ABaseMonster::OnDie()
 
 void ABaseMonster::InitializeHUD()
 {
-	StatusWidget = Cast<UPlayerStatusWidget>(HPWidgetComponent->GetWidget());
+	StatusWidget = Cast<UMonsterStatusWidget>(HPWidgetComponent->GetWidget());
 
 	if (HPWidgetComponent)
 	{
 		// HP 변경 이벤트 바인딩
 		if (m_HealthComponent)
 		{
-			m_HealthComponent->OnHealthChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateHealth);
+			m_HealthComponent->OnHealthChanged.AddDynamic(StatusWidget, &UMonsterStatusWidget::UpdateHealth);
 			// 초기값 설정
 			StatusWidget->UpdateHealth(GetHP(), 0.0f, m_HealthComponent->GetMaxHP());
 		}
 
-		// Stamina 변경 이벤트 바인딩
-		if (m_StaminaComponent)
-		{
-			m_StaminaComponent->OnStaminaChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateStamina);
-			// 초기값 설정
-			StatusWidget->UpdateStamina(GetStamina(), 0.0f, m_StaminaComponent->GetMaxStamina());
-		}
+		// ToDo 맞게 수정
+		StatusWidget->InitMonsterStatusWidget(dt_AreaObject, true, 1);
 	}
 }
 

@@ -43,6 +43,54 @@ enum class EEnemyType : uint8
 	Boss UMETA(DisplayName = "Boss"),
 };
 
+// 도구 타입 
+UENUM(BlueprintType)
+enum class EToolType : uint8
+{
+	None UMETA(DisplayName = "None"),
+	Axe UMETA(DisplayName = "Axe"),
+	Pickaxe UMETA(DisplayName = "Pickaxe"),
+	Hammer UMETA(DisplayName = "Hammer")
+};
+
+
+UENUM(BlueprintType)
+enum class EResourceObjectType : uint8
+{
+	None UMETA(DisplayName = "None"), // 블루프린트에서 표시될 이름
+	Tree UMETA(DisplayName = "Tree"),
+	Stone UMETA(DisplayName = "Stone"),
+	Ore UMETA(DisplayName = "Ore"),
+	Paldium UMETA(DisplayName = "Paldium"),
+};
+
+UENUM(BlueprintType)
+enum class EAttackType : uint8
+{
+	None UMETA(DisplayName = "None"), // 블루프린트에서 표시될 이름
+	Normal UMETA(DisplayName = "Normal"),
+	Pierce UMETA(DisplayName = "Pierce"),
+	Slash UMETA(DisplayName = "Slash"),
+	Strike UMETA(DisplayName = "Strike"),
+	TreeEffective UMETA(DisplayName = "TreeEffective"),
+	MineEffective UMETA(DisplayName = "MineEffective"),
+};
+
+UENUM(BlueprintType)
+enum class EElementalAttribute : uint8
+{
+	None UMETA(DisplayName = "None"), // 블루프린트에서 표시될 이름
+	Grass UMETA(DisplayName = "Grass"),
+	Fire UMETA(DisplayName = "Fire"),
+	Water UMETA(DisplayName = "Water"),
+	Electric UMETA(DisplayName = "Electric"),
+	Ground UMETA(DisplayName = "Ground"),
+	Ice UMETA(DisplayName = "Ice"),
+	Dragon UMETA(DisplayName = "Dragon"),
+	Dark UMETA(DisplayName = "Dark"),
+	Neutral UMETA(DisplayName = "Neutral"),
+};
+
 // Ai의 SkillBag에서 랜덤 확률로 사용될 스킬들 - 개시스킬들만 포함
 UENUM(BlueprintType)
 enum class EAiSkillType : uint8
@@ -151,8 +199,12 @@ struct FAreaObjectData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	EAreaObjectType AreaObjectType = EAreaObjectType::None;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data",
+		meta=(EditCondition="AreaObjectType == EAreaObjectType::Enemy"))
 	EEnemyType EnemyType = EEnemyType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	TSet<EElementalAttribute> DefenceElementalAttributes;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data",
 		meta=(EditCondition="AreaObjectType == EAreaObjectType::Enemy"))
@@ -244,6 +296,14 @@ struct FAttackData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float StaminaDamageAmount = 0.0f;
 
+	// 공격 타입
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EAttackType AttackType = EAttackType::Normal;
+
+	// 공격 속성
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EElementalAttribute AttackElementalAttribute = EElementalAttribute::None;
+
 	// 공격 히트 박스 정보 구조체
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FHitBoxData HitBoxData;
@@ -314,7 +374,7 @@ struct FItemData : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	EItemType ItemType = EItemType::None;
-	
+
 	// 획득시 사운드ID
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	int SoundID = 0;
@@ -322,6 +382,68 @@ struct FItemData : public FTableRowBase
 	// 획득시 FxID
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	int VfxID = 0;
+};
+
+// AreaObject 데이터 테이블용 구조체
+USTRUCT(BlueprintType)
+struct FResourceObjectData : public FTableRowBase
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int ResourceObjectID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	FName Name = "";
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	EResourceObjectType ResourceObjectType = EResourceObjectType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	float HPMax = 100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	float ResourceAmount = 10;
+
+	// 데미지 입을 때 아이템 스폰 시작 임계값 (%)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data", meta=(ClampMin="0.0", ClampMax="1.0"))
+	float DamageThresholdPct = 0.1f; // 10%
+
+	// 스폰할 아이템 정보
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	TArray<FItemData> PossibleDrops;
+
+	// 파괴 시 획득하는 경험치
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	float ExperienceReward = 0.0f;
+
+	// 리스폰 시간 (초)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	float RespawnTime = 300.0f;
+
+	// 약점 타입
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	TMap<EAttackType, float> WeaknessAttackMap;
+
+	// 자원 채집 시 사운드 ID
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int HarvestSoundID = 0;
+
+	// 자원 파괴 시 사운드 ID
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int DestroySoundID = 0;
+
+	// 자원 채집 시 이펙트
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	UParticleSystem* HarvestEffect = nullptr;
+
+	// 자원 파괴 시 이펙트
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	UParticleSystem* DestroyEffect = nullptr;
+
+	// 시각적 표현을 위한 메시
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Visual")
+	UStaticMesh* ResourceMesh = nullptr;
 };
 
 

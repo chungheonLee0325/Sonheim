@@ -12,7 +12,7 @@
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/AreaObject/Utility/GhostTrail.h"
 #include "Sonheim/Utilities/LogMacro.h"
-#include "Sonheim/UI/Widget/PlayerStatusWidget.h"
+#include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 
 
 class UEnhancedInputLocalPlayerSubsystem;
@@ -24,9 +24,6 @@ ASonheimPlayer::ASonheimPlayer()
 
 	// Set AreaObject ID
 	m_AreaObjectID = 1;
-
-	// DamagedType 설정 - FloatingText 설정
-	m_DefaultDamageType = EFloatingDamageType::PlayerDamaged;
 
 	// Die Setting
 	DestroyDelayTime = 3.0f;

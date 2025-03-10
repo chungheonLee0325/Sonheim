@@ -13,29 +13,30 @@ AFloatingDamageActor::AFloatingDamageActor()
     DamageWidget->SetDrawAtDesiredSize(true);
 
     // UI 클래스 설정
-    static ConstructorHelpers::FClassFinder<UFloatingDamageWidget> WidgetClassFinder(TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrints/Widget/WB_FloatingDamageWidget.WB_FloatingDamageWidget_C'"));
+    static ConstructorHelpers::FClassFinder<UFloatingDamageWidget> WidgetClassFinder(TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/WB_FloatingDamageWidget.WB_FloatingDamageWidget_C'"));
     if (WidgetClassFinder.Succeeded())
     {
         DamageWidget->SetWidgetClass(WidgetClassFinder.Class);
     }
 }
 
-void AFloatingDamageActor::Initialize(float Damage, EFloatingDamageType DamageType, float Duration, float RiseSpeed)
+void AFloatingDamageActor::Initialize(float Damage, EFloatingOutLineDamageType WeakPointType,  EFloatingTextDamageType ElementAttributeType, float Duration, float RiseSpeed)
 {
     LifeTime = Duration;
     CurrentLifeTime = 0.0f;
     MovementSpeed = RiseSpeed;
 
-    // 랜덤 오프셋 계산
+    // 랜덤 오프셋 계산 및 적용
     float RandomX = FMath::RandRange(-RandomOffsetRange, RandomOffsetRange);
     float RandomY = FMath::RandRange(-RandomOffsetRange, RandomOffsetRange);
+    float RandomZ = FMath::RandRange(-RandomOffsetRange, RandomOffsetRange);
+    AddActorWorldOffset(FVector(RandomX, RandomY, RandomZ));
     
-    // 기본적으로 위로 향하는 방향에 랜덤성 추가
-    MovementDirection = FVector(RandomX, RandomY, MovementSpeed).GetSafeNormal();
+    MovementDirection = FVector(0,0,1);
 
     if (UFloatingDamageWidget* Widget = Cast<UFloatingDamageWidget>(DamageWidget->GetUserWidgetObject()))
     {
-        Widget->SetDamageInfo(Damage, DamageType);
+        Widget->SetDamageInfo(Damage, WeakPointType, ElementAttributeType);
         Widget->PlayFadeAnimation();
     }
 }
