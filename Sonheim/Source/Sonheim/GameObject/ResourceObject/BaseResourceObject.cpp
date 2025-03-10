@@ -183,7 +183,9 @@ float ABaseResourceObject::TakeDamage(float Damage, const FDamageEvent& DamageEv
 	}
 
 	// Spawn floating damage
-	FVector SpawnLocation = GetActorLocation();
+	
+	//FVector SpawnLocation = GetActorLocation();
+	FVector SpawnLocation = hitResult.Location;
 
 	FTransform SpawnTransform(FRotator::ZeroRotator, SpawnLocation);
 

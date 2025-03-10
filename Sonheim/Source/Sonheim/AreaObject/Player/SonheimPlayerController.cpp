@@ -7,7 +7,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "SonheimPlayer.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
-#include "Sonheim/UI/Widget/PlayerStatusWidget.h"
+#include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
 ASonheimPlayerController::ASonheimPlayerController()
@@ -70,7 +70,7 @@ ASonheimPlayerController::ASonheimPlayerController()
 	// UI 클래스 설정
 	static ConstructorHelpers::FClassFinder<UPlayerStatusWidget> WidgetClassFinder(
 		TEXT(
-			"/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrints/Widget/WB_PlayerStatusWidget.WB_PlayerStatusWidget_C'"));
+			"/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/WB_PlayerStatusWidget.WB_PlayerStatusWidget_C'"));
 	if (WidgetClassFinder.Succeeded())
 	{
 		StatusWidgetClass = WidgetClassFinder.Class;

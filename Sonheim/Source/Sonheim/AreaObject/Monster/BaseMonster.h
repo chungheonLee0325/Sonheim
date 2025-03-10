@@ -33,7 +33,7 @@ public:
 	UWidgetComponent* HPWidgetComponent;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	class UPlayerStatusWidget* StatusWidget;
+	class UBaseStatusWidget* StatusWidget;
 	
 	UPROPERTY(EditAnywhere, Category = "UI")
 	float HeightHPUI = 160.0f;

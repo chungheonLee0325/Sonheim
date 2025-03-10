@@ -13,7 +13,7 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
-#include "Sonheim/UI/Widget/PlayerStatusWidget.h"
+#include "Sonheim/UI/Widget/BaseStatusWidget.h"
 
 
 class AYetuga;
@@ -59,8 +59,8 @@ ABaseMonster::ABaseMonster()
 	HPWidgetComponent->SetupAttachment(RootComponent);
 	HPWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, HeightHPUI));
 
-	ConstructorHelpers::FClassFinder<UPlayerStatusWidget> monsterHPWidget(TEXT(
-		"/Script/UMG.WidgetBlueprintGeneratedClass'/Game/_BluePrints/Widget/WB_BasicMonsterStatusWidget.WB_BasicMonsterStatusWidget_C'"));
+	ConstructorHelpers::FClassFinder<UBaseStatusWidget> monsterHPWidget(TEXT(
+		"/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/WB_BasicMonsterStatusWidget.WB_BasicMonsterStatusWidget_C'"));
 	if (monsterHPWidget.Succeeded())
 	{
 		HPWidgetComponent->SetWidgetClass(monsterHPWidget.Class);
@@ -248,14 +248,14 @@ void ABaseMonster::OnDie()
 
 void ABaseMonster::InitializeHUD()
 {
-	StatusWidget = Cast<UPlayerStatusWidget>(HPWidgetComponent->GetWidget());
+	StatusWidget = Cast<UBaseStatusWidget>(HPWidgetComponent->GetWidget());
 
 	if (HPWidgetComponent)
 	{
 		// HP 변경 이벤트 바인딩
 		if (m_HealthComponent)
 		{
-			m_HealthComponent->OnHealthChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateHealth);
+			m_HealthComponent->OnHealthChanged.AddDynamic(StatusWidget, &UBaseStatusWidget::UpdateHealth);
 			// 초기값 설정
 			StatusWidget->UpdateHealth(GetHP(), 0.0f, m_HealthComponent->GetMaxHP());
 		}
@@ -263,7 +263,7 @@ void ABaseMonster::InitializeHUD()
 		// Stamina 변경 이벤트 바인딩
 		if (m_StaminaComponent)
 		{
-			m_StaminaComponent->OnStaminaChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateStamina);
+			m_StaminaComponent->OnStaminaChanged.AddDynamic(StatusWidget, &UBaseStatusWidget::UpdateStamina);
 			// 초기값 설정
 			StatusWidget->UpdateStamina(GetStamina(), 0.0f, m_StaminaComponent->GetMaxStamina());
 		}

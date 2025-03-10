@@ -14,7 +14,7 @@ public:
     AFloatingDamageActor();
 
     void Initialize(float Damage, EFloatingDamageType DamageType = EFloatingDamageType::Normal, 
-                   float Duration = 2.0f, float RiseSpeed = 30.0f);
+                   float Duration = 2.0f, float RiseSpeed = 10.0f);
 
 protected:
     virtual void Tick(float DeltaTime) override;

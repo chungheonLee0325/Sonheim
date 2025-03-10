@@ -12,7 +12,7 @@
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/AreaObject/Utility/GhostTrail.h"
 #include "Sonheim/Utilities/LogMacro.h"
-#include "Sonheim/UI/Widget/PlayerStatusWidget.h"
+#include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 
 
 class UEnhancedInputLocalPlayerSubsystem;
