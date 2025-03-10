@@ -20,10 +20,11 @@ ABaseItem::ABaseItem()
 
 	// 임시 객체 ToDo : BeginPlay에서 Data Table Driven 변환
 	ConstructorHelpers::FObjectFinder<UStaticMesh> tempMesh(
-		TEXT("/Script/Engine.StaticMesh'/Engine/BasicShapes/Sphere.Sphere'"));
+		TEXT("/Script/Engine.StaticMesh'/Game/_Resource/Item/Ore/Item_Ore.Item_Ore'"));
 	if (tempMesh.Succeeded())
 	{
 		ItemMesh->SetStaticMesh(tempMesh.Object);
+		ItemMesh->SetRelativeScale3D(FVector(0.01f));
 	}
 	RootComponent = ItemMesh;
 

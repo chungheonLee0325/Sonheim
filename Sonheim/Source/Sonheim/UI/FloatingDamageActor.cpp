@@ -20,7 +20,7 @@ AFloatingDamageActor::AFloatingDamageActor()
     }
 }
 
-void AFloatingDamageActor::Initialize(float Damage, EFloatingDamageType DamageType, float Duration, float RiseSpeed)
+void AFloatingDamageActor::Initialize(float Damage, EFloatingOutLineDamageType WeakPointType,  EFloatingTextDamageType ElementAttributeType, float Duration, float RiseSpeed)
 {
     LifeTime = Duration;
     CurrentLifeTime = 0.0f;
@@ -36,7 +36,7 @@ void AFloatingDamageActor::Initialize(float Damage, EFloatingDamageType DamageTy
 
     if (UFloatingDamageWidget* Widget = Cast<UFloatingDamageWidget>(DamageWidget->GetUserWidgetObject()))
     {
-        Widget->SetDamageInfo(Damage, DamageType);
+        Widget->SetDamageInfo(Damage, WeakPointType, ElementAttributeType);
         Widget->PlayFadeAnimation();
     }
 }

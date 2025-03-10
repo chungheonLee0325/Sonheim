@@ -193,9 +193,9 @@ float ABaseResourceObject::TakeDamage(float Damage, const FDamageEvent& DamageEv
 		AFloatingDamageActor::StaticClass(), SpawnTransform))
 	{
 		// FloatingDamageType 계산
-		EFloatingDamageType damageType = damageCoefficient > 1.0f
-			                                 ? EFloatingDamageType::WeakPointDamage
-			                                 : EFloatingDamageType::Normal;
+		EFloatingOutLineDamageType damageType = damageCoefficient > 1.0f
+			                                 ? EFloatingOutLineDamageType::WeakPointDamage
+			                                 : EFloatingOutLineDamageType::Normal;
 		DamageActor->Initialize(ActualDamage, damageType);
 	}
 

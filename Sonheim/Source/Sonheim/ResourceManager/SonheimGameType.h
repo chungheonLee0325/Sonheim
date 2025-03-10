@@ -61,7 +61,7 @@ enum class EResourceObjectType : uint8
 	Tree UMETA(DisplayName = "Tree"),
 	Stone UMETA(DisplayName = "Stone"),
 	Ore UMETA(DisplayName = "Ore"),
-	Paldium UMETA(DisplayName = "Paldium"),	
+	Paldium UMETA(DisplayName = "Paldium"),
 };
 
 UENUM(BlueprintType)
@@ -77,18 +77,18 @@ enum class EAttackType : uint8
 };
 
 UENUM(BlueprintType)
-enum class ElementalAttribute : uint8
+enum class EElementalAttribute : uint8
 {
 	None UMETA(DisplayName = "None"), // 블루프린트에서 표시될 이름
-	Neutral UMETA(DisplayName = "Neutral"),
-	Dark UMETA(DisplayName = "Dark"),
-	Dragon UMETA(DisplayName = "Dragon"),
-	Ice UMETA(DisplayName = "Ice"),
-	Fire UMETA(DisplayName = "Fire"),
 	Grass UMETA(DisplayName = "Grass"),
-	Ground UMETA(DisplayName = "Ground"),
-	Electric UMETA(DisplayName = "Electric"),
+	Fire UMETA(DisplayName = "Fire"),
 	Water UMETA(DisplayName = "Water"),
+	Electric UMETA(DisplayName = "Electric"),
+	Ground UMETA(DisplayName = "Ground"),
+	Ice UMETA(DisplayName = "Ice"),
+	Dragon UMETA(DisplayName = "Dragon"),
+	Dark UMETA(DisplayName = "Dark"),
+	Neutral UMETA(DisplayName = "Neutral"),
 };
 
 // Ai의 SkillBag에서 랜덤 확률로 사용될 스킬들 - 개시스킬들만 포함
@@ -199,8 +199,12 @@ struct FAreaObjectData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	EAreaObjectType AreaObjectType = EAreaObjectType::None;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data",
+		meta=(EditCondition="AreaObjectType == EAreaObjectType::Enemy"))
 	EEnemyType EnemyType = EEnemyType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	TSet<EElementalAttribute> DefenceElementalAttributes;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data",
 		meta=(EditCondition="AreaObjectType == EAreaObjectType::Enemy"))
@@ -295,10 +299,10 @@ struct FAttackData
 	// 공격 타입
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EAttackType AttackType = EAttackType::Normal;
-	
+
 	// 공격 속성
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	ElementalAttribute ElementalAttribute = ElementalAttribute::None;
+	EElementalAttribute AttackElementalAttribute = EElementalAttribute::None;
 
 	// 공격 히트 박스 정보 구조체
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -370,7 +374,7 @@ struct FItemData : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	EItemType ItemType = EItemType::None;
-	
+
 	// 획득시 사운드ID
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	int SoundID = 0;

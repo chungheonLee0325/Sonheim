@@ -22,16 +22,3 @@ void UBaseStatusWidget::UpdateHealth(float CurrentHP, float Delta, float MaxHP)
 		HealthText->SetText(FText::FromString(FString::Printf(TEXT("%.0f/%.0f"), CurrentHP, MaxHP)));
 	}
 }
-
-void UBaseStatusWidget::UpdateStamina(float CurrentStamina, float Delta, float MaxStamina)
-{
-	if (StaminaBar)
-	{
-		StaminaBar->SetPercent(CurrentStamina / MaxStamina);
-	}
-    
-	if (StaminaText)
-	{
-		StaminaText->SetText(FText::FromString(FString::Printf(TEXT("%.0f/%.0f"), CurrentStamina, MaxStamina)));
-	}
-}

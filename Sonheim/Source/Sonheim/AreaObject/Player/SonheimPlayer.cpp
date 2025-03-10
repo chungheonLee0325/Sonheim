@@ -25,9 +25,6 @@ ASonheimPlayer::ASonheimPlayer()
 	// Set AreaObject ID
 	m_AreaObjectID = 1;
 
-	// DamagedType 설정 - FloatingText 설정
-	m_DefaultDamageType = EFloatingDamageType::PlayerDamaged;
-
 	// Die Setting
 	DestroyDelayTime = 3.0f;
 

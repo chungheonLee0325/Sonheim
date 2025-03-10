@@ -40,7 +40,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "AreaObject Data Setting")
 	int m_AreaObjectID;
 	UPROPERTY(EditDefaultsOnly, Category = "TakeDamage")
-	EFloatingDamageType m_DefaultDamageType = EFloatingDamageType::Normal;
 	FVector AdjustKnockBackForce;
 
 protected:
