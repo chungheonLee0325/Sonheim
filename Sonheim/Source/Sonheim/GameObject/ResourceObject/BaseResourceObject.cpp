@@ -3,6 +3,7 @@
 
 #include "BaseResourceObject.h"
 
+#include "Components/BoxComponent.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/GameManager/SonheimGameMode.h"
 #include "Sonheim/GameObject/Items/BaseItem.h"
@@ -17,6 +18,14 @@ ABaseResourceObject::ABaseResourceObject()
 	PrimaryActorTick.bCanEverTick = true;
 
 	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
+
+	m_BoxComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
+	m_BoxComponent->SetCollisionProfileName("BlockAllDynamic");
+	RootComponent = m_BoxComponent;
+
+	m_StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
+	m_StaticMeshComponent->SetCollisionProfileName("NoCollision");
+	m_StaticMeshComponent->SetupAttachment(RootComponent);
 }
 
 // Called when the game starts or when spawned
@@ -28,12 +37,12 @@ void ABaseResourceObject::BeginPlay()
 	{
 		return;
 	}
-	// 데이터 초기화
-	USonheimGameInstance* gameInstance = Cast<USonheimGameInstance>(GetGameInstance());
-	dt_ResourceObject = gameInstance->GetDataResourceObject(m_ResourceObjectID);
+	// 데이터 초기화 & Game Instance Setting
+	m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
+	dt_ResourceObject = m_GameInstance->GetDataResourceObject(m_ResourceObjectID);
 
 	HealthComponent->InitHealth(dt_ResourceObject->HPMax);
-
+	
 	// GameMode Setting
 	m_GameMode = Cast<ASonheimGameMode>(GetWorld()->GetAuthGameMode());
 }
@@ -77,46 +86,51 @@ void ABaseResourceObject::SpawnPartialResources(int32 SegmentsLost)
 		SegmentSpawnBaseLocation.Y += FMath::RandRange(-50.0f, 50.0f) * SegmentIdx;
 
 		// 각 가능한 드롭 아이템에 대해 처리
-		for (const FItemData& DropInfo : dt_ResourceObject->PossibleDrops)
+		for (const auto& DropInfoPair : dt_ResourceObject->PossibleDropItemID)
 		{
-			// ToDo : 드롭 확률에 따라 아이템 드롭 여부 결정
+			// 드롭 확률에 따라 아이템 드롭 여부 결정
+			if (DropInfoPair.Value < FMath::RandRange(0, 100))
 			{
-				// 단일 구간에 대한 드롭 수량 결정
-				// 아이템 스폰 위치 계산 (구간별 위치 + 랜덤 오프셋)
-				// 랜덤 오프셋 생성 (반경 내에서)
-				const float SpawnRadius = 100.0f;
-				FVector RandomOffset(
-					FMath::RandRange(-SpawnRadius, SpawnRadius),
-					FMath::RandRange(-SpawnRadius, SpawnRadius),
-					0.0f
-				);
+				return;
+			}
 
-				// 스폰 위치 계산
-				FVector SpawnLocation = SegmentSpawnBaseLocation + RandomOffset;
-				SpawnLocation.Z += 50.0f + (10.0f * SegmentIdx); // 구간별로 약간 다른 높이
+			FItemData* const DropInfo = m_GameInstance->GetDataItem(DropInfoPair.Key);
 
-				// 스폰 회전 (랜덤)
-				FRotator SpawnRotation(0.0f, FMath::RandRange(0.0f, 360.0f), 0.0f);
-				FTransform SpawnTransform(SpawnRotation, SpawnLocation);
+			// 단일 구간에 대한 드롭 수량 결정
+			// 아이템 스폰 위치 계산 (구간별 위치 + 랜덤 오프셋)
+			// 랜덤 오프셋 생성 (반경 내에서)
+			const float SpawnRadius = 100.0f;
+			FVector RandomOffset(
+				FMath::RandRange(-SpawnRadius, SpawnRadius),
+				FMath::RandRange(-SpawnRadius, SpawnRadius),
+				0.0f
+			);
 
-				if (ABaseItem* SpawnedItem = GetWorld()->SpawnActor<ABaseItem>(
-					ABaseItem::StaticClass(), SpawnTransform))
+			// 스폰 위치 계산
+			FVector SpawnLocation = SegmentSpawnBaseLocation + RandomOffset;
+			SpawnLocation.Z += 50.0f + (10.0f * SegmentIdx); // 구간별로 약간 다른 높이
+
+			// 스폰 회전 (랜덤)
+			FRotator SpawnRotation(0.0f, FMath::RandRange(0.0f, 360.0f), 0.0f);
+			FTransform SpawnTransform(SpawnRotation, SpawnLocation);
+
+			if (ABaseItem* SpawnedItem = GetWorld()->SpawnActor<ABaseItem>(
+				DropInfo->ItemClass, SpawnTransform))
+			{
+				// 아이템 초기화
+				//SpawnedItem->InitializeItem(DropInfo.ItemID, 1);
+
+				// 물리 시뮬레이션 활성화
+				if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(SpawnedItem->GetRootComponent()))
 				{
-					// 아이템 초기화
-					//SpawnedItem->InitializeItem(DropInfo.ItemID, 1);
-
-					// 물리 시뮬레이션 활성화
-					if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(SpawnedItem->GetRootComponent()))
-					{
-						PrimComp->SetSimulatePhysics(true);
-						// 랜덤한 방향으로 약간 튀어오르게
-						FVector RandomImpulse(
-							FMath::RandRange(-50.0f, 50.0f),
-							FMath::RandRange(-50.0f, 50.0f),
-							FMath::RandRange(100.0f, 200.0f)
-						);
-						PrimComp->AddImpulse(RandomImpulse);
-					}
+					PrimComp->SetSimulatePhysics(true);
+					// 랜덤한 방향으로 약간 튀어오르게
+					FVector RandomImpulse(
+						FMath::RandRange(-50.0f, 50.0f),
+						FMath::RandRange(-50.0f, 50.0f),
+						FMath::RandRange(100.0f, 200.0f)
+					);
+					PrimComp->AddImpulse(RandomImpulse);
 				}
 			}
 		}
@@ -183,7 +197,7 @@ float ABaseResourceObject::TakeDamage(float Damage, const FDamageEvent& DamageEv
 	}
 
 	// Spawn floating damage
-	
+
 	//FVector SpawnLocation = GetActorLocation();
 	FVector SpawnLocation = hitResult.Location;
 
@@ -194,8 +208,8 @@ float ABaseResourceObject::TakeDamage(float Damage, const FDamageEvent& DamageEv
 	{
 		// FloatingDamageType 계산
 		EFloatingOutLineDamageType damageType = damageCoefficient > 1.0f
-			                                 ? EFloatingOutLineDamageType::WeakPointDamage
-			                                 : EFloatingOutLineDamageType::Normal;
+			                                        ? EFloatingOutLineDamageType::WeakPointDamage
+			                                        : EFloatingOutLineDamageType::Normal;
 		DamageActor->Initialize(ActualDamage, damageType);
 	}
 

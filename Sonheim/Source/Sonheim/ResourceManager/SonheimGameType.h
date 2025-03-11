@@ -10,6 +10,7 @@
 // Enum
 // 언리얼 리플렉션 시스템과 통합하기 위해 UENUM() 매크로를 사용
 
+class ABaseItem;
 class UBaseSkill;
 // ConditionBits - 비트마스크를 활용한 죽음, 무적 
 UENUM(Meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
@@ -373,6 +374,9 @@ struct FItemData : public FTableRowBase
 	int ItemID = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	TSubclassOf<ABaseItem> ItemClass = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	EItemType ItemType = EItemType::None;
 
 	// 획득시 사운드ID
@@ -409,9 +413,9 @@ struct FResourceObjectData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data", meta=(ClampMin="0.0", ClampMax="1.0"))
 	float DamageThresholdPct = 0.1f; // 10%
 
-	// 스폰할 아이템 정보
+	// <스폰할 아이템 ID, 확률> 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	TArray<FItemData> PossibleDrops;
+	TMap<int, int> PossibleDropItemID;
 
 	// 파괴 시 획득하는 경험치
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
