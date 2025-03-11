@@ -14,7 +14,12 @@ ABaseItem::ABaseItem()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
+	
+	CollectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollectionSphere"));
+	CollectionSphere->SetCollisionProfileName("OverlapOnlyPawn");
+	CollectionSphere->SetSphereRadius(35);
+	RootComponent = CollectionSphere;
+	
 	// 컴포넌트 초기화
 	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
 
@@ -25,12 +30,8 @@ ABaseItem::ABaseItem()
 	{
 		ItemMesh->SetStaticMesh(tempMesh.Object);
 		ItemMesh->SetRelativeScale3D(FVector(0.01f));
+		ItemMesh->SetupAttachment(RootComponent);
 	}
-	RootComponent = ItemMesh;
-
-	CollectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollectionSphere"));
-	CollectionSphere->SetupAttachment(RootComponent);
-	CollectionSphere->SetCollisionProfileName("Item");
 
 	// 멤버 변수 초기화
 	m_IsCollected = false;
