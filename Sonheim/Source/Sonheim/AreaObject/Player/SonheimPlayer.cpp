@@ -3,6 +3,7 @@
 
 #include "SonheimPlayer.h"
 #include "SonheimPlayerController.h"
+#include "SonheimPlayerState.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -99,8 +100,9 @@ void ASonheimPlayer::BeginPlay()
 {
 	Super::BeginPlay();
 
-	PlayerAnimInstance = Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance());
-	PlayerController = Cast<ASonheimPlayerController>(GetController());
+	S_PlayerAnimInstance = Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance());
+	S_PlayerController = Cast<ASonheimPlayerController>(GetController());
+	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
 
 	InitializeStateRestrictions();
 
@@ -112,8 +114,8 @@ void ASonheimPlayer::OnDie()
 {
 	Super::OnDie();
 	SetPlayerState(EPlayerState::DIE);
-	PlayerController->FailWidget->AddToViewport();
-	PlayerController->GetPlayerStatusWidget()->SetVisibility(ESlateVisibility::Hidden);
+	S_PlayerController->FailWidget->AddToViewport();
+	S_PlayerController->GetPlayerStatusWidget()->SetVisibility(ESlateVisibility::Hidden);
 	// ToDo : TimerHandle 정리?
 
 	//GetCharacterMovement()->SetMovementMode(MOVE_None);
@@ -122,16 +124,13 @@ void ASonheimPlayer::OnDie()
 void ASonheimPlayer::OnRevival()
 {
 	Super::OnRevival();
-	PlayerController->FailWidget->RemoveFromParent();
-	PlayerController->GetPlayerStatusWidget()->SetVisibility(ESlateVisibility::Visible);
+	S_PlayerController->FailWidget->RemoveFromParent();
+	S_PlayerController->GetPlayerStatusWidget()->SetVisibility(ESlateVisibility::Visible);
 }
 
-void ASonheimPlayer::Reward(FItemData* ItemData, int ItemValue) const
+void ASonheimPlayer::Reward(int ItemID, int ItemValue) const
 {
-	//if (ItemData->ItemType == EItemType::Currency)
-	//{
-	//	PlayerController->AddCurrency(ItemData->CurrencyType, ItemValue);
-	//}
+	S_PlayerState->AddItem(ItemID, ItemValue);
 }
 
 // Called every frame
@@ -235,7 +234,7 @@ void ASonheimPlayer::Move(const FVector2D MovementVector)
 		// add Movement
 		if (CanPerformAction(CurrentPlayerState, "Move"))
 		{
-			PlayerAnimInstance->Montage_Stop(0.2f);
+			S_PlayerAnimInstance->Montage_Stop(0.2f);
 			AddMovementInput(ForwardDirection, MovementVector.Y);
 			AddMovementInput(RightDirection, MovementVector.X);
 		}

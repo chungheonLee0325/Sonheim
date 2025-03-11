@@ -56,8 +56,8 @@ void AAreaObject::BeginPlay()
 	}
 
 	// 데이터 초기화
-	USonheimGameInstance* gameInstance = Cast<USonheimGameInstance>(GetGameInstance());
-	dt_AreaObject = gameInstance->GetDataAreaObject(m_AreaObjectID);
+	m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
+	dt_AreaObject = m_GameInstance->GetDataAreaObject(m_AreaObjectID);
 
 	// Health 초기화 By Data
 	float hpMax = 1.0f;
@@ -83,7 +83,7 @@ void AAreaObject::BeginPlay()
 	// 스킬 인스턴스 생성
 	for (auto& skill : m_OwnSkillIDSet)
 	{
-		if (FSkillData* skillData = gameInstance->GetDataSkill(skill))
+		if (FSkillData* skillData = m_GameInstance->GetDataSkill(skill))
 		{
 			FString SkillName = FString::Printf(TEXT("BaseSkill_%d"), skill);
 			UBaseSkill* NewSkill = NewObject<UBaseSkill>(this, skillData->SkillClass, *SkillName);
