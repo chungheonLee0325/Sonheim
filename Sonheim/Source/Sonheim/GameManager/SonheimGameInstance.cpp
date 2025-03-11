@@ -87,7 +87,7 @@ void USonheimGameInstance::Init()
 
 		for (const FName& RowName : RowNames)
 		{
-			FItemData* Row = ResourceDataTable->FindRow<FItemData>(RowName, TEXT(""));
+			FItemData* Row = ItemDataTable->FindRow<FItemData>(RowName, TEXT(""));
 			if (nullptr != Row)
 			{
 				dt_Item.Add(Row->ItemID, *Row);
