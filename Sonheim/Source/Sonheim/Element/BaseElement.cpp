@@ -25,9 +25,10 @@ ABaseElement::ABaseElement()
 
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
 	Mesh->SetupAttachment(RootComponent);
-
+	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> BaseMeshObject
-		(TEXT("/Script/Engine.StaticMesh'/Game/_BluePrint/Element/SandBlast/Model/SM_SandBlast.SM_SandBlast'"));
+		(TEXT("/Script/Engine.StaticMesh'/Game/_BluePrint/Element/Base/Model/SM_BaseElement.SM_BaseElement'"));
 	if (BaseMeshObject.Succeeded()) {
 		Mesh->SetStaticMesh(BaseMeshObject.Object);
 	}

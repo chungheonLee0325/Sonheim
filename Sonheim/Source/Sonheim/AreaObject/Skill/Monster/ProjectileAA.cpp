@@ -54,42 +54,13 @@ void UProjectileAA::OnCastFire()
 	// ToDo : TempTarget -> m_Target으로 수정
 	ASonheimPlayer* TempTarget{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
 	//SpawnedSandBlast->InitElement(m_Caster, m_Target, m_Target->GetActorLocation(), AttackData);
-
-	if (TempTarget)
+	
+	if (SpawnedSandBlast)
 	{
-		// FLog::Log("Yes Target");
-		if (m_Caster)
-		{
-			if (AttackData)
-			{
-				if (TempTarget)
-				{
-					if (SpawnedSandBlast)
-					{
-						SpawnedSandBlast->InitElement(m_Caster, TempTarget, TempTarget->GetActorLocation(), AttackData);
-					}
-					else
-					{
-						FLog::Log("No SpawnedSandBlast");
-					}
-				}
-				else
-				{
-					FLog::Log("No TempTarget");
-				}
-			}
-			else
-			{
-				FLog::Log("No AttackData");
-			}
-		}
-		else
-		{
-			FLog::Log("No m_Caster");
-		}
+		SpawnedSandBlast->InitElement(m_Caster, TempTarget, TempTarget->GetActorLocation(), AttackData);
 	}
 	else
 	{
-		FLog::Log("No Target");
+		FLog::Log("No SpawnedSandBlast");
 	}
 }
