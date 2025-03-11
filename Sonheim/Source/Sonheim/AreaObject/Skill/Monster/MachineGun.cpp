@@ -4,6 +4,7 @@
 #include "MachineGun.h"
 
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/Utilities/LogMacro.h"
@@ -38,15 +39,15 @@ void UMachineGun::FireGun()
 	Params.AddIgnoredActor(m_Caster);
 	FHitResult HitInfo;
 
+	// ECC_GameTraceChannel8 : MonsterGunAttack
 	bool bHit{
 		GetWorld()->LineTraceSingleByChannel(HitInfo, StartPos, EndPos, ECollisionChannel::ECC_GameTraceChannel8, Params)
 	};
 	
-	DrawDebugLine(GetWorld(), StartPos, HitInfo.ImpactPoint, FColor::Emerald, false, 1.f, 0, 1.f);
-
 	if (bHit)
 	{
-		FLog::Log();
+		DrawDebugLine(GetWorld(), StartPos, HitInfo.ImpactPoint, FColor::Emerald, false, 1.f, 0, 1.f);
+		//FLog::Log();
 		ASonheimPlayer* Player{Cast<ASonheimPlayer>(HitInfo.GetActor())};
 		if (Player)
 		{
