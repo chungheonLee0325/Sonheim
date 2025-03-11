@@ -17,7 +17,6 @@ void UFlamethrower::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
 	Super::OnCastStart(Caster, Target);
 
 	OnCastFire();
-
 }
 
 void UFlamethrower::OnCastTick(float DeltaTime)
@@ -35,7 +34,11 @@ void UFlamethrower::OnCastFire()
 void UFlamethrower::FireFlame()
 {
 	FVector StartPos{m_Caster->GetActorLocation()};
-	FVector EndPos{StartPos + UKismetMathLibrary::RandomUnitVectorInEllipticalConeInDegrees(m_Caster->GetActorForwardVector(), SpreadYaw, SpreadPitch) * Range};
+	FVector EndPos{
+		// StartPos + UKismetMathLibrary::RandomUnitVectorInEllipticalConeInDegrees(
+		// 	m_Caster->GetActorForwardVector(), SpreadYaw, SpreadPitch) * Range
+		StartPos + m_Caster->GetActorForwardVector() * Range
+	};
 
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(m_Caster);
@@ -43,21 +46,18 @@ void UFlamethrower::FireFlame()
 
 	// ECC_GameTraceChannel7 : Flamethrower
 	bool bHit{
-		GetWorld()->LineTraceMultiByChannel(HitInfos, StartPos, EndPos, ECollisionChannel::ECC_GameTraceChannel7, Params)
+		GetWorld()->LineTraceMultiByChannel(HitInfos, StartPos, EndPos, ECollisionChannel::ECC_GameTraceChannel7,
+		                                    Params)
 	};
 
-	if (bHit)
+	for (FHitResult& HitInfo : HitInfos)
 	{
-		for (FHitResult& HitInfo : HitInfos)
+	DrawDebugLine(GetWorld(), StartPos, HitInfo.ImpactPoint, FColor::Red, false, 1.f, 0, 1.f);
+		ASonheimPlayer* Player{Cast<ASonheimPlayer>(HitInfo.GetActor())};
+		if (Player)
 		{
-			DrawDebugLine(GetWorld(), StartPos, HitInfo.ImpactPoint, FColor::Red, false, 1.f, 0, 1.f);
-        
-			ASonheimPlayer* Player{Cast<ASonheimPlayer>(HitInfo.GetActor())};
-			if (Player)
-			{
-				FAttackData* AttackData = GetAttackDataByIndex(0);
-				m_Caster->CalcDamage(*AttackData, m_Caster, Player, HitInfo);
-			}
+			FAttackData* AttackData = GetAttackDataByIndex(0);
+			m_Caster->CalcDamage(*AttackData, m_Caster, Player, HitInfo);
 		}
 	}
 }
