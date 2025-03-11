@@ -15,13 +15,15 @@ class SONHEIM_API ABaseItem : public AActor
 public:
 	// Sets default values for this actor's properties
 	ABaseItem();
-	void InitializeItem(int ItemID, int ItemValue);
+	void InitializeItem(int ItemValue);
 
 	virtual bool CanBeCollectedBy(ASonheimPlayer* Player);
 	virtual void OnCollected(ASonheimPlayer* Player);
 	virtual void Tick(float DeltaTime) override;
-	void SetItemValue(int ItemValue) { m_ItemValue = ItemValue;}
+	void SetItemValue(int ItemValue) { m_ItemValue = ItemValue; }
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category= "Data")
+	int m_ItemID = 0;
 protected:
 	virtual void BeginPlay() override;
 
@@ -42,15 +44,18 @@ protected:
 
 	UFUNCTION()
 	virtual void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent,
-							  AActor* OtherActor,
-							  UPrimitiveComponent* OtherComp,
-							  int32 OtherBodyIndex,
-							  bool bFromSweep,
-							  const FHitResult& SweepResult);
+	                            AActor* OtherActor,
+	                            UPrimitiveComponent* OtherComp,
+	                            int32 OtherBodyIndex,
+	                            bool bFromSweep,
+	                            const FHitResult& SweepResult);
 
 	bool m_IsCollected;
 
-	int m_ItemValue = 0;
+	int m_ItemValue = 1;
 
 	FItemData* dt_ItemData;
+
+	UPROPERTY()
+	USonheimGameInstance* m_GameInstance;
 };
