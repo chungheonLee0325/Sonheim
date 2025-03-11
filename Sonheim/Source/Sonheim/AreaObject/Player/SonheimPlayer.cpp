@@ -40,6 +40,8 @@ ASonheimPlayer::ASonheimPlayer()
 		GetMesh()->SetRelativeLocationAndRotation(FVector(0, 0, -97.f), FRotator(0, -90, 0));
 		GetMesh()->SetRelativeScale3D(FVector(0.4f));
 	}
+	
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	WeaponComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
 	WeaponComponent->SetupAttachment(GetMesh(),TEXT("Weapon_R"));
