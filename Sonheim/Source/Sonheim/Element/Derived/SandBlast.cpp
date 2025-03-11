@@ -24,7 +24,7 @@ void ASandBlast::BeginPlay()
 	Super::BeginPlay();
 	Root->OnComponentBeginOverlap.AddDynamic(this, &ASandBlast::OnBeginOverlap);
 	
-	FLog::Log("ASandBlast::BeginPlay");
+	// FLog::Log("ASandBlast::BeginPlay");
 }
 
 void ASandBlast::InitElement(AAreaObject* Caster, AAreaObject* Target, const FVector& TargetLocation, FAttackData* AttackData)

@@ -14,22 +14,24 @@ ABladeWind::ABladeWind()
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 }
+// Called when the game starts or when spawned
+void ABladeWind::BeginPlay()
+{
+	Super::BeginPlay();
+
+	Root->OnComponentBeginOverlap.AddDynamic(this, &ABladeWind::OnBeginOverlap);
+
+}
 
 void ABladeWind::InitElement(AAreaObject* Caster, AAreaObject* Target, const FVector& TargetLocation,
 	FAttackData* AttackData)
 {
 	Super::InitElement(Caster, Target, TargetLocation, AttackData);
 
-	float ArcValue{FMath::RandRange(0.8f, 0.9f)};
+	float ArcValue{FMath::RandRange(0.9f, 0.95f)};
 	Root->AddImpulse(Fire(m_Caster, m_Target, m_TargetLocation, ArcValue));
 }
 
-// Called when the game starts or when spawned
-void ABladeWind::BeginPlay()
-{
-	Super::BeginPlay();
-	
-}
 
 // Called every frame
 void ABladeWind::Tick(float DeltaTime)
@@ -53,6 +55,5 @@ void ABladeWind::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor
 	}
 	
 	DestroySelf();
-	
 }
 
