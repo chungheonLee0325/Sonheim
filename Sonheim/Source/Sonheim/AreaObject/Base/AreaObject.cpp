@@ -161,6 +161,16 @@ void AAreaObject::CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Ta
 {
 	float Damage = FMath::RandRange(AttackData.HealthDamageAmountMin, AttackData.HealthDamageAmountMax);
 
+	// Stab Damage Process - 포켓몬 자속기
+	for (auto& elementAttribute : this->dt_AreaObject->DefenceElementalAttributes)
+	{
+		if (elementAttribute == AttackData.AttackElementalAttribute)
+		{
+			Damage *= 1.2f;
+			break;
+		}
+	}
+
 	if (Target == nullptr)
 	{
 		return;
