@@ -104,6 +104,8 @@ void ASonheimPlayer::BeginPlay()
 	S_PlayerController = Cast<ASonheimPlayerController>(GetController());
 	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
 
+	S_PlayerController->InitializeHUD();
+
 	InitializeStateRestrictions();
 
 	// 게임 시작 시 첫 위치를 체크포인트로 저장

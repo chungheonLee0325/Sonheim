@@ -6,6 +6,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "SonheimPlayer.h"
+#include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Sonheim/Utilities/LogMacro.h"
@@ -95,7 +96,7 @@ void ASonheimPlayerController::BeginPlay()
 	m_Player = Cast<ASonheimPlayer>(GetPawn());
 
 	// UI 초기화
-	InitializeHUD();
+	//InitializeHUD();
 }
 
 UPlayerStatusWidget* ASonheimPlayerController::GetPlayerStatusWidget() const
@@ -129,6 +130,14 @@ void ASonheimPlayerController::InitializeHUD()
 			// 초기값 설정
 			StatusWidget->UpdateStamina(m_Player->GetStamina(), 0.0f, m_Player->m_StaminaComponent->GetMaxStamina());
 		}
+		if (m_Player->m_LevelComponent)
+		{
+			m_Player->m_LevelComponent->OnLevelChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateLevel);
+			StatusWidget->UpdateLevel(m_Player->m_LevelComponent->GetCurrentLevel(),m_Player->m_LevelComponent->GetCurrentLevel(),true);
+			m_Player->m_LevelComponent->OnExperienceChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateExp);
+			StatusWidget->UpdateExp(m_Player->m_LevelComponent->GetCurrentExp(),m_Player->m_LevelComponent->GetExpToNextLevel(),0);
+		}
+		
 	}
 
 	FailWidget = CreateWidget<UUserWidget>(this, MissionFailClass);

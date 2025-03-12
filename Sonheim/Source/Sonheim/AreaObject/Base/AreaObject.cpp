@@ -7,6 +7,7 @@
 #include "Sonheim/AreaObject/Attribute/HealthComponent.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/Utilities/LogMacro.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
@@ -32,10 +33,13 @@ AAreaObject::AAreaObject()
 	// Condition Component 생성
 	m_ConditionComponent = CreateDefaultSubobject<UConditionComponent>(TEXT("ConditionComponent"));
 
+	// Level Component 생성
+	m_LevelComponent = CreateDefaultSubobject<ULevelComponent>(TEXT("LevelComponent"));
+
 	// Rotation Component 생성
 	m_RotateUtilComponent = CreateDefaultSubobject<URotateUtilComponent>(TEXT("RotateUtilComponent"));
 
-	// Rotation Component 생성
+	// MoveUtil Component 생성
 	m_MoveUtilComponent = CreateDefaultSubobject<UMoveUtilComponent>(TEXT("MoveUtilComponent"));
 
 	//GetCapsuleComponent()->SetSimulatePhysics(true);
@@ -59,7 +63,7 @@ void AAreaObject::BeginPlay()
 	m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
 	dt_AreaObject = m_GameInstance->GetDataAreaObject(m_AreaObjectID);
 
-	// Health 초기화 By Data
+	// Init Attribute By Data
 	float hpMax = 1.0f;
 	float maxStamina = 100.0f; // Assuming a default value, actual implementation needed
 	float staminaRecoveryRate = 20.f;
@@ -75,10 +79,11 @@ void AAreaObject::BeginPlay()
 		groggyDuration = dt_AreaObject->GroggyDuration;
 		walkSpeed = dt_AreaObject->WalkSpeed;
 	}
-
+	
 	m_HealthComponent->InitHealth(hpMax);
 	m_StaminaComponent->InitStamina(maxStamina, staminaRecoveryRate, groggyDuration);
 	GetCharacterMovement()->MaxWalkSpeed = walkSpeed;
+	m_LevelComponent->InitLevel(this);
 
 	// 스킬 인스턴스 생성
 	for (auto& skill : m_OwnSkillIDSet)
