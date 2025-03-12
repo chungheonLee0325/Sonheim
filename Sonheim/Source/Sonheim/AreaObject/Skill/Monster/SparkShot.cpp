@@ -3,6 +3,7 @@
 
 #include "SparkShot.h"
 
+#include "MaterialHLSLTree.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/Element/Derived/LightningBall.h"
 #include "Sonheim/Utilities/LogMacro.h"
@@ -48,6 +49,9 @@ void USparkShot::OnCastFire()
 
 void USparkShot::FireSparkShot()
 {
+	float StartAngle{-30.f};
+	float AngleIncrease{10.f};
+
 	for (int32 i{}; i < AttackCount; ++i)
 	{
 		ALightningBall* SpawnedLightningBall{
@@ -61,12 +65,21 @@ void USparkShot::FireSparkShot()
 		ASonheimPlayer* TempTarget{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
 
 		m_Target = TempTarget;
-		m_TargetPos = m_Caster->GetActorLocation() + 
-				FVector(FMath::Cos(FMath::DegreesToRadians(-30.f + 10 * i)),
-					FMath::Sin(FMath::DegreesToRadians(-30.f + 10 * i )),
-					m_Target->GetActorLocation().Z) * 500.f;
-		m_TargetPos.Normalize();
-		
+
+		float Angle{StartAngle + AngleIncrease * i};
+		FVector Direction{
+			FVector(FMath::Cos(FMath::DegreesToRadians(Angle)),
+			        FMath::Sin(FMath::DegreesToRadians(Angle)),
+			        0.f)
+		};
+
+		// 캐릭터 회전 고려해서 회전
+		FRotator Rotation{m_Caster->GetActorRotation()};
+		Direction = Rotation.RotateVector(Direction);
+		Direction.Normalize();
+
+		m_TargetPos = Direction;
+
 		if (SpawnedLightningBall)
 		{
 			SpawnedLightningBall->InitElement(m_Caster, m_Target, m_TargetPos, AttackData);

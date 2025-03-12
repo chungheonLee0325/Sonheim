@@ -37,6 +37,6 @@ public:
 public:
 	FVector StartPos;
 	FVector EndPos;
-	float Range{500.f};
-	float Speed{100.f};
+	float Range{1000.f};
+	float Speed{600.f};
 };

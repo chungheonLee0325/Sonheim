@@ -15,6 +15,9 @@ ALightningBall::ALightningBall()
 	PrimaryActorTick.bCanEverTick = true;
 
 	Root->SetSimulatePhysics(false);
+
+	Root->SetSphereRadius(15.f);
+	Mesh->SetRelativeScale3D(FVector(0.3f));
 }
 
 // Called when the game starts or when spawned
@@ -35,7 +38,7 @@ void ALightningBall::Tick(float DeltaTime)
 	
 	if (FVector::Dist(StartPos, GetActorLocation()) > Range)
 	{
-		FLog::Log("Dist", FVector::Dist(StartPos, GetActorLocation()));
+		//FLog::Log("Dist", FVector::Dist(StartPos, GetActorLocation()));
 		DestroySelf();
 	}
 }
