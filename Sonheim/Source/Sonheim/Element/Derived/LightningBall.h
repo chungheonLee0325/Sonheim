@@ -4,18 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "Sonheim/Element/BaseElement.h"
-#include "BladeWind.generated.h"
+#include "LightningBall.generated.h"
 
 UCLASS()
-class SONHEIM_API ABladeWind : public ABaseElement
+class SONHEIM_API ALightningBall : public ABaseElement
 {
 	GENERATED_BODY()
 
 public:
 	// Sets default values for this actor's properties
-	ABladeWind();
-	
-	
+	ALightningBall();
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -34,4 +33,10 @@ public:
 									int32 OtherBodyIndex,
 									bool bFromSweep,
 									const FHitResult& SweepResult) override;
+
+public:
+	FVector StartPos;
+	FVector EndPos;
+	float Range{500.f};
+	float Speed{100.f};
 };

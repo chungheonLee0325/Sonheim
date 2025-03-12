@@ -43,7 +43,12 @@ void UProjectileAA::OnCastFire()
 {
 	Super::OnCastFire();
 
-	FLog::Log("UProjectileAA::OnCastFire");
+	FireSandBlast();
+}
+
+void UProjectileAA::FireSandBlast()
+{
+	//FLog::Log("UProjectileAA::OnCastFire");
 	// 
 	ASandBlast* SpawnedSandBlast{
 		GetWorld()->SpawnActor<ASandBlast>(SandBlastFactory, m_Caster->GetActorLocation(), m_Caster->GetActorRotation())
@@ -54,10 +59,13 @@ void UProjectileAA::OnCastFire()
 	// ToDo : TempTarget -> m_Target으로 수정
 	ASonheimPlayer* TempTarget{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
 	//SpawnedSandBlast->InitElement(m_Caster, m_Target, m_Target->GetActorLocation(), AttackData);
+
+	m_Target = TempTarget;
+	m_TargetPos = TempTarget->GetActorLocation();
 	
 	if (SpawnedSandBlast)
 	{
-		SpawnedSandBlast->InitElement(m_Caster, TempTarget, TempTarget->GetActorLocation(), AttackData);
+		SpawnedSandBlast->InitElement(m_Caster, m_Target, m_TargetPos, AttackData);
 	}
 	else
 	{

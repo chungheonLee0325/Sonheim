@@ -21,6 +21,8 @@ public:
 	virtual void OnCastTick(float DeltaTime) override;
 
 	virtual void OnCastFire() override;
+
+	void FireBladeWind();
 	
 	float DelayTime = 2.0f;
 	float CurrentTime = 0.0f;
@@ -28,7 +30,6 @@ public:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class ABladeWind> BladeWindFactory;
 
-	UPROPERTY(EditAnywhere)
-	class ABladeWind* BladeWind;
+
 	
 };

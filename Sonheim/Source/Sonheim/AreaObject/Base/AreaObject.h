@@ -37,7 +37,7 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	UMoveUtilComponent* m_MoveUtilComponent;
 
-	UPROPERTY(EditDefaultsOnly, Category = "AreaObject Data Setting")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AreaObject Data Setting")
 	int m_AreaObjectID;
 	UPROPERTY(EditDefaultsOnly, Category = "TakeDamage")
 	FVector AdjustKnockBackForce;

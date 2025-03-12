@@ -21,14 +21,12 @@ public:
 
 	virtual void OnCastFire() override;
 
+	void FireSandBlast();
 	
 	float DelayTime = 2.0f;
 	float CurrentTime = 0.0f;
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class ASandBlast> SandBlastFactory;
-
-	UPROPERTY(EditAnywhere)
-	class ASandBlast* SandBlast;
 	
 };

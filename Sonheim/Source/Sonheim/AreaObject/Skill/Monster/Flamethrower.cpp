@@ -35,9 +35,9 @@ void UFlamethrower::FireFlame()
 {
 	FVector StartPos{m_Caster->GetActorLocation()};
 	FVector EndPos{
-		// StartPos + UKismetMathLibrary::RandomUnitVectorInEllipticalConeInDegrees(
-		// 	m_Caster->GetActorForwardVector(), SpreadYaw, SpreadPitch) * Range
-		StartPos + m_Caster->GetActorForwardVector() * Range
+		StartPos + UKismetMathLibrary::RandomUnitVectorInEllipticalConeInDegrees(
+			m_Caster->GetActorForwardVector(), SpreadYaw, SpreadPitch) * Range
+		// StartPos + m_Caster->GetActorForwardVector() * Range
 	};
 
 	FCollisionQueryParams Params;
@@ -52,7 +52,11 @@ void UFlamethrower::FireFlame()
 
 	for (FHitResult& HitInfo : HitInfos)
 	{
-	DrawDebugLine(GetWorld(), StartPos, HitInfo.ImpactPoint, FColor::Red, false, 1.f, 0, 1.f);
+		if (m_Caster->bShowDebug)
+		{
+			DrawDebugLine(GetWorld(), StartPos, HitInfo.ImpactPoint, FColor::Red, false, 1.f, 0, 1.f);
+		}
+		
 		ASonheimPlayer* Player{Cast<ASonheimPlayer>(HitInfo.GetActor())};
 		if (Player)
 		{
