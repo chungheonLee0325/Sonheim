@@ -241,6 +241,40 @@ struct FAreaObjectData : public FTableRowBase
 	int HitSoundID = 0;
 };
 
+// FLevelData 구조체
+// 각 레벨의 경험치 요구량은 이전 레벨의 요구량의 1.2배
+// 처치 경험치는 레벨당 1.11~1.12배
+
+USTRUCT(BlueprintType)
+struct FLevelData : public FTableRowBase
+{
+	GENERATED_USTRUCT_BODY()
+
+	// 레벨 - level id
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int32 Level;
+
+	// 해당 레벨의 요구 경험치 - 플레이어
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int32 PlayerExp;
+
+	// 해당 레벨의 누적 요구 경험치 - 플레이어
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int32 PlayerCumulativeExp;
+
+	// 해당 레벨의 요구 경험치 - Pal
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int32 PalExp;
+
+	// 해당 레벨의 누적 요구 경험치 - Pal
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int32 PalCumulativeExp;
+
+	// 해당 레벨의 사냥 경험치
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int32 HuntExp;
+};
+
 // HitBox 동적으로 생성하기 위한 구조체 정보, FAttackData 멤버 변수
 USTRUCT(BlueprintType)
 struct FHitBoxData
