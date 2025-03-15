@@ -31,6 +31,10 @@ void AElectricBall::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	// 플레이어 추적, 일정 시간 후 사라지게
+	m_TargetLocation = m_Target->GetActorLocation() - GetActorLocation();
+	m_TargetLocation.Normalize();
+	
 	SetActorLocation(GetActorLocation() + DeltaTime * m_TargetLocation * Speed);
 	
 	if (FVector::Dist(StartPos, GetActorLocation()) > Range)
