@@ -5,6 +5,7 @@
 
 #include "SonheimGameInstance.h"
 #include "Components/AudioComponent.h"
+#include "GameFramework/PlayerState.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -16,15 +17,23 @@ ASonheimGameMode::ASonheimGameMode()
 	SoundDataMap.Empty();
 
 	// set default pawn class to our Blueprinted character
-	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnBPClass(TEXT("/Script/Engine.Blueprint'/Game/_BluePrint/AreaObject/Player/BP_Player.BP_Player_c'"));
+	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnBPClass(
+		TEXT("/Script/Engine.Blueprint'/Game/_BluePrint/AreaObject/Player/BP_Player.BP_Player_c'"));
 	if (PlayerPawnBPClass.Succeeded())
 	{
 		DefaultPawnClass = PlayerPawnBPClass.Class;
 	}
-	static ConstructorHelpers::FClassFinder<AController> PlayerControllerBPClass(TEXT("/Script/Engine.Blueprint'/Game/_BluePrint/AreaObject/Player/BP_PlayerController.BP_PlayerController_c'"));
+	static ConstructorHelpers::FClassFinder<AController> PlayerControllerBPClass(TEXT(
+		"/Script/Engine.Blueprint'/Game/_BluePrint/AreaObject/Player/BP_PlayerController.BP_PlayerController_c'"));
 	if (PlayerControllerBPClass.Succeeded())
 	{
 		PlayerControllerClass = PlayerControllerBPClass.Class;
+	}
+	static ConstructorHelpers::FClassFinder<APlayerState> PlayerStateBPClass(
+		TEXT("/Script/Engine.Blueprint'/Game/_BluePrint/AreaObject/Player/BP_PlayerState.BP_PlayerState_c'"));
+	if (PlayerStateBPClass.Succeeded())
+	{
+		PlayerStateClass = PlayerStateBPClass.Class;
 	}
 }
 

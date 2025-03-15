@@ -7,6 +7,8 @@
 #include "Components/SphereComponent.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/Utilities/LogMacro.h"
 
 
 // Sets default values
@@ -14,12 +16,12 @@ ABaseItem::ABaseItem()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-	
+
 	CollectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollectionSphere"));
 	CollectionSphere->SetCollisionProfileName("OverlapOnlyPawn");
 	CollectionSphere->SetSphereRadius(35);
 	RootComponent = CollectionSphere;
-	
+
 	// 컴포넌트 초기화
 	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
 
@@ -38,8 +40,10 @@ ABaseItem::ABaseItem()
 }
 
 // ToDo : 메서드 완성
-void ABaseItem::InitializeItem(int ItemID, int ItemValue)
+void ABaseItem::InitializeItem(int ItemValue)
 {
+	//dt_ItemData =
+	m_ItemValue = ItemValue;
 }
 
 
@@ -47,6 +51,13 @@ void ABaseItem::InitializeItem(int ItemID, int ItemValue)
 void ABaseItem::BeginPlay()
 {
 	Super::BeginPlay();
+	m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
+	if (m_ItemID == 0)
+	{
+		FLog::Log("Item ID is 0");
+		return;
+	}
+	dt_ItemData = m_GameInstance->GetDataItem(m_ItemID);
 
 	// 오버랩 이벤트 바인딩
 	CollectionSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseItem::OnOverlapBegin);
@@ -54,7 +65,7 @@ void ABaseItem::BeginPlay()
 
 void ABaseItem::ApplyEffect(class ASonheimPlayer* Player)
 {
-	Player->Reward(dt_ItemData, m_ItemValue);
+	Player->Reward(m_ItemID, m_ItemValue);
 }
 
 // Called every frame

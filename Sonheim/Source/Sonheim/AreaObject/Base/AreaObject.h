@@ -11,6 +11,7 @@
 #include "Sonheim/UI/Widget/FloatingDamageWidget.h"
 #include "AreaObject.generated.h"
 
+class USonheimGameInstance;
 class UMoveUtilComponent;
 class ASonheimGameMode;
 
@@ -205,6 +206,8 @@ public:
 	FAreaObjectData* dt_AreaObject;
 
 private:
+	UPROPERTY()
+	USonheimGameInstance* m_GameInstance = nullptr;
 	UPROPERTY()
 	ASonheimGameMode* m_GameMode = nullptr;
 };

@@ -7,6 +7,7 @@
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "SonheimPlayer.generated.h"
 
+class ASonheimPlayerState;
 class ULockOnComponent;
 class ASonheimPlayerController;
 class ABaseItem;
@@ -116,7 +117,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Checkpoint")
 	void RespawnAtCheckpoint();
 
-	void Reward(FItemData* ItemData, int ItemValue) const;
+	void Reward(int ItemID, int ItemValue) const;
 
 private:
 	// Weapon Setting
@@ -144,9 +145,11 @@ private:
 	float CurrentPitchAngle = 0.0f;
 
 	UPROPERTY()
-	UPlayerAnimInstance* PlayerAnimInstance;
+	UPlayerAnimInstance* S_PlayerAnimInstance;
 	UPROPERTY()
-	ASonheimPlayerController* PlayerController;
+	ASonheimPlayerController* S_PlayerController;
+	UPROPERTY()
+	ASonheimPlayerState* S_PlayerState;
 
 	// 플레이어 상태 관리
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", meta = (AllowPrivateAccess = "true"))
