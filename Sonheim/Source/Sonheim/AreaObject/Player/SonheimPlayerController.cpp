@@ -140,7 +140,7 @@ void ASonheimPlayerController::InitializeHUD()
 		
 	}
 
-	FailWidget = CreateWidget<UUserWidget>(this, MissionFailClass);
+	//FailWidget = CreateWidget<UUserWidget>(this, MissionFailClass);
 }
 
 void ASonheimPlayerController::SetupInputComponent()
