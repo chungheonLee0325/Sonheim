@@ -100,7 +100,7 @@ protected:
     int32 StatPointsPerLevel;
 	
 private:
-	static TMap<int32, FLevelData>* dt_Level;
+	TMap<int32, FLevelData>* dt_Level;
 	UPROPERTY()
 	AAreaObject* m_Owner;
 }; 

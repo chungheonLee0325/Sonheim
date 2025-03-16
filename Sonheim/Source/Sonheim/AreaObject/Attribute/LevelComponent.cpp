@@ -4,7 +4,6 @@
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
-TMap<int32, FLevelData>* ULevelComponent::dt_Level;
 
 ULevelComponent::ULevelComponent()
 {
