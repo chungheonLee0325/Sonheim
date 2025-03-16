@@ -7,10 +7,13 @@
 #include "Sonheim/Utilities/LogMacro.h"
 #include "BaseMonster.generated.h"
 
+class UNiagaraSystem;
+class UNiagaraEmitter;
 class UWidgetComponent;
 class USkillBag;
 class UBaseAiFSM;
 class UBaseSkill;
+class ABaseResourceObject;
 //struct FAIStimulus;
 
 UCLASS()
@@ -52,8 +55,7 @@ protected:
 	AAreaObject* m_AggroTarget;
 	UPROPERTY()
 	FVector m_SpawnLocation;
-	UPROPERTY(VisibleAnywhere)
-	UBaseAiFSM* m_AiFSM;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Skill")
 	UBaseSkillRoulette* m_SkillRoulette;
 
@@ -130,4 +132,86 @@ protected:
 	virtual void OnDie() override;
 
 	virtual void InitializeHUD();
+
+	// GameJam으로 추가
+	// ToDo: 필요한 기능들 위로 올리기
+public:
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
+	class AAIController* AIController;
+
+	// 몬스터 속도 변화
+	bool bIsWarning{false};
+
+	// 놀라기
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	bool bIsSurprise{false};
+
+	// Resource
+	int32 GotResource{};
+
+	// 운반 중?
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	bool bIsTransporting{false};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	class UStaticMeshComponent* PickaxeMesh;
+	
+	UPROPERTY(VisibleAnywhere)
+	UBaseAiFSM* m_AiFSM;
+
+	UPROPERTY()
+	ABaseResourceObject* m_ResourceTarget;
+	// Resource
+	UFUNCTION(BlueprintCallable, Category = "Resource")
+	virtual ABaseResourceObject* GetResourceTarget() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Resource")
+	virtual void SetResourceTarget(ABaseResourceObject* NewTarget)
+	{
+		m_ResourceTarget = NewTarget;
+		if (m_ResourceTarget != nullptr) { IsWorked = true; }
+	}
+
+	// 놀라기
+	void Surprise();
+	void CalmDown();
+
+	// 짐 들기
+	void StartTransport();
+	void EndTransport();
+
+	// 얼굴 변화
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void ChangeFace(int32 Feel);
+
+	// AI Voice Command
+	UFUNCTION(BlueprintCallable)
+	void AIVoiceCommand(int ResourceID, bool IsForced = false);
+
+	UFUNCTION(BlueprintCallable)
+	class ABaseResourceObject* GetNearResourceObject(int ResourceID);
+
+	void SetIsForced(bool IsForced);
+	bool bIsForced = false;
+	void VFXSpwan(int VFXID);
+	bool IsWorked = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UNiagaraSystem* VFX_Exe;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UNiagaraSystem* VFX_Question;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UNiagaraSystem* VFX_Sweet;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USceneComponent* HeadVFXPoint;
+
+	
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
+	float WalkSpeed = 400.f;
+	float ForcedWalkSpeed = 1200.f;
 };

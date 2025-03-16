@@ -36,19 +36,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Collection")
 	UParticleSystem* CollectionEffect;
 
-	UPROPERTY(EditAnywhere, Category = "Collection")
-	class USphereComponent* CollectionSphere;
+	
 
 	UPROPERTY(EditAnywhere, Category = "Collection")
 	class UStaticMeshComponent* ItemMesh;
 
 	UFUNCTION()
 	virtual void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent,
-	                            AActor* OtherActor,
-	                            UPrimitiveComponent* OtherComp,
-	                            int32 OtherBodyIndex,
-	                            bool bFromSweep,
-	                            const FHitResult& SweepResult);
+								AActor* OtherActor,
+								UPrimitiveComponent* OtherComp,
+								int32 OtherBodyIndex,
+								bool bFromSweep,
+								const FHitResult& SweepResult);
 
 	bool m_IsCollected;
 
@@ -58,4 +57,17 @@ protected:
 
 	UPROPERTY()
 	USonheimGameInstance* m_GameInstance;
+
+
+
+	// GameJam으로 추가
+	// ToDo: 필요한 기능들 위로 올리기
+public:
+	
+		
+	UPROPERTY(EditAnywhere, Category = "Collection")
+	class USphereComponent* CollectionSphere;
+
+	bool bStored{false};
+	
 };

@@ -27,13 +27,13 @@ public:
 	void SpawnPartialResources(int32 SegmentsLost);
 	virtual float TakeDamage(float Damage, const FDamageEvent& DamageEvent, AController* EventInstigator,
 							  AActor* DamageCauser) override;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	UPROPERTY(EditAnywhere)
-	int m_ResourceObjectID = 0;
-
+	
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	UBoxComponent* m_BoxComponent;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
@@ -54,4 +54,13 @@ private:
 	USonheimGameInstance* m_GameInstance;
 	UPROPERTY()
 	ASonheimGameMode* m_GameMode;
+
+	
+	// GameJam으로 추가
+	// ToDo: 필요한 기능들 위로 올리기
+public:
+		
+	UPROPERTY(EditAnywhere)
+	int m_ResourceObjectID = 0;
+	
 };

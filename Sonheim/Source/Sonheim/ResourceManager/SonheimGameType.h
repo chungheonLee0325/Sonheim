@@ -44,9 +44,28 @@ enum class EEnemyType : uint8
 	Boss UMETA(DisplayName = "Boss"),
 };
 
-// 도구 타입 
 UENUM(BlueprintType)
-enum class EToolType : uint8
+enum class EAIVoiceActor : uint8
+{
+	None UMETA(DisplayName = "None"), // 블루프린트에서 표시될 이름
+	Anyone UMETA(DisplayName = "Anyone"),
+	Everyone UMETA(DisplayName = "Everyone"),
+	Lamball UMETA(DisplayName = "LambBall"),
+};
+
+UENUM(BlueprintType)
+enum class EAIVoiceTarget : uint8
+{
+	None UMETA(DisplayName = "None"), // 블루프린트에서 표시될 이름
+	Anyone UMETA(DisplayName = "Anyone"),
+	Stone UMETA(DisplayName = "Stone"),
+	Tree UMETA(DisplayName = "Tree"),
+	Ore UMETA(DisplayName = "Ore"),
+};
+
+// 무기 타입 
+UENUM(BlueprintType)
+enum class EWeaponType : uint8
 {
 	None UMETA(DisplayName = "None"),
 	Axe UMETA(DisplayName = "Axe"),
@@ -54,6 +73,23 @@ enum class EToolType : uint8
 	Hammer UMETA(DisplayName = "Hammer")
 };
 
+// 체력Bar, 공격 및 피격 판정 확인 등 다양한 상황에서 사용
+UENUM(BlueprintType)
+enum class EWorkTrait : uint8
+{
+	None UMETA(DisplayName = "None"),
+
+	GatherToPlayer UMETA(DisplayName = "GatherToPlayer"),
+
+	Lumbering UMETA(DisplayName = "Lumbering"),
+	Mining UMETA(DisplayName = "Mining"),
+	Transporting UMETA(DisplayName = "Transporting"),
+	Handwork UMETA(DisplayName = "Handwork"),
+	Kindling UMETA(DisplayName = "Kindling"),
+	Planting UMETA(DisplayName = "Planting"),
+	Watering UMETA(DisplayName = "Watering"),
+	Gathering UMETA(DisplayName = "Gathering"),
+};
 
 UENUM(BlueprintType)
 enum class EResourceObjectType : uint8
@@ -106,6 +142,7 @@ enum class EAiSkillType : uint8
 	Middle UMETA(DisplayName = "Middle"),
 	Long UMETA(DisplayName = "Long"),
 	Grappling UMETA(DisplayName = "Grappling"),
+
 };
 
 // AiFSM을 위한 Enum Type
@@ -120,6 +157,9 @@ enum class EAiStateType : uint8
 	Chase UMETA(DisplayName = "Chase"),
 	Return UMETA(DisplayName = "Return"),
 	DoNothing UMETA(DisplayName = "DoNothing"),
+	SelectAction UMETA(DisplayName = "SelectAction"),
+	Lumbering UMETA(DisplayName = "Lumbering"),
+	ReturnResource UMETA(DisplayName = "ReturnResource")
 };
 
 // 공격시 Trace System에서 사용 - EnableCollisionNotifyState 참조
@@ -450,6 +490,24 @@ struct FResourceObjectData : public FTableRowBase
 	UStaticMesh* ResourceMesh = nullptr;
 };
 
+USTRUCT(BlueprintType)
+struct FAIVoiceOrder
+{
+	GENERATED_BODY()
+	//"actor":"Lamball","work":"Lumbering","target":"Tree","forced":false}
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	EAIVoiceActor actor = EAIVoiceActor::None;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	EWorkTrait work = EWorkTrait::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	EAIVoiceTarget target = EAIVoiceTarget::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	bool forced = false;
+};
+
 
 // Unreal Damage 프레임워크 안에서 Attack 정보를 넘기기위한 구조체
 USTRUCT(BlueprintType)
@@ -526,4 +584,9 @@ struct FSkillBagData : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	TMap<EAiSkillType, FSkillBag> TypeSkillBag;
+
+	
+	// GameJam으로 추가
+	// ToDo: 필요한 기능들 위로 올리기
+public:
 };
