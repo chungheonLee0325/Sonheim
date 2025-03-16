@@ -46,7 +46,11 @@ void UMachineGun::FireGun()
 	
 	if (bHit)
 	{
-		DrawDebugLine(GetWorld(), StartPos, HitInfo.ImpactPoint, FColor::Emerald, false, 1.f, 0, 1.f);
+		if (m_Caster->bShowDebug)
+		{
+			DrawDebugLine(GetWorld(), StartPos, HitInfo.ImpactPoint, FColor::Emerald, false, 1.f, 0, 1.f);
+		}
+		
 		//FLog::Log();
 		ASonheimPlayer* Player{Cast<ASonheimPlayer>(HitInfo.GetActor())};
 		if (Player)

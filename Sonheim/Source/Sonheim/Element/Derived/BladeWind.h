@@ -15,8 +15,6 @@ public:
 	// Sets default values for this actor's properties
 	ABladeWind();
 	
-	// fire actor
-	virtual void InitElement(AAreaObject* Caster, AAreaObject* Target,const FVector& TargetLocation, FAttackData* AttackData) override;
 	
 protected:
 	// Called when the game starts or when spawned
@@ -27,6 +25,9 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 public:
+	// fire actor
+	virtual void InitElement(AAreaObject* Caster, AAreaObject* Target,const FVector& TargetLocation, FAttackData* AttackData) override;
+
 	virtual void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent,
 									AActor* OtherActor,
 									UPrimitiveComponent* OtherComp,

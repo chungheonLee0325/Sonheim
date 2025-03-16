@@ -13,4 +13,20 @@ UCLASS()
 class SONHEIM_API ULightningSphere : public UBaseSkill
 {
 	GENERATED_BODY()
+
+public:
+	ULightningSphere();
+	
+	virtual void OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual void OnCastTick(float DeltaTime) override;
+
+	virtual void OnCastFire() override;
+
+	void FireElectricBall();
+
+	float DelayTime = 2.0f;
+	float CurrentTime = 0.0f;
+	
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class AElectricBall> ElectricBallFactory;
 };

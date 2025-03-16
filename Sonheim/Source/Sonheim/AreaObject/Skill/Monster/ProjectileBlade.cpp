@@ -40,7 +40,12 @@ void UProjectileBlade::OnCastFire()
 {
 	Super::OnCastFire();
 
-	FLog::Log("UProjectileBlade::OnCastFire");
+	FireBladeWind();
+}
+
+void UProjectileBlade::FireBladeWind()
+{
+	//FLog::Log("UProjectileBlade::OnCastFire");
 	// 
 	ABladeWind* SpawnedBladeWind{
 		GetWorld()->SpawnActor<ABladeWind>(BladeWindFactory, m_Caster->GetActorLocation(), m_Caster->GetActorRotation())
@@ -50,10 +55,13 @@ void UProjectileBlade::OnCastFire()
 	FAttackData* AttackData = GetAttackDataByIndex(0);
 	// ToDo : TempTarget -> m_Target으로 수정
 	ASonheimPlayer* TempTarget{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
+
+	m_Target = TempTarget;
+	m_TargetPos = TempTarget->GetActorLocation();
 	
 	if (SpawnedBladeWind)
 	{
-		SpawnedBladeWind->InitElement(m_Caster, TempTarget, TempTarget->GetActorLocation(), AttackData);
+		SpawnedBladeWind->InitElement(m_Caster, m_Target, m_TargetPos, AttackData);
 	}
 	else
 	{

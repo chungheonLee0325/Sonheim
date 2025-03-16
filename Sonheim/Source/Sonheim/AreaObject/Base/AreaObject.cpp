@@ -181,7 +181,7 @@ void AAreaObject::CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Ta
 	DamageEvent.HitInfo = HitInfo;
 	DamageEvent.Damage = Damage;
 
-	FLog::Log("Damage", Damage);
+	//FLog::Log("Damage", Damage);
 	
 	Target->TakeDamage(Damage, DamageEvent, GetController(), this);
 }
