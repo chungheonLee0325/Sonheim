@@ -24,6 +24,9 @@ public:
 
 	void ShockWave();
 
+	float Range{300.f};
+	int32 AttackCount{3};
+
 	float DelayTime = 2.0f;
 	float CurrentTime = 0.0f;
 };

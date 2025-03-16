@@ -56,7 +56,7 @@ void UMachineGun::FireGun()
 		if (Player)
 		{
 			FAttackData* AttackData = GetAttackDataByIndex(0);
-			m_Caster->CalcDamage(*AttackData, m_Caster, Player, HitInfo);
+			m_Caster->CalcDamage(*AttackData, m_Caster, Player, HitInfo);	
 		}
 	}
 }

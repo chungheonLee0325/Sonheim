@@ -25,6 +25,8 @@ ABaseMonster::ABaseMonster()
 	PrimaryActorTick.bCanEverTick = true;
 
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Monster"));
 
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 
