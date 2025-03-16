@@ -1,0 +1,452 @@
+[
+	{
+	  "Name": "1",
+	  "Level": 1,
+	  "PlayerExp": 8,
+	  "PlayerCumulativeExp": 8,
+	  "PalExp": 25,
+	  "PalCumulativeExp": 25,
+	  "HuntExp": 7
+	},
+	{
+	  "Name": "2",
+	  "Level": 2,
+	  "PlayerExp": 38,
+	  "PlayerCumulativeExp": 30,
+	  "PalExp": 58,
+	  "PalCumulativeExp": 31,
+	  "HuntExp": 9
+	},
+	{
+	  "Name": "3",
+	  "Level": 3,
+	  "PlayerExp": 136,
+	  "PlayerCumulativeExp": 98,
+	  "PalExp": 93,
+	  "PalCumulativeExp": 37,
+	  "HuntExp": 11
+	},
+	{
+	  "Name": "4",
+	  "Level": 4,
+	  "PlayerExp": 316,
+	  "PlayerCumulativeExp": 180,
+	  "PalExp": 138,
+	  "PalCumulativeExp": 45,
+	  "HuntExp": 13
+	},
+	{
+	  "Name": "5",
+	  "Level": 5,
+	  "PlayerExp": 594,
+	  "PlayerCumulativeExp": 278,
+	  "PalExp": 207,
+	  "PalCumulativeExp": 69,
+	  "HuntExp": 15
+	},
+	{
+	  "Name": "6",
+	  "Level": 6,
+	  "PlayerExp": 988,
+	  "PlayerCumulativeExp": 394,
+	  "PalExp": 306,
+	  "PalCumulativeExp": 99,
+	  "HuntExp": 17
+	},
+	{
+	  "Name": "7",
+	  "Level": 7,
+	  "PlayerExp": 1524,
+	  "PlayerCumulativeExp": 536,
+	  "PalExp": 440,
+	  "PalCumulativeExp": 134,
+	  "HuntExp": 20
+	},
+	{
+	  "Name": "8",
+	  "Level": 8,
+	  "PlayerExp": 2229,
+	  "PlayerCumulativeExp": 705,
+	  "PalExp": 616,
+	  "PalCumulativeExp": 176,
+	  "HuntExp": 23
+	},
+	{
+	  "Name": "9",
+	  "Level": 9,
+	  "PlayerExp": 3137,
+	  "PlayerCumulativeExp": 908,
+	  "PalExp": 843,
+	  "PalCumulativeExp": 227,
+	  "HuntExp": 26
+	},
+	{
+	  "Name": "10",
+	  "Level": 10,
+	  "PlayerExp": 4290,
+	  "PlayerCumulativeExp": 1153,
+	  "PalExp": 1131,
+	  "PalCumulativeExp": 288,
+	  "HuntExp": 38
+	},
+	{
+	  "Name": "11",
+	  "Level": 11,
+	  "PlayerExp": 5734,
+	  "PlayerCumulativeExp": 1444,
+	  "PalExp": 1492,
+	  "PalCumulativeExp": 361,
+	  "HuntExp": 45
+	},
+	{
+	  "Name": "12",
+	  "Level": 12,
+	  "PlayerExp": 7529,
+	  "PlayerCumulativeExp": 1795,
+	  "PalExp": 1941,
+	  "PalCumulativeExp": 449,
+	  "HuntExp": 52
+	},
+	{
+	  "Name": "13",
+	  "Level": 13,
+	  "PlayerExp": 9745,
+	  "PlayerCumulativeExp": 2216,
+	  "PalExp": 2495,
+	  "PalCumulativeExp": 554,
+	  "HuntExp": 58
+	},
+	{
+	  "Name": "14",
+	  "Level": 14,
+	  "PlayerExp": 12466,
+	  "PlayerCumulativeExp": 2721,
+	  "PalExp": 3175,
+	  "PalCumulativeExp": 680,
+	  "HuntExp": 66
+	},
+	{
+	  "Name": "15",
+	  "Level": 15,
+	  "PlayerExp": 15795,
+	  "PlayerCumulativeExp": 3329,
+	  "PalExp": 4007,
+	  "PalCumulativeExp": 832,
+	  "HuntExp": 74
+	},
+	{
+	  "Name": "16",
+	  "Level": 16,
+	  "PlayerExp": 19850,
+	  "PlayerCumulativeExp": 4055,
+	  "PalExp": 5021,
+	  "PalCumulativeExp": 1014,
+	  "HuntExp": 84
+	},
+	{
+	  "Name": "17",
+	  "Level": 17,
+	  "PlayerExp": 24778,
+	  "PlayerCumulativeExp": 4928,
+	  "PalExp": 6253,
+	  "PalCumulativeExp": 1232,
+	  "HuntExp": 97
+	},
+	{
+	  "Name": "18",
+	  "Level": 18,
+	  "PlayerExp": 30754,
+	  "PlayerCumulativeExp": 5976,
+	  "PalExp": 7747,
+	  "PalCumulativeExp": 1494,
+	  "HuntExp": 110
+	},
+	{
+	  "Name": "19",
+	  "Level": 19,
+	  "PlayerExp": 37987,
+	  "PlayerCumulativeExp": 7233,
+	  "PalExp": 9555,
+	  "PalCumulativeExp": 1808,
+	  "HuntExp": 124
+	},
+	{
+	  "Name": "20",
+	  "Level": 20,
+	  "PlayerExp": 46730,
+	  "PlayerCumulativeExp": 8743,
+	  "PalExp": 11741,
+	  "PalCumulativeExp": 2186,
+	  "HuntExp": 138
+	},
+	{
+	  "Name": "21",
+	  "Level": 21,
+	  "PlayerExp": 57282,
+	  "PlayerCumulativeExp": 10552,
+	  "PalExp": 14379,
+	  "PalCumulativeExp": 2638,
+	  "HuntExp": 153
+	},
+	{
+	  "Name": "22",
+	  "Level": 22,
+	  "PlayerExp": 70007,
+	  "PlayerCumulativeExp": 12725,
+	  "PalExp": 17560,
+	  "PalCumulativeExp": 3181,
+	  "HuntExp": 171
+	},
+	{
+	  "Name": "23",
+	  "Level": 23,
+	  "PlayerExp": 85339,
+	  "PlayerCumulativeExp": 15332,
+	  "PalExp": 21393,
+	  "PalCumulativeExp": 3833,
+	  "HuntExp": 194
+	},
+	{
+	  "Name": "24",
+	  "Level": 24,
+	  "PlayerExp": 103798,
+	  "PlayerCumulativeExp": 18459,
+	  "PalExp": 26008,
+	  "PalCumulativeExp": 4615,
+	  "HuntExp": 217
+	},
+	{
+	  "Name": "25",
+	  "Level": 25,
+	  "PlayerExp": 126013,
+	  "PlayerCumulativeExp": 22215,
+	  "PalExp": 31562,
+	  "PalCumulativeExp": 5554,
+	  "HuntExp": 247
+	},
+	{
+	  "Name": "26",
+	  "Level": 26,
+	  "PlayerExp": 152732,
+	  "PlayerCumulativeExp": 26719,
+	  "PalExp": 38242,
+	  "PalCumulativeExp": 6680,
+	  "HuntExp": 267
+	},
+	{
+	  "Name": "27",
+	  "Level": 27,
+	  "PlayerExp": 184857,
+	  "PlayerCumulativeExp": 32125,
+	  "PalExp": 46273,
+	  "PalCumulativeExp": 8031,
+	  "HuntExp": 300
+	},
+	{
+	  "Name": "28",
+	  "Level": 28,
+	  "PlayerExp": 223468,
+	  "PlayerCumulativeExp": 38611,
+	  "PalExp": 55926,
+	  "PalCumulativeExp": 9653,
+	  "HuntExp": 337
+	},
+	{
+	  "Name": "29",
+	  "Level": 29,
+	  "PlayerExp": 269864,
+	  "PlayerCumulativeExp": 46396,
+	  "PalExp": 67525,
+	  "PalCumulativeExp": 11599,
+	  "HuntExp": 374
+	},
+	{
+	  "Name": "30",
+	  "Level": 30,
+	  "PlayerExp": 325601,
+	  "PlayerCumulativeExp": 55737,
+	  "PalExp": 81459,
+	  "PalCumulativeExp": 13934,
+	  "HuntExp": 417
+	},
+	{
+	  "Name": "31",
+	  "Level": 31,
+	  "PlayerExp": 392548,
+	  "PlayerCumulativeExp": 66947,
+	  "PalExp": 98196,
+	  "PalCumulativeExp": 16737,
+	  "HuntExp": 467
+	},
+	{
+	  "Name": "32",
+	  "Level": 32,
+	  "PlayerExp": 472946,
+	  "PlayerCumulativeExp": 80398,
+	  "PalExp": 118295,
+	  "PalCumulativeExp": 20100,
+	  "HuntExp": 518
+	},
+	{
+	  "Name": "33",
+	  "Level": 33,
+	  "PlayerExp": 569486,
+	  "PlayerCumulativeExp": 96540,
+	  "PalExp": 142430,
+	  "PalCumulativeExp": 24135,
+	  "HuntExp": 580
+	},
+	{
+	  "Name": "34",
+	  "Level": 34,
+	  "PlayerExp": 685394,
+	  "PlayerCumulativeExp": 115908,
+	  "PalExp": 171407,
+	  "PalCumulativeExp": 28977,
+	  "HuntExp": 647
+	},
+	{
+	  "Name": "35",
+	  "Level": 35,
+	  "PlayerExp": 824548,
+	  "PlayerCumulativeExp": 139154,
+	  "PalExp": 206196,
+	  "PalCumulativeExp": 34789,
+	  "HuntExp": 719
+	},
+	{
+	  "Name": "36",
+	  "Level": 36,
+	  "PlayerExp": 991594,
+	  "PlayerCumulativeExp": 167046,
+	  "PalExp": 247957,
+	  "PalCumulativeExp": 41762,
+	  "HuntExp": 806
+	},
+	{
+	  "Name": "37",
+	  "Level": 37,
+	  "PlayerExp": 1192111,
+	  "PlayerCumulativeExp": 200517,
+	  "PalExp": 298086,
+	  "PalCumulativeExp": 50129,
+	  "HuntExp": 896
+	},
+	{
+	  "Name": "38",
+	  "Level": 38,
+	  "PlayerExp": 1432794,
+	  "PlayerCumulativeExp": 240683,
+	  "PalExp": 358257,
+	  "PalCumulativeExp": 60171,
+	  "HuntExp": 1003
+	},
+	{
+	  "Name": "39",
+	  "Level": 39,
+	  "PlayerExp": 1721675,
+	  "PlayerCumulativeExp": 288881,
+	  "PalExp": 430477,
+	  "PalCumulativeExp": 72220,
+	  "HuntExp": 1118
+	},
+	{
+	  "Name": "40",
+	  "Level": 40,
+	  "PlayerExp": 2068394,
+	  "PlayerCumulativeExp": 346719,
+	  "PalExp": 517157,
+	  "PalCumulativeExp": 86680,
+	  "HuntExp": 1249
+	},
+	{
+	  "Name": "41",
+	  "Level": 41,
+	  "PlayerExp": 2484519,
+	  "PlayerCumulativeExp": 416125,
+	  "PalExp": 621188,
+	  "PalCumulativeExp": 104031,
+	  "HuntExp": 1394
+	},
+	{
+	  "Name": "42",
+	  "Level": 42,
+	  "PlayerExp": 2983932,
+	  "PlayerCumulativeExp": 499413,
+	  "PalExp": 746042,
+	  "PalCumulativeExp": 124853,
+	  "HuntExp": 1554
+	},
+	{
+	  "Name": "43",
+	  "Level": 43,
+	  "PlayerExp": 3583289,
+	  "PlayerCumulativeExp": 599357,
+	  "PalExp": 895881,
+	  "PalCumulativeExp": 149839,
+	  "HuntExp": 1736
+	},
+	{
+	  "Name": "44",
+	  "Level": 44,
+	  "PlayerExp": 4302579,
+	  "PlayerCumulativeExp": 719290,
+	  "PalExp": 1075703,
+	  "PalCumulativeExp": 179823,
+	  "HuntExp": 1940
+	},
+	{
+	  "Name": "45",
+	  "Level": 45,
+	  "PlayerExp": 5165789,
+	  "PlayerCumulativeExp": 863210,
+	  "PalExp": 1291506,
+	  "PalCumulativeExp": 215803,
+	  "HuntExp": 2168
+	},
+	{
+	  "Name": "46",
+	  "Level": 46,
+	  "PlayerExp": 6201703,
+	  "PlayerCumulativeExp": 1035914,
+	  "PalExp": 1550484,
+	  "PalCumulativeExp": 258979,
+	  "HuntExp": 2422
+	},
+	{
+	  "Name": "47",
+	  "Level": 47,
+	  "PlayerExp": 7444862,
+	  "PlayerCumulativeExp": 1243159,
+	  "PalExp": 1861274,
+	  "PalCumulativeExp": 310790,
+	  "HuntExp": 2704
+	},
+	{
+	  "Name": "48",
+	  "Level": 48,
+	  "PlayerExp": 8936715,
+	  "PlayerCumulativeExp": 1491853,
+	  "PalExp": 2234237,
+	  "PalCumulativeExp": 372963,
+	  "HuntExp": 3108
+	},
+	{
+	  "Name": "49",
+	  "Level": 49,
+	  "PlayerExp": 10727000,
+	  "PlayerCumulativeExp": 1790286,
+	  "PalExp": 2681809,
+	  "PalCumulativeExp": 447571,
+	  "HuntExp": 3374
+	},
+	{
+	  "Name": "50",
+	  "Level": 50,
+	  "PlayerExp": 12875405,
+	  "PlayerCumulativeExp": 2148405,
+	  "PalExp": 3218910,
+	  "PalCumulativeExp": 537101,
+	  "HuntExp": 3774
+	}
+]

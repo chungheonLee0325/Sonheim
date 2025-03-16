@@ -27,12 +27,17 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Debug Setting")
 	bool bShowDebug = false;
 
+	// Attribute
 	UPROPERTY(BlueprintReadWrite)
 	UHealthComponent* m_HealthComponent;
 	UPROPERTY(BlueprintReadWrite)
 	UConditionComponent* m_ConditionComponent;
 	UPROPERTY(BlueprintReadWrite)
 	class UStaminaComponent* m_StaminaComponent;
+	UPROPERTY(BlueprintReadWrite)
+	class ULevelComponent* m_LevelComponent;
+
+	// Utility
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	URotateUtilComponent* m_RotateUtilComponent;
 	UPROPERTY(BlueprintReadWrite)

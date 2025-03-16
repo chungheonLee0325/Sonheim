@@ -77,7 +77,7 @@ void USonheimGameInstance::Init()
 		}
 	}
 
-	
+
 	// Item Data
 	UDataTable* ItemDataTable = LoadObject<UDataTable>(
 		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_Item.dt_Item'"));
@@ -91,6 +91,23 @@ void USonheimGameInstance::Init()
 			if (nullptr != Row)
 			{
 				dt_Item.Add(Row->ItemID, *Row);
+			}
+		}
+	}
+
+	// Level Data
+	UDataTable* LevelDataTable = LoadObject<UDataTable>(
+		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_Level.dt_Level'"));
+	if (nullptr != LevelDataTable)
+	{
+		TArray<FName> RowNames = LevelDataTable->GetRowNames();
+
+		for (const FName& RowName : RowNames)
+		{
+			FLevelData* Row = LevelDataTable->FindRow<FLevelData>(RowName, TEXT(""));
+			if (nullptr != Row)
+			{
+				dt_LevelData.Add(Row->Level, *Row);
 			}
 		}
 	}
@@ -158,6 +175,16 @@ FItemData* USonheimGameInstance::GetDataItem(int ItemID)
 	if (FItemData* data = dt_Item.Find(ItemID))
 	{
 		return data;
+	}
+
+	return nullptr;
+}
+
+TMap<int32, FLevelData>* USonheimGameInstance::GetDataLevel()
+{
+	if (!dt_LevelData.IsEmpty())
+	{
+		return &dt_LevelData;
 	}
 
 	return nullptr;
