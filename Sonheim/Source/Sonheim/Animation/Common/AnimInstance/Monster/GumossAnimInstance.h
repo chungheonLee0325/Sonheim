@@ -19,4 +19,7 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Speed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EAiStateType State;
 };
