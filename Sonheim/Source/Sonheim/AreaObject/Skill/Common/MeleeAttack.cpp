@@ -239,7 +239,7 @@ bool UMeleeAttack::PerformCollisionCheck(EHitDetectionType DetectionType, const 
 				OutHitResults,
 				StartLocation,
 				EndLocation,
-				ECC_GameTraceChannel2,
+				ECC_GameTraceChannel1,
 				QueryParams
 			);
 			break;
@@ -251,7 +251,7 @@ bool UMeleeAttack::PerformCollisionCheck(EHitDetectionType DetectionType, const 
 				StartLocation,
 				EndLocation,
 				FQuat::Identity,
-				ECC_GameTraceChannel2,
+				ECC_GameTraceChannel1,
 				FCollisionShape::MakeSphere(HitBoxData.Radius),
 				QueryParams
 			);
@@ -265,7 +265,7 @@ bool UMeleeAttack::PerformCollisionCheck(EHitDetectionType DetectionType, const 
 				location,
 				location,
 				SocketRotation.Quaternion(),
-				ECC_GameTraceChannel2,
+				ECC_GameTraceChannel1,
 				FCollisionShape::MakeCapsule(HitBoxData.Radius, HitBoxData.HalfHeight),
 				QueryParams
 			);
@@ -279,7 +279,7 @@ bool UMeleeAttack::PerformCollisionCheck(EHitDetectionType DetectionType, const 
 				location,
 				location,
 				SocketRotation.Quaternion(),
-				ECC_GameTraceChannel2,
+				ECC_GameTraceChannel1,
 				FCollisionShape::MakeBox(HitBoxData.BoxExtent),
 				QueryParams
 			);
