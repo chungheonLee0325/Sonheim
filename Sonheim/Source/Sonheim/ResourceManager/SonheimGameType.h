@@ -292,27 +292,27 @@ struct FLevelData : public FTableRowBase
 
 	// 레벨 - level id
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	int32 Level;
+	int32 Level = 1;
 
 	// 해당 레벨의 요구 경험치 - 플레이어
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	int32 PlayerExp;
+	int32 PlayerExp = 0;
 
 	// 해당 레벨의 누적 요구 경험치 - 플레이어
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	int32 PlayerCumulativeExp;
+	int32 PlayerCumulativeExp = 0;
 
 	// 해당 레벨의 요구 경험치 - Pal
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	int32 PalExp;
+	int32 PalExp = 0;
 
 	// 해당 레벨의 누적 요구 경험치 - Pal
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	int32 PalCumulativeExp;
+	int32 PalCumulativeExp = 0;
 
 	// 해당 레벨의 사냥 경험치
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	int32 HuntExp;
+	int32 HuntExp = 0;
 };
 
 // HitBox 동적으로 생성하기 위한 구조체 정보, FAttackData 멤버 변수

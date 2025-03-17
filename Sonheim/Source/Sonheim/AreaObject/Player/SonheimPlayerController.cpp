@@ -77,12 +77,12 @@ ASonheimPlayerController::ASonheimPlayerController()
 		StatusWidgetClass = WidgetClassFinder.Class;
 	}
 
-	ConstructorHelpers::FClassFinder<UUserWidget> missionFailWidget(
-		TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrints/Widget/WB_KazanHasFallen.WB_KazanHasFallen_C'"));
-	if (missionFailWidget.Succeeded())
-	{
-		MissionFailClass = missionFailWidget.Class;
-	}
+	//ConstructorHelpers::FClassFinder<UUserWidget> missionFailWidget(
+	//	TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrints/Widget/WB_KazanHasFallen.WB_KazanHasFallen_C'"));
+	//if (missionFailWidget.Succeeded())
+	//{
+	//	MissionFailClass = missionFailWidget.Class;
+	//}
 }
 
 void ASonheimPlayerController::BeginPlay()

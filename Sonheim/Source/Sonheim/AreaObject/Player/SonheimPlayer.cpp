@@ -34,12 +34,12 @@ ASonheimPlayer::ASonheimPlayer()
 
 	// Set Mesh
 	static ConstructorHelpers::FObjectFinder<USkeletalMesh> tempSkeletalMesh(
-		TEXT("/Script/Engine.SkeletalMesh'/Game/_Resource/Kazan/SM_Kazan.SM_Kazan'"));
+		TEXT("/Script/Engine.SkeletalMesh'/Game/_Resource/Player/Merchent/Merchant.Merchant'"));
 	if (tempSkeletalMesh.Succeeded())
 	{
 		GetMesh()->SetSkeletalMesh(tempSkeletalMesh.Object);
-		GetMesh()->SetRelativeLocationAndRotation(FVector(0, 0, -97.f), FRotator(0, -90, 0));
-		GetMesh()->SetRelativeScale3D(FVector(0.4f));
+		GetMesh()->SetRelativeLocationAndRotation(FVector(0, 0, -95.0F), FRotator(0, -90, 0));
+		GetMesh()->SetRelativeScale3D(FVector(0.004f));
 	}
 	
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -49,7 +49,7 @@ ASonheimPlayer::ASonheimPlayer()
 
 	// Set Animation Blueprint
 	ConstructorHelpers::FClassFinder<UAnimInstance> TempABP(TEXT(
-		"/Script/Engine.AnimBlueprint'/Game/_BluePrints/AreaObject/Player/ABP_Player_Kazan_AnimInstance.ABP_Player_Kazan_AnimInstance_C'"));
+		"/Script/Engine.AnimBlueprint'/Game/_BluePrint/AreaObject/Player/ABP_Player.ABP_Player_C'"));
 
 	if (TempABP.Succeeded())
 	{
