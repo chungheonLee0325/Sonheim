@@ -10,23 +10,25 @@
  * 
  */
 UCLASS()
-class SONHEIM_API UProjectileAA : public UBaseSkill {
+class SONHEIM_API UProjectileAA : public UBaseSkill
+{
 	GENERATED_BODY()
-	
+
 public:
 	UProjectileAA();
-	
+
 	virtual void OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
 	virtual void OnCastTick(float DeltaTime) override;
 
 	virtual void OnCastFire() override;
+	virtual void OnCastEnd() override;
 
 	void FireSandBlast();
-	
+
 	float DelayTime = 2.0f;
 	float CurrentTime = 0.0f;
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class ASandBlast> SandBlastFactory;
-	
+
 };

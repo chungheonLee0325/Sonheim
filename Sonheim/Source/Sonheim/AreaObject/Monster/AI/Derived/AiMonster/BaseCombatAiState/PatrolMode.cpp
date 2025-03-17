@@ -31,6 +31,7 @@ void UPatrolMode::Execute(float dt)
 	// 데미지 받으면
 	if (m_Owner->GetAggroTarget())
 	{
+		// SelectMode
 		ChangeState(m_NextState);
 		return;	
 	}
@@ -50,7 +51,7 @@ void UPatrolMode::Exit()
 
 void UPatrolMode::Patrol()
 {
-	UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
+	UNavigationSystemV1* NavSystem{UNavigationSystemV1::GetCurrent(GetWorld())};
 	if (!NavSystem)
 	{
 		return;
@@ -61,7 +62,7 @@ void UPatrolMode::Patrol()
 		FLog::Log("Patrol");
 	}
 
-	FVector Start = m_Owner->GetActorLocation();
+	FVector Start{m_Owner->GetActorLocation()};
 	FNavLocation Next;
 	
 	NavSystem->GetRandomReachablePointInRadius(Start, 600.f, Next);

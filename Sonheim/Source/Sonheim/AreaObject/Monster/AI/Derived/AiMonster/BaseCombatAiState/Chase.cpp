@@ -28,8 +28,6 @@ void UChase::Execute(float dt)
 	// }
 	
 	ChangeState(m_NextState);
-
-
 }
 
 void UChase::Exit()

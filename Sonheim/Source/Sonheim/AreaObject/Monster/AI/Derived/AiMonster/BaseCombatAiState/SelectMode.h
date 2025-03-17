@@ -20,4 +20,6 @@ public:
 	virtual void Enter() override;
 	virtual void Execute(float dt) override;
 	virtual void Exit() override;
+
+	float AttackAggroRange{5000.f};
 };

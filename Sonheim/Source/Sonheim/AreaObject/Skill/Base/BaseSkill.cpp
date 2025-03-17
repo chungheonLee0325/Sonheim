@@ -85,6 +85,8 @@ void UBaseSkill::OnCastStart(AAreaObject* Caster, AAreaObject* Target)
 		CompleteDelegate.BindUObject(this, &UBaseSkill::OnMontageBlendOut);
 		AnimInstance->Montage_SetBlendingOutDelegate(CompleteDelegate, m_SkillData->Montage);
 	}
+	
+	bIsSkillActive = true;
 }
 
 void UBaseSkill::OnCastTick(float DeltaTime)
@@ -140,6 +142,8 @@ void UBaseSkill::OnCastEnd()
 		}
 	}
 	AdjustCoolTime();
+
+	bIsSkillActive = false;
 }
 
 void UBaseSkill::CancelCast()

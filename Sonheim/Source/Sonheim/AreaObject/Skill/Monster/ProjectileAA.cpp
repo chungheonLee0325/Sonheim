@@ -22,34 +22,41 @@ UProjectileAA::UProjectileAA()
 
 void UProjectileAA::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
 {
-	CurrentTime = 0.f;
+	//CurrentTime = 0.f;
 
 	Super::OnCastStart(Caster, Target);
+
 }
 
 void UProjectileAA::OnCastTick(float DeltaTime)
 {
 	Super::OnCastTick(DeltaTime);
 
-	CurrentTime += DeltaTime;
-	if (CurrentTime > DelayTime)
-	{
-		CurrentTime = 0.f;
-		OnCastFire();
-	}
+	// CurrentTime += DeltaTime;
+	// if (CurrentTime > DelayTime)
+	// {
+	// 	CurrentTime = 0.f;
+	// 	OnCastFire();
+	// }
 }
 
 void UProjectileAA::OnCastFire()
 {
 	Super::OnCastFire();
-
+	
 	FireSandBlast();
+}
+
+void UProjectileAA::OnCastEnd()
+{
+	Super::OnCastEnd();
+
 }
 
 void UProjectileAA::FireSandBlast()
 {
-	//FLog::Log("UProjectileAA::OnCastFire");
-	// 
+	FLog::Log("UProjectileAA::OnCastFire");
+	
 	ASandBlast* SpawnedSandBlast{
 		GetWorld()->SpawnActor<ASandBlast>(SandBlastFactory, m_Caster->GetActorLocation(), m_Caster->GetActorRotation())
 	};
@@ -60,8 +67,8 @@ void UProjectileAA::FireSandBlast()
 	ASonheimPlayer* TempTarget{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
 	//SpawnedSandBlast->InitElement(m_Caster, m_Target, m_Target->GetActorLocation(), AttackData);
 
-	m_Target = TempTarget;
-	m_TargetPos = TempTarget->GetActorLocation();
+	//m_Target = TempTarget;
+	//m_TargetPos = TempTarget->GetActorLocation();
 	
 	if (SpawnedSandBlast)
 	{

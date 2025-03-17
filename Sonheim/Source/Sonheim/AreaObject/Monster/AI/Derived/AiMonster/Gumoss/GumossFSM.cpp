@@ -3,6 +3,7 @@
 
 #include "GumossFSM.h"
 
+#include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/BaseCombatAiState/AttackMode.h"
 #include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/BaseCombatAiState/Chase.h"
 #include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/BaseCombatAiState/PatrolMode.h"
@@ -65,6 +66,7 @@ void UGumossFSM::InitStatePool()
 
 	// UseSkill 
 	auto UseSkill = CreateState<UUseSkill>(this, m_Owner,EAiStateType::SelectMode);
+	UseSkill->SetSkillRoulette(m_Owner->GetSkillRoulette());
 	AddState(EAiStateType::UseSkill, UseSkill);
 
 	// 시작 State

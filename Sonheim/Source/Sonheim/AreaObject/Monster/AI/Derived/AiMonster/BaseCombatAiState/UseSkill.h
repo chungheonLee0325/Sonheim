@@ -20,4 +20,13 @@ public:
 	virtual void Enter() override;
 	virtual void Execute(float dt) override;
 	virtual void Exit() override;
+
+	void SetSkillRoulette(class UBaseSkillRoulette* BaseSkillRoulette) { SkillRoulette = BaseSkillRoulette; }
+
+	UPROPERTY()
+	class UBaseSkillRoulette* SkillRoulette;
+	UPROPERTY()
+	class UBaseSkill* Skill;
+
+	float AttackTime{};
 };

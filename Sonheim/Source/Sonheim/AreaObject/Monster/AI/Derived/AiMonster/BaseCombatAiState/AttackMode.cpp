@@ -3,6 +3,7 @@
 
 #include "AttackMode.h"
 
+#include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
 void UAttackMode::InitState()
@@ -21,14 +22,24 @@ void UAttackMode::Enter()
 void UAttackMode::Execute(float dt)
 {
 	// 너무 가까우면
-	ChangeState(m_NextState);
+	const float Dist{static_cast<float>(FVector::Distance(m_Owner->GetActorLocation(), m_Owner->GetAggroTarget()->GetActorLocation()))};
+	if (Dist < AttackMinRange)
+	{
+		// PutDistance
+		ChangeState(m_NextState);
+		return;
+	}
 
-	// 적당한 거리면
-	ChangeState(m_SuccessState);
+	// 적당한 거리면 UseSkill
+	if (Dist < AttackMaxRange)
+	{
+		ChangeState(m_SuccessState);
+		return;
+	}
 
-	// 멀면
+	// 멀면 Chase
 	ChangeState(m_FailState);
-
+	//ChangeState(m_SuccessState);
 }
 
 void UAttackMode::Exit()

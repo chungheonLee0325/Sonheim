@@ -19,21 +19,22 @@ UProjectileBlade::UProjectileBlade()
 
 void UProjectileBlade::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
 {
-	CurrentTime = 0.f;
+	//CurrentTime = 0.f;
 
 	Super::OnCastStart(Caster, Target);
+
 }
 
 void UProjectileBlade::OnCastTick(float DeltaTime)
 {
 	Super::OnCastTick(DeltaTime);
 
-	CurrentTime += DeltaTime;
-	if (CurrentTime > DelayTime)
-	{
-		CurrentTime = 0.f;
-		OnCastFire();
-	}
+	// CurrentTime += DeltaTime;
+	// if (CurrentTime > DelayTime)
+	// {
+	// 	CurrentTime = 0.f;
+	// 	OnCastFire();
+	// }
 }
 
 void UProjectileBlade::OnCastFire()
@@ -43,10 +44,16 @@ void UProjectileBlade::OnCastFire()
 	FireBladeWind();
 }
 
+void UProjectileBlade::OnCastEnd()
+{
+	Super::OnCastEnd();
+
+}
+
 void UProjectileBlade::FireBladeWind()
 {
-	//FLog::Log("UProjectileBlade::OnCastFire");
-	// 
+	FLog::Log("UProjectileBlade::OnCastFire");
+	
 	ABladeWind* SpawnedBladeWind{
 		GetWorld()->SpawnActor<ABladeWind>(BladeWindFactory, m_Caster->GetActorLocation(), m_Caster->GetActorRotation())
 	};
@@ -56,8 +63,8 @@ void UProjectileBlade::FireBladeWind()
 	// ToDo : TempTarget -> m_Target으로 수정
 	ASonheimPlayer* TempTarget{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
 
-	m_Target = TempTarget;
-	m_TargetPos = TempTarget->GetActorLocation();
+	//m_Target = TempTarget;
+	//m_TargetPos = TempTarget->GetActorLocation();
 	
 	if (SpawnedBladeWind)
 	{
