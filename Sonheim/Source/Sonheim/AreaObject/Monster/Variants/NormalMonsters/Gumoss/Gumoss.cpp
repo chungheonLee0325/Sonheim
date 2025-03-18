@@ -41,6 +41,9 @@ AGumoss::AGumoss()
 void AGumoss::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Eye Material
+	EyeMat = GetMesh()->CreateDynamicMaterialInstance(0);
 }
 
 // Called every frame

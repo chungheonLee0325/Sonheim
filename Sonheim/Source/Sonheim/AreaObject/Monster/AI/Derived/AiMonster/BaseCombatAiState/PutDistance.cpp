@@ -21,6 +21,7 @@ void UPutDistance::Enter()
 	//FLog::Log("UPutDistance");
 
 	MoveToAttack();
+	m_Owner->ChangeFace(EFaceType::Sad);
 }
 
 void UPutDistance::Execute(float dt)
@@ -80,6 +81,8 @@ void UPutDistance::MoveToAttack()
 		break;
 	}
 
+	m_Owner->LookAtLocation(m_Owner->GetAggroTarget()->GetActorLocation(),EPMRotationMode::Duration,0.1f);
+
 	m_Owner->GetCharacterMovement()->MaxWalkSpeed = 2000.f;
 	EPathFollowingRequestResult::Type Result{m_Owner->AIController->MoveToLocation(Next.Location)};
 
@@ -95,7 +98,8 @@ void UPutDistance::MoveCompleted(struct FAIRequestID RequestID, const struct FPa
 	// 이동 완료
 	if (Result.IsSuccess())
 	{
-		FLog::Log("UPutDistance::MoveCompleted");
+		//FLog::Log("UPutDistance::MoveCompleted");
+		m_Owner->GetCharacterMovement()->MaxWalkSpeed = 600.f;
 		// UseSkill
 		ChangeState(m_NextState);
 	}

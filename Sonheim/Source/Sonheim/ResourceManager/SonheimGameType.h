@@ -773,3 +773,18 @@ struct FSkillBagData : public FTableRowBase
 	// ToDo: 필요한 기능들 위로 올리기
 public:
 };
+
+
+// Pal 표정 변화 위한 Enum Type
+UENUM(BlueprintType)
+enum class EFaceType : uint8
+{
+	Default UMETA(DisplayName = "Default"),
+	Smile UMETA(DisplayName = "Smile"),
+	Boring UMETA(DisplayName = "Boring"),
+	Angry UMETA(DisplayName = "Angry"),
+	Sleep UMETA(DisplayName = "Sleep"),
+	Sad UMETA(DisplayName = "Sad"),
+	Exciting UMETA(DisplayName = "Exciting"),
+	Dead UMETA(DisplayName = "Dead")	// 7
+};

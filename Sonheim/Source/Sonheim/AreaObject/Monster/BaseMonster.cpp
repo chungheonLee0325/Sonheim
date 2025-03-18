@@ -135,7 +135,7 @@ UBaseSkillRoulette* ABaseMonster::CreateSkillRoulette()
 void ABaseMonster::BeginPlay()
 {
 	Super::BeginPlay();
-
+	
 	WalkSpeed = dt_AreaObject->WalkSpeed;
 	ForcedWalkSpeed = WalkSpeed * 5.f;
 
@@ -315,12 +315,50 @@ float ABaseMonster::TakeDamage(float DamageAmount, struct FDamageEvent const& Da
 	return damage;
 }
 
+void ABaseMonster::ChangeFace(EFaceType Type) const
+{
+	switch (Type)
+	{
+	case EFaceType::Default:
+		if (EyeMat)
+		{
+			EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0, 0, 0, 1));
+		}
+		if (MouthMat)
+		{
+			MouthMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0, 0, 0, 1));
+		}
+		break;
+	case EFaceType::Smile:
+		EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0.5, 0, 0, 1));
+		break;
+	case EFaceType::Boring:
+		EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0, 0.25, 0, 1));
+		break;
+	case EFaceType::Angry:
+		EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0.5, 0.25, 0, 1));
+		break;
+	case EFaceType::Sleep:
+		EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0, 0.5, 0, 1));
+		break;
+	case EFaceType::Sad:
+		EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0.5, 0.5, 0, 1));
+		break;
+	case EFaceType::Exciting:
+		EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0, 0.75, 0, 1));
+		break;
+	case EFaceType::Dead:
+		EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0.5, 0.75, 0, 1));
+		break;
+	}
+}
+
 void ABaseMonster::Surprise()
 {
 	if (bIsForced) return;
 	bIsSurprise = true;
 	// Ouch Face
-	ChangeFace(2);
+	//ChangeFace(2);
 }
 
 void ABaseMonster::CalmDown()
@@ -328,7 +366,7 @@ void ABaseMonster::CalmDown()
 	if (bIsForced) return;
 	bIsSurprise = false;
 	// Smile Face
-	ChangeFace(0);
+	//ChangeFace(0);
 }
 
 void ABaseMonster::StartTransport()
@@ -363,7 +401,7 @@ void ABaseMonster::SetIsForced(bool IsForced)
 {
 	if (IsForced == true)
 	{
-		ChangeFace(3);
+		//ChangeFace(3);
 		GetCharacterMovement()->MaxWalkSpeed = ForcedWalkSpeed;
 		this->bIsForced = IsForced;
 		VFXSpwan(1);
@@ -372,7 +410,7 @@ void ABaseMonster::SetIsForced(bool IsForced)
 	}
 	else
 	{
-		ChangeFace(0);
+		//ChangeFace(0);
 		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 		this->bIsForced = IsForced;
 	}

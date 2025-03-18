@@ -4,6 +4,8 @@
 #include "AttackMode.h"
 
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
+#include "Sonheim/AreaObject/Monster/BaseSkillRoulette.h"
+#include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
 void UAttackMode::InitState()
@@ -16,10 +18,24 @@ void UAttackMode::Enter()
 {
 	//FLog::Log("UAttackMode");
 	FlowTime = 0.f;
+	m_Owner->ChangeFace(EFaceType::Exciting);
+
+	ID = SkillRoulette->GetRandomSkillID();
+	if (ID != 0)
+	{
+		m_Owner->NextSkill = m_Owner->GetSkillByID(ID);
+		AttackMaxRange = m_Owner->NextSkill->GetSkillData()->CastRange;
+	}
 }
 
 void UAttackMode::Execute(float dt)
 {
+	if (ID == 0)
+	{
+		FLog::Log("Has No Skill");
+		return;
+	}
+	
 	FlowTime += dt;
 	if (FlowTime >= ChooseModeTime)
 	{
@@ -43,8 +59,8 @@ void UAttackMode::Execute(float dt)
 		}
 
 		// 멀면 Chase
+		// Dist > AttackMaxRange
 		ChangeState(m_FailState);
-		//ChangeState(m_SuccessState);
 	}
 }
 

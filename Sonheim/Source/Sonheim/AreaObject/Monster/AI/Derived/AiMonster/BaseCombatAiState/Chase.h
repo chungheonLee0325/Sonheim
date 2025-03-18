@@ -20,4 +20,13 @@ public:
 	virtual void Enter() override;
 	virtual void Execute(float dt) override;
 	virtual void Exit() override;
+
+	void Chase(float dt);
+	void DoJump();
+
+	float JumpTime{2.f};
+	float FlowTime{};
+
+	float PatrolRange{};
+	float AttackRange{};
 };

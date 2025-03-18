@@ -16,6 +16,7 @@ void USelectMode::Enter()
 {
 	//FLog::Log("USelectMode");
 	FlowTime = 0.f;
+	m_Owner->ChangeFace(EFaceType::Sad);
 }
 
 void USelectMode::Execute(float dt)

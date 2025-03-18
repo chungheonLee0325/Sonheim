@@ -54,10 +54,11 @@ void UGumossFSM::InitStatePool()
 
 	// AttackMode 
 	auto AttackMode = CreateState<UAttackMode>(this, m_Owner,EAiStateType::PutDistance, EAiStateType::UseSkill, EAiStateType::Chase);
+	AttackMode->SetSkillRoulette(m_Owner->GetSkillRoulette());
 	AddState(EAiStateType::AttackMode, AttackMode);
 
 	// Chase 
-	auto Chase = CreateState<UChase>(this, m_Owner,EAiStateType::SelectMode, EAiStateType::UseSkill);
+	auto Chase = CreateState<UChase>(this, m_Owner,EAiStateType::PatrolMode, EAiStateType::UseSkill);
 	AddState(EAiStateType::Chase, Chase);
 
 	// PutDistance 
@@ -66,7 +67,6 @@ void UGumossFSM::InitStatePool()
 
 	// UseSkill 
 	auto UseSkill = CreateState<UUseSkill>(this, m_Owner,EAiStateType::SelectMode);
-	UseSkill->SetSkillRoulette(m_Owner->GetSkillRoulette());
 	AddState(EAiStateType::UseSkill, UseSkill);
 
 	// 시작 State
