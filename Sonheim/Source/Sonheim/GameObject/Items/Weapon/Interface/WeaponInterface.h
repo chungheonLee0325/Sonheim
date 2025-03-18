@@ -20,7 +20,7 @@ class SONHEIM_API IWeaponInterface
 {
 	GENERATED_BODY()
 
-	void HandleLeftButtonPressed();
-	void HandleRightButtonPressed();
+	virtual void HandleLeftButtonPressed() = 0;
+	virtual void HandleRightButtonPressed() = 0;
 public:
 };

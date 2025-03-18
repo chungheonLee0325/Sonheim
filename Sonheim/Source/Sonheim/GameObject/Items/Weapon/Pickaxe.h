@@ -3,19 +3,17 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-#include "Interface/WeaponInterface.h"
-#include "Sonheim/GameObject/Items/BaseItem.h"
-#include "BaseWeapon.generated.h"
+#include "BaseWeapon.h"
+#include "Pickaxe.generated.h"
 
 UCLASS()
-class SONHEIM_API ABaseWeapon : public ABaseItem, public IWeaponInterface
+class SONHEIM_API APickaxe : public ABaseWeapon
 {
 	GENERATED_BODY()
 
 public:
 	// Sets default values for this actor's properties
-	ABaseWeapon();
+	APickaxe();
 
 protected:
 	// Called when the game starts or when spawned
