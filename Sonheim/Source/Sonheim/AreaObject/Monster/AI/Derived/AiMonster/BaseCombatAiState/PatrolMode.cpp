@@ -24,6 +24,7 @@ void UPatrolMode::Enter()
 	}
 	
 	PatrolTime = FMath::RandRange(1.5f, 2.5f);
+	m_Owner->ChangeFace(EFaceType::Default);
 }
 
 void UPatrolMode::Execute(float dt)

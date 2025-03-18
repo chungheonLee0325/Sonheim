@@ -23,6 +23,6 @@ public:
 
 	float AttackAggroRange{5000.f};
 
-	float ChooseModeTime{1.5f};
+	float ChooseModeTime{1.f};
 	float FlowTime{};
 };

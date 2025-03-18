@@ -181,9 +181,9 @@ public:
 	void StartTransport();
 	void EndTransport();
 
-	// 얼굴 변화
-	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
-	void ChangeFace(int32 Feel);
+	// 얼굴 변화 ( ai 게임 잼 때 쓴 거 )
+	// UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	// void ChangeFace(int32 Feel);
 
 	// AI Voice Command
 	UFUNCTION(BlueprintCallable)
@@ -214,4 +214,11 @@ public:
 
 	float WalkSpeed = 400.f;
 	float ForcedWalkSpeed = 1200.f;
+
+	UFUNCTION()
+	void ChangeFace(EFaceType Type) const;
+	UPROPERTY()
+	class UMaterialInstanceDynamic* EyeMat{nullptr};
+	UPROPERTY()
+	class UMaterialInstanceDynamic* MouthMat{nullptr};
 };

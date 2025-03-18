@@ -23,14 +23,10 @@ public:
 	
 	UFUNCTION()
 	void OnSkillCompleted();
+
+	UPROPERTY()
+	class UAttackMode* AttackMode;
 	
-	void SetSkillRoulette(class UBaseSkillRoulette* BaseSkillRoulette) { SkillRoulette = BaseSkillRoulette; }
-
-	UPROPERTY()
-	class UBaseSkillRoulette* SkillRoulette;
-	UPROPERTY()
-	class UBaseSkill* Skill;
-
 	float AttackTime{};
 private:
 	bool m_CanAttack = true;

@@ -3,32 +3,26 @@
 
 #include "UseSkill.h"
 
+#include "AttackMode.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Monster/BaseSkillRoulette.h"
+#include "Sonheim/AreaObject/Monster/AI/Base/BaseAiFSM.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
 void UUseSkill::InitState()
-{
-}
+{}
 
 void UUseSkill::CheckIsValid()
-{
-}
+{}
 
 void UUseSkill::Enter()
 {
 	FLog::Log("UUseSkill");
 	m_CanAttack = true;
-	
-	m_Owner->LookAtLocation(m_Owner->GetAggroTarget()->GetActorLocation(),EPMRotationMode::Duration,0.1f);
 
-	int32 ID{SkillRoulette->GetRandomSkillID()};
-	if (ID != 0)
-	{
-		m_Owner->NextSkill = m_Owner->GetSkillByID(ID);
-	}
-	
+	m_Owner->LookAtLocation(m_Owner->GetAggroTarget()->GetActorLocation(), EPMRotationMode::Duration, 0.1f);
+
 	if (m_Owner->CanCastSkill(m_Owner->NextSkill, m_Owner->GetAggroTarget()))
 	{
 		m_Owner->NextSkill->OnSkillComplete.BindUObject(this, &UUseSkill::OnSkillCompleted);
@@ -39,12 +33,18 @@ void UUseSkill::Enter()
 			return;
 		}
 
-		m_Owner->RemoveSkillEntryByID(ID);
+		AttackMode = Cast<UAttackMode>(m_Owner->m_AiFSM->m_PreviousState);
+		if (AttackMode)
+		{
+			m_Owner->RemoveSkillEntryByID(AttackMode->ID);
+		}
 	}
 	else
 	{
 		m_CanAttack = false;
 	}
+
+	m_Owner->ChangeFace(EFaceType::Angry);
 }
 
 void UUseSkill::Execute(float dt)
@@ -56,8 +56,7 @@ void UUseSkill::Execute(float dt)
 }
 
 void UUseSkill::Exit()
-{
-}
+{}
 
 void UUseSkill::OnSkillCompleted()
 {

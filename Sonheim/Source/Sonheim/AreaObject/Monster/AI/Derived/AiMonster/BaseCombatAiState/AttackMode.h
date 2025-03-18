@@ -20,10 +20,18 @@ public:
 	virtual void Enter() override;
 	virtual void Execute(float dt) override;
 	virtual void Exit() override;
+	
+	void SetSkillRoulette(class UBaseSkillRoulette* BaseSkillRoulette) { SkillRoulette = BaseSkillRoulette; }
 
+	UPROPERTY()
+	class UBaseSkillRoulette* SkillRoulette;
+	
 	float AttackMinRange{500.f};
-	float AttackMaxRange{3000.f};
+	float AttackMaxRange{};
 
-	float ChooseModeTime{0.5f};
+	float ChooseModeTime{1.5f};
 	float FlowTime{};
+	
+	int32 ID{};
+
 };
