@@ -174,7 +174,13 @@ enum class EAiStateType : uint8
 	DoNothing UMETA(DisplayName = "DoNothing"),
 	SelectAction UMETA(DisplayName = "SelectAction"),
 	Lumbering UMETA(DisplayName = "Lumbering"),
-	ReturnResource UMETA(DisplayName = "ReturnResource")
+	ReturnResource UMETA(DisplayName = "ReturnResource"),
+	PatrolMode UMETA(DisplayName = "PatrolMode"),	// 11
+	AttackMode UMETA(DisplayName = "AttackMode"),	// 12
+	UseSkill UMETA(DisplayName = "UseSkill"),
+	PutDistance UMETA(DisplayName = "PutDistance"),
+	SelectMode UMETA(DisplayName = "SelectMode")	// 15
+	
 };
 
 // 공격시 Trace System에서 사용 - EnableCollisionNotifyState 참조

@@ -82,6 +82,6 @@ protected:
 	FMontageItem CurrentMontage;
 
 	// 소유 캐릭터 캐싱
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	AAreaObject* m_Owner;
 };
