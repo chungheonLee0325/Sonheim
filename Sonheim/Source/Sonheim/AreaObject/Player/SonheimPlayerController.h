@@ -42,10 +42,15 @@ private:
 	/** Called for mouse input */
 	void On_Mouse_Left_Triggered(const FInputActionValue& InputActionValue);
 	void On_Mouse_Right_Pressed(const FInputActionValue& InputActionValue);
+	void On_Mouse_Right_Triggered(const FInputActionValue& InputActionValue);
 	void On_Mouse_Right_Released(const FInputActionValue& InputActionValue);
 
 	/** Called for Dodge input */
 	void On_Dodge_Pressed(const FInputActionValue& InputActionValue);
+	/** Called for Dodge input */
+	void On_Sprint_Pressed(const FInputActionValue& InputActionValue);
+	void On_Sprint_Triggered(const FInputActionValue& InputActionValue);
+	void On_Sprint_Released(const FInputActionValue& InputActionValue);
 	/** Called for Jump input */
 	void On_Jump_Pressed(const FInputActionValue& InputActionValue);
 	void On_Jump_Released(const FInputActionValue& InputActionValue);
@@ -97,6 +102,10 @@ private:
 	/** Jump Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* JumpAction;
+
+	/** Sprint Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* SprintAction;
 
 	/** Evade Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))

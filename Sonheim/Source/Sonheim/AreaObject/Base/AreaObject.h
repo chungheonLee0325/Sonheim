@@ -210,6 +210,8 @@ public:
 
 	FAreaObjectData* dt_AreaObject;
 
+	float SprintSpeedRatio = 2.0f;
+
 private:
 	UPROPERTY()
 	USonheimGameInstance* m_GameInstance = nullptr;

@@ -100,11 +100,17 @@ public:
 	/** Called for attack input */
 	void LeftMouse_Triggered();
 	void RightMouse_Pressed();
+	void RightMouse_Triggered();
 	void RightMouse_Released();
 	void Reload_Pressed();
 
 	/** Called for evade input */
 	void Dodge_Pressed();
+
+	/** Called for sprint input */
+	void Sprint_Pressed();
+	void Sprint_Triggered();
+	void Sprint_Released();
 
 	/** Called for run input */
 	void Jump_Pressed();
@@ -248,6 +254,9 @@ private:
 
 	int NoItemAttackID = 10;
 	int AttackID = 10;
-	float NormalCameraBoomAramLength = 300.f;
-	float RClickCameraBoomAramLength = 150.f;
+
+	FTimerHandle LockOnCameraTimerHandle;
+	
+	float NormalCameraBoomAramLength = 180.f;
+	float RClickCameraBoomAramLength = 90.f;
 };
