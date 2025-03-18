@@ -98,8 +98,10 @@ public:
 	void Look(FVector2D LookAxisVector);
 
 	/** Called for attack input */
-	void LeftMouse_Pressed();
+	void LeftMouse_Triggered();
 	void RightMouse_Pressed();
+	void RightMouse_Released();
+	void Reload_Pressed();
 
 	/** Called for evade input */
 	void Dodge_Pressed();
@@ -107,6 +109,12 @@ public:
 	/** Called for run input */
 	void Jump_Pressed();
 	void Jump_Released();
+
+	/** Called for WeaponSwitch input */
+	void WeaponSwitch_Triggered();
+	
+	/** Called for Menu input */
+	void Menu_Pressed();
 
 	/** Called for Restart input */
 	void Restart_Pressed();
@@ -118,6 +126,59 @@ public:
 	void RespawnAtCheckpoint();
 
 	void Reward(int ItemID, int ItemValue) const;
+
+	//// 장비 시각화 관련 함수 추가
+	//UFUNCTION(BlueprintCallable, Category = "Equipment")
+	//void EquipVisualItem(EEquipmentSlotType SlotType, int ItemID);
+//
+	//UFUNCTION(BlueprintCallable, Category = "Equipment")
+	//void UnequipVisualItem(EEquipmentSlotType SlotType);
+//
+	//// 장비 관련 컴포넌트 추가
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
+	//USkeletalMeshComponent* HeadMesh;
+//
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
+	//USkeletalMeshComponent* BodyMesh;
+
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
+	//USkeletalMeshComponent* SubWeaponMesh;
+
+	//// 현재 무기 타입
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
+	//EWeaponType CurrentWeaponType;
+
+	//// 무기 타입별 스킬
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
+	//TMap<EWeaponType, TArray<int32>> WeaponTypeSkills;
+
+	//// 무기 타입 설정
+	//UFUNCTION(BlueprintCallable, Category = "Equipment")
+	//void SetWeaponType(EWeaponType NewWeaponType);
+
+	//// 무기 스킬 추가
+	//UFUNCTION(BlueprintCallable, Category = "Equipment")
+	//void AddWeaponSkill(int32 SkillID);
+
+	//// 무기 스킬 클리어
+	//UFUNCTION(BlueprintCallable, Category = "Equipment")
+	//void ClearWeaponSkills();
+
+	//// 현재 무기에 따른 공격 처리
+	//UFUNCTION(BlueprintCallable, Category = "Combat")
+	//void DoWeaponAttack();
+
+	//// 현재 도구에 따른 상호작용 처리
+	//UFUNCTION(BlueprintCallable, Category = "Interaction")
+	//bool TryToolInteraction(AActor* TargetActor);
+
+	//// 특수 능력 관리자
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities")
+	//UAbilityManagerComponent* AbilityManager;
+
+	//// 특수 능력 관리자 반환
+	//UFUNCTION(BlueprintCallable, Category = "Abilities")
+	//UAbilityManagerComponent* GetAbilityManager() const { return AbilityManager; }
 
 private:
 	// Weapon Setting
@@ -184,4 +245,9 @@ private:
 	// 마지막 체크포인트 회전
 	UPROPERTY(VisibleAnywhere, Category = "Checkpoint")
 	FRotator LastCheckpointRotation = FRotator::ZeroRotator;
+
+	int NoItemAttackID = 10;
+	int AttackID = 10;
+	float NormalCameraBoomAramLength = 300.f;
+	float RClickCameraBoomAramLength = 150.f;
 };

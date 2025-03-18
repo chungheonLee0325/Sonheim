@@ -39,17 +39,22 @@ private:
 	void OnMove(const FInputActionValue& Value);
 	/** Called for looking input */
 	void OnLook(const FInputActionValue& Value);
-	/** Called for attack input */
-	void On_Mouse_Left_Pressed(const FInputActionValue& InputActionValue);
+	/** Called for mouse input */
+	void On_Mouse_Left_Triggered(const FInputActionValue& InputActionValue);
 	void On_Mouse_Right_Pressed(const FInputActionValue& InputActionValue);
+	void On_Mouse_Right_Released(const FInputActionValue& InputActionValue);
 
 	/** Called for Dodge input */
 	void On_Dodge_Pressed(const FInputActionValue& InputActionValue);
-	/** Called for run input */
+	/** Called for Jump input */
 	void On_Jump_Pressed(const FInputActionValue& InputActionValue);
 	void On_Jump_Released(const FInputActionValue& InputActionValue);
-	/** Called for HPRecover input */
-	void On_Restart_Pressed(const FInputActionValue& Value);
+	/** Called for Reload input */
+	void On_Reload_Pressed(const FInputActionValue& Value);
+	/** Called for Weapon Switch input */
+	void On_WeaponSwitch_Triggered(const FInputActionValue& Value);
+	/** Called for Menu input */
+	void On_Menu_Pressed(const FInputActionValue& Value);
 
 	// Owner
 	UPROPERTY(VisibleAnywhere)
@@ -97,7 +102,19 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* EvadeAction;
 
-	/** Restart Input Action */
+	/** Attack_S Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* ReloadAction;
+
+	/** Switch Weapon Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* SwitchWeaponAction;
+
+	/** Menu Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* MenuAction;
+
+	/** Menu Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* RestartAction;
 };

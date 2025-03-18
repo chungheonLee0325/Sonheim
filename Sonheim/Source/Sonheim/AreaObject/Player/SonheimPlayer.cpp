@@ -42,7 +42,7 @@ ASonheimPlayer::ASonheimPlayer()
 		GetMesh()->SetRelativeLocationAndRotation(FVector(0, 0, -95.0F), FRotator(0, -90, 0));
 		GetMesh()->SetRelativeScale3D(FVector(0.004f));
 	}
-	
+
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	WeaponComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
@@ -80,7 +80,8 @@ ASonheimPlayer::ASonheimPlayer()
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->SetRelativeLocation({0, 0, 40});
 
-	CameraBoom->TargetArmLength = 300.0f; // The Camera follows at this distance behind the character
+	CameraBoom->TargetArmLength = NormalCameraBoomAramLength;
+	// The Camera follows at this distance behind the character
 	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
 	// Camera Lagging
 	CameraBoom->bEnableCameraLag = true;
@@ -280,7 +281,7 @@ void ASonheimPlayer::Look(const FVector2D LookAxisVector)
 	}
 }
 
-void ASonheimPlayer::LeftMouse_Pressed()
+void ASonheimPlayer::LeftMouse_Triggered()
 {
 	if (!CanPerformAction(CurrentPlayerState, "Action")) return;
 
@@ -294,7 +295,7 @@ void ASonheimPlayer::LeftMouse_Pressed()
 		}
 	}
 
-	int weakAttackID = 10;
+	int weakAttackID = 11;
 	TObjectPtr<UBaseSkill> skill = GetSkillByID(weakAttackID);
 	if (CastSkill(skill, this))
 	{
@@ -306,6 +307,20 @@ void ASonheimPlayer::LeftMouse_Pressed()
 
 void ASonheimPlayer::RightMouse_Pressed()
 {
+	CameraBoom->TargetArmLength = RClickCameraBoomAramLength;
+	// 카메라 변환
+	// 조준선 on
+	// 애니메이션
+}
+
+void ASonheimPlayer::RightMouse_Released()
+{
+	CameraBoom->TargetArmLength = NormalCameraBoomAramLength;
+}
+
+void ASonheimPlayer::Reload_Pressed()
+{
+	FLog::Log("Reloading...");
 }
 
 void ASonheimPlayer::Dodge_Pressed()
@@ -331,6 +346,14 @@ void ASonheimPlayer::Jump_Released()
 	StopJumping();
 }
 
+void ASonheimPlayer::WeaponSwitch_Triggered()
+{
+}
+
+
+void ASonheimPlayer::Menu_Pressed()
+{
+}
 
 void ASonheimPlayer::Restart_Pressed()
 {

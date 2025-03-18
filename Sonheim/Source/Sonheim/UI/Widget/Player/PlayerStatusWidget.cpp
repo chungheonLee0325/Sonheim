@@ -38,3 +38,9 @@ void UPlayerStatusWidget::UpdateStamina(float CurrentStamina, float Delta, float
 		StaminaText->SetText(FText::FromString(FString::Printf(TEXT("%.0f/%.0f"), CurrentStamina, MaxStamina)));
 	}
 }
+
+void UPlayerStatusWidget::SetEnableCrossHair(bool IsActive)
+{
+	ESlateVisibility bShow = IsActive ? ESlateVisibility::Visible : ESlateVisibility::Hidden;
+	CrossHair->SetVisibility(bShow);
+}
