@@ -20,7 +20,10 @@ public:
 	virtual void Enter() override;
 	virtual void Execute(float dt) override;
 	virtual void Exit() override;
-
+	
+	UFUNCTION()
+	void OnSkillCompleted();
+	
 	void SetSkillRoulette(class UBaseSkillRoulette* BaseSkillRoulette) { SkillRoulette = BaseSkillRoulette; }
 
 	UPROPERTY()
@@ -29,4 +32,7 @@ public:
 	class UBaseSkill* Skill;
 
 	float AttackTime{};
+private:
+	bool m_CanAttack = true;
+
 };

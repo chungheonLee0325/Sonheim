@@ -14,21 +14,29 @@ void USelectMode::CheckIsValid()
 
 void USelectMode::Enter()
 {
-	FLog::Log("USelectMode");
+	//FLog::Log("USelectMode");
+	FlowTime = 0.f;
 }
 
 void USelectMode::Execute(float dt)
 {
-	float Dist{static_cast<float>(FVector::Distance(m_Owner->GetActorLocation(), m_Owner->GetAggroTarget()->GetActorLocation()))};
-	if (Dist > AttackAggroRange)
+	FlowTime += dt;
+	if (FlowTime >= ChooseModeTime)
 	{
-		// PatrolMode
-		ChangeState(m_FailState);
-		return;
-	}
+		float Dist{
+			static_cast<float>(FVector::Distance(m_Owner->GetActorLocation(),
+			                                     m_Owner->GetAggroTarget()->GetActorLocation()))
+		};
+		if (Dist > AttackAggroRange)
+		{
+			// PatrolMode
+			ChangeState(m_FailState);
+			return;
+		}
 
-	// AttackMode
-	ChangeState(m_NextState);
+		// AttackMode
+		ChangeState(m_NextState);
+	}
 }
 
 void USelectMode::Exit()

@@ -18,7 +18,7 @@ void UPutDistance::CheckIsValid()
 
 void UPutDistance::Enter()
 {
-	FLog::Log("UPutDistance");
+	//FLog::Log("UPutDistance");
 
 	MoveToAttack();
 }

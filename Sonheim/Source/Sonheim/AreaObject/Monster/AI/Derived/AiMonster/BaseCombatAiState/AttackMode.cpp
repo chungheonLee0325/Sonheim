@@ -7,41 +7,46 @@
 #include "Sonheim/Utilities/LogMacro.h"
 
 void UAttackMode::InitState()
-{
-}
+{}
 
 void UAttackMode::CheckIsValid()
-{
-}
+{}
 
 void UAttackMode::Enter()
 {
-	FLog::Log("UAttackMode");
+	//FLog::Log("UAttackMode");
+	FlowTime = 0.f;
 }
 
 void UAttackMode::Execute(float dt)
 {
-	// 너무 가까우면
-	const float Dist{static_cast<float>(FVector::Distance(m_Owner->GetActorLocation(), m_Owner->GetAggroTarget()->GetActorLocation()))};
-	if (Dist < AttackMinRange)
+	FlowTime += dt;
+	if (FlowTime >= ChooseModeTime)
 	{
-		// PutDistance
-		ChangeState(m_NextState);
-		return;
-	}
+		// 너무 가까우면
+		const float Dist{
+			static_cast<float>(FVector::Distance(m_Owner->GetActorLocation(),
+			                                     m_Owner->GetAggroTarget()->GetActorLocation()))
+		};
+		if (Dist < AttackMinRange)
+		{
+			// PutDistance
+			ChangeState(m_NextState);
+			return;
+		}
 
-	// 적당한 거리면 UseSkill
-	if (Dist < AttackMaxRange)
-	{
-		ChangeState(m_SuccessState);
-		return;
-	}
+		// 적당한 거리면 UseSkill
+		if (Dist < AttackMaxRange)
+		{
+			ChangeState(m_SuccessState);
+			return;
+		}
 
-	// 멀면 Chase
-	ChangeState(m_FailState);
-	//ChangeState(m_SuccessState);
+		// 멀면 Chase
+		ChangeState(m_FailState);
+		//ChangeState(m_SuccessState);
+	}
 }
 
 void UAttackMode::Exit()
-{
-}
+{}

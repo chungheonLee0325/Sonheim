@@ -23,4 +23,7 @@ public:
 
 	float AttackMinRange{500.f};
 	float AttackMaxRange{3000.f};
+
+	float ChooseModeTime{0.5f};
+	float FlowTime{};
 };

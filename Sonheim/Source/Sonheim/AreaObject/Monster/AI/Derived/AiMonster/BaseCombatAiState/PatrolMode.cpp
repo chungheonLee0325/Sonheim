@@ -20,7 +20,7 @@ void UPatrolMode::Enter()
 {
 	if (m_Owner->bShowDebug)
 	{
-		FLog::Log("UPatrolMode");
+		//FLog::Log("UPatrolMode");
 	}
 	
 	PatrolTime = FMath::RandRange(1.5f, 2.5f);
@@ -32,6 +32,8 @@ void UPatrolMode::Execute(float dt)
 	if (m_Owner->GetAggroTarget())
 	{
 		// SelectMode
+		m_Owner->LookAtLocation(m_Owner->GetAggroTarget()->GetActorLocation(),EPMRotationMode::Duration,0.1f);
+
 		ChangeState(m_NextState);
 		return;	
 	}

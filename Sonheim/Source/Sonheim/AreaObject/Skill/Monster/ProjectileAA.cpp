@@ -23,6 +23,7 @@ UProjectileAA::UProjectileAA()
 void UProjectileAA::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
 {
 	//CurrentTime = 0.f;
+	FLog::Log("start");
 
 	Super::OnCastStart(Caster, Target);
 
@@ -49,6 +50,8 @@ void UProjectileAA::OnCastFire()
 
 void UProjectileAA::OnCastEnd()
 {
+	FLog::Log("end");
+
 	Super::OnCastEnd();
 
 }

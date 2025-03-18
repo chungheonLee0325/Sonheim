@@ -19,10 +19,11 @@ void UUseSkill::CheckIsValid()
 void UUseSkill::Enter()
 {
 	FLog::Log("UUseSkill");
+	m_CanAttack = true;
+	
 	m_Owner->LookAtLocation(m_Owner->GetAggroTarget()->GetActorLocation(),EPMRotationMode::Duration,0.1f);
 
 	int32 ID{SkillRoulette->GetRandomSkillID()};
-	FLog::Log("UUseSkill::Enter", ID );
 	if (ID != 0)
 	{
 		m_Owner->NextSkill = m_Owner->GetSkillByID(ID);
@@ -30,15 +31,25 @@ void UUseSkill::Enter()
 	
 	if (m_Owner->CanCastSkill(m_Owner->NextSkill, m_Owner->GetAggroTarget()))
 	{
-		m_Owner->CastSkill(m_Owner->NextSkill, m_Owner->GetAggroTarget());
-		m_Owner->RemoveSkillEntryByID(m_Owner->NextSkill->GetSkillData()->SkillID);
+		m_Owner->NextSkill->OnSkillComplete.BindUObject(this, &UUseSkill::OnSkillCompleted);
+
+		if (!m_Owner->CastSkill(m_Owner->NextSkill, m_Owner->GetAggroTarget()))
+		{
+			m_CanAttack = false;
+			return;
+		}
+
+		m_Owner->RemoveSkillEntryByID(ID);
+	}
+	else
+	{
+		m_CanAttack = false;
 	}
 }
 
 void UUseSkill::Execute(float dt)
 {
-	// 스킬 사용 끝나면 selection
-	if (!m_Owner->NextSkill->bIsSkillActive)
+	if (!m_CanAttack)
 	{
 		ChangeState(m_NextState);
 	}
@@ -46,4 +57,12 @@ void UUseSkill::Execute(float dt)
 
 void UUseSkill::Exit()
 {
+}
+
+void UUseSkill::OnSkillCompleted()
+{
+	// 스킬 사용 끝나면 selection
+	FLog::Log("SKillComplete");
+
+	ChangeState(m_NextState);
 }

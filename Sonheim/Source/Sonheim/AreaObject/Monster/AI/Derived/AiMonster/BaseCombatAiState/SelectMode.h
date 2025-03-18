@@ -22,4 +22,7 @@ public:
 	virtual void Exit() override;
 
 	float AttackAggroRange{5000.f};
+
+	float ChooseModeTime{1.5f};
+	float FlowTime{};
 };

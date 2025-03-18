@@ -129,7 +129,4 @@ private:
 
 	FOnMontageEnded EndDelegate;
 	FOnMontageBlendingOutStarted CompleteDelegate;
-
-public:
-	bool bIsSkillActive{false};
 };
