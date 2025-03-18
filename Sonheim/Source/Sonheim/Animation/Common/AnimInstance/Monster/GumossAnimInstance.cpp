@@ -19,7 +19,7 @@ void UGumossAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		if (Character->m_AiFSM->m_CurrentState)
 		{
 			State = Character->m_AiFSM->m_CurrentState->AiStateType();
-			LOG_PRINT(TEXT("State : %d"), State);
+			//LOG_PRINT(TEXT("State : %d"), State);
 		}
 	}
 }
