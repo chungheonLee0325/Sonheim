@@ -23,9 +23,6 @@ public:
 	
 	UFUNCTION()
 	void OnSkillCompleted();
-
-	UPROPERTY()
-	class UAttackMode* AttackMode;
 	
 	float AttackTime{};
 private:

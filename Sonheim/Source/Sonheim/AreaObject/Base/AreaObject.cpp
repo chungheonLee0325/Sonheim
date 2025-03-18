@@ -338,7 +338,7 @@ void AAreaObject::OnDie()
 		// 죽음 몽타주 재생
 		animInstance->Montage_Play(montage);
 	}
-	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	TWeakObjectPtr<AAreaObject> weakThis = this;
 	GetWorld()->GetTimerManager().SetTimer(DeathTimerHandle, [weakThis]()

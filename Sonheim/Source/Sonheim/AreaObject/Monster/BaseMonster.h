@@ -221,4 +221,6 @@ public:
 	class UMaterialInstanceDynamic* EyeMat{nullptr};
 	UPROPERTY()
 	class UMaterialInstanceDynamic* MouthMat{nullptr};
+
+	bool IsDead{false};
 };

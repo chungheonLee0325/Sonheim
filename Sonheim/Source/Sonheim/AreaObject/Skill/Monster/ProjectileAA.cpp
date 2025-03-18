@@ -66,12 +66,8 @@ void UProjectileAA::FireSandBlast()
 
 	// ToDo : Notify에서 Index 주입
 	FAttackData* AttackData = GetAttackDataByIndex(0);
-	// ToDo : TempTarget -> m_Target으로 수정
-	ASonheimPlayer* TempTarget{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-	//SpawnedSandBlast->InitElement(m_Caster, m_Target, m_Target->GetActorLocation(), AttackData);
-
-	//m_Target = TempTarget;
-	//m_TargetPos = TempTarget->GetActorLocation();
+	
+	m_TargetPos = m_Target->GetActorLocation();
 	
 	if (SpawnedSandBlast)
 	{

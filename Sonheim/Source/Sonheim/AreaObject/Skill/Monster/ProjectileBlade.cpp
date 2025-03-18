@@ -10,7 +10,7 @@
 UProjectileBlade::UProjectileBlade()
 {
 	static ConstructorHelpers::FClassFinder<ABladeWind> BladeWindClass
-	(TEXT("/Script/Engine.Blueprint'/Game/_BluePrint/Element/BladeWind/BP_BladeWind.BP_BladeWind_C'"));
+		(TEXT("/Script/Engine.Blueprint'/Game/_BluePrint/Element/BladeWind/BP_BladeWind.BP_BladeWind_C'"));
 	if (BladeWindClass.Succeeded())
 	{
 		BladeWindFactory = BladeWindClass.Class;
@@ -22,7 +22,6 @@ void UProjectileBlade::OnCastStart(class AAreaObject* Caster, AAreaObject* Targe
 	//CurrentTime = 0.f;
 
 	Super::OnCastStart(Caster, Target);
-
 }
 
 void UProjectileBlade::OnCastTick(float DeltaTime)
@@ -47,25 +46,21 @@ void UProjectileBlade::OnCastFire()
 void UProjectileBlade::OnCastEnd()
 {
 	Super::OnCastEnd();
-
 }
 
 void UProjectileBlade::FireBladeWind()
 {
 	FLog::Log("UProjectileBlade::OnCastFire");
-	
+
 	ABladeWind* SpawnedBladeWind{
 		GetWorld()->SpawnActor<ABladeWind>(BladeWindFactory, m_Caster->GetActorLocation(), m_Caster->GetActorRotation())
 	};
 
 	// ToDo : Notify에서 Index 주입
 	FAttackData* AttackData = GetAttackDataByIndex(0);
-	// ToDo : TempTarget -> m_Target으로 수정
-	ASonheimPlayer* TempTarget{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-
-	//m_Target = TempTarget;
-	//m_TargetPos = TempTarget->GetActorLocation();
 	
+	m_TargetPos = m_Target->GetActorLocation();
+
 	if (SpawnedBladeWind)
 	{
 		SpawnedBladeWind->InitElement(m_Caster, m_Target, m_TargetPos, AttackData);
