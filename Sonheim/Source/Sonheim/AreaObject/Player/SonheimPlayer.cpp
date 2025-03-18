@@ -14,6 +14,7 @@
 #include "Sonheim/AreaObject/Utility/GhostTrail.h"
 #include "Sonheim/Utilities/LogMacro.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
+#include "Utility/InventoryComponent.h"
 
 
 class UEnhancedInputLocalPlayerSubsystem;
@@ -134,7 +135,7 @@ void ASonheimPlayer::OnRevival()
 
 void ASonheimPlayer::Reward(int ItemID, int ItemValue) const
 {
-	S_PlayerState->AddItem(ItemID, ItemValue);
+	S_PlayerState->InventoryComponent->AddItem(ItemID, ItemValue);
 }
 
 // Called every frame
