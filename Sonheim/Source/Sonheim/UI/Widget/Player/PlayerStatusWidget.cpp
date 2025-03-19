@@ -42,5 +42,6 @@ void UPlayerStatusWidget::UpdateStamina(float CurrentStamina, float Delta, float
 void UPlayerStatusWidget::SetEnableCrossHair(bool IsActive)
 {
 	ESlateVisibility bShow = IsActive ? ESlateVisibility::Visible : ESlateVisibility::Hidden;
+	if (IsActive) PlayAnimation(ZoomInByLockOn);
 	CrossHair->SetVisibility(bShow);
 }

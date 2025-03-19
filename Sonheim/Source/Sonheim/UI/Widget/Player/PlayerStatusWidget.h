@@ -49,6 +49,13 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	class UImage* CrossHair;
 
+	UPROPERTY(Transient, meta = (BindWidgetAnim))
+	UWidgetAnimation* ZoomInByLockOn;
+
+	UPROPERTY(Transient, meta = (BindWidgetAnim))
+	UWidgetAnimation* ZoomOutByLockOn;
+
+
 private:
 	int Level = 0;
 };

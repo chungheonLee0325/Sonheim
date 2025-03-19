@@ -303,7 +303,7 @@ void ASonheimPlayer::LeftMouse_Triggered()
 void ASonheimPlayer::RightMouse_Pressed()
 {
 	// 카메라 변환
-	CameraBoom->TargetArmLength = RClickCameraBoomAramLength;
+	//CameraBoom->TargetArmLength = RClickCameraBoomAramLength;
 	TWeakObjectPtr<ASonheimPlayer> weakThis = this;
 	GetWorld()->GetTimerManager().SetTimer(LockOnCameraTimerHandle, [weakThis]
 	{
@@ -316,11 +316,11 @@ void ASonheimPlayer::RightMouse_Pressed()
 			}
 			float alpha = 0.f;
 			alpha = FMath::FInterpTo(strongThis->CameraBoom->TargetArmLength, strongThis->RClickCameraBoomAramLength,
-			                         0.1f, 0.5f);
+			                         0.01f, 5.f);
 
 			strongThis->CameraBoom->TargetArmLength = alpha;
 		}
-	}, 0.1f, true);
+	}, 0.01f, true);
 	// 카메라 회전
 	LookAtLocation(GetActorLocation() + GetFollowCamera()->GetForwardVector(), EPMRotationMode::Speed, 600);
 	// 록온 모드
@@ -337,9 +337,29 @@ void ASonheimPlayer::RightMouse_Triggered()
 
 void ASonheimPlayer::RightMouse_Released()
 {
-	CameraBoom->TargetArmLength = NormalCameraBoomAramLength;
+	GetWorld()->GetTimerManager().ClearTimer(LockOnCameraTimerHandle);
+	//CameraBoom->TargetArmLength = NormalCameraBoomAramLength;
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
+	
+	TWeakObjectPtr<ASonheimPlayer> weakThis = this;
+	GetWorld()->GetTimerManager().SetTimer(LockOnCameraTimerHandle, [weakThis]
+	{
+		ASonheimPlayer* strongThis = weakThis.Get();
+		if (strongThis != nullptr)
+		{
+			if (strongThis->CameraBoom->TargetArmLength == strongThis->NormalCameraBoomAramLength)
+			{
+				strongThis->GetWorld()->GetTimerManager().ClearTimer(strongThis->LockOnCameraTimerHandle);
+			}
+			float alpha = 0.f;
+			alpha = FMath::FInterpTo(strongThis->CameraBoom->TargetArmLength, strongThis->NormalCameraBoomAramLength,
+									 0.01f, 8.f);
+
+			strongThis->CameraBoom->TargetArmLength = alpha;
+		}
+	}, 0.01f, true);
+
 }
 
 void ASonheimPlayer::Reload_Pressed()
