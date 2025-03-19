@@ -3,6 +3,7 @@
 
 #include "SonheimUtility.h"
 
+#include "Sonheim/AreaObject/Base/AreaObject.h"
 
 
 float USonheimUtility::CalculateDamageMultiplier(EElementalAttribute DefenseAttribute,
@@ -41,4 +42,60 @@ float USonheimUtility::CalculateDamageMultiplier(EElementalAttribute DefenseAttr
 
 	// 잘못된 속성 값이 들어온 경우 기본 배율 1.0 반환
 	return 1.0f;
+}
+
+bool USonheimUtility::CheckMoveEnable(const UObject* WorldContextObject, const class AAreaObject* Caster, const class AAreaObject* Target, const FVector& StartLoc, const FVector& EndLoc)
+{
+	UWorld* World{GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull)};
+	if (!World)
+	{
+		return false;
+	}
+	
+	// StartLoc에서 EndLoc까지 중심점
+	const FVector TraceCenter{(StartLoc + EndLoc) * 0.5f};
+
+	// StartLoc과 EndLoc 방향
+	const FVector Direction{(EndLoc - StartLoc).GetSafeNormal()};
+	// StartLoc과 EndLoc 거리 계산
+	const float Distance{static_cast<float>(FVector::Distance(StartLoc, EndLoc))};
+
+	// 박스의 크기
+	const FVector TraceExtent{FVector(Distance * 0.5f, 50.f, 5.f)};
+	// 방향 벡터로 회전 계산
+	const FQuat BoxRotation{FRotationMatrix::MakeFromX(Direction).ToQuat()};
+
+	// BoxTrace
+	FHitResult HitResult;
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(Caster);
+	QueryParams.AddIgnoredActor(Target);
+	const FCollisionShape CollisionShape{FCollisionShape::MakeBox(TraceExtent)};
+	const bool bHit{
+		World->SweepSingleByChannel(
+			HitResult,
+			TraceCenter,
+			TraceCenter,
+			BoxRotation,
+			ECC_Visibility,
+			CollisionShape,
+			QueryParams
+		)
+	};
+
+	// 디버그용으로 BoxTrace 시각화
+	if (Caster->bShowDebug)
+	{
+		if (bHit)
+		{
+			DrawDebugBox(World, TraceCenter, TraceExtent, BoxRotation, FColor::Red, false, 2.f);
+		}
+		else
+		{
+			DrawDebugBox(World, TraceCenter, TraceExtent, BoxRotation, FColor::Green, false, 2.f);
+		}
+	}
+
+	// hit 없으면 공격 가능
+	return !bHit;
 }

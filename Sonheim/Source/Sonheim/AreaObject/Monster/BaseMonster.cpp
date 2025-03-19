@@ -298,6 +298,7 @@ float ABaseMonster::TakeDamage(float DamageAmount, struct FDamageEvent const& Da
                                class AController* EventInstigator, AActor* DamageCauser)
 {
 	float damage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	FLog::Log("TakeDamage", damage);
 	if (damage > 0.f)
 	{
 		TArray<int> array = {1, 5, 10};

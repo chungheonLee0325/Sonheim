@@ -9,6 +9,7 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/Utilities/SonheimUtility.h"
 
 void UPartnerPatrolMode::InitState()
 {}
@@ -138,9 +139,37 @@ void UPartnerPatrolMode::TeleportToPlayer()
 	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
 	FVector TargetLocation{Player->GetActorLocation()};
 	FVector Direction{Player->GetActorForwardVector()};
-	FVector DesiredLocation{TargetLocation + Direction * 100.f};
 
-	NavSystem->ProjectPointToNavigation(DesiredLocation, Next);
+	for (int32 i{}; i < 36; ++i)
+	{
+		// Direction 회전
+		const float Yaw{0.f + 10.f * i};
+		FQuat Rotation{FQuat(FRotator(0.f, Yaw, 0.f))};
+		Direction = Rotation.RotateVector(Direction);
+		
+		FVector DesiredLocation{TargetLocation + Direction * 100.f};
+
+		if (!NavSystem->ProjectPointToNavigation(DesiredLocation, Next))
+		{
+			// 갈 곳 없으면
+			return;
+		}
+
+		// 공격이 안되는 곳이면
+		//if (!CheckMoveEnable(TargetLocation, Next.Location))
+		if (!USonheimUtility::CheckMoveEnable(this, m_Owner, m_Owner->GetAggroTarget(), TargetLocation, Next.Location))		
+		{
+			// 그럴 일은 없지만 마지막까지 안되면 그냥
+			if (i == 15)
+			{
+				return;
+			}
+			
+			continue;
+		}
+		
+		break;
+	}
 
 	m_Owner->SetActorLocation(Next.Location);
 }
@@ -191,54 +220,4 @@ void UPartnerPatrolMode::PatrolMoveCompleted(struct FAIRequestID RequestID, cons
 		m_Owner->GetCharacterMovement()->MaxWalkSpeed = 600.f;
 		StopUpdateLocation = false;
 	}
-}
-
-bool UPartnerPatrolMode::CheckMoveEnable(const FVector& StartLoc, const FVector& EndLoc)
-{
-	// StartLoc에서 EndLoc까지 중심점
-	const FVector TraceCenter{(StartLoc + EndLoc) * 0.5f};
-
-	// StartLoc과 EndLoc 방향
-	const FVector Direction{(EndLoc - StartLoc).GetSafeNormal()};
-	// StartLoc과 EndLoc 거리 계산
-	const float Distance{static_cast<float>(FVector::Distance(StartLoc, EndLoc))};
-
-	// 박스의 크기
-	const FVector TraceExtent{FVector(Distance * 0.5f, 50.f, 5.f)};
-	// 방향 벡터로 회전 계산
-	const FQuat BoxRotation{FRotationMatrix::MakeFromX(Direction).ToQuat()};
-
-	// BoxTrace
-	FHitResult HitResult;
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(m_Owner);
-	QueryParams.AddIgnoredActor(m_Owner->GetAggroTarget());
-	const FCollisionShape CollisionShape{FCollisionShape::MakeBox(TraceExtent)};
-	const bool bHit{
-		GetWorld()->SweepSingleByChannel(
-			HitResult,
-			TraceCenter,
-			TraceCenter,
-			BoxRotation,
-			ECC_Visibility,
-			CollisionShape,
-			QueryParams
-		)
-	};
-
-	// 디버그용으로 BoxTrace 시각화
-	if (m_Owner->bShowDebug)
-	{
-		if (bHit)
-		{
-			DrawDebugBox(GetWorld(), TraceCenter, TraceExtent, BoxRotation, FColor::Red, false, 2.f);
-		}
-		else
-		{
-			DrawDebugBox(GetWorld(), TraceCenter, TraceExtent, BoxRotation, FColor::Green, false, 2.f);
-		}
-	}
-
-	// hit 없으면 공격 가능
-	return !bHit;
 }

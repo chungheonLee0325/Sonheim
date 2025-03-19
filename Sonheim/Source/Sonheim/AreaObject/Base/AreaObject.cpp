@@ -197,7 +197,7 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 		// 같은 타입의 AreaObject끼리는 데미지 x
 		if (damageCauser->dt_AreaObject->AreaObjectType == this->dt_AreaObject->AreaObjectType)
 		{
-			return 0;
+			//return 0;
 		}
 	}
 
@@ -447,6 +447,7 @@ bool AAreaObject::CastSkill(UBaseSkill* Skill, AAreaObject* Target)
 {
 	if (CanCastSkill(Skill, Target))
 	{
+
 		UpdateCurrentSkill(Skill);
 		Skill->OnCastStart(this, Target);
 		return true;

@@ -32,9 +32,7 @@ void UUseSkill::Enter()
 			m_CanAttack = false;
 			return;
 		}
-
-		m_Owner->NextSkill->GetSkillData()->SkillID;
-
+		
 		m_Owner->RemoveSkillEntryByID(m_Owner->NextSkill->GetSkillData()->SkillID);
 	}
 	else

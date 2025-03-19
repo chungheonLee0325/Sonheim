@@ -16,7 +16,6 @@ void UFlamethrower::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
 {
 	Super::OnCastStart(Caster, Target);
 
-	OnCastFire();
 }
 
 void UFlamethrower::OnCastTick(float DeltaTime)
@@ -27,12 +26,15 @@ void UFlamethrower::OnCastTick(float DeltaTime)
 void UFlamethrower::OnCastFire()
 {
 	Super::OnCastFire();
-
-	GetWorld()->GetTimerManager().SetTimer(FireTimer, this, &UFlamethrower::FireFlame, 0.2f, true);
+	
+	//GetWorld()->GetTimerManager().SetTimer(FireTimer, this, &UFlamethrower::FireFlame, 0.2f, true);
+	FireFlame();
 }
 
 void UFlamethrower::FireFlame()
 {
+	FLog::Log();
+	
 	FVector StartPos{m_Caster->GetActorLocation()};
 	FVector EndPos{
 		StartPos + UKismetMathLibrary::RandomUnitVectorInEllipticalConeInDegrees(
@@ -56,12 +58,16 @@ void UFlamethrower::FireFlame()
 		{
 			DrawDebugLine(GetWorld(), StartPos, HitInfo.ImpactPoint, FColor::Red, false, 1.f, 0, 1.f);
 		}
+
+		FAttackData* AttackData = GetAttackDataByIndex(0);
+		m_Caster->CalcDamage(*AttackData, m_Caster, HitInfo.GetActor(), HitInfo);
 		
-		ASonheimPlayer* Player{Cast<ASonheimPlayer>(HitInfo.GetActor())};
-		if (Player)
-		{
-			FAttackData* AttackData = GetAttackDataByIndex(0);
-			m_Caster->CalcDamage(*AttackData, m_Caster, Player, HitInfo);
-		}
+		// 
+		// ASonheimPlayer* Player{Cast<ASonheimPlayer>(HitInfo.GetActor())};
+		// if (Player)
+		// {
+		// 	FAttackData* AttackData = GetAttackDataByIndex(0);
+		// 	m_Caster->CalcDamage(*AttackData, m_Caster, Player, HitInfo);
+		// }
 	}
 }

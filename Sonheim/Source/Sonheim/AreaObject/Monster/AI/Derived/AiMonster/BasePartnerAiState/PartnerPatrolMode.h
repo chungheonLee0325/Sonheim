@@ -27,7 +27,6 @@ public:
 	void MoveToPlayer();
 	void MoveCompleted(struct FAIRequestID RequestID, const struct FPathFollowingResult& Result);
 	void PatrolMoveCompleted(struct FAIRequestID RequestID, const struct FPathFollowingResult& Result);
-	bool CheckMoveEnable(const FVector& StartLoc, const FVector& EndLoc);
 
 	float PatrolTime{1.f};
 	float FlowTime{};

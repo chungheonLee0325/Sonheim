@@ -26,13 +26,19 @@ void UPartnerSkillMode::Enter()
 	if (Player && Player->GetMesh())
 	{
 		m_Owner->SetActorEnableCollision(false);
-		m_Owner->GetMesh()->SetRelativeLocationAndRotation(FVector(0), FRotator(0));
-		m_Owner->AttachToComponent(Player->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("Socket_Weapon_R"));
+		m_Owner->GetMesh()->SetRelativeLocation(FVector(0));
+		m_Owner->AttachToComponent(Player->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("PartnerWeapon"));
 	}
 }
 
 void UPartnerSkillMode::Execute(float dt)
 {
+	// 스킬 사용
+	if (m_Owner->bActivateSkill)
+	{
+		ChangeState(m_SuccessState);
+		return;
+	}
 	// 해제
 	if (!m_Owner->IsCalled)
 	{
@@ -49,7 +55,7 @@ void UPartnerSkillMode::DetachFromPlayer()
 {
 	m_Owner->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 	m_Owner->SetActorEnableCollision(true);
-	m_Owner->GetMesh()->SetRelativeLocationAndRotation(FVector(0, 0, -60), FRotator(0, -90, 0));
+	m_Owner->GetMesh()->SetRelativeLocation(FVector(0, 0, -60));
 
 	// PartnerPatrolMode
 	ChangeState(m_NextState);

@@ -226,4 +226,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool IsCalled{false};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bActivateSkill{false};
 };

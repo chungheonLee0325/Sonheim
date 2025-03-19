@@ -181,7 +181,8 @@ enum class EAiStateType : uint8
 	PutDistance UMETA(DisplayName = "PutDistance"),
 	SelectMode UMETA(DisplayName = "SelectMode"),	// 15
 	PartnerPatrolMode UMETA(DisplayName = "PartnerPatrolMode"),
-	PartnerSkillMode UMETA(DisplayName = "PartnerSkillMode")
+	PartnerSkillMode UMETA(DisplayName = "PartnerSkillMode"),
+	UsePartnerSkill UMETA(DisplayName = "UsePartnerSkill"),	// 18
 };
 
 // 공격시 Trace System에서 사용 - EnableCollisionNotifyState 참조

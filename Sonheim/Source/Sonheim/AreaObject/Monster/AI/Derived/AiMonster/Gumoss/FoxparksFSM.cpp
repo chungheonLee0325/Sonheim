@@ -5,6 +5,7 @@
 
 #include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/BasePartnerAiState/PartnerPatrolMode.h"
 #include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/BasePartnerAiState/PartnerSkillMode.h"
+#include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/BasePartnerAiState/UsePartnerSkill.h"
 
 
 // Sets default values for this component's properties
@@ -68,8 +69,13 @@ void UFoxparksFSM::InitStatePool()
 	AddState(EAiStateType::PartnerPatrolMode, PartnerPatrolMode);
 
 	// PartnerSkillMode 
-	auto PartnerSkillMode = CreateState<UPartnerSkillMode>(this, m_Owner,EAiStateType::PartnerPatrolMode);
+	auto PartnerSkillMode = CreateState<UPartnerSkillMode>(this, m_Owner,EAiStateType::PartnerPatrolMode, EAiStateType::UsePartnerSkill);
 	AddState(EAiStateType::PartnerSkillMode, PartnerSkillMode);
+
+	// UsePartnerSkill 
+	auto UsePartnerSkill = CreateState<UUsePartnerSkill>(this, m_Owner,EAiStateType::PartnerSkillMode);
+	UsePartnerSkill->SetPartnerSkillID(1060);
+	AddState(EAiStateType::UsePartnerSkill, UsePartnerSkill);
 	
 	// 시작 State
 	ChangeState(EAiStateType::PartnerPatrolMode);
