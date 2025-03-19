@@ -70,15 +70,7 @@ ABaseMonster::ABaseMonster()
 	{
 		HPWidgetComponent->SetWidgetClass(monsterHPWidget.Class);
 	}
-
-	PickaxeMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PickaxeMesh"));
-
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> PickaxeMeshObject
-		(TEXT("/Script/Engine.StaticMesh'/Game/SurvivalGameKitV2/Meshes/Static/SM_Pickaxe_01.SM_Pickaxe_01'"));
-	if (PickaxeMeshObject.Succeeded())
-	{
-		PickaxeMesh->SetStaticMesh(PickaxeMeshObject.Object);
-	}
+	
 
 	HeadVFXPoint = CreateDefaultSubobject<USceneComponent>(TEXT("HeadVFXPoint"));
 }
@@ -116,8 +108,7 @@ void ABaseMonster::SetHPWidgetVisibilityByDuration(float Duration)
 {
 	SetHPWidgetVisibility(true);
 	TWeakObjectPtr<ABaseMonster> weakThis = this;
-	GetWorld()->GetTimerManager().SetTimer(HPWidgetVisibleTimer, [weakThis]()
-	{
+	GetWorld()->GetTimerManager().SetTimer(HPWidgetVisibleTimer, [weakThis]() {
 		ABaseMonster* strongThis = weakThis.Get();
 		if (strongThis != nullptr)
 		{
@@ -135,7 +126,7 @@ UBaseSkillRoulette* ABaseMonster::CreateSkillRoulette()
 void ABaseMonster::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	WalkSpeed = dt_AreaObject->WalkSpeed;
 	ForcedWalkSpeed = WalkSpeed * 5.f;
 
@@ -183,7 +174,10 @@ void ABaseMonster::BeginPlay()
 		LOG_SCREEN("FSM is nullptr. please set in construct");
 	}
 
-	PickaxeMesh->SetVisibility(false);
+	if (PickaxeMesh)
+	{
+		PickaxeMesh->SetVisibility(false);
+	}
 }
 
 // Called every frame
@@ -201,8 +195,7 @@ void ABaseMonster::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 void ABaseMonster::OnBodyBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                       UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
                                       const FHitResult& SweepResult)
-{
-}
+{}
 
 UBaseAiFSM* ABaseMonster::CreateFSM()
 {
@@ -260,10 +253,10 @@ void ABaseMonster::OnDie()
 	// 죽는 애니메이션 하고
 	IsDead = true;
 	ChangeFace(EFaceType::Dead);
-	
+
 	// 굴러다니게
 	GetCapsuleComponent()->SetSimulatePhysics(true);
-	
+
 	// TWeakObjectPtr<AAreaObject> weakThis = this;
 	// GetWorld()->GetTimerManager().SetTimer(DeathTimerHandle, [weakThis]()
 	// {
@@ -275,7 +268,8 @@ void ABaseMonster::OnDie()
 	// 	}
 	// }, DestroyDelayTime, false);
 	// FSM 정지
-	if (m_AiFSM != nullptr) m_AiFSM->StopFSM();
+	if (m_AiFSM != nullptr)
+		m_AiFSM->StopFSM();
 	// 움직임 정지
 	StopAll();
 }
@@ -301,12 +295,12 @@ void ABaseMonster::InitializeHUD()
 }
 
 float ABaseMonster::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
-	class AController* EventInstigator, AActor* DamageCauser)
+                               class AController* EventInstigator, AActor* DamageCauser)
 {
 	float damage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	if (damage > 0.f)
 	{
-		TArray<int> array = {1,5,10};
+		TArray<int> array = {1, 5, 10};
 		int index = FMath::RandRange(0, 2);
 		GetNearResourceObject(array[index]);
 
@@ -317,7 +311,7 @@ float ABaseMonster::TakeDamage(float DamageAmount, struct FDamageEvent const& Da
 			m_AggroTarget = Player;
 		}
 	}
-	
+
 	return damage;
 }
 
@@ -361,7 +355,8 @@ void ABaseMonster::ChangeFace(EFaceType Type) const
 
 void ABaseMonster::Surprise()
 {
-	if (bIsForced) return;
+	if (bIsForced)
+		return;
 	bIsSurprise = true;
 	// Ouch Face
 	//ChangeFace(2);
@@ -369,7 +364,8 @@ void ABaseMonster::Surprise()
 
 void ABaseMonster::CalmDown()
 {
-	if (bIsForced) return;
+	if (bIsForced)
+		return;
 	bIsSurprise = false;
 	// Smile Face
 	//ChangeFace(0);
@@ -450,7 +446,7 @@ class ABaseResourceObject* ABaseMonster::GetNearResourceObject(int ResourceID)
 
 	FVector OwnerLocation{GetActorLocation()};
 	float MinDistance = FLT_MAX;
-	
+
 	for (auto FindTarget : TargetArr)
 	{
 		auto BaseResourceTarget = Cast<ABaseResourceObject>(FindTarget);
@@ -458,7 +454,7 @@ class ABaseResourceObject* ABaseMonster::GetNearResourceObject(int ResourceID)
 		if (BaseResourceTarget->m_ResourceObjectID == ResourceID)
 		{
 			float Distance = FVector::Dist(OwnerLocation, BaseResourceTarget->GetActorLocation());
-			
+
 			if (Distance < MinDistance)
 			{
 				MinDistance = Distance;

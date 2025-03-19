@@ -91,6 +91,10 @@ void UPutDistance::MoveToAttack()
 		m_Owner->AIController->GetPathFollowingComponent()->OnRequestFinished.AddUObject(
 			this, &UPutDistance::MoveCompleted);
 	}
+	else
+	{
+		FLog::Log("Failed to move to PathFollowingRequestResult");
+	}
 }
 
 void UPutDistance::MoveCompleted(struct FAIRequestID RequestID, const struct FPathFollowingResult& Result)

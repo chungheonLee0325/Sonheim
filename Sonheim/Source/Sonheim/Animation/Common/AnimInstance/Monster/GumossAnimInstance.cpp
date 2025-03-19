@@ -3,6 +3,7 @@
 
 #include "GumossAnimInstance.h"
 
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/AreaObject/Monster/AI/Base/BaseAiFSM.h"
 #include "Sonheim/AreaObject/Monster/AI/Base/BaseAiState.h"
@@ -17,11 +18,12 @@ void UGumossAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	{
 		Speed = Character->GetVelocity().Length();
 		bIsDead = Character->IsDead;
-		
+		bIsJump = Character->GetCharacterMovement()->IsFalling();
+
 		if (Character->m_AiFSM->m_CurrentState)
 		{
 			State = Character->m_AiFSM->m_CurrentState->AiStateType();
-			LOG_PRINT(TEXT("State : %d"), State);
+			//LOG_PRINT(TEXT("State : %d"), State);
 		}
 	}
 }

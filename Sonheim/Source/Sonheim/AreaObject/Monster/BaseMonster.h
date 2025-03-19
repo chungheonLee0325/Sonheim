@@ -223,4 +223,7 @@ public:
 	class UMaterialInstanceDynamic* MouthMat{nullptr};
 
 	bool IsDead{false};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool IsCalled{false};
 };
