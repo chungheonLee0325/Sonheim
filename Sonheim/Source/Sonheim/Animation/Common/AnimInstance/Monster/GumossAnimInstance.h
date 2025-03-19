@@ -22,4 +22,10 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EAiStateType State;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsDead{false};
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsJump{false};
 };

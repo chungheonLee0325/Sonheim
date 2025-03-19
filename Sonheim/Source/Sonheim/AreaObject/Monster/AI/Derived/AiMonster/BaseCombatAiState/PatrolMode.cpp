@@ -62,7 +62,7 @@ void UPatrolMode::Patrol()
 
 	if (m_Owner->bShowDebug)
 	{
-		FLog::Log("Patrol");
+		//FLog::Log("Patrol");
 	}
 
 	FVector Start{m_Owner->GetActorLocation()};

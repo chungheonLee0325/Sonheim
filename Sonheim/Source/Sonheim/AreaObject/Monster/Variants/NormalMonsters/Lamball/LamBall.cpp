@@ -26,8 +26,15 @@ ALamBall::ALamBall()
 		GetMesh()->SetRelativeLocationAndRotation(FVector(0, 0, -90), FRotator(0, -90, 0));
 		GetMesh()->SetRelativeScale3D(FVector(0.7f));
 	}
-
-	PickaxeMesh->SetupAttachment(GetMesh(), "Pickaxe");
+	
+	PickaxeMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PickaxeMesh"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> PickaxeMeshObject
+		(TEXT("/Script/Engine.StaticMesh'/Game/SurvivalGameKitV2/Meshes/Static/SM_Pickaxe_01.SM_Pickaxe_01'"));
+	if (PickaxeMeshObject.Succeeded())
+	{
+		PickaxeMesh->SetStaticMesh(PickaxeMeshObject.Object);
+		PickaxeMesh->SetupAttachment(GetMesh(), "Pickaxe");
+	}
 	
 	GetCapsuleComponent()->SetCapsuleRadius(90.f);
 	GetCapsuleComponent()->SetCapsuleHalfHeight(90.f);

@@ -221,4 +221,12 @@ public:
 	class UMaterialInstanceDynamic* EyeMat{nullptr};
 	UPROPERTY()
 	class UMaterialInstanceDynamic* MouthMat{nullptr};
+
+	bool IsDead{false};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool IsCalled{false};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bActivateSkill{false};
 };

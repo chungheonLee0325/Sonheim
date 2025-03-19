@@ -23,5 +23,4 @@ public:
 
 	void MoveToAttack();
 	void MoveCompleted(struct FAIRequestID RequestID, const struct FPathFollowingResult& Result);
-	bool CheckAttackEnable(const FVector& StartLoc, const FVector& EndLoc);
 };

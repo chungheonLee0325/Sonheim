@@ -32,12 +32,8 @@ void UUseSkill::Enter()
 			m_CanAttack = false;
 			return;
 		}
-
-		AttackMode = Cast<UAttackMode>(m_Owner->m_AiFSM->m_PreviousState);
-		if (AttackMode)
-		{
-			m_Owner->RemoveSkillEntryByID(AttackMode->ID);
-		}
+		
+		m_Owner->RemoveSkillEntryByID(m_Owner->NextSkill->GetSkillData()->SkillID);
 	}
 	else
 	{
