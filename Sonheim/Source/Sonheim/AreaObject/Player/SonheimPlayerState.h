@@ -40,7 +40,7 @@ protected:
 
 public:
 	UPROPERTY(BlueprintReadWrite, Category="Inventory")
-	UInventoryComponent* InventoryComponent;
+	UInventoryComponent* m_InventoryComponent;
 	
 private:
 	UPROPERTY()

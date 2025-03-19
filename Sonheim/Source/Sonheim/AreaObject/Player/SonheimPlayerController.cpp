@@ -6,16 +6,20 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "SonheimPlayer.h"
+#include "SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
+#include "Sonheim/UI/Widget/Player/Inventory/InventoryWidget.h"
 #include "Sonheim/Utilities/LogMacro.h"
+#include "Utility/InventoryComponent.h"
 
 ASonheimPlayerController::ASonheimPlayerController()
 {
 	// Enhanced Input Setting
 	static ConstructorHelpers::FObjectFinder<UInputMappingContext> tempInputMapping(
-		TEXT("/Script/EnhancedInput.InputMappingContext'/Game/_BluePrint/AreaObject/Player/Input/IMC_Default.IMC_Default'"));
+		TEXT(
+			"/Script/EnhancedInput.InputMappingContext'/Game/_BluePrint/AreaObject/Player/Input/IMC_Default.IMC_Default'"));
 	if (tempInputMapping.Succeeded())
 	{
 		DefaultMappingContext = tempInputMapping.Object;
@@ -33,27 +37,30 @@ ASonheimPlayerController::ASonheimPlayerController()
 		LookAction = tempLookAction.Object;
 	}
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempLeftMouseAction(
-		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_LeftButton.IA_LeftButton'"));
+		TEXT(
+			"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_LeftButton.IA_LeftButton'"));
 	if (tempLeftMouseAction.Succeeded())
 	{
 		LeftMouseAction = tempLeftMouseAction.Object;
 	}
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempRightMouseAction(
-		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_RightButton.IA_RightButton'"));
+		TEXT(
+			"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_RightButton.IA_RightButton'"));
 	if (tempRightMouseAction.Succeeded())
 	{
 		RightMouseAction = tempRightMouseAction.Object;
 	}
 
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempJumpAction(
-	TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Jump.IA_Jump'"));
+		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Jump.IA_Jump'"));
 	if (tempJumpAction.Succeeded())
 	{
 		JumpAction = tempJumpAction.Object;
 	}
-	
+
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempSprintAction(
-	TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Sprint.IA_Sprint'"));
+		TEXT(
+			"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Sprint.IA_Sprint'"));
 	if (tempSprintAction.Succeeded())
 	{
 		SprintAction = tempSprintAction.Object;
@@ -67,21 +74,23 @@ ASonheimPlayerController::ASonheimPlayerController()
 	}
 
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempReload(
-	TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Reload.IA_Reload'"));
+		TEXT(
+			"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Reload.IA_Reload'"));
 	if (tempReload.Succeeded())
 	{
 		ReloadAction = tempReload.Object;
 	}
 
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempSwitchWeapon(
-		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_SwtichWeapon.IA_SwtichWeapon'"));
+		TEXT(
+			"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_SwtichWeapon.IA_SwtichWeapon'"));
 	if (tempSwitchWeapon.Succeeded())
 	{
 		SwitchWeaponAction = tempSwitchWeapon.Object;
 	}
 
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempMenu(
-	TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Menu.IA_Menu'"));
+		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Menu.IA_Menu'"));
 	if (tempMenu.Succeeded())
 	{
 		MenuAction = tempMenu.Object;
@@ -105,6 +114,14 @@ ASonheimPlayerController::ASonheimPlayerController()
 		StatusWidgetClass = WidgetClassFinder.Class;
 	}
 
+	static ConstructorHelpers::FClassFinder<UInventoryWidget> inventoryWidgetClassFinder(
+		TEXT(
+			"/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/Player/BP_Inventory.BP_Inventory_C'"));
+	if (inventoryWidgetClassFinder.Succeeded())
+	{
+		InventoryWidgetClass = inventoryWidgetClassFinder.Class;
+	}
+
 	//ConstructorHelpers::FClassFinder<UUserWidget> missionFailWidget(
 	//	TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrints/Widget/WB_KazanHasFallen.WB_KazanHasFallen_C'"));
 	//if (missionFailWidget.Succeeded())
@@ -122,6 +139,7 @@ void ASonheimPlayerController::BeginPlay()
 		Subsystem->AddMappingContext(DefaultMappingContext, 0);
 	}
 	m_Player = Cast<ASonheimPlayer>(GetPawn());
+	m_PlayerState = GetPlayerState<ASonheimPlayerState>();
 
 	// UI 초기화
 	//InitializeHUD();
@@ -161,9 +179,11 @@ void ASonheimPlayerController::InitializeHUD()
 		if (m_Player->m_LevelComponent)
 		{
 			m_Player->m_LevelComponent->OnLevelChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateLevel);
-			StatusWidget->UpdateLevel(m_Player->m_LevelComponent->GetCurrentLevel(),m_Player->m_LevelComponent->GetCurrentLevel(),true);
+			StatusWidget->UpdateLevel(m_Player->m_LevelComponent->GetCurrentLevel(),
+			                          m_Player->m_LevelComponent->GetCurrentLevel(), true);
 			m_Player->m_LevelComponent->OnExperienceChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateExp);
-			StatusWidget->UpdateExp(m_Player->m_LevelComponent->GetCurrentExp(),m_Player->m_LevelComponent->GetExpToNextLevel(),0);
+			StatusWidget->UpdateExp(m_Player->m_LevelComponent->GetCurrentExp(),
+			                        m_Player->m_LevelComponent->GetExpToNextLevel(), 0);
 		}
 		StatusWidget->SetEnableCrossHair(false);
 	}
@@ -191,39 +211,41 @@ void ASonheimPlayerController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(RightMouseAction, ETriggerEvent::Started, this,
 		                                   &ASonheimPlayerController::On_Mouse_Right_Pressed);
 		EnhancedInputComponent->BindAction(RightMouseAction, ETriggerEvent::Triggered, this,
-								   &ASonheimPlayerController::On_Mouse_Right_Triggered);
+		                                   &ASonheimPlayerController::On_Mouse_Right_Triggered);
 		EnhancedInputComponent->BindAction(RightMouseAction, ETriggerEvent::Completed, this,
-								   &ASonheimPlayerController::On_Mouse_Right_Released);
+		                                   &ASonheimPlayerController::On_Mouse_Right_Released);
 
 		// Jump
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this,
-										   &ASonheimPlayerController::On_Jump_Pressed);
+		                                   &ASonheimPlayerController::On_Jump_Pressed);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this,
-										   &ASonheimPlayerController::On_Jump_Released);
+		                                   &ASonheimPlayerController::On_Jump_Released);
 
 		// Sprint
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this,
-								   &ASonheimPlayerController::On_Sprint_Pressed);
+		                                   &ASonheimPlayerController::On_Sprint_Pressed);
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered, this,
-								   &ASonheimPlayerController::On_Sprint_Triggered);
+		                                   &ASonheimPlayerController::On_Sprint_Triggered);
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this,
-								   &ASonheimPlayerController::On_Sprint_Released);
-		
+		                                   &ASonheimPlayerController::On_Sprint_Released);
+
 		// Evade
 		EnhancedInputComponent->BindAction(EvadeAction, ETriggerEvent::Started, this,
 		                                   &ASonheimPlayerController::On_Dodge_Pressed);
 
 		// Reload
 		EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this,
-										   &ASonheimPlayerController::On_Reload_Pressed);
+		                                   &ASonheimPlayerController::On_Reload_Pressed);
 
 		// SwitchWeapon
 		EnhancedInputComponent->BindAction(SwitchWeaponAction, ETriggerEvent::Triggered, this,
-										   &ASonheimPlayerController::On_WeaponSwitch_Triggered);
-										   
+		                                   &ASonheimPlayerController::On_WeaponSwitch_Triggered);
+
 		// Menu
 		EnhancedInputComponent->BindAction(MenuAction, ETriggerEvent::Started, this,
-										   &ASonheimPlayerController::On_Menu_Pressed);
+		                                   &ASonheimPlayerController::On_Menu_Pressed);
+		EnhancedInputComponent->BindAction(MenuAction, ETriggerEvent::Completed, this,
+		                                   &ASonheimPlayerController::On_Menu_Released);
 
 		// Restart
 		EnhancedInputComponent->BindAction(RestartAction, ETriggerEvent::Started, this,
@@ -307,33 +329,43 @@ void ASonheimPlayerController::On_Reload_Pressed(const FInputActionValue& Value)
 
 void ASonheimPlayerController::On_WeaponSwitch_Triggered(const FInputActionValue& Value)
 {
-	m_Player->WeaponSwitch_Triggered();	
+	m_Player->WeaponSwitch_Triggered();
 }
 
 void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 {
-	m_Player->Menu_Pressed();
+	if (!IsMenuActivate)
+	{
+		IsMenuActivate = true;
+
+		m_Player->Menu_Pressed();
+		InventoryWidget = CreateWidget<UInventoryWidget>(this, InventoryWidgetClass);
+		InventoryWidget->AddToViewport(0);
+		m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(InventoryWidget,
+		                                                                   &UInventoryWidget::UpdateInventoryFromData);
+		InventoryWidget->UpdateInventoryFromData(m_PlayerState->m_InventoryComponent->GetInventory());
+		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(InventoryWidget,
+		                                                                   &UInventoryWidget::UpdateEquipmentFromData);
+		auto mapData = m_PlayerState->m_InventoryComponent->GetEquippedItems();
+		for (auto pair : mapData)
+		{
+			InventoryWidget->UpdateEquipmentFromData(pair.Key, pair.Value);
+		}
+	}
+	else
+	{
+		IsMenuActivate = false;
+
+		m_PlayerState->m_InventoryComponent->OnInventoryChanged.RemoveDynamic(
+			InventoryWidget, &UInventoryWidget::UpdateInventoryFromData);
+		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(InventoryWidget,
+		                                                                      &UInventoryWidget::
+		                                                                      UpdateEquipmentFromData);
+		InventoryWidget->RemoveFromViewport();
+		InventoryWidget = nullptr;
+	}
 }
 
-
-//void ASonheimPlayerController::AddCurrency(ECurrencyType CurrencyType, int CurrencyValue)
-//{
-//	if (CurrencyValue < 0) return;
-//	CurrencyValues[CurrencyType] += CurrencyValue;
-//	this->OnCurrencyChange.Broadcast(CurrencyType, CurrencyValues[CurrencyType], CurrencyValue);
-//}
-//
-//void ASonheimPlayerController::RemoveCurrency(ECurrencyType CurrencyType, int CurrencyValue)
-//{
-//	if (CurrencyValue < 0) return;
-//	// 스태미나 감소
-//	float oldCurrency = CurrencyValues[CurrencyType];
-//	CurrencyValues[CurrencyType] = FMath::Max(CurrencyValues[CurrencyType] - CurrencyValue, 0);
-//	this->OnCurrencyChange.Broadcast(CurrencyType, CurrencyValues[CurrencyType],
-//	                                 -(oldCurrency - CurrencyValues[CurrencyType]));
-//}
-//
-//int ASonheimPlayerController::GetCurrencyValue(ECurrencyType CurrencyType)
-//{
-//	return CurrencyValues[CurrencyType];
-//}
+void ASonheimPlayerController::On_Menu_Released(const FInputActionValue& Value)
+{
+}

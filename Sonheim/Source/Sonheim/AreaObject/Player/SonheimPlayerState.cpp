@@ -10,7 +10,7 @@
 
 ASonheimPlayerState::ASonheimPlayerState()
 {
-	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
+	m_InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
 }
 
 void ASonheimPlayerState::BeginPlay()

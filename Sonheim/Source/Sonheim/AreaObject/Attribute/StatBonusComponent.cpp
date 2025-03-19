@@ -74,27 +74,27 @@ void UStatBonusComponent::ApplyItemStatBonuses(int ItemID, bool bApply)
 	if (bApply)
 	{
 		// HP 보너스 적용
-		if (ItemData->HPBonus != 0)
+		if (ItemData->EquipmentData.HPBonus != 0)
 		{
-			AddStatBonus(EAreaObjectStatType::HP, ItemData->HPBonus, EStatModifierType::Additive, ItemID);
+			AddStatBonus(EAreaObjectStatType::HP, ItemData->EquipmentData.HPBonus, EStatModifierType::Additive, ItemID);
 		}
 		
 		// 스태미나 보너스 적용
-		if (ItemData->StaminaBonus != 0)
+		if (ItemData->EquipmentData.StaminaBonus != 0)
 		{
-			AddStatBonus(EAreaObjectStatType::Stamina, ItemData->StaminaBonus, EStatModifierType::Additive, ItemID);
+			AddStatBonus(EAreaObjectStatType::Stamina, ItemData->EquipmentData.StaminaBonus, EStatModifierType::Additive, ItemID);
 		}
 		
 		// 공격력 보너스 적용
-		if (ItemData->DamageBonus != 0)
+		if (ItemData->EquipmentData.DamageBonus != 0)
 		{
-			AddStatBonus(EAreaObjectStatType::Attack, ItemData->DamageBonus, EStatModifierType::Additive, ItemID);
+			AddStatBonus(EAreaObjectStatType::Attack, ItemData->EquipmentData.DamageBonus, EStatModifierType::Additive, ItemID);
 		}
 		
 		// 방어력 보너스 적용
-		if (ItemData->DefenseBonus != 0)
+		if (ItemData->EquipmentData.DefenseBonus != 0)
 		{
-			AddStatBonus(EAreaObjectStatType::Defense, ItemData->DefenseBonus, EStatModifierType::Additive, ItemID);
+			AddStatBonus(EAreaObjectStatType::Defense, ItemData->EquipmentData.DefenseBonus, EStatModifierType::Additive, ItemID);
 		}
 		
 		// 추가 스탯 적용...

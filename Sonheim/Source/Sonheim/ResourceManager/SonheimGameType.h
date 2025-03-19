@@ -175,12 +175,11 @@ enum class EAiStateType : uint8
 	SelectAction UMETA(DisplayName = "SelectAction"),
 	Lumbering UMETA(DisplayName = "Lumbering"),
 	ReturnResource UMETA(DisplayName = "ReturnResource"),
-	PatrolMode UMETA(DisplayName = "PatrolMode"),	// 11
-	AttackMode UMETA(DisplayName = "AttackMode"),	// 12
+	PatrolMode UMETA(DisplayName = "PatrolMode"), // 11
+	AttackMode UMETA(DisplayName = "AttackMode"), // 12
 	UseSkill UMETA(DisplayName = "UseSkill"),
 	PutDistance UMETA(DisplayName = "PutDistance"),
-	SelectMode UMETA(DisplayName = "SelectMode")	// 15
-	
+	SelectMode UMETA(DisplayName = "SelectMode") // 15
 };
 
 // 공격시 Trace System에서 사용 - EnableCollisionNotifyState 참조
@@ -445,6 +444,14 @@ struct FSkillData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float CoolTime = 0.0f;
 
+	// 스킬 Fire 지연 시간
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float FireInvokeTime = -1.0f;
+
+	// 스킬 후딜레이 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float PostDelayTime = -1.0f;
+
 	// 사용 스킬의 애님 몽타주
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* Montage = nullptr;
@@ -457,6 +464,20 @@ struct FSkillData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int NextSkillID = 0;
 	// Todo : Sound & Cast/Hit FX 관련 항목 추가? -> Anim Notify로 처리할듯
+};
+// 장비 타입 정의
+UENUM(BlueprintType)
+enum class EEquipmentKindType : uint8
+{
+	None UMETA(DisplayName = "None"),
+	Head UMETA(DisplayName = "Head"),
+	Body UMETA(DisplayName = "Body"),
+	Weapon UMETA(DisplayName = "Weapon"),
+	Accessory UMETA(DisplayName = "Accessory"),
+	Shield UMETA(DisplayName = "Shield"),
+	Glider UMETA(DisplayName = "Glider"),
+	SphereModule UMETA(DisplayName = "SphereModule"),
+	Max UMETA(DisplayName = "Max"),
 };
 
 // 장비 슬롯 타입 정의
@@ -472,7 +493,9 @@ enum class EEquipmentSlotType : uint8
 	Weapon4 UMETA(DisplayName = "Weapon4"),
 	Accessory1 UMETA(DisplayName = "Accessory1"),
 	Accessory2 UMETA(DisplayName = "Accessory2"),
+	Shield UMETA(DisplayName = "Shield"),
 	Glider UMETA(DisplayName = "Glider"),
+	SphereModule UMETA(DisplayName = "SphereModule"),
 	Max UMETA(DisplayName = "Max"),
 };
 ENUM_RANGE_BY_COUNT(EEquipmentSlotType, EEquipmentSlotType::Max);
@@ -491,76 +514,33 @@ enum class EItemCategory : uint8
 	Quest UMETA(DisplayName = "Quest"),
 };
 
-// ItemData 구조체 
+// EquipmentData 구조체 
 USTRUCT(BlueprintType)
-struct FItemData : public FTableRowBase
+struct FEquipmentData : public FTableRowBase
 {
 	GENERATED_USTRUCT_BODY()
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	int ItemID = 0;
-	
-	// Item Type ... 아무래도 중복될듯 Category랑
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	//EItemType ItemType = EItemType::None;
-	
-	// Looting Class
+	EEquipmentKindType EquipKind = EEquipmentKindType::None;
+
+	// 탄환 사용 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	TSubclassOf<ABaseItem> ItemClass = nullptr;
+	bool bUseBullet = false;
 
-	// 획득시 사운드ID
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	int SoundID = 0;
+	// 탄환 ID
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data", meta = (EditCondition = "bUseBullet"))
+	TSet<int> BulletItemID;
 
-	// 획득시 FxID
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	int VfxID = 0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	EItemCategory ItemCategory = EItemCategory::None;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data",
-		meta=(EditCondition="ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Equipment"))
-	EEquipmentSlotType EquipSlot = EEquipmentSlotType::None;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	bool bStackable = true;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data", meta=(EditCondition="bStackable"))
-	int MaxStackSize = 99;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	FText ItemName = FText::FromString("Unknown Item");
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	FText ItemDescription = FText::FromString("");
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	UTexture2D* ItemIcon = nullptr;
-
-	// 스탯 효과 (장비용)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats",
-		meta=(EditCondition=
-			"ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Armor || ItemCategory == EItemCategory::Accessory"
-		))
+	// 스탯 효과
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
 	float DamageBonus = 0.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats",
-		meta=(EditCondition=
-			"ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Armor || ItemCategory == EItemCategory::Accessory"
-		))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
 	float DefenseBonus = 0.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats",
-		meta=(EditCondition=
-			"ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Armor || ItemCategory == EItemCategory::Accessory"
-		))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
 	float HPBonus = 0.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats",
-		meta=(EditCondition=
-			"ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Armor || ItemCategory == EItemCategory::Accessory"
-		))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
 	float StaminaBonus = 0.0f;
 
 	// 무기 타입 (무기인 경우)
@@ -578,12 +558,127 @@ struct FItemData : public FTableRowBase
 	//TArray<ESpecialAbility> GrantedAbilities;
 
 	// 시각 효과
+	// Weapon Mesh 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
 	TSoftObjectPtr<USkeletalMesh> EquipmentMesh;
+	
+	// Weapon ABP
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
+	TSoftObjectPtr<UAnimBlueprint> EquipmentAnim;
 
 	// 장착 소켓 이름
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
 	FName AttachSocketName = NAME_None;
+	
+	// Fire시 SoundID
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int SoundID = 0;
+
+	// Fire시 FxID
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int VfxID = 0;
+};
+
+// ItemData 구조체 
+USTRUCT(BlueprintType)
+struct FItemData : public FTableRowBase
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int ItemID = 0;
+
+	// Item Type ... 아무래도 중복될듯 Category랑
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	//EItemType ItemType = EItemType::None;
+
+	// Looting Class
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	TSubclassOf<ABaseItem> ItemClass = nullptr;
+
+	// 획득시 사운드ID
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int SoundID = 0;
+
+	// 획득시 FxID
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int VfxID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	EItemCategory ItemCategory = EItemCategory::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data",
+		meta=(EditCondition = "ItemCategory == EItemCategory::Equipment"))
+	FEquipmentData EquipmentData;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	bool bStackable = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data", meta=(EditCondition="bStackable"))
+	int MaxStackSize = 99;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	float Weight = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	FText ItemName = FText::FromString("Unknown Item");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	FText ItemDescription = FText::FromString("");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	UTexture2D* ItemIcon = nullptr;
+
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data",
+	// meta=(EditCondition="ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Equipment"))
+	// EEquipmentSlotType EquipSlot = EEquipmentSlotType::None;
+	//
+	// // 스탯 효과 (장비용)
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats",
+	// 	meta=(EditCondition=
+	// 		"ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Armor || ItemCategory == EItemCategory::Accessory"
+	// 	))
+	// float DamageBonus = 0.0f;
+	//
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats",
+	// 	meta=(EditCondition=
+	// 		"ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Armor || ItemCategory == EItemCategory::Accessory"
+	// 	))
+	// float DefenseBonus = 0.0f;
+	//
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats",
+	// 	meta=(EditCondition=
+	// 		"ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Armor || ItemCategory == EItemCategory::Accessory"
+	// 	))
+	// float HPBonus = 0.0f;
+	//
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats",
+	// 	meta=(EditCondition=
+	// 		"ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Armor || ItemCategory == EItemCategory::Accessory"
+	// 	))
+	// float StaminaBonus = 0.0f;
+	//
+	// // 무기 타입 (무기인 경우)
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon",
+	// 	meta=(EditCondition="ItemCategory == EItemCategory::Weapon"))
+	// EWeaponType WeaponType = EWeaponType::None;
+
+	// 스킬 IDs (무기 전용)
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon",
+	// 	meta=(EditCondition="ItemCategory == EItemCategory::Weapon"))
+	// TArray<int32> SkillIDs;
+
+	// 특수 능력 활성화 (예: 높은 점프 등)
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Special Abilities")
+	//TArray<ESpecialAbility> GrantedAbilities;
+
+	// 시각 효과
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
+	// TSoftObjectPtr<USkeletalMesh> EquipmentMesh;
+
+	// 장착 소켓 이름
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
+	// FName AttachSocketName = NAME_None;
 };
 
 // 인벤토리 아이템 구조체 (UI 및 저장용)
@@ -608,6 +703,11 @@ struct FInventoryItem
 	FInventoryItem(int InItemID, int InCount, bool InIsEquipped = false)
 		: ItemID(InItemID), Count(InCount), bIsEquipped(InIsEquipped)
 	{
+	}
+	
+	bool IsEmpty() const
+	{
+		return ItemID == 0 || Count == 0;
 	}
 };
 
@@ -786,5 +886,5 @@ enum class EFaceType : uint8
 	Sleep UMETA(DisplayName = "Sleep"),
 	Sad UMETA(DisplayName = "Sad"),
 	Exciting UMETA(DisplayName = "Exciting"),
-	Dead UMETA(DisplayName = "Dead")	// 7
+	Dead UMETA(DisplayName = "Dead") // 7
 };

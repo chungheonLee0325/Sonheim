@@ -33,6 +33,8 @@ public:
 
 	class UPlayerStatusWidget* GetPlayerStatusWidget() const;
 
+	bool GetIsMenuActivate() { return IsMenuActivate; }
+
 private:
 	// Input Action
 	/** Called for movement input */
@@ -60,10 +62,14 @@ private:
 	void On_WeaponSwitch_Triggered(const FInputActionValue& Value);
 	/** Called for Menu input */
 	void On_Menu_Pressed(const FInputActionValue& Value);
+	void On_Menu_Released(const FInputActionValue& Value);
 
 	// Owner
 	UPROPERTY(VisibleAnywhere)
 	ASonheimPlayer* m_Player;
+
+	UPROPERTY(VisibleAnywhere)
+	ASonheimPlayerState* m_PlayerState;
 
 	// 재화 관련 데이터
 	// TMap<ECurrencyType, int> CurrencyValues;
@@ -71,9 +77,13 @@ private:
 	// UI 관련
 	UPROPERTY()
 	class UPlayerStatusWidget* StatusWidget;
+	class UInventoryWidget* InventoryWidget;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UPlayerStatusWidget> StatusWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UPlayerStatusWidget> InventoryWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UUserWidget> MissionFailClass;
@@ -126,4 +136,6 @@ private:
 	/** Menu Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* RestartAction;
+
+	bool IsMenuActivate = false;
 };

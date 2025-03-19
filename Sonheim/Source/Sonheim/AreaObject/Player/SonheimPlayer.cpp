@@ -132,7 +132,7 @@ void ASonheimPlayer::OnRevival()
 
 void ASonheimPlayer::Reward(int ItemID, int ItemValue) const
 {
-	S_PlayerState->InventoryComponent->AddItem(ItemID, ItemValue);
+	S_PlayerState->m_InventoryComponent->AddItem(ItemID, ItemValue);
 }
 
 // Called every frame
