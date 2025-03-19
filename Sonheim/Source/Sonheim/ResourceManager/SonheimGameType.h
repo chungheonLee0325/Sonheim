@@ -482,20 +482,6 @@ enum class EEquipmentKindType : uint8
 	SphereModule UMETA(DisplayName = "SphereModule"),
 	Max UMETA(DisplayName = "Max"),
 };
-// 장비 타입 정의
-UENUM(BlueprintType)
-enum class EEquipmentKindType : uint8
-{
-	None UMETA(DisplayName = "None"),
-	Head UMETA(DisplayName = "Head"),
-	Body UMETA(DisplayName = "Body"),
-	Weapon UMETA(DisplayName = "Weapon"),
-	Accessory UMETA(DisplayName = "Accessory"),
-	Shield UMETA(DisplayName = "Shield"),
-	Glider UMETA(DisplayName = "Glider"),
-	SphereModule UMETA(DisplayName = "SphereModule"),
-	Max UMETA(DisplayName = "Max"),
-};
 
 // 장비 슬롯 타입 정의
 UENUM(BlueprintType)
