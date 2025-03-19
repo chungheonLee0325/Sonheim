@@ -14,6 +14,7 @@
 #include "Sonheim/AreaObject/Utility/GhostTrail.h"
 #include "Sonheim/Utilities/LogMacro.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
+#include "Utility/InventoryComponent.h"
 
 
 class UEnhancedInputLocalPlayerSubsystem;
@@ -41,7 +42,7 @@ ASonheimPlayer::ASonheimPlayer()
 		GetMesh()->SetRelativeLocationAndRotation(FVector(0, 0, -95.0F), FRotator(0, -90, 0));
 		GetMesh()->SetRelativeScale3D(FVector(0.004f));
 	}
-	
+
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	WeaponComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
@@ -72,18 +73,19 @@ ASonheimPlayer::ASonheimPlayer()
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.f;
 	GetCharacterMovement()->JumpZVelocity = 700.f;
-	GetCharacterMovement()->AirControl = 0.35f;
+	GetCharacterMovement()->AirControl = 0.7f;
 
 	// Create Camera Boom
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->SetRelativeLocation({0, 0, 40});
 
-	CameraBoom->TargetArmLength = 300.0f; // The Camera follows at this distance behind the character
+	CameraBoom->TargetArmLength = NormalCameraBoomAramLength;
+	// The Camera follows at this distance behind the character
 	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
 	// Camera Lagging
-	CameraBoom->bEnableCameraLag = true;
-	CameraBoom->CameraLagSpeed = 10.0f;
+	//CameraBoom->bEnableCameraLag = true;
+	//CameraBoom->CameraLagSpeed = 10.0f;
 
 	// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -91,10 +93,6 @@ ASonheimPlayer::ASonheimPlayer()
 	// Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 	FollowCamera->FieldOfView = 100;
-
-	//
-	GetCharacterMovement()->JumpZVelocity = 700.f;
-	GetCharacterMovement()->AirControl = 0.35f;
 }
 
 // Called when the game starts or when spawned
@@ -134,7 +132,7 @@ void ASonheimPlayer::OnRevival()
 
 void ASonheimPlayer::Reward(int ItemID, int ItemValue) const
 {
-	S_PlayerState->AddItem(ItemID, ItemValue);
+	S_PlayerState->InventoryComponent->AddItem(ItemID, ItemValue);
 }
 
 // Called every frame
@@ -156,9 +154,9 @@ void ASonheimPlayer::InitializeStateRestrictions()
 	OnlyRotateRestrictions.bCanAction = false;
 	StateRestrictions.Add(EPlayerState::ONLY_ROTATE, OnlyRotateRestrictions);
 
-	// Action 상태 - 이동, Action 제한
+	// Action 상태 - Action 제한
 	FActionRestrictions ActionRestrictions;
-	ActionRestrictions.bCanMove = false;
+	//ActionRestrictions.bCanMove = false;
 	ActionRestrictions.bCanAction = false;
 	StateRestrictions.Add(EPlayerState::ACTION, ActionRestrictions);
 
@@ -238,7 +236,7 @@ void ASonheimPlayer::Move(const FVector2D MovementVector)
 		// add Movement
 		if (CanPerformAction(CurrentPlayerState, "Move"))
 		{
-			S_PlayerAnimInstance->Montage_Stop(0.2f);
+			//S_PlayerAnimInstance->Montage_Stop(0.2f);
 			AddMovementInput(ForwardDirection, MovementVector.Y);
 			AddMovementInput(RightDirection, MovementVector.X);
 		}
@@ -279,7 +277,7 @@ void ASonheimPlayer::Look(const FVector2D LookAxisVector)
 	}
 }
 
-void ASonheimPlayer::LeftMouse_Pressed()
+void ASonheimPlayer::LeftMouse_Triggered()
 {
 	if (!CanPerformAction(CurrentPlayerState, "Action")) return;
 
@@ -299,12 +297,54 @@ void ASonheimPlayer::LeftMouse_Pressed()
 	{
 		SetPlayerState(EPlayerState::ACTION);
 		skill->OnSkillComplete.BindUObject(this, &ASonheimPlayer::SetPlayerNormalState);
-		//skill->OnSkillCancel.BindUObject(this, &APlayer_Kazan::SetPlayerNormalState);
 	}
 }
 
 void ASonheimPlayer::RightMouse_Pressed()
 {
+	// 카메라 변환
+	CameraBoom->TargetArmLength = RClickCameraBoomAramLength;
+	TWeakObjectPtr<ASonheimPlayer> weakThis = this;
+	GetWorld()->GetTimerManager().SetTimer(LockOnCameraTimerHandle, [weakThis]
+	{
+		ASonheimPlayer* strongThis = weakThis.Get();
+		if (strongThis != nullptr)
+		{
+			if (strongThis->CameraBoom->TargetArmLength == strongThis->RClickCameraBoomAramLength)
+			{
+				strongThis->GetWorld()->GetTimerManager().ClearTimer(strongThis->LockOnCameraTimerHandle);
+			}
+			float alpha = 0.f;
+			alpha = FMath::FInterpTo(strongThis->CameraBoom->TargetArmLength, strongThis->RClickCameraBoomAramLength,
+			                         0.1f, 0.5f);
+
+			strongThis->CameraBoom->TargetArmLength = alpha;
+		}
+	}, 0.1f, true);
+	// 카메라 회전
+	LookAtLocation(GetActorLocation() + GetFollowCamera()->GetForwardVector(), EPMRotationMode::Speed, 600);
+	// 록온 모드
+	bUseControllerRotationYaw = true;
+	GetCharacterMovement()->bOrientRotationToMovement = false;
+	// 애니메이션
+	// set Anim state lockon
+}
+
+void ASonheimPlayer::RightMouse_Triggered()
+{
+	//FLog::Log("RightMouse_Triggered");
+}
+
+void ASonheimPlayer::RightMouse_Released()
+{
+	CameraBoom->TargetArmLength = NormalCameraBoomAramLength;
+	bUseControllerRotationYaw = false;
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+}
+
+void ASonheimPlayer::Reload_Pressed()
+{
+	FLog::Log("Reloading...");
 }
 
 void ASonheimPlayer::Dodge_Pressed()
@@ -320,6 +360,22 @@ void ASonheimPlayer::Dodge_Pressed()
 	}
 }
 
+void ASonheimPlayer::Sprint_Pressed()
+{
+	float SprintSpeed = dt_AreaObject->WalkSpeed * SprintSpeedRatio;
+	GetCharacterMovement()->MaxWalkSpeed = SprintSpeed;
+}
+
+void ASonheimPlayer::Sprint_Triggered()
+{
+	DecreaseStamina(0.5f);
+}
+
+void ASonheimPlayer::Sprint_Released()
+{
+	GetCharacterMovement()->MaxWalkSpeed = dt_AreaObject->WalkSpeed;
+}
+
 void ASonheimPlayer::Jump_Pressed()
 {
 	Jump();
@@ -330,6 +386,15 @@ void ASonheimPlayer::Jump_Released()
 	StopJumping();
 }
 
+void ASonheimPlayer::WeaponSwitch_Triggered()
+{
+	//FLog::Log("WeaponSwitch_Triggered...");
+}
+
+
+void ASonheimPlayer::Menu_Pressed()
+{
+}
 
 void ASonheimPlayer::Restart_Pressed()
 {

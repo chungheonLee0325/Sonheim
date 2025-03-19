@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
+#include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "SonheimPlayerState.generated.h"
 
+class UInventoryComponent;
 class ASonheimPlayer;
 class USonheimGameInstance;
 /**
@@ -17,35 +19,32 @@ class SONHEIM_API ASonheimPlayerState : public APlayerState
 {
 	GENERATED_BODY()
 
+public:
+	ASonheimPlayerState();
+
 protected:
 	virtual void BeginPlay() override;
 
 	// 캐릭터 스탯
-	UPROPERTY()
-	int32 Level;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stats")
+	int32 Level = 1;
     
-	UPROPERTY()
-	int32 Strength;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stats")
+	int32 Strength = 10;
     
-	UPROPERTY()
-	int32 Dexterity;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stats")
+	int32 Dexterity = 10;
     
-	UPROPERTY()
-	int32 Vitality;
-    
-	// ToDo : 인벤토리
-	TMap<int, int> Inventory;
-    
-public:
-	void LevelUp();
-	// ToDo : bool 반환으로 max 넘기는지 확인로직?
-	void AddItem(int ItemID, int ItemValue);
-	void RemoveItem(int ItemID, int ItemValue);
-	void EquipItem(int ItemID, int ItemValue);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stats")
+	int32 Vitality = 10;
 
+public:
+	UPROPERTY(BlueprintReadWrite, Category="Inventory")
+	UInventoryComponent* InventoryComponent;
+	
 private:
-UPROPERTY()
+	UPROPERTY()
 	USonheimGameInstance* m_GameInstance;
-UPROPERTY()
+	UPROPERTY()
 	ASonheimPlayer* m_Player;
 };

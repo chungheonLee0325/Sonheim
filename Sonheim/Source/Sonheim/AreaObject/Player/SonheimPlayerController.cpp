@@ -51,6 +51,13 @@ ASonheimPlayerController::ASonheimPlayerController()
 	{
 		JumpAction = tempJumpAction.Object;
 	}
+	
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempSprintAction(
+	TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Sprint.IA_Sprint'"));
+	if (tempSprintAction.Succeeded())
+	{
+		SprintAction = tempSprintAction.Object;
+	}
 
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempEvadeAction(
 		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Dodge.IA_Dodge'"));
@@ -59,12 +66,33 @@ ASonheimPlayerController::ASonheimPlayerController()
 		EvadeAction = tempEvadeAction.Object;
 	}
 
-	static ConstructorHelpers::FObjectFinder<UInputAction> tempRestart(
-		TEXT("/Script/EnhancedInput.InputAction'/Game/_Input/IA_Restart.IA_Restart'"));
-	if (tempRestart.Succeeded())
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempReload(
+	TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Reload.IA_Reload'"));
+	if (tempReload.Succeeded())
 	{
-		RestartAction = tempRestart.Object;
+		ReloadAction = tempReload.Object;
 	}
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempSwitchWeapon(
+		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_SwtichWeapon.IA_SwtichWeapon'"));
+	if (tempSwitchWeapon.Succeeded())
+	{
+		SwitchWeaponAction = tempSwitchWeapon.Object;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempMenu(
+	TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Menu.IA_Menu'"));
+	if (tempMenu.Succeeded())
+	{
+		MenuAction = tempMenu.Object;
+	}
+
+	// static ConstructorHelpers::FObjectFinder<UInputAction> tempRestart(
+	// TEXT("/Script/EnhancedInput.InputAction'/Game/_Input/IA_Restart.IA_Restart'"));
+	// if (tempRestart.Succeeded())
+	// {
+	// 	RestartAction = tempRestart.Object;
+	// }
 
 	m_Player = nullptr;
 
@@ -137,7 +165,7 @@ void ASonheimPlayerController::InitializeHUD()
 			m_Player->m_LevelComponent->OnExperienceChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateExp);
 			StatusWidget->UpdateExp(m_Player->m_LevelComponent->GetCurrentExp(),m_Player->m_LevelComponent->GetExpToNextLevel(),0);
 		}
-		
+		StatusWidget->SetEnableCrossHair(false);
 	}
 
 	//FailWidget = CreateWidget<UUserWidget>(this, MissionFailClass);
@@ -158,24 +186,48 @@ void ASonheimPlayerController::SetupInputComponent()
 		                                   &ASonheimPlayerController::OnLook);
 
 		// Attack
-		EnhancedInputComponent->BindAction(LeftMouseAction, ETriggerEvent::Started, this,
-		                                   &ASonheimPlayerController::On_Mouse_Left_Pressed);
+		EnhancedInputComponent->BindAction(LeftMouseAction, ETriggerEvent::Triggered, this,
+		                                   &ASonheimPlayerController::On_Mouse_Left_Triggered);
 		EnhancedInputComponent->BindAction(RightMouseAction, ETriggerEvent::Started, this,
 		                                   &ASonheimPlayerController::On_Mouse_Right_Pressed);
+		EnhancedInputComponent->BindAction(RightMouseAction, ETriggerEvent::Triggered, this,
+								   &ASonheimPlayerController::On_Mouse_Right_Triggered);
+		EnhancedInputComponent->BindAction(RightMouseAction, ETriggerEvent::Completed, this,
+								   &ASonheimPlayerController::On_Mouse_Right_Released);
 
 		// Jump
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this,
 										   &ASonheimPlayerController::On_Jump_Pressed);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this,
 										   &ASonheimPlayerController::On_Jump_Released);
+
+		// Sprint
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this,
+								   &ASonheimPlayerController::On_Sprint_Pressed);
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered, this,
+								   &ASonheimPlayerController::On_Sprint_Triggered);
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this,
+								   &ASonheimPlayerController::On_Sprint_Released);
 		
 		// Evade
 		EnhancedInputComponent->BindAction(EvadeAction, ETriggerEvent::Started, this,
 		                                   &ASonheimPlayerController::On_Dodge_Pressed);
 
+		// Reload
+		EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this,
+										   &ASonheimPlayerController::On_Reload_Pressed);
+
+		// SwitchWeapon
+		EnhancedInputComponent->BindAction(SwitchWeaponAction, ETriggerEvent::Triggered, this,
+										   &ASonheimPlayerController::On_WeaponSwitch_Triggered);
+										   
+		// Menu
+		EnhancedInputComponent->BindAction(MenuAction, ETriggerEvent::Started, this,
+										   &ASonheimPlayerController::On_Menu_Pressed);
+
 		// Restart
 		EnhancedInputComponent->BindAction(RestartAction, ETriggerEvent::Started, this,
-		                                   &ASonheimPlayerController::On_Restart_Pressed);
+		                                   &ASonheimPlayerController::On_Menu_Pressed);
 	}
 	else
 	{
@@ -196,15 +248,41 @@ void ASonheimPlayerController::OnLook(const FInputActionValue& Value)
 	m_Player->Look(Value.Get<FVector2D>());
 }
 
-void ASonheimPlayerController::On_Mouse_Left_Pressed(const FInputActionValue& InputActionValue)
+void ASonheimPlayerController::On_Mouse_Left_Triggered(const FInputActionValue& InputActionValue)
 {
-	m_Player->LeftMouse_Pressed();
+	m_Player->LeftMouse_Triggered();
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Pressed(const FInputActionValue& InputActionValue)
 {
 	m_Player->RightMouse_Pressed();
-	//LOG_PRINT(TEXT("Press"));
+	GetPlayerStatusWidget()->SetEnableCrossHair(true);
+}
+
+void ASonheimPlayerController::On_Mouse_Right_Triggered(const FInputActionValue& InputActionValue)
+{
+	m_Player->RightMouse_Triggered();
+}
+
+void ASonheimPlayerController::On_Sprint_Pressed(const FInputActionValue& InputActionValue)
+{
+	m_Player->Sprint_Pressed();
+}
+
+void ASonheimPlayerController::On_Sprint_Triggered(const FInputActionValue& InputActionValue)
+{
+	m_Player->Sprint_Triggered();
+}
+
+void ASonheimPlayerController::On_Sprint_Released(const FInputActionValue& InputActionValue)
+{
+	m_Player->Sprint_Released();
+}
+
+void ASonheimPlayerController::On_Mouse_Right_Released(const FInputActionValue& InputActionValue)
+{
+	m_Player->RightMouse_Released();
+	GetPlayerStatusWidget()->SetEnableCrossHair(false);
 }
 
 void ASonheimPlayerController::On_Dodge_Pressed(const FInputActionValue& InputActionValue)
@@ -222,9 +300,19 @@ void ASonheimPlayerController::On_Jump_Released(const FInputActionValue& InputAc
 	m_Player->Jump_Released();
 }
 
-void ASonheimPlayerController::On_Restart_Pressed(const FInputActionValue& Value)
+void ASonheimPlayerController::On_Reload_Pressed(const FInputActionValue& Value)
 {
-	m_Player->Restart_Pressed();
+	m_Player->Reload_Pressed();
+}
+
+void ASonheimPlayerController::On_WeaponSwitch_Triggered(const FInputActionValue& Value)
+{
+	m_Player->WeaponSwitch_Triggered();	
+}
+
+void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
+{
+	m_Player->Menu_Pressed();
 }
 
 

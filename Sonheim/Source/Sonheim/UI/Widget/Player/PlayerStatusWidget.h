@@ -27,6 +27,9 @@ public:
 	UFUNCTION()
 	void UpdateStamina(float CurrentStamina, float Delta, float MaxStamina);
 
+	UFUNCTION()
+	void SetEnableCrossHair(bool IsActive);
+
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* StaminaBar;
@@ -42,6 +45,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* ExpBar;
+
+	UPROPERTY(meta = (BindWidget))
+	class UImage* CrossHair;
 
 private:
 	int Level = 0;
