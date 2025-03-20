@@ -181,7 +181,7 @@ void UPartnerPatrolMode::MoveToPlayer()
 	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
 	FVector TargetLocation{Player->GetActorLocation()};
 	FVector Direction{Player->GetActorForwardVector()};
-	FVector DesiredLocation{TargetLocation + Direction * 100.f};
+	FVector DesiredLocation{TargetLocation + Direction * 150.f};
 
 	NavSystem->ProjectPointToNavigation(DesiredLocation, Next);
 
