@@ -354,6 +354,11 @@ void ABaseMonster::ChangeFace(EFaceType Type) const
 	}
 }
 
+void ABaseMonster::SetPartnerOwner(ASonheimPlayer* NewOwner)
+{
+	PartnerOwner = NewOwner;
+}
+
 void ABaseMonster::Surprise()
 {
 	if (bIsForced)

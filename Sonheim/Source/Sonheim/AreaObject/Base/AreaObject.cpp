@@ -201,7 +201,6 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 		}
 	}
 
-
 	// ToDo : Can Attack Logic 추가? -> 설인 만들면 추가해야할듯
 	if (IsDie() || HasCondition(EConditionBitsType::Invincible))
 		return 0.0f;

@@ -6,6 +6,7 @@
 #include "Camera/CameraComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
+#include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
@@ -41,12 +42,17 @@ void UFlamethrower::FireFlame()
 	// 	StartPos + UKismetMathLibrary::RandomUnitVectorInEllipticalConeInDegrees(
 	// 		m_Caster->GetActorForwardVector(), SpreadYaw, SpreadPitch) * Range
 	// };
-	// ToDo : Player를 m_Caster의 Owner로 수정 
+
+	ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Caster)->PartnerOwner};
+
+	// ToDo : PartnerOwner 설정되면 없애기
 	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
+	PartnerOwner = Player;
+	
 	FVector StartPos{m_Caster->GetMesh()->GetSocketLocation(FName("Socket_Mouth"))};
 	FVector EndPos{
 		StartPos + UKismetMathLibrary::RandomUnitVectorInEllipticalConeInDegrees(
-			Player->GetFollowCamera()->GetForwardVector(), SpreadYaw, SpreadPitch) * Range
+			PartnerOwner->GetFollowCamera()->GetForwardVector(), SpreadYaw, SpreadPitch) * Range
 	};
 
 	FCollisionQueryParams Params;

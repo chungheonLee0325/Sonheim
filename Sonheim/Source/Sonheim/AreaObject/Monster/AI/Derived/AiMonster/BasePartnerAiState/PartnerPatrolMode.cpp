@@ -41,11 +41,15 @@ void UPartnerPatrolMode::Execute(float dt)
 		return;
 	}
 
-	// Todo : 시작 위치를 소환한 파트너로 설정
+
+	ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
+	// ToDo : PartnerOwner 설정되면 없애기
 	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
+	PartnerOwner = Player;
+	
 	float Dist{
 		static_cast<float>(FVector::Distance(m_Owner->GetActorLocation(),
-		                                     Player->GetActorLocation()))
+		                                     PartnerOwner->GetActorLocation()))
 	};
 	// 너무 멀면 텔레포트
 	if (Dist > 2000.f)
@@ -94,9 +98,12 @@ void UPartnerPatrolMode::Patrol()
 		//FLog::Log("PartnerPatrolling");
 	}
 
-	// Todo : 시작 위치를 소환한 파트너로 설정
+
+	ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
+	// ToDo : PartnerOwner 설정되면 없애기
 	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-	FVector Start{Player->GetActorLocation()};
+	PartnerOwner = Player;
+	FVector Start{PartnerOwner->GetActorLocation()};
 	FNavLocation Next;
 
 	NavSystem->GetRandomReachablePointInRadius(Start, 500.f, Next);
@@ -111,10 +118,13 @@ void UPartnerPatrolMode::PatrolToPlayer()
 	StopUpdateLocation = true;
 
 	FNavLocation Next;
-	// Todo : 시작 위치를 소환한 파트너로 설정
+
+	ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
+	// ToDo : PartnerOwner 설정되면 없애기
 	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-	FVector TargetLocation{Player->GetActorLocation()};
-	FVector Direction{Player->GetActorForwardVector()};
+	PartnerOwner = Player;
+	FVector TargetLocation{PartnerOwner->GetActorLocation()};
+	FVector Direction{PartnerOwner->GetActorForwardVector()};
 	FVector DesiredLocation{TargetLocation + Direction * 100.f};
 
 	NavSystem->ProjectPointToNavigation(DesiredLocation, Next);
@@ -135,10 +145,13 @@ void UPartnerPatrolMode::TeleportToPlayer()
 	FLog::Log("TeleportToPlayer");
 
 	FNavLocation Next;
-	// Todo : 시작 위치를 소환한 파트너로 설정
+
+	ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
+	// ToDo : PartnerOwner 설정되면 없애기
 	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-	FVector TargetLocation{Player->GetActorLocation()};
-	FVector Direction{Player->GetActorForwardVector()};
+	PartnerOwner = Player;
+	FVector TargetLocation{PartnerOwner->GetActorLocation()};
+	FVector Direction{PartnerOwner->GetActorForwardVector()};
 
 	for (int32 i{}; i < 36; ++i)
 	{
@@ -177,10 +190,14 @@ void UPartnerPatrolMode::TeleportToPlayer()
 void UPartnerPatrolMode::MoveToPlayer()
 {
 	FNavLocation Next;
-	// Todo : 시작 위치를 소환한 파트너로 설정
+
+	ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
+	// ToDo : PartnerOwner 설정되면 없애기
 	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-	FVector TargetLocation{Player->GetActorLocation()};
-	FVector Direction{Player->GetActorForwardVector()};
+	PartnerOwner = Player;
+	
+	FVector TargetLocation{PartnerOwner->GetActorLocation()};
+	FVector Direction{PartnerOwner->GetActorForwardVector()};
 
 	for (int32 i{}; i < 36; ++i)
 	{

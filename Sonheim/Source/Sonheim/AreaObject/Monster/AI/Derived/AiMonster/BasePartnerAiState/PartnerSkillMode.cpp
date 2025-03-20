@@ -21,13 +21,16 @@ void UPartnerSkillMode::Enter()
 		FLog::Log("UPartnerSkillMode");
 	}
 
-	// Todo : 소환한 파트너로 설정
+	ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
+	// ToDo : PartnerOwner 설정되면 없애기
 	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
+	PartnerOwner = Player;
+	
 	if (Player && Player->GetMesh())
 	{
 		m_Owner->SetActorEnableCollision(false);
 		m_Owner->GetMesh()->SetRelativeLocation(FVector(0));
-		m_Owner->AttachToComponent(Player->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("PartnerWeapon"));
+		m_Owner->AttachToComponent(PartnerOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("PartnerWeapon"));
 	}
 }
 

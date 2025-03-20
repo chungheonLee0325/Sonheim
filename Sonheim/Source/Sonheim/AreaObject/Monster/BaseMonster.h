@@ -214,7 +214,7 @@ public:
 
 	float WalkSpeed = 400.f;
 	float ForcedWalkSpeed = 1200.f;
-
+	
 	UFUNCTION()
 	void ChangeFace(EFaceType Type) const;
 	UPROPERTY()
@@ -229,4 +229,8 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bActivateSkill{false};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class ASonheimPlayer* PartnerOwner;
+	void SetPartnerOwner(ASonheimPlayer* NewOwner);
 };
