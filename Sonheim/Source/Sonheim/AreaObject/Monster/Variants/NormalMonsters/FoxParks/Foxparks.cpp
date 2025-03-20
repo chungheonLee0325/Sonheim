@@ -3,7 +3,7 @@
 
 #include "Foxparks.h"
 #include "Components/CapsuleComponent.h"
-#include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/Gumoss/FoxparksFSM.h"
+#include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/PalFSM/FoxparksFSM.h"
 
 
 // Sets default values

@@ -3,14 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
+#include "AITypes.h"
+#include "Navigation/PathFollowingComponent.h"
+#include "Sonheim/AreaObject/Skill/Common/MeleeAttack.h"
 #include "Rolling.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class SONHEIM_API URolling : public UBaseSkill
+class SONHEIM_API URolling : public UMeleeAttack
 {
 	GENERATED_BODY()
 	
@@ -23,7 +25,12 @@ public:
 	virtual void OnCastFire() override;
 
 	void StartRoll();
+	void MoveCompleted(FAIRequestID FaiRequestID, const FPathFollowingResult& PathFollowingResult);
+	void DizzyEnd();
 
 public:
-	FTimerHandle RollWaitTimer;
+	UPROPERTY()
+	class ALamBall* CastPal;
+	
+	FTimerHandle DizzyWaitTimer;
 };

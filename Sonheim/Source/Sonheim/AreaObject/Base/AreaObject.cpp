@@ -594,8 +594,12 @@ void AAreaObject::HandleKnockBack(const FVector& TargetPos, const FAttackData& A
 		FVector knockBackDir;
 		if (AttackData.bUseCustomKnockBackDirection)
 		{
-			knockBackDir = GetActorLocation() + AttackData.KnockBackDirection.GetSafeNormal() * AttackData.
-				KnockBackForce * m_KnockBackForceMultiplier * ForceCoefficient;
+			// knockBackDir = GetActorLocation() + AttackData.KnockBackDirection.GetSafeNormal() * AttackData.
+			// 	KnockBackForce * m_KnockBackForceMultiplier * ForceCoefficient;
+			knockBackDir = AttackData.KnockBackDirection.GetSafeNormal();
+
+			//FQuat Rotation{FQuat(GetActorRotation())};
+			knockBackDir = GetActorRotation().RotateVector(knockBackDir);
 		}
 		else
 		{

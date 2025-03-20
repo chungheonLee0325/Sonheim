@@ -4,7 +4,7 @@
 #include "Gumoss.h"
 
 #include "Components/CapsuleComponent.h"
-#include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/Gumoss/GumossFSM.h"
+#include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/PalFSM/GumossFSM.h"
 
 
 // Sets default values
