@@ -11,6 +11,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInventoryChanged, const TArray<FI
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnEquipmentChanged, EEquipmentSlotType, Slot, FInventoryItem, InventoryItem);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponChanged, int, ItemID);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemAdded, int, ItemID, int, Count);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemRemoved, int, ItemID, int, Count);
@@ -91,6 +93,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	void SwitchWeaponSlot(int Index);
 
+	FItemData* GetCurrentWeaponData();
+		
 	// 아이템 스왑 함수 추가
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool SwapItems(int32 FromIndex, int32 ToIndex);
@@ -101,6 +105,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category="Events")
 	FOnEquipmentChanged OnEquipmentChanged;
+
+	UPROPERTY(BlueprintAssignable, Category="Events")
+	FOnWeaponChanged OnWeaponChanged;
 
 	UPROPERTY(BlueprintAssignable, Category="Events")
 	FOnItemAdded OnItemAdded;

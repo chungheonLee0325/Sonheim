@@ -342,7 +342,11 @@ void ASonheimPlayerController::On_Reload_Pressed(const FInputActionValue& Value)
 
 void ASonheimPlayerController::On_WeaponSwitch_Triggered(const FInputActionValue& Value)
 {
-	m_Player->WeaponSwitch_Triggered();
+	const int32 SwitchData = FMath::Sign(Value.Get<float>()); 
+	if (SwitchData != 0)
+	{
+		m_PlayerState->m_InventoryComponent->SwitchWeaponSlot(SwitchData);
+	}
 }
 
 void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
