@@ -53,6 +53,7 @@ void UBaseSkill::OnCastStart(AAreaObject* Caster, AAreaObject* Target)
 
 	m_Caster = Caster;
 	m_Target = Target;
+	m_TargetPos = m_Target->GetActorLocation();
 	m_NextSkillID = m_SkillData->NextSkillID;
 
 	// 스태미나 소모

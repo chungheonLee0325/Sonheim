@@ -4,7 +4,7 @@
 #include "LamBall.h"
 
 #include "Components/CapsuleComponent.h"
-#include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/Lamball/LamballFSM.h"
+#include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/PalFSM/LambBallFSM.h"
 
 
 // Sets default values
@@ -19,12 +19,12 @@ ALamBall::ALamBall()
 	m_SkillRoulette = ABaseMonster::CreateSkillRoulette();
 	
 	ConstructorHelpers::FObjectFinder<USkeletalMesh> TempMesh
-		(TEXT("/Script/Engine.SkeletalMesh'/Game/_Resource/Monster/Lamball/SK_SheepBall_LOD0.SK_SheepBall_LOD0'"));
+		(TEXT("/Script/Engine.SkeletalMesh'/Game/_Resource/Monster/LambBall/SK_SheepBall_LOD0.SK_SheepBall_LOD0'"));
 	if (TempMesh.Succeeded())
 	{
 		GetMesh()->SetSkeletalMesh(TempMesh.Object);
-		GetMesh()->SetRelativeLocationAndRotation(FVector(0, 0, -90), FRotator(0, -90, 0));
-		GetMesh()->SetRelativeScale3D(FVector(0.7f));
+		GetMesh()->SetRelativeLocationAndRotation(FVector(0, 0, -65), FRotator(0, -90, 0));
+		GetMesh()->SetRelativeScale3D(FVector(0.5f));
 	}
 	
 	PickaxeMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PickaxeMesh"));
@@ -36,8 +36,8 @@ ALamBall::ALamBall()
 		PickaxeMesh->SetupAttachment(GetMesh(), "Pickaxe");
 	}
 	
-	GetCapsuleComponent()->SetCapsuleRadius(90.f);
-	GetCapsuleComponent()->SetCapsuleHalfHeight(90.f);
+	GetCapsuleComponent()->SetCapsuleRadius(65.f);
+	GetCapsuleComponent()->SetCapsuleHalfHeight(65.f);
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Monster"));
 }
 
@@ -45,6 +45,9 @@ ALamBall::ALamBall()
 void ALamBall::BeginPlay()
 {
 	Super::BeginPlay();
+
+	EyeMat = GetMesh()->CreateDynamicMaterialInstance(0);
+	MouthMat = GetMesh()->CreateDynamicMaterialInstance(1);
 
 }
 
@@ -62,5 +65,6 @@ void ALamBall::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 UBaseAiFSM* ALamBall::CreateFSM()
 {
-	return CreateDefaultSubobject<ULamballFSM>(TEXT("FSM2"));
+	//return CreateDefaultSubobject<UTempLamballFSM>(TEXT("FSM2"));
+	return CreateDefaultSubobject<ULambBallFSM>(TEXT("FSM"));
 }

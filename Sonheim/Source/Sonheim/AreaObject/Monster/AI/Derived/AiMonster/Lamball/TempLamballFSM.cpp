@@ -1,7 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "LamballFSM.h"
+#include "TempLamballFSM.h"
 
 #include "GatherToPlayer.h"
 #include "Lumbering.h"
@@ -11,7 +11,7 @@
 
 
 // Sets default values for this component's properties
-ULamballFSM::ULamballFSM()
+UTempLamballFSM::UTempLamballFSM()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
@@ -22,7 +22,7 @@ ULamballFSM::ULamballFSM()
 
 
 // Called when the game starts
-void ULamballFSM::BeginPlay()
+void UTempLamballFSM::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -31,14 +31,14 @@ void ULamballFSM::BeginPlay()
 
 
 // Called every frame
-void ULamballFSM::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UTempLamballFSM::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	// ...
 }
 
-void ULamballFSM::InitStatePool()
+void UTempLamballFSM::InitStatePool()
 {
 	//Super::InitStatePool();
 

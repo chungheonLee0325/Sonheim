@@ -4,17 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "Sonheim/AreaObject/Monster/AI/Base/BaseAiFSM.h"
-#include "LamballFSM.generated.h"
+#include "TempLamballFSM.generated.h"
 
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class SONHEIM_API ULamballFSM : public UBaseAiFSM
+class SONHEIM_API UTempLamballFSM : public UBaseAiFSM
 {
 	GENERATED_BODY()
 
 public:
 	// Sets default values for this component's properties
-	ULamballFSM();
+	UTempLamballFSM();
 
 protected:
 	// Called when the game starts

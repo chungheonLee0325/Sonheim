@@ -70,7 +70,7 @@ ABaseMonster::ABaseMonster()
 	{
 		HPWidgetComponent->SetWidgetClass(monsterHPWidget.Class);
 	}
-	
+
 
 	HeadVFXPoint = CreateDefaultSubobject<USceneComponent>(TEXT("HeadVFXPoint"));
 }
@@ -127,6 +127,8 @@ void ABaseMonster::BeginPlay()
 {
 	Super::BeginPlay();
 
+	HPWidgetComponent->SetVisibility(false);
+	
 	WalkSpeed = dt_AreaObject->WalkSpeed;
 	ForcedWalkSpeed = WalkSpeed * 5.f;
 
@@ -327,29 +329,78 @@ void ABaseMonster::ChangeFace(EFaceType Type) const
 		}
 		if (MouthMat)
 		{
-			MouthMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0, 0, 0, 1));
+			MouthMat->SetVectorParameterValue(TEXT("MouseVector"), FLinearColor(0, 0, 0, 1));
 		}
 		break;
 	case EFaceType::Smile:
-		EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0.5, 0, 0, 1));
+		if (EyeMat)
+		{
+			EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0.5, 0, 0, 1));
+		}
+		if (MouthMat)
+		{
+			MouthMat->SetVectorParameterValue(TEXT("MouseVector"), FLinearColor(0.5, 0, 0, 1));
+		}
 		break;
 	case EFaceType::Boring:
-		EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0, 0.25, 0, 1));
+		if (EyeMat)
+		{
+			EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0, 0.25, 0, 1));
+		}
+		if (MouthMat)
+		{
+			MouthMat->SetVectorParameterValue(TEXT("MouseVector"), FLinearColor(0.5, 0.5, 0, 1));
+		}
 		break;
 	case EFaceType::Angry:
-		EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0.5, 0.25, 0, 1));
+		if (EyeMat)
+		{
+			EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0.5, 0.25, 0, 1));
+		}
+		if (MouthMat)
+		{
+			MouthMat->SetVectorParameterValue(TEXT("MouseVector"), FLinearColor(0, 0.5, 0, 1));
+		}
 		break;
 	case EFaceType::Sleep:
-		EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0, 0.5, 0, 1));
+		if (EyeMat)
+		{
+			EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0, 0.5, 0, 1));
+		}
+		if (MouthMat)
+		{
+			MouthMat->SetVectorParameterValue(TEXT("MouseVector"), FLinearColor(0.5, 0.5, 0, 1));
+		}
 		break;
 	case EFaceType::Sad:
-		EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0.5, 0.5, 0, 1));
+		if (EyeMat)
+		{
+			EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0.5, 0.5, 0, 1));
+		}
+		if (MouthMat)
+		{
+			MouthMat->SetVectorParameterValue(TEXT("MouseVector"), FLinearColor(0.5, 0.5, 0, 1));
+		}
 		break;
 	case EFaceType::Exciting:
-		EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0, 0.75, 0, 1));
+		if (EyeMat)
+		{
+			EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0, 0.75, 0, 1));
+		}
+		if (MouthMat)
+		{
+			MouthMat->SetVectorParameterValue(TEXT("MouseVector"), FLinearColor(0.5, 0, 0, 1));
+		}
 		break;
 	case EFaceType::Dead:
-		EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0.5, 0.75, 0, 1));
+		if (EyeMat)
+		{
+			EyeMat->SetVectorParameterValue(TEXT("EyeVector"), FLinearColor(0.5, 0.75, 0, 1));
+		}
+		if (MouthMat)
+		{
+			MouthMat->SetVectorParameterValue(TEXT("MouseVector"), FLinearColor(0, 0.5, 0, 1));
+		}
 		break;
 	}
 }
