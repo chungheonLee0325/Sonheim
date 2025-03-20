@@ -3,6 +3,7 @@
 
 #include "Flamethrower.h"
 
+#include "Camera/CameraComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
@@ -35,11 +36,17 @@ void UFlamethrower::FireFlame()
 {
 	FLog::Log();
 	
-	FVector StartPos{m_Caster->GetActorLocation()};
+	// FVector StartPos{m_Caster->GetActorLocation()};
+	// FVector EndPos{
+	// 	StartPos + UKismetMathLibrary::RandomUnitVectorInEllipticalConeInDegrees(
+	// 		m_Caster->GetActorForwardVector(), SpreadYaw, SpreadPitch) * Range
+	// };
+	// ToDo : Player를 m_Caster의 Owner로 수정 
+	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
+	FVector StartPos{m_Caster->GetMesh()->GetSocketLocation(FName("Socket_Mouth"))};
 	FVector EndPos{
 		StartPos + UKismetMathLibrary::RandomUnitVectorInEllipticalConeInDegrees(
-			m_Caster->GetActorForwardVector(), SpreadYaw, SpreadPitch) * Range
-		// StartPos + m_Caster->GetActorForwardVector() * Range
+			Player->GetFollowCamera()->GetForwardVector(), SpreadYaw, SpreadPitch) * Range
 	};
 
 	FCollisionQueryParams Params;
@@ -52,11 +59,16 @@ void UFlamethrower::FireFlame()
 		                                    Params)
 	};
 
+	if (m_Caster->bShowDebug)
+	{
+		DrawDebugLine(GetWorld(), StartPos, EndPos, FColor::Red, false, 1.f, 0, 1.f);
+	}
+	
 	for (FHitResult& HitInfo : HitInfos)
 	{
 		if (m_Caster->bShowDebug)
 		{
-			DrawDebugLine(GetWorld(), StartPos, HitInfo.ImpactPoint, FColor::Red, false, 1.f, 0, 1.f);
+			//DrawDebugLine(GetWorld(), StartPos, HitInfo.ImpactPoint, FColor::Red, false, 1.f, 0, 1.f);
 		}
 
 		FAttackData* AttackData = GetAttackDataByIndex(0);

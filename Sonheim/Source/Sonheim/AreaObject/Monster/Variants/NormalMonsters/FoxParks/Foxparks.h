@@ -28,5 +28,5 @@ public:
 
 	UBaseAiFSM* CreateFSM();
 
-
+	
 };
