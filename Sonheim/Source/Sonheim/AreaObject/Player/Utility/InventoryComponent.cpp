@@ -451,7 +451,7 @@ void UInventoryComponent::SwitchWeaponSlot(int Index)
 	//LOG_SCREEN("CurrentWeaponSlot %d", static_cast<int>(CurrentWeaponSlot));
 
 	// 무기 변경 이벤트 호출 가능
-	OnWeaponChanged.Broadcast(GetEquippedItem(CurrentWeaponSlot).ItemID);
+	OnWeaponChanged.Broadcast(CurrentWeaponSlot, GetEquippedItem(CurrentWeaponSlot).ItemID);
 }
 
 FItemData* UInventoryComponent::GetCurrentWeaponData()

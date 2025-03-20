@@ -175,14 +175,14 @@ enum class EAiStateType : uint8
 	SelectAction UMETA(DisplayName = "SelectAction"),
 	Lumbering UMETA(DisplayName = "Lumbering"),
 	ReturnResource UMETA(DisplayName = "ReturnResource"),
-	PatrolMode UMETA(DisplayName = "PatrolMode"),	// 11
-	AttackMode UMETA(DisplayName = "AttackMode"),	// 12
+	PatrolMode UMETA(DisplayName = "PatrolMode"), // 11
+	AttackMode UMETA(DisplayName = "AttackMode"), // 12
 	UseSkill UMETA(DisplayName = "UseSkill"),
 	PutDistance UMETA(DisplayName = "PutDistance"),
-	SelectMode UMETA(DisplayName = "SelectMode"),	// 15
+	SelectMode UMETA(DisplayName = "SelectMode"), // 15
 	PartnerPatrolMode UMETA(DisplayName = "PartnerPatrolMode"),
 	PartnerSkillMode UMETA(DisplayName = "PartnerSkillMode"),
-	UsePartnerSkill UMETA(DisplayName = "UsePartnerSkill"),	// 18
+	UsePartnerSkill UMETA(DisplayName = "UsePartnerSkill"), // 18
 };
 
 // 공격시 Trace System에서 사용 - EnableCollisionNotifyState 참조
@@ -468,6 +468,7 @@ struct FSkillData : public FTableRowBase
 	int NextSkillID = 0;
 	// Todo : Sound & Cast/Hit FX 관련 항목 추가? -> Anim Notify로 처리할듯
 };
+
 // 장비 타입 정의
 UENUM(BlueprintType)
 enum class EEquipmentKindType : uint8
@@ -548,13 +549,13 @@ struct FEquipmentData : public FTableRowBase
 
 	// 무기 타입 (무기인 경우)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon",
-		meta=(EditCondition="ItemCategory == EItemCategory::Weapon"))
+		meta=(EditCondition="EquipKind == EEquipmentKindType::Weapon"))
 	EWeaponType WeaponType = EWeaponType::None;
 
-	// 스킬 IDs (무기 전용)
+	// 스킬 ID (무기 전용)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon",
-		meta=(EditCondition="ItemCategory == EItemCategory::Weapon"))
-	TArray<int32> SkillIDs;
+		meta=(EditCondition="EquipKind == EEquipmentKindType::Weapon"))
+	int SkillID = 0;
 
 	// 특수 능력 활성화 (예: 높은 점프 등)
 	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Special Abilities")
@@ -562,9 +563,12 @@ struct FEquipmentData : public FTableRowBase
 
 	// 시각 효과
 	// Weapon Mesh 
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
+	//TSoftObjectPtr<USkeletalMeshComponent> EquipmentMesh;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
-	TSoftObjectPtr<USkeletalMesh> EquipmentMesh;
-	
+	USkeletalMesh* EquipmentMesh = nullptr;
+
 	// Weapon ABP
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
 	TSoftObjectPtr<UAnimBlueprint> EquipmentAnim;
@@ -572,7 +576,7 @@ struct FEquipmentData : public FTableRowBase
 	// 장착 소켓 이름
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
 	FName AttachSocketName = NAME_None;
-	
+
 	// Fire시 SoundID
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	int SoundID = 0;
@@ -611,9 +615,10 @@ struct FItemData : public FTableRowBase
 	EItemCategory ItemCategory = EItemCategory::None;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data",
-		meta=(EditCondition = "ItemCategory == EItemCategory::Equipment"))
+		meta=(EditCondition = "ItemCategory == EItemCategory::Equipment || ItemCategory == EItemCategory::Weapon"))
 	FEquipmentData EquipmentData;
 
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	bool bStackable = true;
 
@@ -707,7 +712,7 @@ struct FInventoryItem
 		: ItemID(InItemID), Count(InCount), bIsEquipped(InIsEquipped)
 	{
 	}
-	
+
 	bool IsEmpty() const
 	{
 		return ItemID == 0 || Count == 0;

@@ -19,6 +19,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category=FSM)
 	float direction = 0;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category=FSM)
-	bool bIsGuard;
+	bool bIsMelee = false;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category=FSM)
+	bool bIsLockOn = false;
 	void NativeUpdateAnimation(float DeltaSeconds);
 };

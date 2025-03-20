@@ -78,6 +78,11 @@ protected:
 
 	// ToDo : BluePrintFunction Library
 	FName DetermineDirection(const FVector& TargetPos) const;
+	
+	UPROPERTY()
+	USonheimGameInstance* m_GameInstance = nullptr;
+	UPROPERTY()
+	ASonheimGameMode* m_GameMode = nullptr;
 
 public:
 	// Called every frame
@@ -213,8 +218,5 @@ public:
 	float SprintSpeedRatio = 2.0f;
 
 private:
-	UPROPERTY()
-	USonheimGameInstance* m_GameInstance = nullptr;
-	UPROPERTY()
-	ASonheimGameMode* m_GameMode = nullptr;
+
 };
