@@ -99,3 +99,17 @@ bool USonheimUtility::CheckMoveEnable(const UObject* WorldContextObject, const c
 	// hit 없으면 공격 가능
 	return !bHit;
 }
+
+FText USonheimUtility::ConvertEscapedNewlinesToFText(const FText& InputText)
+{
+	// FText -> FString로 변환
+	FString OriginalString = InputText.ToString();
+
+	// \r\n이나 \n 같은 개행 문자열을 실제 개행 문자로 변환
+	OriginalString = OriginalString.Replace(TEXT("\\r\\n"), TEXT("\n"));
+	OriginalString = OriginalString.Replace(TEXT("\\n"), TEXT("\n"));
+	OriginalString = OriginalString.Replace(TEXT("\\r"), TEXT("\r"));
+    
+	// 변환된 문자열을 다시 FText로 변환하여 반환
+	return FText::FromString(OriginalString);
+}

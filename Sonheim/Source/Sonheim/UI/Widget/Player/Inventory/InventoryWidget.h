@@ -11,6 +11,7 @@
 
 class USlotWidget;
 class UUniformGridPanel;
+class UInventoryComponent;
 /**
  * 
  */
@@ -63,11 +64,31 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	USlotWidget* SphereModuleSlot;
 
+	// 인벤토리 컴포넌트 참조
+	UPROPERTY(BlueprintReadWrite)
+	UInventoryComponent* InventoryComponent;
+
 public:
 	UFUNCTION()
 	void UpdateInventoryFromData(const TArray<FInventoryItem>& InventoryData);
 	UFUNCTION()
 	void UpdateEquipmentFromData(EEquipmentSlotType EquipSlot, FInventoryItem InventoryItem);
+	
+	// 인벤토리 컴포넌트 설정
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void SetInventoryComponent(UInventoryComponent* InInventoryComponent);
+	
+	// 슬롯 클릭 이벤트 핸들러
+	UFUNCTION()
+	void OnSlotClicked(USlotWidget* SlotWidget, bool bIsRightClick);
+	
+	// 슬롯 드래그 시작 이벤트 핸들러
+	UFUNCTION()
+	void OnSlotDragStarted(USlotWidget* SlotWidget);
+	
+	// 슬롯 드롭 이벤트 핸들러
+	UFUNCTION()
+	void OnSlotDropped(USlotWidget* FromSlot, USlotWidget* ToSlot);
 	
 private:
 	void InitializeSlotWidgetMap();
@@ -77,4 +98,16 @@ private:
 
 	UPROPERTY()
 	TMap<EEquipmentSlotType, USlotWidget*> SlotWidgetMap;
+
+	// 슬롯 위젯에 이벤트 처리기 연결
+	void BindSlotEvents(USlotWidget* SlotWidget);
+	
+	// 인벤토리 슬롯 아이템 교환
+	void SwapInventoryItems(int32 FromIndex, int32 ToIndex);
+	
+	// 장비 슬롯 아이템 처리
+	void HandleEquipmentSlotInteraction(USlotWidget* SlotWidget, bool bIsRightClick);
+	
+	// 인벤토리 슬롯 아이템 처리
+	void HandleInventorySlotInteraction(USlotWidget* SlotWidget, bool bIsRightClick);
 };

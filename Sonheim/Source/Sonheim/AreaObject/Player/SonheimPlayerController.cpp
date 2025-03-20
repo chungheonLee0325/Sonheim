@@ -262,68 +262,81 @@ void ASonheimPlayerController::SetupInputComponent()
 
 void ASonheimPlayerController::OnMove(const FInputActionValue& Value)
 {
+	if (IsMenuActivate) return;
 	m_Player->Move(Value.Get<FVector2D>());
 }
 
 void ASonheimPlayerController::OnLook(const FInputActionValue& Value)
 {
+	if (IsMenuActivate) return;
 	m_Player->Look(Value.Get<FVector2D>());
 }
 
 void ASonheimPlayerController::On_Mouse_Left_Triggered(const FInputActionValue& InputActionValue)
 {
+	if (IsMenuActivate) return;
 	m_Player->LeftMouse_Triggered();
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Pressed(const FInputActionValue& InputActionValue)
 {
+	if (IsMenuActivate) return;
 	m_Player->RightMouse_Pressed();
 	GetPlayerStatusWidget()->SetEnableCrossHair(true);
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Triggered(const FInputActionValue& InputActionValue)
 {
+	if (IsMenuActivate) return;
 	m_Player->RightMouse_Triggered();
 }
 
 void ASonheimPlayerController::On_Sprint_Pressed(const FInputActionValue& InputActionValue)
 {
+	if (IsMenuActivate) return;
 	m_Player->Sprint_Pressed();
 }
 
 void ASonheimPlayerController::On_Sprint_Triggered(const FInputActionValue& InputActionValue)
 {
+	if (IsMenuActivate) return;
 	m_Player->Sprint_Triggered();
 }
 
 void ASonheimPlayerController::On_Sprint_Released(const FInputActionValue& InputActionValue)
 {
+	if (IsMenuActivate) return;
 	m_Player->Sprint_Released();
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Released(const FInputActionValue& InputActionValue)
 {
+	if (IsMenuActivate) return;
 	m_Player->RightMouse_Released();
 	GetPlayerStatusWidget()->SetEnableCrossHair(false);
 }
 
 void ASonheimPlayerController::On_Dodge_Pressed(const FInputActionValue& InputActionValue)
 {
+	if (IsMenuActivate) return;
 	m_Player->Dodge_Pressed();
 }
 
 void ASonheimPlayerController::On_Jump_Pressed(const FInputActionValue& InputActionValue)
 {
+	if (IsMenuActivate) return;
 	m_Player->Jump_Pressed();
 }
 
 void ASonheimPlayerController::On_Jump_Released(const FInputActionValue& InputActionValue)
 {
+	if (IsMenuActivate) return;
 	m_Player->Jump_Released();
 }
 
 void ASonheimPlayerController::On_Reload_Pressed(const FInputActionValue& Value)
 {
+	if (IsMenuActivate) return;
 	m_Player->Reload_Pressed();
 }
 
@@ -341,20 +354,17 @@ void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 		m_Player->Menu_Pressed();
 		InventoryWidget = CreateWidget<UInventoryWidget>(this, InventoryWidgetClass);
 		InventoryWidget->AddToViewport(0);
+		InventoryWidget->SetInventoryComponent(m_PlayerState->m_InventoryComponent);
 		m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(InventoryWidget,
 		                                                                   &UInventoryWidget::UpdateInventoryFromData);
-		InventoryWidget->UpdateInventoryFromData(m_PlayerState->m_InventoryComponent->GetInventory());
 		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(InventoryWidget,
 		                                                                   &UInventoryWidget::UpdateEquipmentFromData);
-		auto mapData = m_PlayerState->m_InventoryComponent->GetEquippedItems();
-		for (auto pair : mapData)
-		{
-			InventoryWidget->UpdateEquipmentFromData(pair.Key, pair.Value);
-		}
+		SetShowMouseCursor(true);
 	}
 	else
 	{
 		IsMenuActivate = false;
+		SetShowMouseCursor(false);
 
 		m_PlayerState->m_InventoryComponent->OnInventoryChanged.RemoveDynamic(
 			InventoryWidget, &UInventoryWidget::UpdateInventoryFromData);

@@ -88,12 +88,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	FInventoryItem GetEquippedItem(EEquipmentSlotType SlotType) const;
 
-	// 무기 전용 장착 함수
-	//UFUNCTION(BlueprintCallable, Category="Inventory")
-	//bool EquipWeaponToSlot(int32 InventoryIndex);
-
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	void SwitchWeaponSlot(int Index);
+
+	// 아이템 스왑 함수 추가
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool SwapItems(int32 FromIndex, int32 ToIndex);
 
 	// 이벤트 델리게이트
 	UPROPERTY(BlueprintAssignable, Category="Events")
@@ -121,12 +121,11 @@ private:
 	void ApplyEquipmentStats(int ItemID, bool bEquipping);
 	int FindItemIndexInInventory(int ItemID) const;
 	EEquipmentSlotType FindEmptySlotForType(EEquipmentKindType ItemType);
-	//bool IsValidEquipmentForSlot(UEquipmentItem* Item, EEquipmentSlotType SlotType);
 	void BroadcastInventoryChanged();
 
-	UPROPERTY(VisibleAnywhere, Category="Inventory")
-	int MaxWeaponSlot = 0;
-
-	UPROPERTY(VisibleAnywhere, Category="Inventory")
-	int MaxAccessorySlot = 0;
+	// UPROPERTY(VisibleAnywhere, Category="Inventory")
+	// int MaxWeaponSlot = 4;
+	//
+	// UPROPERTY(VisibleAnywhere, Category="Inventory")
+	// int MaxAccessorySlot = 2;
 };

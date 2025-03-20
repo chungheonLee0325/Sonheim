@@ -7,6 +7,7 @@
 #include "Components/UniformGridPanel.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
+#include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 
 void UInventoryWidget::NativePreConstruct()
 {
@@ -33,8 +34,6 @@ void UInventoryWidget::NativePreConstruct()
 					// 슬롯 초기화
 					SlotWidget->ClearSlot();
 					SlotWidget->Init(SlotWidgets.Num() - 1);
-					//SlotWidget->Init(SlotWidgets.IndexOfByKey(SlotWidget));
-					//SlotWidget->Init(Row * Column + Row);
 				}
 			}
 		}
@@ -48,6 +47,25 @@ void UInventoryWidget::NativeConstruct()
 	// 데이터 초기화
 	m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
 	InitializeSlotWidgetMap();
+	
+	// 모든 슬롯에 이벤트 바인딩
+	for (USlotWidget* SlotWidget : SlotWidgets)
+	{
+		if (SlotWidget)
+		{
+			BindSlotEvents(SlotWidget);
+		}
+	}
+	
+	// 장비 슬롯에도 이벤트 바인딩
+	for (const TPair<EEquipmentSlotType, USlotWidget*>& Pair : SlotWidgetMap)
+	{
+		if (Pair.Value)
+		{
+			Pair.Value->EquipmentSlotType = Pair.Key;
+			BindSlotEvents(Pair.Value);
+		}
+	}
 }
 
 void UInventoryWidget::UpdateInventoryFromData(const TArray<FInventoryItem>& InventoryData)
@@ -119,4 +137,167 @@ void UInventoryWidget::InitializeSlotWidgetMap()
 	SlotWidgetMap.Add(EEquipmentSlotType::Shield, ShieldSlot);
 	SlotWidgetMap.Add(EEquipmentSlotType::Glider, GliderSlot);
 	SlotWidgetMap.Add(EEquipmentSlotType::SphereModule, SphereModuleSlot);
+}
+
+void UInventoryWidget::SetInventoryComponent(UInventoryComponent* InInventoryComponent)
+{
+	InventoryComponent = InInventoryComponent;
+	
+	if (InventoryComponent)
+	{
+		// 초기 인벤토리 데이터로 UI 업데이트
+		UpdateInventoryFromData(InventoryComponent->GetInventory());
+		
+		// 초기 장비 슬롯 업데이트
+		TMap<EEquipmentSlotType, FInventoryItem> EquippedItems = InventoryComponent->GetEquippedItems();
+		for (const TPair<EEquipmentSlotType, FInventoryItem>& Pair : EquippedItems)
+		{
+			UpdateEquipmentFromData(Pair.Key, Pair.Value);
+		}
+	}
+}
+
+void UInventoryWidget::OnSlotClicked(USlotWidget* SlotWidget, bool bIsRightClick)
+{
+	if (!SlotWidget || !InventoryComponent)
+		return;
+	
+	// 장비 슬롯인 경우
+	if (SlotWidget->EquipmentSlotType != EEquipmentSlotType::None)
+	{
+		HandleEquipmentSlotInteraction(SlotWidget, bIsRightClick);
+	}
+	// 인벤토리 슬롯인 경우
+	else
+	{
+		HandleInventorySlotInteraction(SlotWidget, bIsRightClick);
+	}
+}
+
+void UInventoryWidget::OnSlotDragStarted(USlotWidget* SlotWidget)
+{
+	// 필요한 경우 드래그 시작 시 특별한 처리
+}
+
+void UInventoryWidget::OnSlotDropped(USlotWidget* FromSlot, USlotWidget* ToSlot)
+{
+	if (!FromSlot || !ToSlot || !InventoryComponent)
+		return;
+	
+	// 인벤토리 슬롯 간의 드래그 드롭
+	if (FromSlot->EquipmentSlotType == EEquipmentSlotType::None && 
+		ToSlot->EquipmentSlotType == EEquipmentSlotType::None)
+	{
+		// 인벤토리 내에서 아이템 위치 교환
+		SwapInventoryItems(FromSlot->SlotIndex, ToSlot->SlotIndex);
+	}
+	// 인벤토리에서 장비 슬롯으로 드래그 드롭
+	else if (FromSlot->EquipmentSlotType == EEquipmentSlotType::None && 
+			 ToSlot->EquipmentSlotType != EEquipmentSlotType::None)
+	{
+		// 장비 장착 시도
+		if (InventoryComponent)
+		{
+			InventoryComponent->EquipItemByIndex(FromSlot->SlotIndex);
+		}
+	}
+	// 장비 슬롯에서 인벤토리로 드래그 드롭
+	else if (FromSlot->EquipmentSlotType != EEquipmentSlotType::None && 
+			 ToSlot->EquipmentSlotType == EEquipmentSlotType::None)
+	{
+		// 장비 해제 시도
+		if (InventoryComponent)
+		{
+			InventoryComponent->UnEquipItem(FromSlot->EquipmentSlotType);
+		}
+	}
+	// 장비 슬롯 간의 드래그 드롭 (무시하거나 필요한 경우 특별 처리)
+	else if (FromSlot->EquipmentSlotType != EEquipmentSlotType::None && 
+			 ToSlot->EquipmentSlotType != EEquipmentSlotType::None)
+	{
+		return;
+		// constexpr int WeaponSlotStartIndex = static_cast<int>(EEquipmentSlotType::Weapon1);
+		// constexpr int WeaponSlotEndIndex = static_cast<int>(EEquipmentSlotType::Weapon4);
+		//
+		// const int FromIndex = static_cast<int>(FromSlot->SlotIndex);
+		// const int ToIndex = static_cast<int>(ToSlot->SlotIndex);
+		//
+		// // 무기 슬롯 범위 확인 함수
+		// auto IsValidWeaponSlot = [](int Index) -> bool
+		// {
+		// 	return Index >= WeaponSlotStartIndex && Index <= WeaponSlotEndIndex;
+		// };
+		//
+		// // 범위 확인 후 아이템 교체
+		// if (IsValidWeaponSlot(FromIndex) && IsValidWeaponSlot(ToIndex))
+		// {
+		// 	// ToDo : 무기 위치 변경 메서드
+		// }
+	}
+}
+
+void UInventoryWidget::BindSlotEvents(USlotWidget* SlotWidget)
+{
+	if (!SlotWidget)
+		return;
+	
+	// 클릭 이벤트 바인딩
+	SlotWidget->OnItemClicked.AddDynamic(this, &UInventoryWidget::OnSlotClicked);
+	
+	// 드래그 시작 이벤트 바인딩
+	SlotWidget->OnItemDragStarted.AddDynamic(this, &UInventoryWidget::OnSlotDragStarted);
+	
+	// 드롭 이벤트 바인딩
+	SlotWidget->OnItemDropped.AddDynamic(this, &UInventoryWidget::OnSlotDropped);
+}
+
+void UInventoryWidget::SwapInventoryItems(int32 FromIndex, int32 ToIndex)
+{
+	if (!InventoryComponent)
+		return;
+
+	InventoryComponent->SwapItems(FromIndex, ToIndex);
+}
+
+void UInventoryWidget::HandleEquipmentSlotInteraction(USlotWidget* SlotWidget, bool bIsRightClick)
+{
+	if (!InventoryComponent)
+		return;
+	
+	// 장비 슬롯일 경우 주로 우클릭으로 장비 해제
+	if (bIsRightClick && SlotWidget->ItemID != 0)
+	{
+		InventoryComponent->UnEquipItem(SlotWidget->EquipmentSlotType);
+	}
+}
+
+void UInventoryWidget::HandleInventorySlotInteraction(USlotWidget* SlotWidget, bool bIsRightClick)
+{
+	if (!InventoryComponent)
+		return;
+	
+	// 인벤토리 슬롯일 경우
+	if (SlotWidget->ItemID != 0)
+	{
+		if (bIsRightClick)
+		{
+			// 우클릭으로 아이템 장착 시도
+			const FItemData* ItemData = m_GameInstance->GetDataItem(SlotWidget->ItemID);
+			if (ItemData && (ItemData->ItemCategory == EItemCategory::Equipment || 
+							 ItemData->ItemCategory == EItemCategory::Weapon))
+			{
+				InventoryComponent->EquipItemByIndex(SlotWidget->SlotIndex);
+			}
+			// 소비 아이템인 경우 사용 (추가 구현 필요)
+			// else if (ItemData && ItemData->ItemCategory == EItemCategory::Consumable)
+			// {
+			//     // 아이템 사용 구현
+			// }
+		}
+		else
+		{
+			// 좌클릭 - 기본 선택 또는 특수 기능
+			// 예: 아이템 분할, 상세 정보 보기 등 (추가 구현 필요)
+		}
+	}
 }

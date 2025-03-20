@@ -377,7 +377,7 @@ bool UInventoryComponent::EquipItemByIndex(int32 InventoryIndex)
 	if (InventoryIndex < 0 || InventoryIndex >= InventoryItems.Num())
 		return false;
 
-	FInventoryItem& Item = InventoryItems[InventoryIndex];
+	FInventoryItem Item = InventoryItems[InventoryIndex];
 	FItemData* ItemData = GetItemData(Item.ItemID);
 
 	EEquipmentSlotType EquipSlotType = FindEmptySlotForType(ItemData->EquipmentData.EquipKind);
@@ -385,7 +385,7 @@ bool UInventoryComponent::EquipItemByIndex(int32 InventoryIndex)
 		return false; // 장착 불가능한 아이템
 
 	// 같은 슬롯에 장착된 아이템이 있으면 해제
-	if (EquippedItems.Contains(EquipSlotType) && EquippedItems[EquipSlotType].ItemID != 0)
+	if (!EquippedItems[EquipSlotType].IsEmpty())
 	{
 		UnEquipItem(EquipSlotType);
 	}
@@ -430,53 +430,6 @@ FInventoryItem UInventoryComponent::GetEquippedItem(EEquipmentSlotType SlotType)
 	// return INDEX_NONE;
 }
 
-// bool UInventoryComponent::EquipWeaponToSlot(int32 InventoryIndex)
-// {
-// 	if (InventoryIndex < 0 || InventoryIndex >= InventoryItems.Num())
-// 		return false;
-//
-// 	// 빈 무기 슬롯 찾기
-// 	EEquipmentSlotType WeaponSlotType = EEquipmentSlotType::Weapon1;
-// 	int weaponIndex = static_cast<int>(WeaponSlotType);
-// 	for (int i = 0; i < 4; i++)
-// 	{
-// 		WeaponSlotType = static_cast<EEquipmentSlotType>(weaponIndex + i);
-// 		int32 itemIndex = GetEquippedItemIndex(WeaponSlotType);
-// 		// 빈자리 찾으면 반환
-// 		if (itemIndex != INDEX_NONE)
-// 		{
-// 			break;
-// 		}
-// 	}
-//
-// 	FInventoryItem& Item = InventoryItems[InventoryIndex];
-// 	FItemData* ItemData = GetItemData(Item.ItemID);
-//
-// 	// 무기 아이템인지 확인
-// 	if (!ItemData || ItemData->ItemCategory != EItemCategory::Weapon)
-// 		return false;
-//
-// 	// 이전에 같은 슬롯에 장착된 무기 찾아서 해제
-// 	int32 PreviousItemIndex = GetEquippedItemIndex(EEquipmentSlotType::Weapon, weaponIndex);
-// 	if (PreviousItemIndex != INDEX_NONE)
-// 	{
-// 		InventoryItems[PreviousItemIndex].bIsEquipped = false;
-// 		ApplyEquipmentStats(InventoryItems[PreviousItemIndex].ItemID, false);
-// 	}
-//
-// 	// 새 무기 장착
-// 	EquippedItems[WeaponSlot] = Item.ItemID;
-// 	Item.bIsEquipped = true;
-//
-// 	// 스탯 적용
-// 	ApplyEquipmentStats(Item.ItemID, true);
-//
-// 	// 이벤트 발생
-// 	OnEquipmentChanged.Broadcast(WeaponSlot, Item.ItemID);
-// 	BroadcastInventoryChanged();
-//
-// 	return true;
-// }
 
 void UInventoryComponent::SwitchWeaponSlot(int Index)
 {
@@ -486,4 +439,26 @@ void UInventoryComponent::SwitchWeaponSlot(int Index)
 
 	// 무기 변경 이벤트 호출 가능
 	OnEquipmentChanged.Broadcast(CurrentWeaponSlot, EquippedItems[CurrentWeaponSlot]);
+}
+
+bool UInventoryComponent::SwapItems(int32 FromIndex, int32 ToIndex)
+{
+	// 인덱스 유효성 검사
+	if (FromIndex < 0 || FromIndex >= InventoryItems.Num() || 
+		ToIndex < 0 || ToIndex >= InventoryItems.Num())
+		return false;
+	
+	// 같은 인덱스인 경우 무시
+	if (FromIndex == ToIndex)
+		return true;
+	
+	// 아이템 스왑
+	FInventoryItem TempItem = InventoryItems[FromIndex];
+	InventoryItems[FromIndex] = InventoryItems[ToIndex];
+	InventoryItems[ToIndex] = TempItem;
+	
+	// 이벤트 발생
+	BroadcastInventoryChanged();
+	
+	return true;
 }
