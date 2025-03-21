@@ -59,6 +59,7 @@ public:
 	virtual void CancelCast();
 	
 	// Notify를 이용한 Cast Fire(투사체, 장판 등)
+	UFUNCTION(BlueprintCallable)
 	virtual void OnCastFire();
 
 
