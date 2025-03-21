@@ -7,6 +7,7 @@
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "SonheimPlayer.generated.h"
 
+class ABaseMonster;
 class ASonheimPlayerState;
 class ULockOnComponent;
 class ASonheimPlayerController;
@@ -103,7 +104,9 @@ public:
 	void Look(FVector2D LookAxisVector);
 
 	/** Called for attack input */
+	void LeftMouse_Pressed();
 	void LeftMouse_Triggered();
+	void LeftMouse_Released();
 	void RightMouse_Pressed();
 	void RightMouse_Triggered();
 	void RightMouse_Released();
@@ -123,6 +126,11 @@ public:
 
 	/** Called for WeaponSwitch input */
 	void WeaponSwitch_Triggered();
+
+	/** Called for PartnerSkill input */
+	void PartnerSkill_Pressed();
+	void PartnerSkill_Triggered();
+	void PartnerSkill_Released();
 
 	/** Called for Menu input */
 	void Menu_Pressed();
@@ -206,6 +214,11 @@ public:
 	//// 특수 능력 관리자 반환
 	//UFUNCTION(BlueprintCallable, Category = "Abilities")
 	//UAbilityManagerComponent* GetAbilityManager() const { return AbilityManager; }
+
+	UFUNCTION(BlueprintCallable)
+	void RegisterOwnPal(ABaseMonster* Pal);
+	UFUNCTION(BlueprintCallable)
+	void SetSelectedPal(int PalIndex);
 
 private:
 	// Weapon Setting
@@ -292,4 +305,22 @@ private:
 	bool bCanRecover = true;
 	float m_RecoveryRate = 5.0f;
 	FTimerHandle RecoveryTimerHandle;
+
+
+	bool bUsePartnerSkill = false;
+
+public:
+	void SetUsePartnerSkill(bool UsePartnerSkill)
+	{
+		this->bUsePartnerSkill = UsePartnerSkill;
+	}
+
+private:
+	UPROPERTY(EditDefaultsOnly, Category = "Pals")
+	int PalMaxIndex = 4;
+	int CurrentPalIndex = 0;
+	UPROPERTY(VisibleAnywhere, Category = "Pals")
+	TMap<int, ABaseMonster*> OwnedPals;
+	UPROPERTY(VisibleAnywhere, Category = "Pals")
+	ABaseMonster* SelectedPal;
 };

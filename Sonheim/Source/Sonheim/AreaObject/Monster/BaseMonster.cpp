@@ -108,7 +108,8 @@ void ABaseMonster::SetHPWidgetVisibilityByDuration(float Duration)
 {
 	SetHPWidgetVisibility(true);
 	TWeakObjectPtr<ABaseMonster> weakThis = this;
-	GetWorld()->GetTimerManager().SetTimer(HPWidgetVisibleTimer, [weakThis]() {
+	GetWorld()->GetTimerManager().SetTimer(HPWidgetVisibleTimer, [weakThis]()
+	{
 		ABaseMonster* strongThis = weakThis.Get();
 		if (strongThis != nullptr)
 		{
@@ -128,7 +129,7 @@ void ABaseMonster::BeginPlay()
 	Super::BeginPlay();
 
 	HPWidgetComponent->SetVisibility(false);
-	
+
 	WalkSpeed = dt_AreaObject->WalkSpeed;
 	ForcedWalkSpeed = WalkSpeed * 5.f;
 
@@ -180,6 +181,17 @@ void ABaseMonster::BeginPlay()
 	{
 		PickaxeMesh->SetVisibility(false);
 	}
+
+	// ToDo : 삭제 예정
+	ASonheimPlayer* player = Cast<ASonheimPlayer>(UGameplayStatics::GetPlayerCharacter(this, 0));
+	if (player != nullptr)
+	{
+		SetPartnerOwner(player);		
+	}
+	else
+	{
+		FLog::Log("There Is No Player");
+	}
 }
 
 // Called every frame
@@ -197,7 +209,8 @@ void ABaseMonster::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 void ABaseMonster::OnBodyBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                       UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
                                       const FHitResult& SweepResult)
-{}
+{
+}
 
 UBaseAiFSM* ABaseMonster::CreateFSM()
 {
@@ -408,6 +421,7 @@ void ABaseMonster::ChangeFace(EFaceType Type) const
 void ABaseMonster::SetPartnerOwner(ASonheimPlayer* NewOwner)
 {
 	PartnerOwner = NewOwner;
+	NewOwner->RegisterOwnPal(this);
 }
 
 void ABaseMonster::Surprise()

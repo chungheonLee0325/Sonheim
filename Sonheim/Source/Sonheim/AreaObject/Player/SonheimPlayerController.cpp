@@ -90,6 +90,14 @@ ASonheimPlayerController::ASonheimPlayerController()
 		SwitchWeaponAction = tempSwitchWeapon.Object;
 	}
 
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempPartnerSkill(
+	TEXT(
+		"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_PartnerSkill.IA_PartnerSkill'"));
+	if (tempPartnerSkill.Succeeded())
+	{
+		PartnerSkillAction = tempPartnerSkill.Object;
+	}
+
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempMenu(
 		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Menu.IA_Menu'"));
 	if (tempMenu.Succeeded())
@@ -215,6 +223,10 @@ void ASonheimPlayerController::SetupInputComponent()
 		                                   &ASonheimPlayerController::OnLook);
 
 		// Attack
+		EnhancedInputComponent->BindAction(LeftMouseAction, ETriggerEvent::Started, this,
+										   &ASonheimPlayerController::On_Mouse_Left_Pressed);
+		EnhancedInputComponent->BindAction(LeftMouseAction, ETriggerEvent::Completed, this,
+										   &ASonheimPlayerController::On_Mouse_Left_Released);
 		EnhancedInputComponent->BindAction(LeftMouseAction, ETriggerEvent::Triggered, this,
 		                                   &ASonheimPlayerController::On_Mouse_Left_Triggered);
 		EnhancedInputComponent->BindAction(RightMouseAction, ETriggerEvent::Started, this,
@@ -250,6 +262,14 @@ void ASonheimPlayerController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(SwitchWeaponAction, ETriggerEvent::Triggered, this,
 		                                   &ASonheimPlayerController::On_WeaponSwitch_Triggered);
 
+		// PartnerSkill
+		EnhancedInputComponent->BindAction(PartnerSkillAction, ETriggerEvent::Started, this,
+										   &ASonheimPlayerController::On_PartnerSkill_Pressed);
+		EnhancedInputComponent->BindAction(PartnerSkillAction, ETriggerEvent::Triggered, this,
+										   &ASonheimPlayerController::On_PartnerSkill_Triggered);
+		EnhancedInputComponent->BindAction(PartnerSkillAction, ETriggerEvent::Completed, this,
+										   &ASonheimPlayerController::On_PartnerSkill_Released);
+
 		// Menu
 		EnhancedInputComponent->BindAction(MenuAction, ETriggerEvent::Started, this,
 		                                   &ASonheimPlayerController::On_Menu_Pressed);
@@ -279,6 +299,18 @@ void ASonheimPlayerController::OnLook(const FInputActionValue& Value)
 {
 	if (IsMenuActivate) return;
 	m_Player->Look(Value.Get<FVector2D>());
+}
+
+void ASonheimPlayerController::On_Mouse_Left_Pressed(const FInputActionValue& InputActionValue)
+{
+	if (IsMenuActivate) return;
+	m_Player->LeftMouse_Pressed();
+}
+
+void ASonheimPlayerController::On_Mouse_Left_Released(const FInputActionValue& InputActionValue)
+{
+	if (IsMenuActivate) return;
+	m_Player->LeftMouse_Released();
 }
 
 void ASonheimPlayerController::On_Mouse_Left_Triggered(const FInputActionValue& InputActionValue)
@@ -356,6 +388,21 @@ void ASonheimPlayerController::On_WeaponSwitch_Triggered(const FInputActionValue
 	{
 		m_PlayerState->m_InventoryComponent->SwitchWeaponSlot(SwitchData);
 	}
+}
+
+void ASonheimPlayerController::On_PartnerSkill_Pressed(const FInputActionValue& InputActionValue)
+{
+	m_Player->PartnerSkill_Pressed();
+}
+
+void ASonheimPlayerController::On_PartnerSkill_Triggered(const FInputActionValue& InputActionValue)
+{
+	m_Player->PartnerSkill_Triggered();
+}
+
+void ASonheimPlayerController::On_PartnerSkill_Released(const FInputActionValue& InputActionValue)
+{
+	m_Player->PartnerSkill_Released();
 }
 
 void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)

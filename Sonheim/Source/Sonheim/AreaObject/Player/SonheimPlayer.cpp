@@ -10,6 +10,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Sonheim/Animation/Player/PlayerAniminstance.h"
+#include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/AreaObject/Utility/GhostTrail.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
@@ -205,12 +206,27 @@ void ASonheimPlayer::StatChanged(EAreaObjectStatType StatType, float StatValue)
 		m_HealthComponent->SetMaxHP(StatValue);
 	}
 	else if (StatType == EAreaObjectStatType::Attack)
-AW
+	{
+		m_Attack = StatValue;
+	}
 	else if (StatType == EAreaObjectStatType::Defense)
 	{
 		m_Defence = StatValue;
 	}
 }
+
+void ASonheimPlayer::RegisterOwnPal(ABaseMonster* Pal)
+{
+	// ToDo : 수정 예정
+	OwnedPals[0] = Pal;
+	SetSelectedPal(0);
+}
+
+void ASonheimPlayer::SetSelectedPal(int PalIndex)
+{
+	SelectedPal = OwnedPals[PalIndex];
+}
+
 
 void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventoryItem Item)
 {
@@ -402,10 +418,26 @@ void ASonheimPlayer::Look(const FVector2D LookAxisVector)
 	}
 }
 
+void ASonheimPlayer::LeftMouse_Pressed()
+{
+	if (bUsePartnerSkill)
+	{
+		SelectedPal->PartnerSkillTrigger(true);
+		return;
+	}
+}
+
 void ASonheimPlayer::LeftMouse_Triggered()
 {
 	if (!CanPerformAction(CurrentPlayerState, "Action")) return;
 
+	if (bUsePartnerSkill)
+	{
+		//SelectedPal->PartnerSkillTrigger(true);
+		return;
+	}
+
+	
 	if (CanCombo && NextComboSkillID)
 	{
 		TObjectPtr<UBaseSkill> comboSkill = GetSkillByID(NextComboSkillID);
@@ -423,6 +455,15 @@ void ASonheimPlayer::LeftMouse_Triggered()
 	{
 		SetPlayerState(EPlayerState::ACTION);
 		skill->OnSkillComplete.BindUObject(this, &ASonheimPlayer::SetPlayerNormalState);
+	}
+}
+
+void ASonheimPlayer::LeftMouse_Released()
+{
+	if (bUsePartnerSkill)
+	{
+		SelectedPal->PartnerSkillTrigger(false);
+		return;
 	}
 }
 
@@ -537,6 +578,35 @@ void ASonheimPlayer::WeaponSwitch_Triggered()
 {
 }
 
+void ASonheimPlayer::PartnerSkill_Pressed()
+{
+	if (SelectedPal == nullptr)
+	{
+		FLog::Log("Partner Pall Is Not Exist");
+		return;
+	}
+	SelectedPal->PartnerSkillStart();
+
+	// ToDo : 팰이 set
+	//bUsePartnerSkill = true;
+}
+
+void ASonheimPlayer::PartnerSkill_Triggered()
+{
+}
+
+void ASonheimPlayer::PartnerSkill_Released()
+{
+	if (SelectedPal == nullptr)
+	{
+		FLog::Log("Partner Pall Is Not Exist");
+		return;
+	}
+	SelectedPal->PartnerSkillEnd();
+
+	// ToDo : 팰이 set
+	//bUsePartnerSkill = false;
+}
 
 void ASonheimPlayer::Menu_Pressed()
 {
