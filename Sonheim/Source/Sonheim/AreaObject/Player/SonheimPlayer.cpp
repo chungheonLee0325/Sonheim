@@ -218,7 +218,7 @@ void ASonheimPlayer::StatChanged(EAreaObjectStatType StatType, float StatValue)
 void ASonheimPlayer::RegisterOwnPal(ABaseMonster* Pal)
 {
 	// ToDo : 수정 예정
-	OwnedPals[0] = Pal;
+	OwnedPals.Add(0, Pal);
 	SetSelectedPal(0);
 }
 
@@ -437,7 +437,7 @@ void ASonheimPlayer::LeftMouse_Triggered()
 		return;
 	}
 
-	
+
 	if (CanCombo && NextComboSkillID)
 	{
 		TObjectPtr<UBaseSkill> comboSkill = GetSkillByID(NextComboSkillID);
