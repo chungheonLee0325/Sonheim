@@ -307,12 +307,21 @@ private:
 	FTimerHandle RecoveryTimerHandle;
 
 
-	bool bUsePartnerSkill = false;
+	bool bUsingPartnerSkill = false;
 
 public:
 	void SetUsePartnerSkill(bool UsePartnerSkill)
 	{
-		this->bUsePartnerSkill = UsePartnerSkill;
+		this->bUsingPartnerSkill = UsePartnerSkill;
+
+		if (UsePartnerSkill)
+		{
+			S_PlayerAnimInstance->bUsingPartnerSkill = true;
+		}
+		else
+		{
+			S_PlayerAnimInstance->bUsingPartnerSkill = false;
+		}
 	}
 
 private:

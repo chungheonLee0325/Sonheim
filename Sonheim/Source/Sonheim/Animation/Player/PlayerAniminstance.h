@@ -22,5 +22,7 @@ public:
 	bool bIsMelee = false;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category=FSM)
 	bool bIsLockOn = false;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category=FSM)
+	bool bUsingPartnerSkill = false;
 	void NativeUpdateAnimation(float DeltaSeconds);
 };

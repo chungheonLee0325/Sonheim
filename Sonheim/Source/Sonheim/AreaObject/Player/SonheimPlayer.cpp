@@ -420,7 +420,7 @@ void ASonheimPlayer::Look(const FVector2D LookAxisVector)
 
 void ASonheimPlayer::LeftMouse_Pressed()
 {
-	if (bUsePartnerSkill)
+	if (bUsingPartnerSkill)
 	{
 		SelectedPal->PartnerSkillTrigger(true);
 		return;
@@ -431,7 +431,7 @@ void ASonheimPlayer::LeftMouse_Triggered()
 {
 	if (!CanPerformAction(CurrentPlayerState, "Action")) return;
 
-	if (bUsePartnerSkill)
+	if (bUsingPartnerSkill)
 	{
 		//SelectedPal->PartnerSkillTrigger(true);
 		return;
@@ -460,7 +460,7 @@ void ASonheimPlayer::LeftMouse_Triggered()
 
 void ASonheimPlayer::LeftMouse_Released()
 {
-	if (bUsePartnerSkill)
+	if (bUsingPartnerSkill)
 	{
 		SelectedPal->PartnerSkillTrigger(false);
 		return;
@@ -585,10 +585,19 @@ void ASonheimPlayer::PartnerSkill_Pressed()
 		FLog::Log("Partner Pall Is Not Exist");
 		return;
 	}
-	SelectedPal->PartnerSkillStart();
+
+	if (!bUsingPartnerSkill)
+	{
+		SelectedPal->PartnerSkillStart();
+		//SetUsePartnerSkill(true);
+	}
+	else
+	{
+		SelectedPal->PartnerSkillEnd();
+		//SetUsePartnerSkill(false);
+	}
 
 	// ToDo : 팰이 set
-	//bUsePartnerSkill = true;
 }
 
 void ASonheimPlayer::PartnerSkill_Triggered()
@@ -602,7 +611,7 @@ void ASonheimPlayer::PartnerSkill_Released()
 		FLog::Log("Partner Pall Is Not Exist");
 		return;
 	}
-	SelectedPal->PartnerSkillEnd();
+	//SelectedPal->PartnerSkillEnd();
 
 	// ToDo : 팰이 set
 	//bUsePartnerSkill = false;
