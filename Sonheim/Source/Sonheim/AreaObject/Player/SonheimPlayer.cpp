@@ -102,6 +102,9 @@ void ASonheimPlayer::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 무기 없을때 공격 바인드
+	CommonAttack = GetSkillByID(10);
+
 	S_PlayerAnimInstance = Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance());
 	S_PlayerController = Cast<ASonheimPlayerController>(GetController());
 	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
@@ -112,10 +115,10 @@ void ASonheimPlayer::BeginPlay()
 	S_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
 	// 무기 변경 이벤트 바인드
 	S_PlayerState->m_InventoryComponent->OnWeaponChanged.AddDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
-	WeaponSkillMap.Add(EEquipmentSlotType::Weapon1, GetSkillByID(10));
-	WeaponSkillMap.Add(EEquipmentSlotType::Weapon2, GetSkillByID(10));
-	WeaponSkillMap.Add(EEquipmentSlotType::Weapon3, GetSkillByID(10));
-	WeaponSkillMap.Add(EEquipmentSlotType::Weapon4, GetSkillByID(10));
+	WeaponSkillMap.Add(EEquipmentSlotType::Weapon1, CommonAttack);
+	WeaponSkillMap.Add(EEquipmentSlotType::Weapon2, CommonAttack);
+	WeaponSkillMap.Add(EEquipmentSlotType::Weapon3, CommonAttack);
+	WeaponSkillMap.Add(EEquipmentSlotType::Weapon4, CommonAttack);
 
 	InitializeStateRestrictions();
 
@@ -175,19 +178,23 @@ void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventory
 	{
 		if (!WeaponSkillMap.IsEmpty())
 		{
-			WeaponSkillMap[WeaponSlot] = GetSkillByID(10);
+			WeaponSkillMap[WeaponSlot] = CommonAttack;
 		}
 
 		if (ItemData == nullptr)
 		{
-			//WeaponSkillMap.Add(WeaponSlot, GetSkillByID(10));
+			if (SelectedWeaponSlot == WeaponSlot)
+			{
+				WeaponComponent->SetSkeletalMesh(nullptr);
+				S_PlayerAnimInstance->bIsMelee = false;
+			}
 			return;
 		}
 
 		FSkillData* SkillData = m_GameInstance->GetDataSkill(ItemData->EquipmentData.SkillID);
 		if (SkillData == nullptr)
 		{
-			WeaponSkillMap.Add(WeaponSlot, GetSkillByID(10));
+			WeaponSkillMap.Add(WeaponSlot, CommonAttack);
 			return;
 		}
 		UBaseSkill* weaponSkill = NewObject<UBaseSkill>(this, SkillData->SkillClass);
