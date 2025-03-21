@@ -42,14 +42,14 @@ void UPartnerPatrolMode::Execute(float dt)
 	}
 
 
-	ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
-	// ToDo : PartnerOwner 설정되면 없애기
-	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-	PartnerOwner = Player;
+	// ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
+	// // ToDo : PartnerOwner 설정되면 없애기
+	// ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
+	// PartnerOwner = Player;
 	
 	float Dist{
 		static_cast<float>(FVector::Distance(m_Owner->GetActorLocation(),
-		                                     PartnerOwner->GetActorLocation()))
+		                                     m_Owner->PartnerOwner->GetActorLocation()))
 	};
 	// 너무 멀면 텔레포트
 	if (Dist > 2000.f)
@@ -119,12 +119,12 @@ void UPartnerPatrolMode::PatrolToPlayer()
 
 	FNavLocation Next;
 
-	ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
-	// ToDo : PartnerOwner 설정되면 없애기
-	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-	PartnerOwner = Player;
-	FVector TargetLocation{PartnerOwner->GetActorLocation()};
-	FVector Direction{PartnerOwner->GetActorForwardVector()};
+	// ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
+	// // ToDo : PartnerOwner 설정되면 없애기
+	// ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
+	// PartnerOwner = Player;
+	FVector TargetLocation{m_Owner->PartnerOwner->GetActorLocation()};
+	FVector Direction{m_Owner->PartnerOwner->GetActorForwardVector()};
 	FVector DesiredLocation{TargetLocation + Direction * 100.f};
 
 	NavSystem->ProjectPointToNavigation(DesiredLocation, Next);
@@ -146,12 +146,12 @@ void UPartnerPatrolMode::TeleportToPlayer()
 
 	FNavLocation Next;
 
-	ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
-	// ToDo : PartnerOwner 설정되면 없애기
-	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-	PartnerOwner = Player;
-	FVector TargetLocation{PartnerOwner->GetActorLocation()};
-	FVector Direction{PartnerOwner->GetActorForwardVector()};
+	// ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
+	// // ToDo : PartnerOwner 설정되면 없애기
+	// ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
+	// PartnerOwner = Player;
+	FVector TargetLocation{m_Owner->PartnerOwner->GetActorLocation()};
+	FVector Direction{m_Owner->PartnerOwner->GetActorForwardVector()};
 
 	for (int32 i{}; i < 36; ++i)
 	{
@@ -191,13 +191,13 @@ void UPartnerPatrolMode::MoveToPlayer()
 {
 	FNavLocation Next;
 
-	ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
-	// ToDo : PartnerOwner 설정되면 없애기
-	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-	PartnerOwner = Player;
+	// ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
+	// // ToDo : PartnerOwner 설정되면 없애기
+	// ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
+	// PartnerOwner = Player;
 	
-	FVector TargetLocation{PartnerOwner->GetActorLocation()};
-	FVector Direction{PartnerOwner->GetActorForwardVector()};
+	FVector TargetLocation{m_Owner->PartnerOwner->GetActorLocation()};
+	FVector Direction{m_Owner->PartnerOwner->GetActorForwardVector()};
 
 	for (int32 i{}; i < 36; ++i)
 	{

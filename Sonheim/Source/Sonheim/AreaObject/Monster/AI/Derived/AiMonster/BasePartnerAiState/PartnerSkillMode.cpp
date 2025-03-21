@@ -21,16 +21,17 @@ void UPartnerSkillMode::Enter()
 		FLog::Log("UPartnerSkillMode");
 	}
 
-	ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
-	// ToDo : PartnerOwner 설정되면 없애기
-	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-	PartnerOwner = Player;
+	// ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
+	// // ToDo : PartnerOwner 설정되면 없애기
+	// ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
+	// PartnerOwner = Player;
 	
-	if (Player && Player->GetMesh())
+	if (m_Owner->PartnerOwner && m_Owner->PartnerOwner->GetMesh())
 	{
 		m_Owner->SetActorEnableCollision(false);
 		m_Owner->GetMesh()->SetRelativeLocation(FVector(0));
-		m_Owner->AttachToComponent(PartnerOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("PartnerWeapon"));
+		m_Owner->AttachToComponent(m_Owner->PartnerOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("PartnerWeapon"));
+		m_Owner->PartnerOwner->SetUsePartnerSkill(true);
 	}
 }
 
@@ -59,6 +60,7 @@ void UPartnerSkillMode::DetachFromPlayer()
 	m_Owner->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 	m_Owner->SetActorEnableCollision(true);
 	m_Owner->GetMesh()->SetRelativeLocation(FVector(0, 0, -60));
+	m_Owner->PartnerOwner->SetUsePartnerSkill(false);
 
 	// PartnerPatrolMode
 	ChangeState(m_NextState);

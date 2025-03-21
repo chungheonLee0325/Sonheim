@@ -69,7 +69,7 @@ void UFlamethrower::FireFlame()
 	{
 		DrawDebugLine(GetWorld(), StartPos, EndPos, FColor::Red, false, 1.f, 0, 1.f);
 	}
-	
+
 	for (FHitResult& HitInfo : HitInfos)
 	{
 		if (m_Caster->bShowDebug)
@@ -78,7 +78,7 @@ void UFlamethrower::FireFlame()
 		}
 
 		FAttackData* AttackData = GetAttackDataByIndex(0);
-		m_Caster->CalcDamage(*AttackData, m_Caster, HitInfo.GetActor(), HitInfo);
+		m_Caster->CalcDamage(*AttackData, PartnerOwner, HitInfo.GetActor(), HitInfo);
 		
 		// 
 		// ASonheimPlayer* Player{Cast<ASonheimPlayer>(HitInfo.GetActor())};
