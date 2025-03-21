@@ -88,6 +88,8 @@ protected:
 
 	virtual void OnRevival() override;
 
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
 	virtual float HandleAttackDamageCalculation(float Damage) override;
 	virtual float HandleDefenceDamageCalculation(float Damage) override;
 
@@ -286,5 +288,8 @@ private:
 	// ToDO : 이관 예정!!!!
 	float m_Attack = 10.f;
 	float m_Defence = 10.f;
-	
+
+	bool bCanRecover = true;
+	float m_RecoveryRate = 5.0f;
+	FTimerHandle RecoveryTimerHandle;
 };

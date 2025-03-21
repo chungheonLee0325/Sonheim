@@ -146,6 +146,20 @@ void ASonheimPlayer::OnRevival()
 	S_PlayerController->GetPlayerStatusWidget()->SetVisibility(ESlateVisibility::Visible);
 }
 
+float ASonheimPlayer::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
+                                 class AController* EventInstigator, AActor* DamageCauser)
+{
+	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	if (!FMath::IsNearlyZero(ActualDamage))
+	{
+		bCanRecover = false;
+		GetWorld()->GetTimerManager().SetTimer(RecoveryTimerHandle, [this] { bCanRecover = true; }, 2.f, false);
+	}
+
+	return ActualDamage;
+}
+
 float ASonheimPlayer::HandleAttackDamageCalculation(float Damage)
 {
 	// ToDo : 수정 예정!! 하드한 공식 - skill로 고도화 예정
@@ -188,12 +202,10 @@ void ASonheimPlayer::StatChanged(EAreaObjectStatType StatType, float StatValue)
 {
 	if (StatType == EAreaObjectStatType::HP)
 	{
-		m_HealthComponent->AddMaxHP(StatValue);
+		m_HealthComponent->SetMaxHP(StatValue);
 	}
 	else if (StatType == EAreaObjectStatType::Attack)
-	{
-		m_Attack = StatValue;
-	}
+AW
 	else if (StatType == EAreaObjectStatType::Defense)
 	{
 		m_Defence = StatValue;
@@ -244,6 +256,14 @@ void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventory
 void ASonheimPlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 스태미나 자동 회복
+	if (bCanRecover && !IsMaxHP())
+	{
+		float recovery = m_RecoveryRate * DeltaTime;
+
+		IncreaseHP(recovery);
+	}
 }
 
 void ASonheimPlayer::InitializeStateRestrictions()

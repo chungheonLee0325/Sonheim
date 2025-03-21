@@ -103,3 +103,10 @@ float UHealthComponent::AddMaxHP(float Delta)
 
 	return m_HPMax;
 }
+
+float UHealthComponent::SetMaxHP(float MaxHP)
+{
+	m_HPMax = MaxHP;
+	OnHealthChanged.Broadcast(m_HP, 0.f, m_HPMax);
+	return m_HPMax;
+}

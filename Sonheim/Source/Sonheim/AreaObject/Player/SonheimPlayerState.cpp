@@ -23,7 +23,7 @@ void ASonheimPlayerState::BeginPlay()
 	m_Player = Cast<ASonheimPlayer>(GetOwner());
 
 	// 기본 스탯 초기화
-	BaseStat.Add(EAreaObjectStatType::HP, 100.0f);
+	BaseStat.Add(EAreaObjectStatType::HP, 300.0f);
 	BaseStat.Add(EAreaObjectStatType::Attack, 10.0f);
 	BaseStat.Add(EAreaObjectStatType::Defense, 5.0f);
 	BaseStat.Add(EAreaObjectStatType::WorkSpeed, 300.0f);
