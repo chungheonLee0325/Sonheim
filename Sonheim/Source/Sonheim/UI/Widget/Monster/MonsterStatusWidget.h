@@ -47,6 +47,27 @@ public:
 	UPROPERTY(meta = (BindWidget))
 	UImage* TypeThreeImage;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UTexture2D* DarkTexture;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UTexture2D* DragonTexture;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UTexture2D* ElectricTexture;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UTexture2D* FireTexture;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UTexture2D* GrassTexture;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UTexture2D* GroundTexture;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UTexture2D* IceTexture;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UTexture2D* NeutralTexture;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UTexture2D* WaterTexture;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UTexture2D* NoneTexture;
 private:
 	FLinearColor CalcImageByElementAttributes(EElementalAttribute Type);
+	UTexture2D* CalcTextureByElementAttributes(EElementalAttribute Type);
 };
