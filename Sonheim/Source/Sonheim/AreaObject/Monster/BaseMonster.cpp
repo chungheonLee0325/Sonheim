@@ -108,7 +108,8 @@ void ABaseMonster::SetHPWidgetVisibilityByDuration(float Duration)
 {
 	SetHPWidgetVisibility(true);
 	TWeakObjectPtr<ABaseMonster> weakThis = this;
-	GetWorld()->GetTimerManager().SetTimer(HPWidgetVisibleTimer, [weakThis]() {
+	GetWorld()->GetTimerManager().SetTimer(HPWidgetVisibleTimer, [weakThis]()
+	{
 		ABaseMonster* strongThis = weakThis.Get();
 		if (strongThis != nullptr)
 		{
@@ -128,7 +129,7 @@ void ABaseMonster::BeginPlay()
 	Super::BeginPlay();
 
 	HPWidgetComponent->SetVisibility(false);
-	
+
 	WalkSpeed = dt_AreaObject->WalkSpeed;
 	ForcedWalkSpeed = WalkSpeed * 5.f;
 
@@ -197,7 +198,8 @@ void ABaseMonster::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 void ABaseMonster::OnBodyBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                       UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
                                       const FHitResult& SweepResult)
-{}
+{
+}
 
 UBaseAiFSM* ABaseMonster::CreateFSM()
 {
@@ -408,6 +410,7 @@ void ABaseMonster::ChangeFace(EFaceType Type) const
 void ABaseMonster::SetPartnerOwner(ASonheimPlayer* NewOwner)
 {
 	PartnerOwner = NewOwner;
+	NewOwner->RegisterOwnPal(this);
 }
 
 void ABaseMonster::Surprise()

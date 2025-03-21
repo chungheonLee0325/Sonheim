@@ -31,16 +31,16 @@ public:
 
 	UFUNCTION()
 	UBaseSkillRoulette* GetSkillRoulette() const;
-	
+
 	UPROPERTY(EditAnywhere, Category = "UI")
 	UWidgetComponent* HPWidgetComponent;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	class UMonsterStatusWidget* StatusWidget;
-	
+
 	UPROPERTY(EditAnywhere, Category = "UI")
 	float HeightHPUI = 160.0f;
-	
+
 	UPROPERTY()
 	FTimerHandle OnDieHandle;
 
@@ -49,6 +49,7 @@ public:
 	void SetHPWidgetVisibility(bool IsVisible);
 	void SetHPWidgetVisibilityByDuration(float Duration);
 	FTimerHandle HPWidgetVisibleTimer;
+
 protected:
 	// Combat System
 	UPROPERTY()
@@ -63,7 +64,7 @@ protected:
 	float SightRadius = 1500.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Sight")
 	float LoseSightRadius = 1500.f;
-	
+
 private:
 	UPROPERTY()
 	AActor* m_CurrentTarget;
@@ -136,7 +137,6 @@ protected:
 	// GameJam으로 추가
 	// ToDo: 필요한 기능들 위로 올리기
 public:
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	class AAIController* AIController;
 
@@ -156,7 +156,7 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	class UStaticMeshComponent* PickaxeMesh;
-	
+
 	UPROPERTY(VisibleAnywhere)
 	UBaseAiFSM* m_AiFSM;
 
@@ -209,12 +209,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USceneComponent* HeadVFXPoint;
 
-	
-	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
+	                         class AController* EventInstigator, AActor* DamageCauser) override;
 
 	float WalkSpeed = 400.f;
 	float ForcedWalkSpeed = 1200.f;
-	
+
 	UFUNCTION()
 	void ChangeFace(EFaceType Type) const;
 	UPROPERTY()
@@ -232,5 +233,13 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	class ASonheimPlayer* PartnerOwner;
+
+	// ToDo : Begin Play에서 호출하는것 변경 예정
 	void SetPartnerOwner(ASonheimPlayer* NewOwner);
+
+	// ToDo : @@도윤 인터페이스화 할것
+	void PartnerSkillStart() { IsCalled = true; }
+	// ToDo : 추가로 수정 예정 - 현재 : true일때 발사 false 발사중지 보내주기 -> trigger로 쏴주기
+	void PartnerSkillTrigger(bool IsTrigger) { bActivateSkill = IsTrigger; };
+	void PartnerSkillEnd() { IsCalled = false; }
 };

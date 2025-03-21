@@ -3,7 +3,9 @@
 
 #include "Foxparks.h"
 #include "Components/CapsuleComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/PalFSM/FoxparksFSM.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 
 
 // Sets default values
@@ -37,7 +39,16 @@ AFoxparks::AFoxparks()
 void AFoxparks::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	// ToDo : 삭제 예정
+	ASonheimPlayer* player = Cast<ASonheimPlayer>(UGameplayStatics::GetPlayerCharacter(this, 0));
+	if (player != nullptr)
+	{
+		SetPartnerOwner(player);		
+	}
+	else
+	{
+		FLog::Log("There Is No Player");
+	}
 }
 
 // Called every frame

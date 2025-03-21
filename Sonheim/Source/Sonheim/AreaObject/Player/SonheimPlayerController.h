@@ -42,7 +42,9 @@ private:
 	/** Called for looking input */
 	void OnLook(const FInputActionValue& Value);
 	/** Called for mouse input */
+	void On_Mouse_Left_Pressed(const FInputActionValue& InputActionValue);
 	void On_Mouse_Left_Triggered(const FInputActionValue& InputActionValue);
+	void On_Mouse_Left_Released(const FInputActionValue& InputActionValue);
 	void On_Mouse_Right_Pressed(const FInputActionValue& InputActionValue);
 	void On_Mouse_Right_Triggered(const FInputActionValue& InputActionValue);
 	void On_Mouse_Right_Released(const FInputActionValue& InputActionValue);
@@ -60,6 +62,10 @@ private:
 	void On_Reload_Pressed(const FInputActionValue& Value);
 	/** Called for Weapon Switch input */
 	void On_WeaponSwitch_Triggered(const FInputActionValue& Value);
+	/** Called for PartnerSkill input */
+	void On_PartnerSkill_Pressed(const FInputActionValue& InputActionValue);
+	void On_PartnerSkill_Triggered(const FInputActionValue& InputActionValue);
+	void On_PartnerSkill_Released(const FInputActionValue& InputActionValue);
 	/** Called for Menu input */
 	void On_Menu_Pressed(const FInputActionValue& Value);
 	void On_Menu_Released(const FInputActionValue& Value);
@@ -134,6 +140,10 @@ private:
 	/** Switch Weapon Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* SwitchWeaponAction;
+
+	/** PartnerSkill Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* PartnerSkillAction;
 
 	/** Menu Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
