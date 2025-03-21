@@ -235,6 +235,7 @@ public:
 	class ASonheimPlayer* PartnerOwner;
 
 	// ToDo : Begin Play에서 호출하는것 변경 예정
+	UFUNCTION(BlueprintCallable)
 	void SetPartnerOwner(ASonheimPlayer* NewOwner);
 
 	// ToDo : @@도윤 인터페이스화 할것
