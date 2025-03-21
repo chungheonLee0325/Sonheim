@@ -7,6 +7,7 @@
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "SonheimPlayerState.generated.h"
 
+class UStatBonusComponent;
 class UInventoryComponent;
 class ASonheimPlayer;
 class USonheimGameInstance;
@@ -41,6 +42,10 @@ protected:
 public:
 	UPROPERTY(BlueprintReadWrite, Category="Inventory")
 	UInventoryComponent* m_InventoryComponent;
+
+	// ToDo : AreaObject로 뺄지 고민
+	UPROPERTY(BlueprintReadWrite, Category="Stats")
+	UStatBonusComponent* m_StatBonusComponent;
 	
 private:
 	UPROPERTY()

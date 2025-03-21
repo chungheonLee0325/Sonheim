@@ -133,6 +133,8 @@ public:
 
 	void Reward(int ItemID, int ItemValue) const;
 
+	ASonheimPlayerState* GetSPlayerState() const {return S_PlayerState;};
+
 	UFUNCTION(BlueprintCallable)
 	void UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventoryItem Item);
 
@@ -271,4 +273,7 @@ private:
 
 	float NormalCameraBoomAramLength = 180.f;
 	float RClickCameraBoomAramLength = 90.f;
+
+	UPROPERTY()
+	UBaseSkill* CommonAttack = nullptr;
 };

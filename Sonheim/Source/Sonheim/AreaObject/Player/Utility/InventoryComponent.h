@@ -7,6 +7,7 @@
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "InventoryComponent.generated.h"
 
+class ASonheimPlayerState;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInventoryChanged, const TArray<FInventoryItem>&, Inventory);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnEquipmentChanged, EEquipmentSlotType, Slot, FInventoryItem, InventoryItem);
@@ -120,7 +121,7 @@ private:
 	USonheimGameInstance* m_GameInstance;
 
 	UPROPERTY()
-	ASonheimPlayer* m_Player;
+	ASonheimPlayerState* m_PlayerState;
 
 	// 내부 헬퍼 함수
 	bool IsValidItemID(int ItemID) const;

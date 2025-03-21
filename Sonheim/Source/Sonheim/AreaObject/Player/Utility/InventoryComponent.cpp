@@ -2,8 +2,11 @@
 
 
 #include "InventoryComponent.h"
+
+#include "Sonheim/AreaObject/Attribute/StatBonusComponent.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
 
@@ -25,7 +28,7 @@ void UInventoryComponent::BeginPlay()
 
 	// 게임 인스턴스와 플레이어 참조 얻기
 	m_GameInstance = Cast<USonheimGameInstance>(GetWorld()->GetGameInstance());
-	m_Player = Cast<ASonheimPlayer>(GetOwner());
+	m_PlayerState = Cast<ASonheimPlayerState>(GetOwner());
 
 	// 장비 슬롯 초기화
 	for (EEquipmentSlotType Value : TEnumRange<EEquipmentSlotType>())
@@ -288,24 +291,7 @@ FItemData* UInventoryComponent::GetItemData(int ItemID) const
 
 void UInventoryComponent::ApplyEquipmentStats(int ItemID, bool bEquipping)
 {
-	FItemData* ItemData = GetItemData(ItemID);
-	if (!ItemData || !m_Player)
-		return;
-
-	float Multiplier = bEquipping ? 1.0f : -1.0f;
-
-	// 스탯 적용 (실제 구현은 플레이어 클래스에 맞게 조정 필요)
-	if (ItemData->EquipmentData.HPBonus != 0)
-	{
-		// 최대 체력 조정
-		// m_Player->UpdateMaxHP(ItemData->HPBonus * Multiplier);
-	}
-
-	if (ItemData->EquipmentData.StaminaBonus != 0)
-	{
-		// 최대 스태미나 조정
-		// m_Player->UpdateMaxStamina(ItemData->StaminaBonus * Multiplier);
-	}
+	m_PlayerState->m_StatBonusComponent->ApplyItemStatBonuses(ItemID, bEquipping);
 }
 
 int UInventoryComponent::FindItemIndexInInventory(int ItemID) const
@@ -395,14 +381,11 @@ bool UInventoryComponent::EquipItemByIndex(int32 InventoryIndex)
 	Item.bIsEquipped = true;
 	EquippedItems[EquipSlotType] = Item;
 
-	// 스탯 적용
+	// 스탯 적용)
 	ApplyEquipmentStats(Item.ItemID, true);
 
 	// Inventory에서 아이템 삭제 :: ToDo: 프로젝트마다 customize 될 부분
 	RemoveItemByIndex(InventoryIndex);
-
-	// 스탯 적용
-	ApplyEquipmentStats(Item.ItemID, true);
 
 	// 이벤트 발생
 	OnEquipmentChanged.Broadcast(EquipSlotType, Item);
