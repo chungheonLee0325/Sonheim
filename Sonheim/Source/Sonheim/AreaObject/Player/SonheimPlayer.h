@@ -88,6 +88,9 @@ protected:
 
 	virtual void OnRevival() override;
 
+	virtual float HandleAttackDamageCalculation(float Damage) override;
+	virtual float HandleDefenceDamageCalculation(float Damage) override;
+
 public:
 	// Movement
 	/** Called for movement input */
@@ -141,6 +144,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int ItemID);
 
+	UFUNCTION(BlueprintCallable)
+	void StatChanged(EAreaObjectStatType StatType, float StatValue);
 	//// 장비 시각화 관련 함수 추가
 	//UFUNCTION(BlueprintCallable, Category = "Equipment")
 	//void EquipVisualItem(EEquipmentSlotType SlotType, int ItemID);
@@ -276,4 +281,10 @@ private:
 
 	UPROPERTY()
 	UBaseSkill* CommonAttack = nullptr;
+
+
+	// ToDO : 이관 예정!!!!
+	float m_Attack = 10.f;
+	float m_Defence = 10.f;
+	
 };

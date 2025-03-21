@@ -78,6 +78,9 @@ protected:
 
 	// ToDo : BluePrintFunction Library
 	FName DetermineDirection(const FVector& TargetPos) const;
+
+	virtual float HandleAttackDamageCalculation(float Damage);
+	virtual float HandleDefenceDamageCalculation(float Damage);
 	
 	UPROPERTY()
 	USonheimGameInstance* m_GameInstance = nullptr;

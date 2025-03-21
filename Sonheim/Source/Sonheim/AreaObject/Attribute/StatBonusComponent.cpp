@@ -32,6 +32,8 @@ void UStatBonusComponent::AddStatBonus(EAreaObjectStatType StatType, float Value
 		
 		ItemStatBonuses[SourceID].Add(NewModifier);
 	}
+
+	OnStatChanged.Broadcast(StatType);
 }
 
 void UStatBonusComponent::RemoveStatBonus(EAreaObjectStatType StatType, float Value, EStatModifierType ModType, int SourceID)
@@ -54,6 +56,8 @@ void UStatBonusComponent::RemoveStatBonus(EAreaObjectStatType StatType, float Va
 			break;
 		}
 	}
+	
+	OnStatChanged.Broadcast(StatType);
 }
 
 void UStatBonusComponent::ApplyItemStatBonuses(int ItemID, bool bApply)
@@ -67,6 +71,13 @@ void UStatBonusComponent::ApplyItemStatBonuses(int ItemID, bool bApply)
 	
 	FItemData* ItemData = GameInstance->GetDataItem(ItemID);
 	if (!ItemData)
+	{
+		return;
+	}
+	
+	// 장비 종류가 무기인 경우, 별도 처리하지 않음
+	// 무기는 RegisterEquippedItem에서 처리됨
+	if (ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon)
 	{
 		return;
 	}
@@ -103,6 +114,134 @@ void UStatBonusComponent::ApplyItemStatBonuses(int ItemID, bool bApply)
 	{
 		// 이 아이템과 관련된 모든 보너스 제거
 		RemoveAllBonusesFromSource(ItemID);
+	}
+}
+
+void UStatBonusComponent::RegisterEquippedItem(EEquipmentSlotType SlotType, int ItemID, bool bEquipping)
+{
+	// 무기 슬롯인지 확인
+	bool bIsWeaponSlot = (SlotType == EEquipmentSlotType::Weapon1 ||
+						 SlotType == EEquipmentSlotType::Weapon2 ||
+						 SlotType == EEquipmentSlotType::Weapon3 ||
+						 SlotType == EEquipmentSlotType::Weapon4);
+	
+	// 게임 인스턴스 가져오기
+	USonheimGameInstance* GameInstance = Cast<USonheimGameInstance>(GetWorld()->GetGameInstance());
+	if (!GameInstance)
+	{
+		return;
+	}
+	
+	// 아이템 데이터 가져오기
+	FItemData* ItemData = GameInstance->GetDataItem(ItemID);
+	if (!ItemData)
+	{
+		return;
+	}
+	
+	if (bEquipping)
+	{
+		// 무기 슬롯에 장착된 경우
+		if (bIsWeaponSlot)
+		{
+			// 무기 슬롯별 보너스 저장
+			TArray<FStatModifier> WeaponBonuses;
+			
+			// HP 보너스 추가
+			if (ItemData->EquipmentData.HPBonus != 0)
+			{
+				WeaponBonuses.Add(FStatModifier(EAreaObjectStatType::HP, 
+					ItemData->EquipmentData.HPBonus, EStatModifierType::Additive, ItemID));
+			}
+			
+			// 스태미나 보너스 추가
+			if (ItemData->EquipmentData.StaminaBonus != 0)
+			{
+				WeaponBonuses.Add(FStatModifier(EAreaObjectStatType::Stamina, 
+					ItemData->EquipmentData.StaminaBonus, EStatModifierType::Additive, ItemID));
+			}
+			
+			// 공격력 보너스 추가
+			if (ItemData->EquipmentData.DamageBonus != 0)
+			{
+				WeaponBonuses.Add(FStatModifier(EAreaObjectStatType::Attack, 
+					ItemData->EquipmentData.DamageBonus, EStatModifierType::Additive, ItemID));
+			}
+			
+			// 방어력 보너스 추가
+			if (ItemData->EquipmentData.DefenseBonus != 0)
+			{
+				WeaponBonuses.Add(FStatModifier(EAreaObjectStatType::Defense, 
+					ItemData->EquipmentData.DefenseBonus, EStatModifierType::Additive, ItemID));
+			}
+			
+			// 무기 슬롯 보너스 맵에 추가
+			WeaponSlotBonuses.Add(SlotType, WeaponBonuses);
+			
+			// 현재 활성화된 무기 슬롯인 경우에만 실제 스탯에 적용
+			if (SlotType == CurrentWeaponSlot)
+			{
+				for (const FStatModifier& Mod : WeaponBonuses)
+				{
+					AddStatBonus(Mod.StatType, Mod.Value, Mod.ModifierType, Mod.SourceID);
+				}
+			}
+		}
+		else
+		{
+			// 무기가 아닌 경우 일반적인 방식으로 스탯 적용
+			ApplyItemStatBonuses(ItemID, true);
+		}
+	}
+	else
+	{
+		// 무기 슬롯의 장비를 해제하는 경우
+		if (bIsWeaponSlot)
+		{
+			// 현재 활성화된 무기 슬롯인 경우 스탯에서 제거
+			if (SlotType == CurrentWeaponSlot)
+			{
+				if (WeaponSlotBonuses.Contains(SlotType))
+				{
+					for (const FStatModifier& Mod : WeaponSlotBonuses[SlotType])
+					{
+						RemoveStatBonus(Mod.StatType, Mod.Value, Mod.ModifierType, Mod.SourceID);
+					}
+				}
+			}
+			
+			// 무기 슬롯 보너스 맵에서 제거
+			WeaponSlotBonuses.Remove(SlotType);
+		}
+		else
+		{
+			// 무기가 아닌 경우 일반적인 방식으로 스탯 제거
+			RemoveAllBonusesFromSource(ItemID);
+		}
+	}
+}
+
+void UStatBonusComponent::SetCurrentWeaponSlot(EEquipmentSlotType SlotType)
+{
+	// 이전 무기 슬롯의 보너스 제거
+	if (WeaponSlotBonuses.Contains(CurrentWeaponSlot))
+	{
+		for (const FStatModifier& Mod : WeaponSlotBonuses[CurrentWeaponSlot])
+		{
+			RemoveStatBonus(Mod.StatType, Mod.Value, Mod.ModifierType, Mod.SourceID);
+		}
+	}
+	
+	// 현재 무기 슬롯 업데이트
+	CurrentWeaponSlot = SlotType;
+	
+	// 새 무기 슬롯의 보너스 적용
+	if (WeaponSlotBonuses.Contains(CurrentWeaponSlot))
+	{
+		for (const FStatModifier& Mod : WeaponSlotBonuses[CurrentWeaponSlot])
+		{
+			AddStatBonus(Mod.StatType, Mod.Value, Mod.ModifierType, Mod.SourceID);
+		}
 	}
 }
 
@@ -178,14 +317,15 @@ void UStatBonusComponent::RemoveAllBonusesFromSource(int SourceID)
 		{
 			if (StatBonuses.Contains(Mod.StatType))
 			{
-				TArray<FStatModifier>& TypeModifiers = StatBonuses[Mod.StatType];
-				for (int i = TypeModifiers.Num() - 1; i >= 0; i--)
-				{
-					if (TypeModifiers[i].SourceID == SourceID)
-					{
-						TypeModifiers.RemoveAt(i);
-					}
-				}
+				RemoveStatBonus(Mod.StatType, Mod.Value, Mod.ModifierType, Mod.SourceID);
+				//TArray<FStatModifier>& TypeModifiers = StatBonuses[Mod.StatType];
+				//for (int i = TypeModifiers.Num() - 1; i >= 0; i--)
+				//{
+				//	if (TypeModifiers[i].SourceID == SourceID)
+				//	{
+				//		//TypeModifiers.RemoveAt(i);
+				//	}
+				//}
 			}
 		}
 		

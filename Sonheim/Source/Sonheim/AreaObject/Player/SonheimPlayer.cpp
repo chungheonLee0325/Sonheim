@@ -124,6 +124,8 @@ void ASonheimPlayer::BeginPlay()
 
 	// 게임 시작 시 첫 위치를 체크포인트로 저장
 	SaveCheckpoint(GetActorLocation(), GetActorRotation());
+
+	S_PlayerState->OnPlayerStatsChanged.AddDynamic(this, &ASonheimPlayer::StatChanged);
 }
 
 void ASonheimPlayer::OnDie()
@@ -142,6 +144,18 @@ void ASonheimPlayer::OnRevival()
 	Super::OnRevival();
 	S_PlayerController->FailWidget->RemoveFromParent();
 	S_PlayerController->GetPlayerStatusWidget()->SetVisibility(ESlateVisibility::Visible);
+}
+
+float ASonheimPlayer::HandleAttackDamageCalculation(float Damage)
+{
+	// ToDo : 수정 예정!! 하드한 공식 - skill로 고도화 예정
+	return Damage + m_Attack;
+}
+
+float ASonheimPlayer::HandleDefenceDamageCalculation(float Damage)
+{
+	// ToDo : 수정 예정!! 하드한 공식 - skill로 고도화 예정
+	return FMath::Clamp(Damage - m_Defence, 1, Damage - m_Defence);
 }
 
 void ASonheimPlayer::Reward(int ItemID, int ItemValue) const
@@ -167,6 +181,22 @@ void ASonheimPlayer::UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int Ite
 		S_PlayerAnimInstance->bIsMelee = true;
 
 		// 애니메이션 모드 설정
+	}
+}
+
+void ASonheimPlayer::StatChanged(EAreaObjectStatType StatType, float StatValue)
+{
+	if (StatType == EAreaObjectStatType::HP)
+	{
+		m_HealthComponent->AddMaxHP(StatValue);
+	}
+	else if (StatType == EAreaObjectStatType::Attack)
+	{
+		m_Attack = StatValue;
+	}
+	else if (StatType == EAreaObjectStatType::Defense)
+	{
+		m_Defence = StatValue;
 	}
 }
 

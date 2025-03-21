@@ -99,7 +99,7 @@ enum class EAreaObjectStatType : uint8
 	HP UMETA(DisplayName = "Health"),
 	Attack UMETA(DisplayName = "Attack"),
 	Defense UMETA(DisplayName = "Defense"),
-	MoveSpeed UMETA(DisplayName = "MoveSpeed"),
+	WorkSpeed UMETA(DisplayName = "WorkSpeed"),
 	RunSpeed UMETA(DisplayName = "RunSpeed"),
 	JumpHeight UMETA(DisplayName = "Jump Height"),
 	// ToDo : 플레이어 전용스탯으로 뺄지 고민..
