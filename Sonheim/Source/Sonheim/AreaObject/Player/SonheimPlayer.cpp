@@ -8,7 +8,9 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "Sonheim/Animation/Player/PlayerAniminstance.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
@@ -279,6 +281,41 @@ void ASonheimPlayer::Tick(float DeltaTime)
 		float recovery = m_RecoveryRate * DeltaTime;
 
 		IncreaseHP(recovery);
+	}
+
+	// 
+	if (SelectedPal != nullptr)
+	{
+		TArray<AActor*> TargetArr;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABaseMonster::StaticClass(), TargetArr);
+
+		// 플레이어 위치 가져오기
+		FVector PlayerLocation = GetActorLocation();
+
+		TArray<ABaseMonster*> IdleMonster;
+		for (auto FindTarget : TargetArr)
+		{
+			auto monster = Cast<ABaseMonster>(FindTarget);
+			if (monster != SelectedPal)
+			{
+				IdleMonster.Add(monster);
+			}
+		}
+
+		// 거리에 따라 정렬
+		IdleMonster.Sort([PlayerLocation](const ABaseMonster& A, const ABaseMonster& B)
+		{
+			float DistanceA = FVector::DistSquared(A.GetActorLocation(), PlayerLocation);
+			float DistanceB = FVector::DistSquared(B.GetActorLocation(), PlayerLocation);
+			return DistanceA < DistanceB;
+		});
+		if (IdleMonster.Num() > 0)
+		{
+			if (FVector::Dist(IdleMonster[0]->GetActorLocation(), PlayerLocation) < 800.f)
+			{
+				SelectedPal->SetAggroTarget(IdleMonster[0]);
+			}
+		}
 	}
 }
 
