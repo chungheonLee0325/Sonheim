@@ -140,6 +140,16 @@ FName AAreaObject::DetermineDirection(const FVector& TargetPos) const
 	}
 }
 
+float AAreaObject::HandleAttackDamageCalculation(float Damage)
+{
+	return Damage;
+}
+
+float AAreaObject::HandleDefenceDamageCalculation(float Damage)
+{
+	return Damage;
+}
+
 // Called every frame
 void AAreaObject::Tick(float DeltaTime)
 {
@@ -160,7 +170,8 @@ void AAreaObject::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 void AAreaObject::CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Target, FHitResult& HitInfo)
 {
 	float Damage = FMath::RandRange(AttackData.HealthDamageAmountMin, AttackData.HealthDamageAmountMax);
-
+	Damage = HandleAttackDamageCalculation(Damage);
+	
 	// Stab Damage Process - 포켓몬 자속기
 	for (auto& elementAttribute : this->dt_AreaObject->DefenceElementalAttributes)
 	{
@@ -206,6 +217,7 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 		return 0.0f;
 
 	float ActualDamage = Damage;
+	ActualDamage = HandleDefenceDamageCalculation(ActualDamage);
 
 	FHitResult hitResult;
 	FVector hitDir;

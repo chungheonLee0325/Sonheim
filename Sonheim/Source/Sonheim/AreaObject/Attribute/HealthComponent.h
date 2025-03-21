@@ -47,6 +47,11 @@ public:
 	UFUNCTION()
 	float GetMaxHP() const;
 
+	UFUNCTION()
+	float AddMaxHP(float Delta);
+	UFUNCTION()
+	float SetMaxHP(float MaxHP);
+
 	// 체력 변경 델리게이트
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnHealthChangedDelegate OnHealthChanged;

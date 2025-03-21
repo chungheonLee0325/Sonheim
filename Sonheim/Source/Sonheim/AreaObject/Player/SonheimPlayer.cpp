@@ -12,6 +12,7 @@
 #include "Sonheim/Animation/Player/PlayerAniminstance.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/AreaObject/Utility/GhostTrail.h"
+#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/Utilities/LogMacro.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Utility/InventoryComponent.h"
@@ -47,6 +48,7 @@ ASonheimPlayer::ASonheimPlayer()
 
 	WeaponComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
 	WeaponComponent->SetupAttachment(GetMesh(),TEXT("Weapon_R"));
+	WeaponComponent->ComponentTags.Add("WeaponMesh");
 
 	// Set Animation Blueprint
 	ConstructorHelpers::FClassFinder<UAnimInstance> TempABP(TEXT(
@@ -100,16 +102,30 @@ void ASonheimPlayer::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 무기 없을때 공격 바인드
+	CommonAttack = GetSkillByID(10);
+
 	S_PlayerAnimInstance = Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance());
 	S_PlayerController = Cast<ASonheimPlayerController>(GetController());
 	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
 
 	S_PlayerController->InitializeHUD();
 
+	// 장비 변경 이벤트 바인드
+	S_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
+	// 무기 변경 이벤트 바인드
+	S_PlayerState->m_InventoryComponent->OnWeaponChanged.AddDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
+	WeaponSkillMap.Add(EEquipmentSlotType::Weapon1, CommonAttack);
+	WeaponSkillMap.Add(EEquipmentSlotType::Weapon2, CommonAttack);
+	WeaponSkillMap.Add(EEquipmentSlotType::Weapon3, CommonAttack);
+	WeaponSkillMap.Add(EEquipmentSlotType::Weapon4, CommonAttack);
+
 	InitializeStateRestrictions();
 
 	// 게임 시작 시 첫 위치를 체크포인트로 저장
 	SaveCheckpoint(GetActorLocation(), GetActorRotation());
+
+	S_PlayerState->OnPlayerStatsChanged.AddDynamic(this, &ASonheimPlayer::StatChanged);
 }
 
 void ASonheimPlayer::OnDie()
@@ -130,15 +146,124 @@ void ASonheimPlayer::OnRevival()
 	S_PlayerController->GetPlayerStatusWidget()->SetVisibility(ESlateVisibility::Visible);
 }
 
+float ASonheimPlayer::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
+                                 class AController* EventInstigator, AActor* DamageCauser)
+{
+	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	if (!FMath::IsNearlyZero(ActualDamage))
+	{
+		bCanRecover = false;
+		GetWorld()->GetTimerManager().SetTimer(RecoveryTimerHandle, [this] { bCanRecover = true; }, 2.f, false);
+	}
+
+	return ActualDamage;
+}
+
+float ASonheimPlayer::HandleAttackDamageCalculation(float Damage)
+{
+	// ToDo : 수정 예정!! 하드한 공식 - skill로 고도화 예정
+	return Damage + m_Attack;
+}
+
+float ASonheimPlayer::HandleDefenceDamageCalculation(float Damage)
+{
+	// ToDo : 수정 예정!! 하드한 공식 - skill로 고도화 예정
+	return FMath::Clamp(Damage - m_Defence, 1, Damage - m_Defence);
+}
+
 void ASonheimPlayer::Reward(int ItemID, int ItemValue) const
 {
 	S_PlayerState->m_InventoryComponent->AddItem(ItemID, ItemValue);
+}
+
+void ASonheimPlayer::UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int ItemID)
+{
+	SelectedWeaponSlot = WeaponSlot;
+
+	if (ItemID == 0)
+	{
+		WeaponComponent->SetSkeletalMesh(nullptr);
+		S_PlayerAnimInstance->bIsMelee = false;
+		return;
+	}
+	else
+	{
+		FItemData* ItemData = m_GameInstance->GetDataItem(ItemID);
+		// 무기 메쉬 설정
+		WeaponComponent->SetSkeletalMesh(ItemData->EquipmentData.EquipmentMesh);
+		S_PlayerAnimInstance->bIsMelee = true;
+
+		// 애니메이션 모드 설정
+	}
+}
+
+void ASonheimPlayer::StatChanged(EAreaObjectStatType StatType, float StatValue)
+{
+	if (StatType == EAreaObjectStatType::HP)
+	{
+		m_HealthComponent->SetMaxHP(StatValue);
+	}
+	else if (StatType == EAreaObjectStatType::Attack)
+AW
+	else if (StatType == EAreaObjectStatType::Defense)
+	{
+		m_Defence = StatValue;
+	}
+}
+
+void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventoryItem Item)
+{
+	FItemData* ItemData = m_GameInstance->GetDataItem(Item.ItemID);
+	if (WeaponSlot == EEquipmentSlotType::Weapon1 || WeaponSlot == EEquipmentSlotType::Weapon2 || WeaponSlot ==
+		EEquipmentSlotType::Weapon3 || WeaponSlot == EEquipmentSlotType::Weapon4)
+	{
+		if (!WeaponSkillMap.IsEmpty())
+		{
+			WeaponSkillMap[WeaponSlot] = CommonAttack;
+		}
+
+		if (ItemData == nullptr)
+		{
+			if (SelectedWeaponSlot == WeaponSlot)
+			{
+				WeaponComponent->SetSkeletalMesh(nullptr);
+				S_PlayerAnimInstance->bIsMelee = false;
+			}
+			return;
+		}
+
+		FSkillData* SkillData = m_GameInstance->GetDataSkill(ItemData->EquipmentData.SkillID);
+		if (SkillData == nullptr)
+		{
+			WeaponSkillMap.Add(WeaponSlot, CommonAttack);
+			return;
+		}
+		UBaseSkill* weaponSkill = NewObject<UBaseSkill>(this, SkillData->SkillClass);
+		weaponSkill->InitSkill(SkillData);
+
+		WeaponSkillMap.Add(WeaponSlot, weaponSkill);
+
+		if (SelectedWeaponSlot == WeaponSlot)
+		{
+			WeaponComponent->SetSkeletalMesh(ItemData->EquipmentData.EquipmentMesh);
+			S_PlayerAnimInstance->bIsMelee = true;
+		}
+	}
 }
 
 // Called every frame
 void ASonheimPlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 스태미나 자동 회복
+	if (bCanRecover && !IsMaxHP())
+	{
+		float recovery = m_RecoveryRate * DeltaTime;
+
+		IncreaseHP(recovery);
+	}
 }
 
 void ASonheimPlayer::InitializeStateRestrictions()
@@ -291,8 +416,9 @@ void ASonheimPlayer::LeftMouse_Triggered()
 		}
 	}
 
-	int weakAttackID = 10;
-	TObjectPtr<UBaseSkill> skill = GetSkillByID(weakAttackID);
+	auto skill = GetWeaponAttack();
+	//int weakAttackID = 10;
+	//TObjectPtr<UBaseSkill> skill = GetSkillByID(weakAttackID);
 	if (CastSkill(skill, this))
 	{
 		SetPlayerState(EPlayerState::ACTION);
@@ -326,6 +452,7 @@ void ASonheimPlayer::RightMouse_Pressed()
 	// 록온 모드
 	bUseControllerRotationYaw = true;
 	GetCharacterMovement()->bOrientRotationToMovement = false;
+	S_PlayerAnimInstance->bIsLockOn = true;
 	// 애니메이션
 	// set Anim state lockon
 }
@@ -341,7 +468,8 @@ void ASonheimPlayer::RightMouse_Released()
 	//CameraBoom->TargetArmLength = NormalCameraBoomAramLength;
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
-	
+	S_PlayerAnimInstance->bIsLockOn = false;
+
 	TWeakObjectPtr<ASonheimPlayer> weakThis = this;
 	GetWorld()->GetTimerManager().SetTimer(LockOnCameraTimerHandle, [weakThis]
 	{
@@ -354,12 +482,11 @@ void ASonheimPlayer::RightMouse_Released()
 			}
 			float alpha = 0.f;
 			alpha = FMath::FInterpTo(strongThis->CameraBoom->TargetArmLength, strongThis->NormalCameraBoomAramLength,
-									 0.01f, 8.f);
+			                         0.01f, 8.f);
 
 			strongThis->CameraBoom->TargetArmLength = alpha;
 		}
 	}, 0.01f, true);
-
 }
 
 void ASonheimPlayer::Reload_Pressed()
@@ -408,7 +535,6 @@ void ASonheimPlayer::Jump_Released()
 
 void ASonheimPlayer::WeaponSwitch_Triggered()
 {
-	//FLog::Log("WeaponSwitch_Triggered...");
 }
 
 

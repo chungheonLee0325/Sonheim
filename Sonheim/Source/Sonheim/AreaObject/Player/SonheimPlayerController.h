@@ -77,13 +77,19 @@ private:
 	// UI 관련
 	UPROPERTY()
 	class UPlayerStatusWidget* StatusWidget;
+	UPROPERTY()
 	class UInventoryWidget* InventoryWidget;
+	UPROPERTY()
+	class UPlayerStatWidget* PlayerStatWidget;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UPlayerStatusWidget> StatusWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<class UPlayerStatusWidget> InventoryWidgetClass;
+	TSubclassOf<class UInventoryWidget> InventoryWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UPlayerStatWidget> PlayerStatWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UUserWidget> MissionFailClass;

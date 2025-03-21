@@ -90,3 +90,23 @@ float UHealthComponent::GetMaxHP() const
 {
 	return m_HPMax;
 }
+
+float UHealthComponent::AddMaxHP(float Delta)
+{
+	float oldHPMax = m_HPMax;
+	m_HPMax = FMath::Clamp(m_HPMax + Delta, 1.0f, 99999);
+
+	if (!FMath::IsNearlyEqual(oldHPMax, m_HPMax))
+	{
+		OnHealthChanged.Broadcast(m_HP, 0.f, m_HPMax);
+	}
+
+	return m_HPMax;
+}
+
+float UHealthComponent::SetMaxHP(float MaxHP)
+{
+	m_HPMax = MaxHP;
+	OnHealthChanged.Broadcast(m_HP, 0.f, m_HPMax);
+	return m_HPMax;
+}

@@ -79,6 +79,14 @@ protected:
 	// ToDo : BluePrintFunction Library
 	FName DetermineDirection(const FVector& TargetPos) const;
 
+	virtual float HandleAttackDamageCalculation(float Damage);
+	virtual float HandleDefenceDamageCalculation(float Damage);
+	
+	UPROPERTY()
+	USonheimGameInstance* m_GameInstance = nullptr;
+	UPROPERTY()
+	ASonheimGameMode* m_GameMode = nullptr;
+
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -213,8 +221,5 @@ public:
 	float SprintSpeedRatio = 2.0f;
 
 private:
-	UPROPERTY()
-	USonheimGameInstance* m_GameInstance = nullptr;
-	UPROPERTY()
-	ASonheimGameMode* m_GameMode = nullptr;
+
 };

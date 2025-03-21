@@ -2,8 +2,12 @@
 
 
 #include "InventoryComponent.h"
+
+#include "Sonheim/AreaObject/Attribute/StatBonusComponent.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
+#include "Sonheim/Utilities/LogMacro.h"
 
 
 // Sets default values for this component's properties
@@ -24,7 +28,7 @@ void UInventoryComponent::BeginPlay()
 
 	// 게임 인스턴스와 플레이어 참조 얻기
 	m_GameInstance = Cast<USonheimGameInstance>(GetWorld()->GetGameInstance());
-	m_Player = Cast<ASonheimPlayer>(GetOwner());
+	m_PlayerState = Cast<ASonheimPlayerState>(GetOwner());
 
 	// 장비 슬롯 초기화
 	for (EEquipmentSlotType Value : TEnumRange<EEquipmentSlotType>())
@@ -35,6 +39,12 @@ void UInventoryComponent::BeginPlay()
 		{
 			EquippedItems.Add(SlotType, InventoryItem); // 0은 비어있음을 의미
 		}
+	}
+	
+	// StatBonusComponent에 초기 무기 슬롯 설정
+	if (m_PlayerState && m_PlayerState->m_StatBonusComponent)
+	{
+		m_PlayerState->m_StatBonusComponent->SetCurrentWeaponSlot(CurrentWeaponSlot);
 	}
 }
 
@@ -163,7 +173,7 @@ bool UInventoryComponent::RemoveItemByIndex(int Index)
 
 	int ItemID = InventoryItems[Index].ItemID;
 	int Count = InventoryItems[Index].Count;
-	
+
 	InventoryItems.RemoveAt(Index);
 	// 이벤트 발생
 	OnItemRemoved.Broadcast(ItemID, Count);
@@ -198,8 +208,15 @@ bool UInventoryComponent::EquipItem(int ItemID)
 	FInventoryItem Item = InventoryItems[ItemIndex];
 	EquippedItems[EquipSlotType] = Item;
 
-	// 스탯 적용
-	ApplyEquipmentStats(ItemID, true);
+	// 스탯 적용 - 무기와 일반 장비를 구분하여 처리
+	if (ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon)
+	{
+		m_PlayerState->m_StatBonusComponent->RegisterEquippedItem(EquipSlotType, ItemID, true);
+	}
+	else
+	{
+		ApplyEquipmentStats(ItemID, true);
+	}
 
 	// Inventory에서 아이템 삭제 :: ToDo: 프로젝트마다 customize 될 부분
 	RemoveItemByIndex(ItemIndex);
@@ -231,8 +248,16 @@ bool UInventoryComponent::UnEquipItem(EEquipmentSlotType SlotType)
 	// 	InventoryItems[ItemIndex].bIsEquipped = false;
 	// }
 
-	// 스탯 제거
-	ApplyEquipmentStats(ItemID, false);
+	// 스탯 제거 - 무기와 일반 장비를 구분하여 처리
+	FItemData* ItemData = GetItemData(ItemID);
+	if (ItemData && ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon)
+	{
+		m_PlayerState->m_StatBonusComponent->RegisterEquippedItem(SlotType, ItemID, false);
+	}
+	else
+	{
+		ApplyEquipmentStats(ItemID, false);
+	}
 
 	// 장착 해제
 	EquippedItems[SlotType] = FInventoryItem();
@@ -287,24 +312,7 @@ FItemData* UInventoryComponent::GetItemData(int ItemID) const
 
 void UInventoryComponent::ApplyEquipmentStats(int ItemID, bool bEquipping)
 {
-	FItemData* ItemData = GetItemData(ItemID);
-	if (!ItemData || !m_Player)
-		return;
-
-	float Multiplier = bEquipping ? 1.0f : -1.0f;
-
-	// 스탯 적용 (실제 구현은 플레이어 클래스에 맞게 조정 필요)
-	if (ItemData->EquipmentData.HPBonus != 0)
-	{
-		// 최대 체력 조정
-		// m_Player->UpdateMaxHP(ItemData->HPBonus * Multiplier);
-	}
-
-	if (ItemData->EquipmentData.StaminaBonus != 0)
-	{
-		// 최대 스태미나 조정
-		// m_Player->UpdateMaxStamina(ItemData->StaminaBonus * Multiplier);
-	}
+	m_PlayerState->m_StatBonusComponent->ApplyItemStatBonuses(ItemID, bEquipping);
 }
 
 int UInventoryComponent::FindItemIndexInInventory(int ItemID) const
@@ -324,11 +332,11 @@ EEquipmentSlotType UInventoryComponent::FindEmptySlotForType(EEquipmentKindType 
 	{
 	case EEquipmentKindType::Head:
 		return EEquipmentSlotType::Head;
-		//return EquippedItems[EEquipmentSlotType::Head].IsEmpty() ?  EEquipmentSlotType::Head: EEquipmentSlotType::None;
+	//return EquippedItems[EEquipmentSlotType::Head].IsEmpty() ?  EEquipmentSlotType::Head: EEquipmentSlotType::None;
 
 	case EEquipmentKindType::Body:
 		return EEquipmentSlotType::Body;
-		//return EquippedItems[EEquipmentSlotType::Body].IsEmpty() ? EEquipmentSlotType::Body : EEquipmentSlotType::None;
+	//return EquippedItems[EEquipmentSlotType::Body].IsEmpty() ? EEquipmentSlotType::Body : EEquipmentSlotType::None;
 
 	case EEquipmentKindType::Weapon:
 		// 무기 슬롯 4개 중 빈 슬롯 찾기
@@ -352,15 +360,15 @@ EEquipmentSlotType UInventoryComponent::FindEmptySlotForType(EEquipmentKindType 
 
 	case EEquipmentKindType::Glider:
 		return EEquipmentSlotType::Glider;
-		//return EquippedItems[EEquipmentSlotType::Glider].IsEmpty()? EEquipmentSlotType::Glider: EEquipmentSlotType::None;
+	//return EquippedItems[EEquipmentSlotType::Glider].IsEmpty()? EEquipmentSlotType::Glider: EEquipmentSlotType::None;
 
 	case EEquipmentKindType::Shield:
 		return EEquipmentSlotType::Shield;
-		//return EquippedItems[EEquipmentSlotType::Shield].IsEmpty() ? EEquipmentSlotType::Shield  : EEquipmentSlotType::None;
+	//return EquippedItems[EEquipmentSlotType::Shield].IsEmpty() ? EEquipmentSlotType::Shield  : EEquipmentSlotType::None;
 
 	case EEquipmentKindType::SphereModule:
 		return EEquipmentSlotType::SphereModule;
-		//return EquippedItems[EEquipmentSlotType::SphereModule].IsEmpty()? EEquipmentSlotType::SphereModule: EEquipmentSlotType::None;
+	//return EquippedItems[EEquipmentSlotType::SphereModule].IsEmpty()? EEquipmentSlotType::SphereModule: EEquipmentSlotType::None;
 
 	default:
 		return EEquipmentSlotType::None;
@@ -394,14 +402,20 @@ bool UInventoryComponent::EquipItemByIndex(int32 InventoryIndex)
 	Item.bIsEquipped = true;
 	EquippedItems[EquipSlotType] = Item;
 
-	// 스탯 적용
-	ApplyEquipmentStats(Item.ItemID, true);
+
+	// 스탯 적용 - 무기와 일반 장비를 구분하여 처리
+	if (ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon)
+	{
+		m_PlayerState->m_StatBonusComponent->RegisterEquippedItem(EquipSlotType, Item.ItemID, true);
+	}
+	else
+	{
+		ApplyEquipmentStats(Item.ItemID, true);
+	}
+
 
 	// Inventory에서 아이템 삭제 :: ToDo: 프로젝트마다 customize 될 부분
 	RemoveItemByIndex(InventoryIndex);
-
-	// 스탯 적용
-	ApplyEquipmentStats(Item.ItemID, true);
 
 	// 이벤트 발생
 	OnEquipmentChanged.Broadcast(EquipSlotType, Item);
@@ -434,31 +448,57 @@ FInventoryItem UInventoryComponent::GetEquippedItem(EEquipmentSlotType SlotType)
 void UInventoryComponent::SwitchWeaponSlot(int Index)
 {
 	int minIndex = static_cast<int>(EEquipmentSlotType::Weapon1);
+	int maxIndex = static_cast<int>(EEquipmentSlotType::Weapon4);
 	int currentIndex = static_cast<int>(CurrentWeaponSlot);
-	CurrentWeaponSlot = static_cast<EEquipmentSlotType>((currentIndex - minIndex) % 4 + minIndex);
 
-	// 무기 변경 이벤트 호출 가능
-	OnEquipmentChanged.Broadcast(CurrentWeaponSlot, EquippedItems[CurrentWeaponSlot]);
+	// Weapon1 ~ Weapon4 의 범위를 0 ~ 3으로 변환
+	int normalizedIndex = currentIndex - minIndex;
+
+	// Index 를 추가하고, 0 ~ 3 범위에서 순환
+	normalizedIndex = (normalizedIndex + Index) % 4;
+	if (normalizedIndex < 0) normalizedIndex += 4; // 음수일 때 보정
+
+	// 다시 원래 Enum 범위로 변환 (Weapon1 ~ Weapon4)
+	EEquipmentSlotType newWeaponSlot = static_cast<EEquipmentSlotType>(normalizedIndex + minIndex);
+	
+	// 무기 슬롯이 실제로 변경된 경우에만 처리
+	if (CurrentWeaponSlot != newWeaponSlot)
+	{
+		CurrentWeaponSlot = newWeaponSlot;
+		
+		// StatBonusComponent에 현재 무기 슬롯 업데이트
+		m_PlayerState->m_StatBonusComponent->SetCurrentWeaponSlot(CurrentWeaponSlot);
+		
+		// 무기 변경 이벤트 호출
+		OnWeaponChanged.Broadcast(CurrentWeaponSlot, GetEquippedItem(CurrentWeaponSlot).ItemID);
+	}
+}
+
+FItemData* UInventoryComponent::GetCurrentWeaponData()
+{
+	auto item = GetEquippedItem(CurrentWeaponSlot);
+
+	return m_GameInstance->GetDataItem(item.ItemID);
 }
 
 bool UInventoryComponent::SwapItems(int32 FromIndex, int32 ToIndex)
 {
 	// 인덱스 유효성 검사
-	if (FromIndex < 0 || FromIndex >= InventoryItems.Num() || 
+	if (FromIndex < 0 || FromIndex >= InventoryItems.Num() ||
 		ToIndex < 0 || ToIndex >= InventoryItems.Num())
 		return false;
-	
+
 	// 같은 인덱스인 경우 무시
 	if (FromIndex == ToIndex)
 		return true;
-	
+
 	// 아이템 스왑
 	FInventoryItem TempItem = InventoryItems[FromIndex];
 	InventoryItems[FromIndex] = InventoryItems[ToIndex];
 	InventoryItems[ToIndex] = TempItem;
-	
+
 	// 이벤트 발생
 	BroadcastInventoryChanged();
-	
+
 	return true;
 }

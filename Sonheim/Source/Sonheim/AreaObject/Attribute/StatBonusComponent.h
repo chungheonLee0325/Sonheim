@@ -7,6 +7,8 @@
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "StatBonusComponent.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStatChanged, EAreaObjectStatType, StatType);
+
 // 스탯 수정자 적용 방식
 UENUM(BlueprintType)
 enum class EStatModifierType : uint8
@@ -82,10 +84,26 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Stats")
 	void RemoveAllBonusesFromSource(int SourceID);
 
+	// 현재 활성화된 무기 슬롯 설정
+	void SetCurrentWeaponSlot(EEquipmentSlotType SlotType);
+	
+	// 아이템 장착 시 무기인지 확인하고 적절히 처리
+	void RegisterEquippedItem(EEquipmentSlotType SlotType, int ItemID, bool bEquipping);
+
+	UPROPERTY(BlueprintAssignable, Category="Events")
+	FOnStatChanged OnStatChanged;
+
 private:
 	// 스탯 유형별 보너스 저장
 	TMap<EAreaObjectStatType, TArray<FStatModifier>> StatBonuses;
 	
 	// 아이템별 적용된 보너스 추적
 	TMap<int, TArray<FStatModifier>> ItemStatBonuses;
+	
+	// 무기 슬롯별 보너스 저장 (무기 슬롯만 별도 관리)
+	TMap<EEquipmentSlotType, TArray<FStatModifier>> WeaponSlotBonuses;
+	
+	// 현재 활성화된 무기 슬롯 (PlayerState에서 설정)
+	UPROPERTY()
+	EEquipmentSlotType CurrentWeaponSlot = EEquipmentSlotType::Weapon1;
 }; 

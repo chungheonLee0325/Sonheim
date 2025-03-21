@@ -11,6 +11,7 @@
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/InventoryWidget.h"
+#include "Sonheim/UI/Widget/Player/Inventory/PlayerStatWidget.h"
 #include "Sonheim/Utilities/LogMacro.h"
 #include "Utility/InventoryComponent.h"
 
@@ -116,10 +117,18 @@ ASonheimPlayerController::ASonheimPlayerController()
 
 	static ConstructorHelpers::FClassFinder<UInventoryWidget> inventoryWidgetClassFinder(
 		TEXT(
-			"/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/Player/BP_Inventory.BP_Inventory_C'"));
+			"/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/Player/WBP_Inventory.WBP_Inventory_C'"));
 	if (inventoryWidgetClassFinder.Succeeded())
 	{
 		InventoryWidgetClass = inventoryWidgetClassFinder.Class;
+	}
+
+	static ConstructorHelpers::FClassFinder<UPlayerStatWidget> pStatWidgetClassFinder(
+	TEXT(
+		"/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/Player/WBP_PlayerStat.WBP_PlayerStat_C'"));
+	if (pStatWidgetClassFinder.Succeeded())
+	{
+		PlayerStatWidgetClass = pStatWidgetClassFinder.Class;
 	}
 
 	//ConstructorHelpers::FClassFinder<UUserWidget> missionFailWidget(
@@ -342,7 +351,11 @@ void ASonheimPlayerController::On_Reload_Pressed(const FInputActionValue& Value)
 
 void ASonheimPlayerController::On_WeaponSwitch_Triggered(const FInputActionValue& Value)
 {
-	m_Player->WeaponSwitch_Triggered();
+	const int32 SwitchData = FMath::Sign(Value.Get<float>()); 
+	if (SwitchData != 0)
+	{
+		m_PlayerState->m_InventoryComponent->SwitchWeaponSlot(SwitchData);
+	}
 }
 
 void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
@@ -359,6 +372,9 @@ void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 		                                                                   &UInventoryWidget::UpdateInventoryFromData);
 		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(InventoryWidget,
 		                                                                   &UInventoryWidget::UpdateEquipmentFromData);
+		PlayerStatWidget = CreateWidget<UPlayerStatWidget>(this, PlayerStatWidgetClass);
+		PlayerStatWidget->AddToViewport(0);
+		PlayerStatWidget->InitializePlayerStatWidget(m_PlayerState);
 		SetShowMouseCursor(true);
 	}
 	else
@@ -372,7 +388,9 @@ void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 		                                                                      &UInventoryWidget::
 		                                                                      UpdateEquipmentFromData);
 		InventoryWidget->RemoveFromViewport();
+		PlayerStatWidget->RemoveFromViewport();
 		InventoryWidget = nullptr;
+		PlayerStatWidget = nullptr;
 	}
 }
 

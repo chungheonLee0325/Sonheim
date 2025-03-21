@@ -88,6 +88,11 @@ protected:
 
 	virtual void OnRevival() override;
 
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
+	virtual float HandleAttackDamageCalculation(float Damage) override;
+	virtual float HandleDefenceDamageCalculation(float Damage) override;
+
 public:
 	// Movement
 	/** Called for movement input */
@@ -118,7 +123,7 @@ public:
 
 	/** Called for WeaponSwitch input */
 	void WeaponSwitch_Triggered();
-	
+
 	/** Called for Menu input */
 	void Menu_Pressed();
 
@@ -133,46 +138,62 @@ public:
 
 	void Reward(int ItemID, int ItemValue) const;
 
+	ASonheimPlayerState* GetSPlayerState() const {return S_PlayerState;};
+
+	UFUNCTION(BlueprintCallable)
+	void UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventoryItem Item);
+
+	UFUNCTION(BlueprintCallable)
+	void UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int ItemID);
+
+	UFUNCTION(BlueprintCallable)
+	void StatChanged(EAreaObjectStatType StatType, float StatValue);
 	//// 장비 시각화 관련 함수 추가
 	//UFUNCTION(BlueprintCallable, Category = "Equipment")
 	//void EquipVisualItem(EEquipmentSlotType SlotType, int ItemID);
-//
+	//
 	//UFUNCTION(BlueprintCallable, Category = "Equipment")
 	//void UnequipVisualItem(EEquipmentSlotType SlotType);
-//
+	//
 	//// 장비 관련 컴포넌트 추가
 	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
 	//USkeletalMeshComponent* HeadMesh;
-//
+	//
 	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
 	//USkeletalMeshComponent* BodyMesh;
 
 	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
 	//USkeletalMeshComponent* SubWeaponMesh;
 
-	//// 현재 무기 타입
+	// 현재 무기 타입
 	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
 	//EWeaponType CurrentWeaponType;
 
-	//// 무기 타입별 스킬
+	// 무기 타입별 스킬
 	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
 	//TMap<EWeaponType, TArray<int32>> WeaponTypeSkills;
 
-	//// 무기 타입 설정
+	// 무기 타입 설정
 	//UFUNCTION(BlueprintCallable, Category = "Equipment")
 	//void SetWeaponType(EWeaponType NewWeaponType);
 
-	//// 무기 스킬 추가
-	//UFUNCTION(BlueprintCallable, Category = "Equipment")
-	//void AddWeaponSkill(int32 SkillID);
+	// // 무기 스킬 추가
+	// UFUNCTION(BlueprintCallable, Category = "Equipment")
+	// void AddWeaponSkill(int32 SkillID);
+	//
+	// // 무기 스킬 클리어
+	// UFUNCTION(BlueprintCallable, Category = "Equipment")
+	// void ClearWeaponSkills();
 
-	//// 무기 스킬 클리어
-	//UFUNCTION(BlueprintCallable, Category = "Equipment")
-	//void ClearWeaponSkills();
+	// 현재 무기에 따른 공격 처리
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	UBaseSkill* GetWeaponAttack() { return WeaponSkillMap[SelectedWeaponSlot]; };
 
-	//// 현재 무기에 따른 공격 처리
-	//UFUNCTION(BlueprintCallable, Category = "Combat")
-	//void DoWeaponAttack();
+	UPROPERTY()
+	TMap<EEquipmentSlotType, UBaseSkill*> WeaponSkillMap;
+
+	UPROPERTY()
+	EEquipmentSlotType SelectedWeaponSlot = EEquipmentSlotType::Weapon1;
 
 	//// 현재 도구에 따른 상호작용 처리
 	//UFUNCTION(BlueprintCallable, Category = "Interaction")
@@ -256,7 +277,19 @@ private:
 	int AttackID = 10;
 
 	FTimerHandle LockOnCameraTimerHandle;
-	
+
 	float NormalCameraBoomAramLength = 180.f;
 	float RClickCameraBoomAramLength = 90.f;
+
+	UPROPERTY()
+	UBaseSkill* CommonAttack = nullptr;
+
+
+	// ToDO : 이관 예정!!!!
+	float m_Attack = 10.f;
+	float m_Defence = 10.f;
+
+	bool bCanRecover = true;
+	float m_RecoveryRate = 5.0f;
+	FTimerHandle RecoveryTimerHandle;
 };

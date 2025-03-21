@@ -7,9 +7,12 @@
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "InventoryComponent.generated.h"
 
+class ASonheimPlayerState;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInventoryChanged, const TArray<FInventoryItem>&, Inventory);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnEquipmentChanged, EEquipmentSlotType, Slot, FInventoryItem, InventoryItem);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWeaponChanged, EEquipmentSlotType, Slot, int, ItemID);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemAdded, int, ItemID, int, Count);
 
@@ -91,6 +94,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	void SwitchWeaponSlot(int Index);
 
+	FItemData* GetCurrentWeaponData();
+		
 	// 아이템 스왑 함수 추가
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool SwapItems(int32 FromIndex, int32 ToIndex);
@@ -103,6 +108,9 @@ public:
 	FOnEquipmentChanged OnEquipmentChanged;
 
 	UPROPERTY(BlueprintAssignable, Category="Events")
+	FOnWeaponChanged OnWeaponChanged;
+
+	UPROPERTY(BlueprintAssignable, Category="Events")
 	FOnItemAdded OnItemAdded;
 
 	UPROPERTY(BlueprintAssignable, Category="Events")
@@ -113,7 +121,7 @@ private:
 	USonheimGameInstance* m_GameInstance;
 
 	UPROPERTY()
-	ASonheimPlayer* m_Player;
+	ASonheimPlayerState* m_PlayerState;
 
 	// 내부 헬퍼 함수
 	bool IsValidItemID(int ItemID) const;
