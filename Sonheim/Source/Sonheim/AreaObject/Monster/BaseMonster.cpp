@@ -310,7 +310,7 @@ float ABaseMonster::TakeDamage(float DamageAmount, struct FDamageEvent const& Da
 		GetNearResourceObject(array[index]);
 
 		// 어그로 설정
-		ASonheimPlayer* Player{Cast<ASonheimPlayer>(DamageCauser)};
+		AAreaObject* Player{Cast<AAreaObject>(DamageCauser)};
 		if (Player)
 		{
 			m_AggroTarget = Player;
