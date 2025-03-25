@@ -109,15 +109,15 @@ void ASonheimPlayer::BeginPlay()
 	CommonAttack = GetSkillByID(10);
 
 	S_PlayerAnimInstance = Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance());
-	S_PlayerController = Cast<ASonheimPlayerController>(GetController());
-	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
 
-	S_PlayerController->InitializeHUD();
+	if (S_PlayerState == nullptr)S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
+	if (S_PlayerController == nullptr) S_PlayerController = Cast<ASonheimPlayerController>(GetController());
+	if (S_PlayerController != nullptr) S_PlayerController->InitializeHUD(this);
 
 	// 장비 변경 이벤트 바인드
-	S_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
+	//S_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
 	// 무기 변경 이벤트 바인드
-	S_PlayerState->m_InventoryComponent->OnWeaponChanged.AddDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
+	//S_PlayerState->m_InventoryComponent->OnWeaponChanged.AddDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
 	WeaponSkillMap.Add(EEquipmentSlotType::Weapon1, CommonAttack);
 	WeaponSkillMap.Add(EEquipmentSlotType::Weapon2, CommonAttack);
 	WeaponSkillMap.Add(EEquipmentSlotType::Weapon3, CommonAttack);
@@ -128,6 +128,27 @@ void ASonheimPlayer::BeginPlay()
 	// 게임 시작 시 첫 위치를 체크포인트로 저장
 	SaveCheckpoint(GetActorLocation(), GetActorRotation());
 
+	//S_PlayerState->OnPlayerStatsChanged.AddDynamic(this, &ASonheimPlayer::StatChanged);
+}
+
+void ASonheimPlayer::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	S_PlayerController = Cast<ASonheimPlayerController>(NewController);
+	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
+
+	if (S_PlayerController && S_PlayerController->IsLocalController())
+	{
+		S_PlayerController->InitializeHUD(this);
+	}
+
+
+	// 장비 변경 이벤트 바인드
+	S_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
+	// 무기 변경 이벤트 바인드
+	S_PlayerState->m_InventoryComponent->OnWeaponChanged.AddDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
+
 	S_PlayerState->OnPlayerStatsChanged.AddDynamic(this, &ASonheimPlayer::StatChanged);
 }
 
@@ -135,7 +156,7 @@ void ASonheimPlayer::OnDie()
 {
 	Super::OnDie();
 	SetPlayerState(EPlayerState::DIE);
-	S_PlayerController->FailWidget->AddToViewport();
+	//S_PlayerController->FailWidget->AddToViewport();
 	S_PlayerController->GetPlayerStatusWidget()->SetVisibility(ESlateVisibility::Hidden);
 	// ToDo : TimerHandle 정리?
 
@@ -145,7 +166,7 @@ void ASonheimPlayer::OnDie()
 void ASonheimPlayer::OnRevival()
 {
 	Super::OnRevival();
-	S_PlayerController->FailWidget->RemoveFromParent();
+	//S_PlayerController->FailWidget->RemoveFromParent();
 	S_PlayerController->GetPlayerStatusWidget()->SetVisibility(ESlateVisibility::Visible);
 }
 
@@ -177,6 +198,7 @@ float ASonheimPlayer::HandleDefenceDamageCalculation(float Damage)
 
 void ASonheimPlayer::Reward(int ItemID, int ItemValue) const
 {
+	if (S_PlayerState == nullptr) return;
 	S_PlayerState->m_InventoryComponent->AddItem(ItemID, ItemValue);
 }
 

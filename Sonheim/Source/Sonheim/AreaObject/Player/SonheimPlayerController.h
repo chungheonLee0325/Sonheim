@@ -25,8 +25,10 @@ public:
 
 	virtual void BeginPlay() override;
 
+	virtual void OnPossess(APawn* InPawn) override;
 	// UI 초기화 및 바인딩 - Player에서 Component 모두 초기화 후 호출
-	void InitializeHUD();
+	UFUNCTION(Client, Reliable)
+	void InitializeHUD(ASonheimPlayer* NewPlayer);
 
 	UPROPERTY()
 	class UUserWidget* FailWidget;
