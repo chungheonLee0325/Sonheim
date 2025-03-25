@@ -25,41 +25,58 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
 	                           FActorComponentTickFunction* ThisTickFunction) override;
+	
+	// 리플리케이션 설정 함수
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
 	//Health 초기화
+	UFUNCTION(Server, Reliable)
 	void InitHealth(float hpMax);
 
 	// 체력 증감
-	UFUNCTION()
-	float IncreaseHP(float Delta);
+	UFUNCTION(Server, Reliable)
+	void IncreaseHP(float Delta);
 
-	UFUNCTION()
-	float DecreaseHP(float Delta);
+	UFUNCTION(Server, Reliable)
+	void DecreaseHP(float Delta);
 
 	//최대체력기준 현재체력
-	UFUNCTION()
+	UFUNCTION(Server, Reliable)
 	void SetHPByRate(float Rate);
 
 	//현제체력
 	UFUNCTION()
-	float GetHP() const;
+	float GetHP();
 
 	// 최대체력
 	UFUNCTION()
-	float GetMaxHP() const;
+	float GetMaxHP();
 
-	UFUNCTION()
-	float AddMaxHP(float Delta);
-	UFUNCTION()
-	float SetMaxHP(float MaxHP);
+	UFUNCTION(Server, Reliable)
+	void AddMaxHP(float Delta);
+	
+	UFUNCTION(Server, Reliable)
+	void SetMaxHP(float MaxHP);
+
+	// 클라이언트에서 HP 변경 알림을 받는 함수
+	UFUNCTION(Client, Reliable)
+	void Client_OnHealthChanged(float CurrentHP, float Delta, float MaxHP);
 
 	// 체력 변경 델리게이트
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnHealthChangedDelegate OnHealthChanged;
 
 private:
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(ReplicatedUsing = OnRep_HPMax)
 	float m_HPMax = 1.0f;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(ReplicatedUsing = OnRep_HP)
 	float m_HP;
+	
+	// 복제 속성에 대한 응답 함수들
+	UFUNCTION()
+	void OnRep_HP();
+	
+	UFUNCTION()
+	void OnRep_HPMax();
 };

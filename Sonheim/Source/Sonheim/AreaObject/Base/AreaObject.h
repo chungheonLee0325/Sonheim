@@ -94,11 +94,23 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	// 복제 속성 설정
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	// 서버에서 데미지 적용
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_CalcDamage(FAttackData AttackData, AActor* Caster, AActor* Target, FHitResult HitInfo);
+
 	UFUNCTION(BlueprintCallable)
 	virtual void CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Target, FHitResult& HitInfo);
+	
 	UFUNCTION(BlueprintCallable)
 	virtual float TakeDamage(float Damage, const FDamageEvent& DamageEvent, AController* EventInstigator,
 	                         AActor* DamageCauser) override;
+
+	// 클라이언트에게 데미지 효과 적용 (VFX, SFX 등)
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastDamageEffect(float Damage, FVector HitLocation, AActor* DamageCauser, bool bWeakPoint, float ElementDamageMultiplier);
 
 	UFUNCTION(BlueprintCallable)
 	virtual void OnDie();
@@ -109,15 +121,19 @@ public:
 
 	bool IsDie() const { return m_ConditionComponent->IsDead(); }
 
-	// Health 기능 퍼사드 제공
+	// Health 기능 퍼사드 제공 (서버/클라이언트 구분)
 	UFUNCTION(BlueprintCallable, Category = "HP")
 	float IncreaseHP(float Delta) const;
+	
 	UFUNCTION(BlueprintCallable, Category = "HP")
 	virtual float DecreaseHP(float Delta);
+	
 	UFUNCTION(BlueprintCallable, Category = "HP")
 	void SetHPByRate(float Rate) const;
+	
 	UFUNCTION(BlueprintCallable, Category = "HP")
 	float GetHP() const;
+	
 	float GetMaxHP() const;
 	bool IsMaxHP() const;
 
@@ -221,5 +237,10 @@ public:
 	float SprintSpeedRatio = 2.0f;
 
 private:
+	// 리플리케이션된 데이터를 처리하기 위한 함수들
+	UPROPERTY(ReplicatedUsing = OnRep_IsDead)
+	bool bIsDead = false;
 
+	UFUNCTION()
+	void OnRep_IsDead();
 };

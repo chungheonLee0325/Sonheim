@@ -164,7 +164,8 @@ float ABaseResourceObject::TakeDamage(float Damage, const FDamageEvent& DamageEv
 	float PreviousHP = HealthComponent->GetHP();
 
 	// 데미지 적용
-	float CurrentHP = HealthComponent->DecreaseHP(ActualDamage);
+	HealthComponent->DecreaseHP(ActualDamage);
+	float CurrentHP = HealthComponent->GetHP();
 
 	// 임계값 계산 (최대 체력의 10%)
 	float ThresholdHP = HealthComponent->GetMaxHP() * dt_ResourceObject->DamageThresholdPct;

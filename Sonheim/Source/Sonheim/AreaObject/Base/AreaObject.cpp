@@ -17,12 +17,19 @@
 #include "Sonheim/GameManager/SonheimGameMode.h"
 #include "Sonheim/UI/FloatingDamageActor.h"
 #include "Sonheim/Utilities/SonheimUtility.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 AAreaObject::AAreaObject()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	// 액터 리플리케이션 활성화
+	bReplicates = true;
+	bNetUseOwnerRelevancy = true;
+	NetUpdateFrequency = 66.0f;
+	NetPriority = 1.0f;
 
 	// Health Component 생성
 	m_HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
@@ -46,6 +53,13 @@ AAreaObject::AAreaObject()
 	GetCapsuleComponent()->SetNotifyRigidBodyCollision(true);
 }
 
+void AAreaObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
+	// 사망 상태 리플리케이션
+	DOREPLIFETIME(AAreaObject, bIsDead);
+}
 
 // Called when the game starts or when spawned
 void AAreaObject::BeginPlay()
@@ -169,6 +183,14 @@ void AAreaObject::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 
 void AAreaObject::CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Target, FHitResult& HitInfo)
 {
+	// 권한 체크
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		// 클라이언트에서는 서버에 요청만 보냄
+		Server_CalcDamage(AttackData, Caster, Target, HitInfo);
+		return;
+	}
+
 	float Damage = FMath::RandRange(AttackData.HealthDamageAmountMin, AttackData.HealthDamageAmountMax);
 	Damage = HandleAttackDamageCalculation(Damage);
 	
@@ -191,17 +213,19 @@ void AAreaObject::CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Ta
 	DamageEvent.AttackData = AttackData;
 	DamageEvent.HitInfo = HitInfo;
 	DamageEvent.Damage = Damage;
-
-	//FLog::Log("Damage", Damage);
 	
 	Target->TakeDamage(Damage, DamageEvent, GetController(), this);
 }
 
-float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, AController* EventInstigator,
-                              AActor* DamageCauser)
+float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
+	// 권한 체크
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		return 0.0f; // 클라이언트에서는 데미지 처리 안함
+	}
+
 	// IFF 처리
-	// ToDo : 변경 예정
 	AAreaObject* damageCauser = Cast<AAreaObject>(DamageCauser);
 	if (damageCauser)
 	{
@@ -223,6 +247,7 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 	FVector hitDir;
 	FAttackData attackData;
 	bool bIsWeakPointHit = false;
+	float elementDamageMultiplier = 1.0f;
 
 	if (DamageEvent.IsOfType(FCustomDamageEvent::ClassID))
 	{
@@ -251,7 +276,6 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 	ActualDamage = bIsWeakPointHit ? ActualDamage * 1.5f : ActualDamage;
 
 	// damage multiply by Element Attribute Type
-	float elementDamageMultiplier = 1.0f;
 	for (auto defectElementalAttribute : dt_AreaObject->DefenceElementalAttributes)
 	{
 		elementDamageMultiplier *= USonheimUtility::CalculateDamageMultiplier(
@@ -265,6 +289,8 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 	{
 		if (true == ExchangeDead())
 		{
+			bIsDead = true;
+			// 서버에서 죽음 처리
 			OnDie();
 		}
 	}
@@ -272,46 +298,9 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 	// apply stamina damage
 	DecreaseStamina(attackData.StaminaDamageAmount);
 
-	// Spawn floating damage
-	FVector SpawnLocation;
-	if (hitResult.Location == FVector::ZeroVector)
-	{
-		// 캐릭터 중앙에서 생성
-		SpawnLocation = GetActorLocation();
-	}
-	else
-	{
-		// Hit 위치에서 생성
-		SpawnLocation = hitResult.Location;
-	}
-
-	FTransform SpawnTransform(FRotator::ZeroRotator, SpawnLocation);
-
-	if (AFloatingDamageActor* DamageActor = GetWorld()->SpawnActor<AFloatingDamageActor>(
-		AFloatingDamageActor::StaticClass(), SpawnTransform))
-	{
-		// FloatingDamageType 계산
-		// 약점 계산
-		EFloatingOutLineDamageType weakPointDamageType = bIsWeakPointHit
-			                                 ? EFloatingOutLineDamageType::WeakPointDamage
-			                                 : EFloatingOutLineDamageType::Normal;
-		EFloatingTextDamageType elementAttributeDamageType = EFloatingTextDamageType::Normal;
-		if ( elementDamageMultiplier > 1.0f)
-		{
-			elementAttributeDamageType= EFloatingTextDamageType::EffectiveElementDamage;
-		}
-		else if (elementDamageMultiplier < 1.0f)
-		{
-			elementAttributeDamageType= EFloatingTextDamageType::InefficientElementDamage;
-		}
-		DamageActor->Initialize(ActualDamage, weakPointDamageType, elementAttributeDamageType);
-	}
-
-	// Spawn Hit SFX
-	if (dt_AreaObject->HitSoundID != 0)
-	{
-		PlayPositionalSound(dt_AreaObject->HitSoundID, hitResult.Location);
-	}
+	// 모든 클라이언트에게 데미지 효과 전파
+	FVector spawnLocation = hitResult.Location != FVector::ZeroVector ? hitResult.Location : GetActorLocation();
+	MulticastDamageEffect(ActualDamage, spawnLocation, DamageCauser, bIsWeakPointHit, elementDamageMultiplier);
 
 	return ActualDamage;
 }
@@ -339,6 +328,14 @@ void AAreaObject::StopAll()
 
 void AAreaObject::OnDie()
 {
+	// 서버에서만 죽음 처리 로직 실행
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		//Server_OnDie();
+		return;
+	}
+
+	bIsDead = true;
 	StopAll();
 
 	UAnimInstance* animInstance = GetMesh()->GetAnimInstance();
@@ -349,12 +346,11 @@ void AAreaObject::OnDie()
 		// 죽음 몽타주 재생
 		animInstance->Montage_Play(montage);
 	}
-	//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	TWeakObjectPtr<AAreaObject> weakThis = this;
 	GetWorld()->GetTimerManager().SetTimer(DeathTimerHandle, [weakThis]()
 	{
-		AAreaObject* strongThis = weakThis.Get(); // 콜리전 전환
+		AAreaObject* strongThis = weakThis.Get();
 
 		if (strongThis != nullptr)
 		{
@@ -364,7 +360,6 @@ void AAreaObject::OnDie()
 				UGameplayStatics::SpawnEmitterAtLocation(strongThis->GetWorld(), strongThis->DeathEffect,
 				                                         strongThis->GetActorLocation());
 			}
-			//strongThis->Destroy();
 		}
 	}, DestroyDelayTime, false);
 }
@@ -531,12 +526,26 @@ void AAreaObject::LookAtLocationDirect(const FVector& TargetLocation) const
 
 float AAreaObject::IncreaseHP(float Delta) const
 {
-	return m_HealthComponent->IncreaseHP(Delta);
+	// 클라이언트에서 호출되면 서버에서 처리하도록 함
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		// 클라이언트에서는 HP 변경 안함, 서버에 요청하는 로직 필요
+		return m_HealthComponent->GetHP();
+	}
+	m_HealthComponent->IncreaseHP(Delta);
+	return m_HealthComponent->GetHP();
 }
 
 float AAreaObject::DecreaseHP(float Delta)
 {
-	return m_HealthComponent->DecreaseHP(Delta);
+	// 클라이언트에서 호출되면 서버에서 처리하도록 함
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		// 클라이언트에서는 HP 변경 안함, 서버에 요청하는 로직 필요
+		return m_HealthComponent->GetHP();
+	}
+	m_HealthComponent->DecreaseHP(Delta);
+	return m_HealthComponent->GetHP();
 }
 
 void AAreaObject::SetHPByRate(float Rate) const
@@ -670,4 +679,77 @@ void AAreaObject::StopBGM()
 		LOG_PRINT(TEXT("GameMode nullptr"));
 	}
 	m_GameMode->StopBGM();
+}
+
+bool AAreaObject::Server_CalcDamage_Validate(FAttackData AttackData, AActor* Caster, AActor* Target, FHitResult HitInfo)
+{
+	// 유효성 검사 로직
+	return true;
+}
+
+void AAreaObject::Server_CalcDamage_Implementation(FAttackData AttackData, AActor* Caster, AActor* Target, FHitResult HitInfo)
+{
+	// 서버에서 실행할 데미지 계산 로직
+	CalcDamage(AttackData, Caster, Target, HitInfo);
+}
+
+void AAreaObject::MulticastDamageEffect_Implementation(float Damage, FVector HitLocation, AActor* DamageCauser, bool bWeakPoint, float ElementDamageMultiplier)
+{
+	// 클라이언트 및 서버 모두에서 실행되는 데미지 시각/청각 효과
+	
+	// Spawn floating damage
+	FTransform SpawnTransform(FRotator::ZeroRotator, HitLocation);
+
+	if (AFloatingDamageActor* DamageActor = GetWorld()->SpawnActor<AFloatingDamageActor>(
+		AFloatingDamageActor::StaticClass(), SpawnTransform))
+	{
+		// FloatingDamageType 계산
+		// 약점 계산
+		EFloatingOutLineDamageType weakPointDamageType = bWeakPoint
+			                                 ? EFloatingOutLineDamageType::WeakPointDamage
+			                                 : EFloatingOutLineDamageType::Normal;
+		EFloatingTextDamageType elementAttributeDamageType = EFloatingTextDamageType::Normal;
+		if (ElementDamageMultiplier > 1.0f)
+		{
+			elementAttributeDamageType= EFloatingTextDamageType::EffectiveElementDamage;
+		}
+		else if (ElementDamageMultiplier < 1.0f)
+		{
+			elementAttributeDamageType= EFloatingTextDamageType::InefficientElementDamage;
+		}
+		DamageActor->Initialize(Damage, weakPointDamageType, elementAttributeDamageType);
+	}
+
+	// Spawn Hit SFX
+	if (dt_AreaObject->HitSoundID != 0)
+	{
+		PlayPositionalSound(dt_AreaObject->HitSoundID, HitLocation);
+	}
+}
+
+// bool AAreaObject::Server_OnDie_Validate()
+// {
+// 	return true;
+// }
+//
+// void AAreaObject::Server_OnDie_Implementation()
+// {
+// 	OnDie();
+// }
+
+void AAreaObject::OnRep_IsDead()
+{
+	// 클라이언트에서 사망 상태가 변경되었을 때 호출
+	if (bIsDead)
+	{
+		// 클라이언트측 사망 효과 (애니메이션 등)
+		StopAll();
+
+		UAnimInstance* animInstance = GetMesh()->GetAnimInstance();
+		animInstance->StopAllMontages(0.1f);
+		if (UAnimMontage* montage = dt_AreaObject->Die_AnimMontage)
+		{
+			animInstance->Montage_Play(montage);
+		}
+	}
 }
