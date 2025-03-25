@@ -486,3 +486,9 @@ void ASonheimPlayerController::On_Menu_Released(const FInputActionValue& Value)
 {
 	if (!IsLocalController()) return;
 }
+
+void ASonheimPlayerController::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	m_PlayerState = Cast<ASonheimPlayerState>(PlayerState);
+}

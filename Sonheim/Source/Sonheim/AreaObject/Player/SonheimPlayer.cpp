@@ -341,6 +341,18 @@ void ASonheimPlayer::Tick(float DeltaTime)
 	}
 }
 
+void ASonheimPlayer::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
+}
+
+void ASonheimPlayer::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+	S_PlayerController = Cast<ASonheimPlayerController>(GetController());
+}
+
 void ASonheimPlayer::InitializeStateRestrictions()
 {
 	// 일반 상태 - 모든 행동 가능

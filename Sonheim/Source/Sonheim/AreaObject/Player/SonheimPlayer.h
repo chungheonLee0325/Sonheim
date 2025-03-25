@@ -148,6 +148,7 @@ public:
 
 	void Reward(int ItemID, int ItemValue) const;
 
+	UFUNCTION(BlueprintCallable)
 	ASonheimPlayerState* GetSPlayerState() const {return S_PlayerState;};
 
 	UFUNCTION(BlueprintCallable)
@@ -253,6 +254,8 @@ private:
 	ASonheimPlayerController* S_PlayerController;
 	UPROPERTY()
 	ASonheimPlayerState* S_PlayerState;
+	virtual void OnRep_PlayerState() override;
+	virtual void OnRep_Controller() override;
 
 	// 플레이어 상태 관리
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", meta = (AllowPrivateAccess = "true"))

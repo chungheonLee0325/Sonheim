@@ -76,9 +76,11 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	ASonheimPlayer* m_Player;
 
+	//UPROPERTY(VisibleAnywhere, ReplicatedUsing = OnRep_PlayerState)
 	UPROPERTY(VisibleAnywhere)
 	ASonheimPlayerState* m_PlayerState;
 
+	virtual void OnRep_PlayerState() override;
 	// 재화 관련 데이터
 	// TMap<ECurrencyType, int> CurrencyValues;
 
