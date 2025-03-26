@@ -12,14 +12,14 @@ void USelectMode::InitState()
 void USelectMode::CheckIsValid()
 {}
 
-void USelectMode::Enter()
+void USelectMode::ServerEnter()
 {
 	//FLog::Log("USelectMode");
 	FlowTime = 0.f;
 	m_Owner->ChangeFace(EFaceType::Sad);
 }
 
-void USelectMode::Execute(float dt)
+void USelectMode::ServerExecute(float dt)
 {
 	FlowTime += dt;
 	if (FlowTime >= ChooseModeTime)
@@ -40,5 +40,5 @@ void USelectMode::Execute(float dt)
 	}
 }
 
-void USelectMode::Exit()
+void USelectMode::ServerExit()
 {}

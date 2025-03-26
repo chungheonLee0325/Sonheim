@@ -17,9 +17,9 @@ class SONHEIM_API UAttackMode : public UBaseAiState
 public:
 	virtual void InitState() override;
 	virtual void CheckIsValid() override;
-	virtual void Enter() override;
-	virtual void Execute(float dt) override;
-	virtual void Exit() override;
+	virtual void ServerEnter() override;
+	virtual void ServerExecute(float dt) override;
+	virtual void ServerExit() override;
 	
 	void SetSkillRoulette(class UBaseSkillRoulette* BaseSkillRoulette) { SkillRoulette = BaseSkillRoulette; }
 

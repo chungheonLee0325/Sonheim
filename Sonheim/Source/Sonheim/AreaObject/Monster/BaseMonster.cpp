@@ -12,6 +12,7 @@
 #include "BaseSkillRoulette.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Kismet/GameplayStatics.h"
+#include "Net/UnrealNetwork.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
@@ -97,6 +98,20 @@ float ABaseMonster::DecreaseStamina(float Delta, bool bIsDamaged)
 }
 
 void ABaseMonster::SetHPWidgetVisibility(bool IsVisible)
+{
+	if (HasAuthority())
+	{
+		FLog::Log("Show HP");
+		if (dt_AreaObject->EnemyType != EEnemyType::Boss)
+		{
+			HPWidgetComponent->SetVisibility(IsVisible);
+		}
+
+		ClientRPC_SetHPWidgetVisibility(IsVisible);
+	}
+}
+
+void ABaseMonster::ClientRPC_SetHPWidgetVisibility_Implementation(bool IsVisible)
 {
 	if (dt_AreaObject->EnemyType != EEnemyType::Boss)
 	{
@@ -296,6 +311,13 @@ void ABaseMonster::InitializeHUD()
 		// ToDo 맞게 수정
 		StatusWidget->InitMonsterStatusWidget(dt_AreaObject, true, 1);
 	}
+}
+
+void ABaseMonster::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ABaseMonster, m_AiFSM);
 }
 
 float ABaseMonster::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,

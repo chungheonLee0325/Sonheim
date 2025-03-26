@@ -17,7 +17,7 @@ void UPutDistance::InitState()
 void UPutDistance::CheckIsValid()
 {}
 
-void UPutDistance::Enter()
+void UPutDistance::ServerEnter()
 {
 	//FLog::Log("UPutDistance");
 
@@ -25,10 +25,10 @@ void UPutDistance::Enter()
 	m_Owner->ChangeFace(EFaceType::Sad);
 }
 
-void UPutDistance::Execute(float dt)
+void UPutDistance::ServerExecute(float dt)
 {}
 
-void UPutDistance::Exit()
+void UPutDistance::ServerExit()
 {}
 
 void UPutDistance::MoveToAttack()

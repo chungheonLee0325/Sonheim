@@ -9,6 +9,7 @@
 #include "SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
+#include "Sonheim/AreaObject/Monster/AI/Base/BaseAiFSM.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/InventoryWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/PlayerStatWidget.h"
@@ -492,3 +493,11 @@ void ASonheimPlayerController::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 	m_PlayerState = Cast<ASonheimPlayerState>(PlayerState);
 }
+
+// void ASonheimPlayerController::ServerRPC_ChangeState_Implementation(UBaseAiFSM* FSM, EAiStateType StateType)
+// {
+// 	if (FSM && FSM->GetOwner()->HasAuthority())
+// 	{
+// 		FSM->ChangeState(StateType);
+// 	}
+// }

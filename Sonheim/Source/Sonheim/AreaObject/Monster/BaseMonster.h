@@ -47,6 +47,8 @@ public:
 	virtual float DecreaseHP(float Delta) override;
 	virtual float DecreaseStamina(float Delta, bool bIsDamaged = true) override;
 	void SetHPWidgetVisibility(bool IsVisible);
+	UFUNCTION(Client, Reliable)
+	void ClientRPC_SetHPWidgetVisibility(bool IsVisible);
 	void SetHPWidgetVisibilityByDuration(float Duration);
 	FTimerHandle HPWidgetVisibleTimer;
 
@@ -137,6 +139,10 @@ protected:
 	// GameJam으로 추가
 	// ToDo: 필요한 기능들 위로 올리기
 public:
+
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	class AAIController* AIController;
 
@@ -157,7 +163,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	class UStaticMeshComponent* PickaxeMesh;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere, Replicated)
 	UBaseAiFSM* m_AiFSM;
 
 	UPROPERTY()

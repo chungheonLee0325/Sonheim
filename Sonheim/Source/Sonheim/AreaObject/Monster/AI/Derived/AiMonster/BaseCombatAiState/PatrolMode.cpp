@@ -16,7 +16,7 @@ void UPatrolMode::CheckIsValid()
 {
 }
 
-void UPatrolMode::Enter()
+void UPatrolMode::ServerEnter()
 {
 	if (m_Owner->bShowDebug)
 	{
@@ -27,7 +27,7 @@ void UPatrolMode::Enter()
 	m_Owner->ChangeFace(EFaceType::Default);
 }
 
-void UPatrolMode::Execute(float dt)
+void UPatrolMode::ServerExecute(float dt)
 {
 	// 데미지 받으면
 	if (m_Owner->GetAggroTarget())
@@ -48,7 +48,7 @@ void UPatrolMode::Execute(float dt)
 	}
 }
 
-void UPatrolMode::Exit()
+void UPatrolMode::ServerExit()
 {
 }
 

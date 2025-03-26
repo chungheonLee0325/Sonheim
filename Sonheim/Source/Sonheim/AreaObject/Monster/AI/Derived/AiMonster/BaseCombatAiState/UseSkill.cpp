@@ -16,11 +16,11 @@ void UUseSkill::InitState()
 void UUseSkill::CheckIsValid()
 {}
 
-void UUseSkill::Enter()
+void UUseSkill::ServerEnter()
 {
 	FLog::Log("UUseSkill");
 	m_CanAttack = true;
-
+	
 	m_Owner->LookAtLocation(m_Owner->GetAggroTarget()->GetActorLocation(), EPMRotationMode::Duration, 0.1f);
 
 	if (m_Owner->CanCastSkill(m_Owner->NextSkill, m_Owner->GetAggroTarget()))
@@ -32,7 +32,7 @@ void UUseSkill::Enter()
 			m_CanAttack = false;
 			return;
 		}
-		
+
 		m_Owner->RemoveSkillEntryByID(m_Owner->NextSkill->GetSkillData()->SkillID);
 	}
 	else
@@ -43,7 +43,7 @@ void UUseSkill::Enter()
 	m_Owner->ChangeFace(EFaceType::Angry);
 }
 
-void UUseSkill::Execute(float dt)
+void UUseSkill::ServerExecute(float dt)
 {
 	if (!m_CanAttack)
 	{
@@ -51,7 +51,7 @@ void UUseSkill::Execute(float dt)
 	}
 }
 
-void UUseSkill::Exit()
+void UUseSkill::ServerExit()
 {}
 
 void UUseSkill::OnSkillCompleted()

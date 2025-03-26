@@ -44,6 +44,11 @@ void AGumoss::BeginPlay()
 
 	// Eye Material
 	EyeMat = GetMesh()->CreateDynamicMaterialInstance(0);
+	
+	if (!HasAuthority())
+	{
+		m_AiFSM = nullptr;
+	}
 }
 
 // Called every frame

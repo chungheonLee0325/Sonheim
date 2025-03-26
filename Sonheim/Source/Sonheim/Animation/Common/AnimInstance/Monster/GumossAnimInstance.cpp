@@ -20,10 +20,17 @@ void UGumossAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		bIsDead = Character->IsDead;
 		bIsJump = Character->GetCharacterMovement()->IsFalling();
 
-		if (Character->m_AiFSM->m_CurrentState)
+		if (Character->m_AiFSM)
 		{
-			State = Character->m_AiFSM->m_CurrentState->AiStateType();
-			//LOG_PRINT(TEXT("State : %d"), State);
+			if (Character->m_AiFSM->m_CurrentState)
+			{
+				State = Character->m_AiFSM->m_CurrentState->AiStateType();
+				//LOG_PRINT(TEXT("State : %d"), State);
+			}
+		}
+		else
+		{
+			LOG_PRINT(TEXT("No m_AiFSM"));
 		}
 	}
 }

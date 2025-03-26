@@ -14,7 +14,7 @@ void UAttackMode::InitState()
 void UAttackMode::CheckIsValid()
 {}
 
-void UAttackMode::Enter()
+void UAttackMode::ServerEnter()
 {
 	//FLog::Log("UAttackMode");
 	FlowTime = 0.f;
@@ -28,7 +28,7 @@ void UAttackMode::Enter()
 	}
 }
 
-void UAttackMode::Execute(float dt)
+void UAttackMode::ServerExecute(float dt)
 {
 	if (ID == 0)
 	{
@@ -64,5 +64,5 @@ void UAttackMode::Execute(float dt)
 	}
 }
 
-void UAttackMode::Exit()
+void UAttackMode::ServerExit()
 {}

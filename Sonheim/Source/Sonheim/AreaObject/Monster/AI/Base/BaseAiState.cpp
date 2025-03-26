@@ -49,3 +49,57 @@ void UBaseAiState::SetFailState(EAiStateType FailState)
 {
 	m_FailState = FailState;
 }
+
+void UBaseAiState::Enter()
+{
+	if (IsServer())
+	{
+		ServerEnter();
+	}
+	
+	ClientEnter();
+}
+
+void UBaseAiState::Execute(float dt)
+{
+	if (IsServer())
+	{
+		ServerExecute(dt);
+	}
+	
+	ClientExecute(dt);
+}
+
+void UBaseAiState::Exit()
+{
+	if (IsServer())
+	{
+		ServerExit();
+	}
+	
+	ClientExit();
+}
+
+void UBaseAiState::ServerEnter()
+{}
+
+void UBaseAiState::ServerExecute(float dt)
+{}
+
+void UBaseAiState::ServerExit()
+{}
+
+void UBaseAiState::ClientEnter()
+{}
+
+void UBaseAiState::ClientExecute(float dt)
+{}
+
+void UBaseAiState::ClientExit()
+{}
+
+bool UBaseAiState::IsServer()
+{
+	return m_Owner->HasAuthority();
+	// return m_Owner->GetOwner()->HasAuthority();
+}

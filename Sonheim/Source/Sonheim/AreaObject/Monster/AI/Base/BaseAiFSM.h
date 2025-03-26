@@ -73,4 +73,12 @@ public:
 	UBaseAiState* m_PreviousState = nullptr;
 	UPROPERTY(VisibleAnywhere)
 	UBaseAiState* m_CurrentState = nullptr;
+
+public:
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentStateType)
+    EAiStateType CurrentStateType;
+	UFUNCTION()
+	void OnRep_CurrentStateType();
 };

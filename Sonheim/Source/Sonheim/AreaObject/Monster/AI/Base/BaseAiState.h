@@ -32,16 +32,30 @@ public:
 	void SetFailState(EAiStateType FailState);
 
 	// State 기본 동작
-	virtual void Enter() PURE_VIRTUAL(UBaseAiState::Enter,);
-	virtual void Execute(float dt) PURE_VIRTUAL(UAiState::Excute,);
-	virtual void Exit() PURE_VIRTUAL(UBaseAiState::Exit,);
+	virtual void Enter();
+	virtual void Execute(float dt);
+	virtual void Exit();
 
+	// 서버 전용 State 동작 함수
+	virtual void ServerEnter();
+	virtual void ServerExecute(float dt);
+	virtual void ServerExit();
+	
+	// 클라 전용 State 동작 함수
+	virtual void ClientEnter();
+	virtual void ClientExecute(float dt);
+	virtual void ClientExit();
+	
+	// 서버인지 확인하는 함수
+	virtual bool IsServer();
+	
 	// Getter
 	EAiStateType AiStateType() const;
 
 	// Interface
 	void ChangeState(EAiStateType NewState) const;
 
+	// 
 protected:
 	EAiStateType m_AiStateType;
 

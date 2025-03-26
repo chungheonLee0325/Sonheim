@@ -2,7 +2,9 @@
 #include "BaseAiFSM.h"
 
 #include "BaseAiState.h"
+#include "Net/UnrealNetwork.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 
 
@@ -13,6 +15,7 @@ UBaseAiFSM::UBaseAiFSM()
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
 
+	SetIsReplicatedByDefault(true);
 	// ...
 }
 
@@ -48,11 +51,26 @@ void UBaseAiFSM::AddState(EAiStateType StateType, UBaseAiState* State)
 
 void UBaseAiFSM::ChangeState(EAiStateType StateType)
 {
+	// 서버에서만 State 바꿀꺼임
+	if (GetOwner()->GetLocalRole() != ROLE_Authority)
+	{
+		// Todo : 알아볼것
+		// 클라이언트는 서버한테 요청
+		//ServerRPC_Change(StateType);
+		// ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetWorld()->GetFirstPlayerController());
+		// if (PC)
+		// {
+		// 	PC->ServerRPC_ChangeState(this, StateType);
+		// }
+		
+		return;
+	}
+	
 	if (EAiStateType::None == StateType)
 	{
 		return;
 	}
-	UBaseAiState** ChangeState = m_AiStates.Find(StateType);
+	UBaseAiState* ChangeState = m_AiStates.FindRef(StateType);
 	if (nullptr == ChangeState)
 	{
 		return;
@@ -60,12 +78,12 @@ void UBaseAiFSM::ChangeState(EAiStateType StateType)
 	// FSM 구동후 첫 상태
 	if (nullptr == m_CurrentState)
 	{
-		m_CurrentState = *ChangeState;
+		m_CurrentState = ChangeState;
 		m_CurrentState->Enter();
 		return;
 	}
 	// 같은 상태로는 전환하지않음 -> 고민중...
-	if (*ChangeState == m_CurrentState)
+	if (ChangeState == m_CurrentState)
 	{
 		return;
 	}
@@ -74,8 +92,10 @@ void UBaseAiFSM::ChangeState(EAiStateType StateType)
 
 	m_PreviousState = m_CurrentState;
 
-	m_CurrentState = *ChangeState;
+	m_CurrentState = ChangeState;
 	m_CurrentState->Enter();
+
+	CurrentStateType = StateType;
 }
 
 bool UBaseAiFSM::IsExistState(EAiStateType StateType) const
@@ -100,4 +120,36 @@ void UBaseAiFSM::CheckIsValidAiStates() const
 	}
 }
 
+void UBaseAiFSM::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UBaseAiFSM, CurrentStateType);
+}
+
+void UBaseAiFSM::OnRep_CurrentStateType()
+{
+	if (!IsExistState(CurrentStateType))
+	{
+		return;
+	}
+
+	if (m_CurrentState && m_CurrentState->AiStateType() == CurrentStateType)
+	{
+		return;
+	}
+
+	if (m_CurrentState)
+	{
+		m_CurrentState->Exit();
+	}
+	
+	m_PreviousState = m_CurrentState;
+	m_CurrentState = m_AiStates.FindRef(CurrentStateType);
+	
+	if (m_CurrentState)
+	{
+		m_CurrentState->Enter();
+	}
+}
 

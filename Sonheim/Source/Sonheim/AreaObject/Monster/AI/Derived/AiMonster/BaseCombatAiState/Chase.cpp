@@ -15,7 +15,7 @@ void UChase::InitState()
 void UChase::CheckIsValid()
 {}
 
-void UChase::Enter()
+void UChase::ServerEnter()
 {
 	FLog::Log("UChase");
 	m_Owner->ChangeFace(EFaceType::Sad);
@@ -25,7 +25,7 @@ void UChase::Enter()
 	PatrolRange = m_Owner->NextSkill->GetSkillData()->CastRange + 1'500;
 }
 
-void UChase::Execute(float dt)
+void UChase::ServerExecute(float dt)
 {
 	float Dist{
 		static_cast<float>(FVector::Distance(m_Owner->GetActorLocation(),
@@ -50,7 +50,7 @@ void UChase::Execute(float dt)
 	Chase(dt);
 }
 
-void UChase::Exit()
+void UChase::ServerExit()
 {}
 
 void UChase::Chase(float dt)

@@ -158,4 +158,8 @@ private:
 	UInputAction* RestartAction;
 
 	bool IsMenuActivate = false;
+
+public:
+	// UFUNCTION(Server, Reliable)
+	// void ServerRPC_ChangeState(UBaseAiFSM* FSM, EAiStateType StateType);
 };
