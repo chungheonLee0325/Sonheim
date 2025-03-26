@@ -22,8 +22,10 @@ public:
 
 	virtual void OnCastFire() override;
 	virtual void OnCastEnd() override;
-
+	
 	void FireSandBlast();
+	UFUNCTION(Server, Reliable)
+	void SeverRPC_FireSandBlast();
 
 	float DelayTime = 2.0f;
 	float CurrentTime = 0.0f;

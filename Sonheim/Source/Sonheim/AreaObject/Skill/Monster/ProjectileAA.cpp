@@ -45,7 +45,8 @@ void UProjectileAA::OnCastFire()
 {
 	Super::OnCastFire();
 	
-	FireSandBlast();
+	// FireSandBlast();
+	SeverRPC_FireSandBlast();
 }
 
 void UProjectileAA::OnCastEnd()
@@ -57,6 +58,29 @@ void UProjectileAA::OnCastEnd()
 }
 
 void UProjectileAA::FireSandBlast()
+{
+	FLog::Log("UProjectileAA::OnCastFire");
+	
+	ASandBlast* SpawnedSandBlast{
+		GetWorld()->SpawnActor<ASandBlast>(SandBlastFactory, m_Caster->GetActorLocation(), m_Caster->GetActorRotation())
+	};
+
+	// ToDo : Notify에서 Index 주입
+	FAttackData* AttackData = GetAttackDataByIndex(0);
+	
+	m_TargetPos = m_Target->GetActorLocation();
+	
+	if (SpawnedSandBlast)
+	{
+		SpawnedSandBlast->InitElement(m_Caster, m_Target, m_TargetPos, AttackData);
+	}
+	else
+	{
+		FLog::Log("No SpawnedSandBlast");
+	}
+}
+
+void UProjectileAA::SeverRPC_FireSandBlast_Implementation()
 {
 	FLog::Log("UProjectileAA::OnCastFire");
 	

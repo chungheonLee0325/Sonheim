@@ -22,7 +22,6 @@ ABaseElement::ABaseElement()
 	Root->SetMassOverrideInKg(NAME_None, 1.f, true);
 	Root->SetCollisionProfileName(TEXT("IgnoreActor"));
 
-
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
 	Mesh->SetupAttachment(RootComponent);
 	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -33,6 +32,8 @@ ABaseElement::ABaseElement()
 		Mesh->SetStaticMesh(BaseMeshObject.Object);
 	}
 	
+	bReplicates = true;
+	SetReplicateMovement(true);
 }
 
 void ABaseElement::InitElement(AAreaObject* Caster, AAreaObject* Target, const FVector& TargetLocation,

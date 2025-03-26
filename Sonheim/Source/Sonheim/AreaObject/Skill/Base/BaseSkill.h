@@ -130,4 +130,5 @@ private:
 
 	FOnMontageEnded EndDelegate;
 	FOnMontageBlendingOutStarted CompleteDelegate;
+
 };

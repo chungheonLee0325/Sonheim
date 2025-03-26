@@ -2,6 +2,7 @@
 
 #include "BaseSkill.h"
 
+#include "Net/UnrealNetwork.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 
@@ -300,6 +301,7 @@ void UBaseSkill::AdjustCoolTime()
 		}
 	}, 0.1f, true);
 }
+
 
 void UBaseSkill::SkillLogPrint()
 {
