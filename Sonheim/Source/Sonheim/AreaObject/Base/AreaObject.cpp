@@ -184,6 +184,7 @@ void AAreaObject::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 void AAreaObject::CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Target, FHitResult& HitInfo)
 {
 	// 권한 체크
+	
 	if (GetLocalRole() != ROLE_Authority)
 	{
 		// 클라이언트에서는 서버에 요청만 보냄
