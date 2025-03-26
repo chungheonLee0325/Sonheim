@@ -223,7 +223,10 @@ public:
 	float ForcedWalkSpeed = 1200.f;
 
 	UFUNCTION()
-	void ChangeFace(EFaceType Type) const;
+	void ChangeFace(EFaceType Type);
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastRPC_ChangeFace(EFaceType Type);
+	
 	UPROPERTY()
 	class UMaterialInstanceDynamic* EyeMat{nullptr};
 	UPROPERTY()

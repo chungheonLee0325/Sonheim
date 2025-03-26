@@ -328,7 +328,12 @@ float ABaseMonster::TakeDamage(float DamageAmount, struct FDamageEvent const& Da
 	return damage;
 }
 
-void ABaseMonster::ChangeFace(EFaceType Type) const
+void ABaseMonster::ChangeFace(EFaceType Type)
+{
+	MulticastRPC_ChangeFace(Type);
+}
+
+void ABaseMonster::MulticastRPC_ChangeFace_Implementation(EFaceType Type)
 {
 	switch (Type)
 	{
