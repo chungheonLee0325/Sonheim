@@ -45,10 +45,10 @@ public:
 	FTimerHandle OnDieHandle;
 
 	virtual float DecreaseHP(float Delta) override;
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCastRPC_Show();
 	virtual float DecreaseStamina(float Delta, bool bIsDamaged = true) override;
 	void SetHPWidgetVisibility(bool IsVisible);
-	UFUNCTION(Client, Reliable)
-	void ClientRPC_SetHPWidgetVisibility(bool IsVisible);
 	void SetHPWidgetVisibilityByDuration(float Duration);
 	FTimerHandle HPWidgetVisibleTimer;
 

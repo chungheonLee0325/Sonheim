@@ -21,8 +21,6 @@
 #include "Sonheim/UI/Widget/BaseStatusWidget.h"
 #include "Sonheim/UI/Widget/Monster/MonsterStatusWidget.h"
 
-
-class AYetuga;
 // Sets default values
 ABaseMonster::ABaseMonster()
 {
@@ -64,6 +62,7 @@ ABaseMonster::ABaseMonster()
 	HPWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
 	HPWidgetComponent->SetupAttachment(RootComponent);
 	HPWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, HeightHPUI));
+	HPWidgetComponent->SetIsReplicated(true);
 
 	ConstructorHelpers::FClassFinder<UMonsterStatusWidget> monsterHPWidget(TEXT(
 		"/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/WB_MonsterStatusWidget.WB_MonsterStatusWidget_C'"));
@@ -71,7 +70,6 @@ ABaseMonster::ABaseMonster()
 	{
 		HPWidgetComponent->SetWidgetClass(monsterHPWidget.Class);
 	}
-
 
 	HeadVFXPoint = CreateDefaultSubobject<USceneComponent>(TEXT("HeadVFXPoint"));
 }
@@ -83,35 +81,25 @@ UBaseSkillRoulette* ABaseMonster::GetSkillRoulette() const
 
 float ABaseMonster::DecreaseHP(float Delta)
 {
-	SetHPWidgetVisibilityByDuration(8.f);
-
+	MultiCastRPC_Show();
 	return Super::DecreaseHP(Delta);
+}
+
+void ABaseMonster::MultiCastRPC_Show_Implementation()
+{
+	SetHPWidgetVisibilityByDuration(8.f);
 }
 
 float ABaseMonster::DecreaseStamina(float Delta, bool bIsDamaged)
 {
 	if (bIsDamaged)
 	{
-		SetHPWidgetVisibilityByDuration(8.f);
+		//SetHPWidgetVisibilityByDuration(8.f);
 	}
 	return Super::DecreaseStamina(Delta, bIsDamaged);
 }
 
 void ABaseMonster::SetHPWidgetVisibility(bool IsVisible)
-{
-	if (HasAuthority())
-	{
-		FLog::Log("Show HP");
-		if (dt_AreaObject->EnemyType != EEnemyType::Boss)
-		{
-			HPWidgetComponent->SetVisibility(IsVisible);
-		}
-
-		ClientRPC_SetHPWidgetVisibility(IsVisible);
-	}
-}
-
-void ABaseMonster::ClientRPC_SetHPWidgetVisibility_Implementation(bool IsVisible)
 {
 	if (dt_AreaObject->EnemyType != EEnemyType::Boss)
 	{
@@ -123,8 +111,7 @@ void ABaseMonster::SetHPWidgetVisibilityByDuration(float Duration)
 {
 	SetHPWidgetVisibility(true);
 	TWeakObjectPtr<ABaseMonster> weakThis = this;
-	GetWorld()->GetTimerManager().SetTimer(HPWidgetVisibleTimer, [weakThis]()
-	{
+	GetWorld()->GetTimerManager().SetTimer(HPWidgetVisibleTimer, [weakThis]() {
 		ABaseMonster* strongThis = weakThis.Get();
 		if (strongThis != nullptr)
 		{
@@ -213,8 +200,7 @@ void ABaseMonster::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 void ABaseMonster::OnBodyBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                       UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
                                       const FHitResult& SweepResult)
-{
-}
+{}
 
 UBaseAiFSM* ABaseMonster::CreateFSM()
 {
