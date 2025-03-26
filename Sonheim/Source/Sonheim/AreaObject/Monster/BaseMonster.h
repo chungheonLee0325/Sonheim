@@ -223,7 +223,10 @@ public:
 	float ForcedWalkSpeed = 1200.f;
 
 	UFUNCTION()
-	void ChangeFace(EFaceType Type) const;
+	void ChangeFace(EFaceType Type);
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastRPC_ChangeFace(EFaceType Type);
+	
 	UPROPERTY()
 	class UMaterialInstanceDynamic* EyeMat{nullptr};
 	UPROPERTY()
@@ -249,4 +252,5 @@ public:
 	// ToDo : 추가로 수정 예정 - 현재 : true일때 발사 false 발사중지 보내주기 -> trigger로 쏴주기
 	void PartnerSkillTrigger(bool IsTrigger) { bActivateSkill = IsTrigger; };
 	void PartnerSkillEnd() { IsCalled = false; }
+	
 };

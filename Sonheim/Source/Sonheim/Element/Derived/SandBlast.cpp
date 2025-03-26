@@ -23,6 +23,8 @@ void ASandBlast::BeginPlay()
 {
 	Super::BeginPlay();
 	Root->OnComponentBeginOverlap.AddDynamic(this, &ASandBlast::OnBeginOverlap);
+	Root->OnComponentHit.AddDynamic(this, &ASandBlast::OnComponentHit);
+
 	
 	// FLog::Log("ASandBlast::BeginPlay");
 }
@@ -45,6 +47,11 @@ void ASandBlast::Tick(float DeltaTime)
 void ASandBlast::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	if (m_Caster == OtherActor)
+	{
+		return;
+	}
+	
 	FHitResult Hit;
 	if (m_Caster)
 	{
@@ -53,6 +60,17 @@ void ASandBlast::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor
 	else
 	{
 		FLog::Log("No m_Caster");
+	}
+	
+	DestroySelf();
+}
+
+void ASandBlast::OnComponentHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	FVector NormalImpulse, const FHitResult& Hit)
+{
+	if (m_Caster == OtherActor)
+	{
+		return;
 	}
 	
 	DestroySelf();

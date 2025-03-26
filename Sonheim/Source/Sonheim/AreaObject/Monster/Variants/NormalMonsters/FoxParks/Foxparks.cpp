@@ -40,15 +40,15 @@ void AFoxparks::BeginPlay()
 {
 	Super::BeginPlay();
 	// ToDo : 삭제 예정
-	ASonheimPlayer* player = Cast<ASonheimPlayer>(UGameplayStatics::GetPlayerCharacter(this, 0));
-	if (player != nullptr)
-	{
-		SetPartnerOwner(player);		
-	}
-	else
-	{
-		FLog::Log("There Is No Player");
-	}
+	// ASonheimPlayer* player = Cast<ASonheimPlayer>(UGameplayStatics::GetPlayerCharacter(this, 0));
+	// if (player != nullptr)
+	// {
+	// 	SetPartnerOwner(player);		
+	// }
+	// else
+	// {
+	// 	FLog::Log("There Is No Player");
+	// }
 }
 
 // Called every frame
