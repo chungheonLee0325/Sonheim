@@ -20,7 +20,7 @@ void ABladeWind::BeginPlay()
 	Super::BeginPlay();
 
 	Root->OnComponentBeginOverlap.AddDynamic(this, &ABladeWind::OnBeginOverlap);
-
+	Root->OnComponentHit.AddDynamic(this, &ABladeWind::OnComponentHit);
 }
 
 void ABladeWind::InitElement(AAreaObject* Caster, AAreaObject* Target, const FVector& TargetLocation,
@@ -42,6 +42,10 @@ void ABladeWind::Tick(float DeltaTime)
 void ABladeWind::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	if (m_Caster == OtherActor)
+	{
+		return;
+	}
 	//Super::OnBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);
 
 	FHitResult Hit;
@@ -52,6 +56,17 @@ void ABladeWind::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor
 	else
 	{
 		FLog::Log("No m_Caster");
+	}
+	
+	DestroySelf();
+}
+
+void ABladeWind::OnComponentHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	FVector NormalImpulse, const FHitResult& Hit)
+{
+	if (m_Caster == OtherActor)
+	{
+		return;
 	}
 	
 	DestroySelf();

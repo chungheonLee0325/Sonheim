@@ -4,6 +4,7 @@
 #include "LamBall.h"
 
 #include "Components/CapsuleComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/PalFSM/LambBallFSM.h"
 
 
@@ -67,4 +68,11 @@ UBaseAiFSM* ALamBall::CreateFSM()
 {
 	//return CreateDefaultSubobject<UTempLamballFSM>(TEXT("FSM2"));
 	return CreateDefaultSubobject<ULambBallFSM>(TEXT("FSM"));
+}
+
+void ALamBall::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ALamBall, isDizzy);
 }

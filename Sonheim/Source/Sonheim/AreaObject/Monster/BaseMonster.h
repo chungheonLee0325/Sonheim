@@ -249,4 +249,5 @@ public:
 	// ToDo : 추가로 수정 예정 - 현재 : true일때 발사 false 발사중지 보내주기 -> trigger로 쏴주기
 	void PartnerSkillTrigger(bool IsTrigger) { bActivateSkill = IsTrigger; };
 	void PartnerSkillEnd() { IsCalled = false; }
+	
 };

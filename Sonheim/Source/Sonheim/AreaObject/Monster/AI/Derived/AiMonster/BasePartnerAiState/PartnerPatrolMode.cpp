@@ -29,6 +29,12 @@ void UPartnerPatrolMode::Enter()
 
 void UPartnerPatrolMode::Execute(float dt)
 {
+	// 파트너 없으면 일단 정지
+	if (!m_Owner->PartnerOwner)
+	{
+		return;
+	}
+	
 	// 장착 명령 받으면
 	if (m_Owner->IsCalled)
 	{
@@ -40,12 +46,6 @@ void UPartnerPatrolMode::Execute(float dt)
 	{
 		return;
 	}
-
-
-	// ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
-	// // ToDo : PartnerOwner 설정되면 없애기
-	// ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-	// PartnerOwner = Player;
 	
 	float Dist{
 		static_cast<float>(FVector::Distance(m_Owner->GetActorLocation(),

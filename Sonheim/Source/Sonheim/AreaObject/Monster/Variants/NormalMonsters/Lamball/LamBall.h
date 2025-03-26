@@ -29,6 +29,9 @@ public:
 	UBaseAiFSM* CreateFSM();
 	
 	virtual void SetAggroTarget(AAreaObject* NewTarget) { m_AggroTarget = NewTarget; }
+
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	
+	UPROPERTY(Replicated)
 	bool isDizzy{false};
 };
