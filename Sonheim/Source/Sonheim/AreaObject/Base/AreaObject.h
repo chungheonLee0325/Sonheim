@@ -87,6 +87,13 @@ protected:
 	UPROPERTY()
 	ASonheimGameMode* m_GameMode = nullptr;
 
+	// 리플리케이션된 데이터를 처리하기 위한 함수들
+	UPROPERTY(ReplicatedUsing = OnRep_IsDead)
+	bool bIsDead = false;
+	
+	UFUNCTION()
+	virtual void OnRep_IsDead();
+
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -112,8 +119,14 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastDamageEffect(float Damage, FVector HitLocation, AActor* DamageCauser, bool bWeakPoint, float ElementDamageMultiplier);
 
-	UFUNCTION(BlueprintCallable)
+	//UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, NetMulticast, reliable)
 	virtual void OnDie();
+	UFUNCTION(Client, Reliable)
+	virtual void Client_OnDie();
+	UFUNCTION(Server, Reliable)
+	virtual void Server_OnDie();
+	
 	UFUNCTION(BlueprintCallable)
 	virtual void OnKill();
 	UFUNCTION(BlueprintCallable)
@@ -123,10 +136,13 @@ public:
 
 	// Health 기능 퍼사드 제공 (서버/클라이언트 구분)
 	UFUNCTION(BlueprintCallable, Category = "HP")
-	float IncreaseHP(float Delta) const;
-	
+	float IncreaseHP(float Delta);
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "HP")
+	void Server_IncreaseHP(float Delta);
 	UFUNCTION(BlueprintCallable, Category = "HP")
 	virtual float DecreaseHP(float Delta);
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "HP")
+	void Server_DecreaseHP(float Delta);
 	
 	UFUNCTION(BlueprintCallable, Category = "HP")
 	void SetHPByRate(float Rate) const;
@@ -139,9 +155,13 @@ public:
 
 	// Stamina 기능 퍼사드 제공
 	UFUNCTION(BlueprintCallable, Category = "Stamina")
-	float IncreaseStamina(float Delta) const;
+	float IncreaseStamina(float Delta);
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Stamina")
+	void Server_IncreaseStamina(float Delta);
 	UFUNCTION(BlueprintCallable, Category = "Stamina")
 	virtual float DecreaseStamina(float Delta, bool bIsDamaged = true);
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Stamina")
+	void Server_DecreaseStamina(float Delta, bool bIsDamaged = true);
 	UFUNCTION(BlueprintCallable, Category = "Stamina")
 	float GetStamina() const;
 	UFUNCTION(BlueprintCallable, Category = "Stamina")
@@ -235,12 +255,4 @@ public:
 	FAreaObjectData* dt_AreaObject;
 
 	float SprintSpeedRatio = 2.0f;
-
-private:
-	// 리플리케이션된 데이터를 처리하기 위한 함수들
-	UPROPERTY(ReplicatedUsing = OnRep_IsDead)
-	bool bIsDead = false;
-
-	UFUNCTION()
-	void OnRep_IsDead();
 };

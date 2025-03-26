@@ -23,18 +23,25 @@ protected:
 	                           FActorComponentTickFunction* ThisTickFunction) override;
 
 public:
+	// 리플리케이션 설정 함수
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
 	// 초기화
+	UFUNCTION(Server, Reliable)
 	void InitStamina(float StaminaMax, float RecoveryRate, float GroggyDuration);
 
 	// 스태미나 증감
-	UFUNCTION()
-	float DecreaseStamina(float Delta, bool bIsDamaged = true);
+	UFUNCTION(Server, Reliable)
+	void DecreaseStamina(float Delta, bool bIsDamaged = true);
 
-	UFUNCTION()
-	float IncreaseStamina(float Delta);
+	UFUNCTION(Server, Reliable)
+	void IncreaseStamina(float Delta);
 
 	// 스태미나 회복 관련
+	UFUNCTION(Server, Reliable)
 	void StartStaminaRecovery();
+	
+	UFUNCTION(Server, Reliable)
 	void StopStaminaRecovery();
 
 	// Getter/Setter
@@ -46,38 +53,49 @@ public:
 
 	UFUNCTION()
 	bool CanUseStamina(float Cost) const { return m_Stamina >= Cost * 0.3f; }
-	//bool CanUseStamina(float Cost) const { return !FMath::IsNearlyZero(m_Stamina); }
+
+	// 클라이언트에 스태미나 변경 알림
+	UFUNCTION(Client, Reliable)
+	void Client_OnStaminaChanged(float CurrentStamina, float Delta, float MaxStamina);
 
 	// 델리게이트
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnStaminaChangedDelegate OnStaminaChanged;
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnApplyGroggyDelegate OnApplyGroggyDelegate;
-
-	// 가드 중 스태미나 회복률 감소 설정
-	UPROPERTY(EditAnywhere, Category = "Recovery")
-	float m_GuardRecoveryRateMultiplier = 0.3f; // 가드 중 회복률 50%
+	
+	UPROPERTY(ReplicatedUsing = OnRep_GroggyDuration)
 	float m_GroggyDuration = 4.f;
 
-	// 가드 상태 설정/해제
-	void SetGuardState(bool bIsGuarding);
-
 private:
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(ReplicatedUsing = OnRep_StaminaMax)
 	float m_StaminaMax = 100.0f;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(ReplicatedUsing = OnRep_Stamina)
 	float m_Stamina;
 
 	// 스태미나 회복 관련 변수
-	UPROPERTY(EditAnywhere, Category = "Recovery")
+	UPROPERTY(Replicated)
 	float m_RecoveryRate = 10.0f; // 초당 회복량
 
-	UPROPERTY(EditAnywhere, Category = "Recovery")
-	float m_RecoveryDelay = 1.0f; // 회복 시작까지 대기 시간
+	UPROPERTY(Replicated)
+	float m_RecoveryDelay = 2.0f; // 회복 시작까지 대기 시간
 
+	UPROPERTY(ReplicatedUsing = OnRep_CanRecover)
 	bool bCanRecover = true;
+	
 	FTimerHandle RecoveryDelayHandle;
 
-	bool bIsGuarding = false;
+	// 복제 속성에 대한 응답 함수들
+	UFUNCTION()
+	void OnRep_Stamina();
+	
+	UFUNCTION()
+	void OnRep_StaminaMax();
+	
+	UFUNCTION()
+	void OnRep_CanRecover();
+	
+	UFUNCTION()
+	void OnRep_GroggyDuration();
 };

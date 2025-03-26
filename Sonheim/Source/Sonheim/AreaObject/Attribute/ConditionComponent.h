@@ -16,28 +16,39 @@ class SONHEIM_API UConditionComponent : public UActorComponent
 public:
 	// Sets default values for this component's properties
 	UConditionComponent();
+	
+	// 리플리케이션 설정
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 		
 	UFUNCTION(BlueprintCallable, Category = "Condition")
 	bool IsDead() const { return HasCondition(EConditionBitsType::Dead); }
 
-	UFUNCTION(BlueprintCallable, Category = "Condition")
-	bool AddCondition(EConditionBitsType Condition, float Duration = 0.0f);
+	UFUNCTION(BlueprintCallable, Category = "Condition", Server, Reliable, WithValidation)
+	void AddCondition(EConditionBitsType Condition, float Duration = 0.0f);
 
-	UFUNCTION(BlueprintCallable, Category = "Condition")
-	bool RemoveCondition(EConditionBitsType Condition);
+	UFUNCTION(BlueprintCallable, Category = "Condition", Server, Reliable, WithValidation)
+	void RemoveCondition(EConditionBitsType Condition);
 
 	UFUNCTION(BlueprintCallable, Category = "Condition")
 	bool HasCondition(EConditionBitsType Condition) const;
 
-	UFUNCTION(BlueprintCallable, Category = "Condition")
-	bool ExchangeDead();
+	UFUNCTION(BlueprintCallable, Category = "Condition", Server, Reliable, WithValidation)
+	void ExchangeDead();
 
-	UFUNCTION(BlueprintCallable, Category = "Condition")
+	UFUNCTION(BlueprintCallable, Category = "Condition", Server, Reliable)
 	void Restart();
+	
+	// 클라이언트에 컨디션 변경 알림
+	UFUNCTION(Client, Reliable)
+	void Client_OnConditionChanged(uint32 NewConditionFlags);
 
 private:
-	UPROPERTY()
+	UPROPERTY(ReplicatedUsing = OnRep_ConditionFlags)
 	uint32 ConditionFlags;
+
+	// 컨디션 변경 시 호출되는 함수
+	UFUNCTION()
+	void OnRep_ConditionFlags();
 
 	// Condition별 타이머 핸들 관리
 	UPROPERTY()

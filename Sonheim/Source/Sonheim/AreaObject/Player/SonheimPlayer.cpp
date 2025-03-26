@@ -138,12 +138,6 @@ void ASonheimPlayer::PossessedBy(AController* NewController)
 	S_PlayerController = Cast<ASonheimPlayerController>(NewController);
 	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
 
-	if (S_PlayerController && S_PlayerController->IsLocalController())
-	{
-		S_PlayerController->InitializeHUD(this);
-	}
-
-
 	// 장비 변경 이벤트 바인드
 	S_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
 	// 무기 변경 이벤트 바인드
@@ -152,15 +146,22 @@ void ASonheimPlayer::PossessedBy(AController* NewController)
 	S_PlayerState->OnPlayerStatsChanged.AddDynamic(this, &ASonheimPlayer::StatChanged);
 }
 
-void ASonheimPlayer::OnDie()
+void ASonheimPlayer::Server_OnDie_Implementation()
 {
-	Super::OnDie();
-	SetPlayerState(EPlayerState::DIE);
-	//S_PlayerController->FailWidget->AddToViewport();
-	S_PlayerController->GetPlayerStatusWidget()->SetVisibility(ESlateVisibility::Hidden);
-	// ToDo : TimerHandle 정리?
+	Super::Server_OnDie_Implementation();
+}
 
-	//GetCharacterMovement()->SetMovementMode(MOVE_None);
+void ASonheimPlayer::Client_OnDie_Implementation()
+{
+	Super::Client_OnDie_Implementation();
+
+	// 로컬 플레이어인 경우만 UI 제한
+	if (IsLocallyControlled())
+	{
+		SetPlayerState(EPlayerState::DIE);
+		auto widget = S_PlayerController->GetPlayerStatusWidget();
+		widget->SetVisibility(ESlateVisibility::Hidden);
+	}
 }
 
 void ASonheimPlayer::OnRevival()
@@ -194,6 +195,16 @@ float ASonheimPlayer::HandleDefenceDamageCalculation(float Damage)
 {
 	// ToDo : 수정 예정!! 하드한 공식 - skill로 고도화 예정
 	return FMath::Clamp(Damage - m_Defence, 1, Damage - m_Defence);
+}
+
+void ASonheimPlayer::OnRep_IsDead()
+{
+	Super::OnRep_IsDead();
+	if (bIsDead && IsLocallyControlled())
+	{
+		SetPlayerState(EPlayerState::DIE);
+		S_PlayerController->GetPlayerStatusWidget()->SetVisibility(ESlateVisibility::Hidden);
+	}
 }
 
 void ASonheimPlayer::Reward(int ItemID, int ItemValue) const
@@ -297,8 +308,8 @@ void ASonheimPlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// 스태미나 자동 회복
-	if (bCanRecover && !IsMaxHP())
+	// HP 자동 회복
+	if (bCanRecover && !IsMaxHP() && !IsDie())
 	{
 		float recovery = m_RecoveryRate * DeltaTime;
 

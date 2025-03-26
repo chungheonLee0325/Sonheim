@@ -87,7 +87,9 @@ protected:
 
 	virtual void PossessedBy(AController* NewController) override;
 
-	virtual void OnDie() override;
+
+	virtual void Server_OnDie_Implementation() override;
+	virtual void Client_OnDie_Implementation() override;
 
 	virtual void OnRevival() override;
 
@@ -95,6 +97,8 @@ protected:
 
 	virtual float HandleAttackDamageCalculation(float Damage) override;
 	virtual float HandleDefenceDamageCalculation(float Damage) override;
+
+	virtual void OnRep_IsDead() override;
 
 public:
 	// Movement

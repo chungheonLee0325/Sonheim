@@ -226,6 +226,7 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 	}
 
 	// IFF 처리
+	// ToDo : Can Attack Logic 추가? -> 설인 만들면 추가해야할듯
 	AAreaObject* damageCauser = Cast<AAreaObject>(DamageCauser);
 	if (damageCauser)
 	{
@@ -236,7 +237,6 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 		}
 	}
 
-	// ToDo : Can Attack Logic 추가? -> 설인 만들면 추가해야할듯
 	if (IsDie() || HasCondition(EConditionBitsType::Invincible))
 		return 0.0f;
 
@@ -305,6 +305,7 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 	return ActualDamage;
 }
 
+
 void AAreaObject::StopRotate() const
 {
 	m_RotateUtilComponent->StopRotation();
@@ -326,18 +327,19 @@ void AAreaObject::StopAll()
 	}
 }
 
-void AAreaObject::OnDie()
+void AAreaObject::OnDie_Implementation()
 {
-	// 서버에서만 죽음 처리 로직 실행
-	if (GetLocalRole() != ROLE_Authority)
+	if (HasAuthority())
 	{
-		//Server_OnDie();
-		return;
+		// 서버에서만 죽음 처리 로직 실행
+		Server_OnDie();
 	}
+	Client_OnDie();
+}
 
-	bIsDead = true;
-	StopAll();
 
+void AAreaObject::Client_OnDie_Implementation()
+{
 	UAnimInstance* animInstance = GetMesh()->GetAnimInstance();
 	// 몽타주 정지
 	animInstance->StopAllMontages(0.1f);
@@ -358,10 +360,20 @@ void AAreaObject::OnDie()
 			if (strongThis->DeathEffect != nullptr)
 			{
 				UGameplayStatics::SpawnEmitterAtLocation(strongThis->GetWorld(), strongThis->DeathEffect,
-				                                         strongThis->GetActorLocation());
+														 strongThis->GetActorLocation());
 			}
 		}
 	}, DestroyDelayTime, false);
+}
+
+void AAreaObject::Server_OnDie_Implementation()
+{
+	//bIsDead = true;
+	StopAll();
+
+	//DropLoot(); // 아이템 드롭
+	//GiveExperience(); // 경험치 분배
+	//RemoveFromGameplay(); // 서버 측 제거 로직
 }
 
 void AAreaObject::OnKill()
@@ -482,12 +494,14 @@ void AAreaObject::ClearThisCurrentSkill(UBaseSkill* Skill)
 
 bool AAreaObject::AddCondition(EConditionBitsType AddConditionType, float Duration)
 {
-	return m_ConditionComponent->AddCondition(AddConditionType, Duration);
+	m_ConditionComponent->AddCondition(AddConditionType, Duration);
+	return HasCondition(AddConditionType);
 }
 
 bool AAreaObject::RemoveCondition(EConditionBitsType RemoveConditionType) const
 {
-	return m_ConditionComponent->RemoveCondition(RemoveConditionType);
+	m_ConditionComponent->RemoveCondition(RemoveConditionType);
+	return HasCondition(RemoveConditionType);
 }
 
 bool AAreaObject::HasCondition(EConditionBitsType HasConditionType) const
@@ -497,7 +511,8 @@ bool AAreaObject::HasCondition(EConditionBitsType HasConditionType) const
 
 bool AAreaObject::ExchangeDead() const
 {
-	return m_ConditionComponent->ExchangeDead();
+	m_ConditionComponent->ExchangeDead();
+	return HasCondition(EConditionBitsType::Dead);
 }
 
 void AAreaObject::MoveActorTo(const FVector& TargetPosition, float Duration, EMovementInterpolationType InterpType,
@@ -524,16 +539,22 @@ void AAreaObject::LookAtLocationDirect(const FVector& TargetLocation) const
 	m_RotateUtilComponent->LookAtLocationDirect(TargetLocation);
 }
 
-float AAreaObject::IncreaseHP(float Delta) const
+float AAreaObject::IncreaseHP(float Delta)
 {
 	// 클라이언트에서 호출되면 서버에서 처리하도록 함
 	if (GetLocalRole() != ROLE_Authority)
 	{
 		// 클라이언트에서는 HP 변경 안함, 서버에 요청하는 로직 필요
+		Server_IncreaseHP(Delta);
 		return m_HealthComponent->GetHP();
 	}
 	m_HealthComponent->IncreaseHP(Delta);
 	return m_HealthComponent->GetHP();
+}
+
+void AAreaObject::Server_IncreaseHP_Implementation(float Delta)
+{
+	IncreaseHP(Delta);
 }
 
 float AAreaObject::DecreaseHP(float Delta)
@@ -541,15 +562,26 @@ float AAreaObject::DecreaseHP(float Delta)
 	// 클라이언트에서 호출되면 서버에서 처리하도록 함
 	if (GetLocalRole() != ROLE_Authority)
 	{
-		// 클라이언트에서는 HP 변경 안함, 서버에 요청하는 로직 필요
+		Server_DecreaseHP(Delta);
 		return m_HealthComponent->GetHP();
 	}
 	m_HealthComponent->DecreaseHP(Delta);
 	return m_HealthComponent->GetHP();
 }
 
+void AAreaObject::Server_DecreaseHP_Implementation(float Delta)
+{
+	DecreaseHP(Delta);
+}
+
 void AAreaObject::SetHPByRate(float Rate) const
 {
+	// 클라이언트에서 호출되면 서버에서 처리하도록 함
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		// 클라이언트에서는 HP 변경 안함, 서버에 요청하는 로직 필요
+		return;
+	}
 	m_HealthComponent->SetHPByRate(Rate);
 }
 
@@ -568,14 +600,42 @@ bool AAreaObject::IsMaxHP() const
 	return FMath::IsNearlyEqual(GetHP(), GetMaxHP());
 }
 
-float AAreaObject::IncreaseStamina(float Delta) const
+float AAreaObject::IncreaseStamina(float Delta)
 {
-	return m_StaminaComponent->IncreaseStamina(Delta);
+	// 클라이언트에서 호출되면 서버에서 처리하도록 함
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		// 클라이언트에서는 스태미나 변경 안함
+		Server_IncreaseStamina(Delta);
+		return m_StaminaComponent->GetStamina();
+	}
+	
+	m_StaminaComponent->IncreaseStamina(Delta);
+	return m_StaminaComponent->GetStamina();
+}
+
+void AAreaObject::Server_IncreaseStamina_Implementation(float Delta)
+{
+	IncreaseStamina(Delta);
 }
 
 float AAreaObject::DecreaseStamina(float Delta, bool bIsDamaged)
 {
-	return m_StaminaComponent->DecreaseStamina(Delta, bIsDamaged);
+	// 클라이언트에서 호출되면 서버에서 처리하도록 함
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		// 클라이언트에서는 스태미나 변경 안함
+		Server_DecreaseStamina(Delta, bIsDamaged);
+		return m_StaminaComponent->GetStamina();
+	}
+	
+	m_StaminaComponent->DecreaseStamina(Delta, bIsDamaged);
+	return m_StaminaComponent->GetStamina();
+}
+
+void AAreaObject::Server_DecreaseStamina_Implementation(float Delta, bool bIsDamaged)
+{
+	DecreaseStamina(Delta, bIsDamaged);
 }
 
 float AAreaObject::GetStamina() const
@@ -740,16 +800,16 @@ void AAreaObject::MulticastDamageEffect_Implementation(float Damage, FVector Hit
 void AAreaObject::OnRep_IsDead()
 {
 	// 클라이언트에서 사망 상태가 변경되었을 때 호출
-	if (bIsDead)
-	{
-		// 클라이언트측 사망 효과 (애니메이션 등)
-		StopAll();
-
-		UAnimInstance* animInstance = GetMesh()->GetAnimInstance();
-		animInstance->StopAllMontages(0.1f);
-		if (UAnimMontage* montage = dt_AreaObject->Die_AnimMontage)
-		{
-			animInstance->Montage_Play(montage);
-		}
-	}
+	//if (bIsDead)
+	//{
+	//	// 클라이언트측 사망 효과 (애니메이션 등)
+	//	StopAll();
+	//
+	//	UAnimInstance* animInstance = GetMesh()->GetAnimInstance();
+	//	animInstance->StopAllMontages(0.1f);
+	//	if (UAnimMontage* montage = dt_AreaObject->Die_AnimMontage)
+	//	{
+	//		animInstance->Montage_Play(montage);
+	//	}
+	//}
 }
