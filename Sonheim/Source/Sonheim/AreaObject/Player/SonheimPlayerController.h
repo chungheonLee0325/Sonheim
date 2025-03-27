@@ -68,6 +68,10 @@ private:
 	void On_PartnerSkill_Pressed(const FInputActionValue& InputActionValue);
 	void On_PartnerSkill_Triggered(const FInputActionValue& InputActionValue);
 	void On_PartnerSkill_Released(const FInputActionValue& InputActionValue);
+	/** Called for Summon Pal input */
+	void On_SummonPal_Pressed(const FInputActionValue& Value);
+	/** Called for Switch Pal input */
+	void On_SwitchPal_Triggered(const FInputActionValue& Value);
 	/** Called for Menu input */
 	void On_Menu_Pressed(const FInputActionValue& Value);
 	void On_Menu_Released(const FInputActionValue& Value);
@@ -149,6 +153,14 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* PartnerSkillAction;
 
+	/** SummonPal Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* SummonPalAction;
+
+	/** SwitchPal Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* SwitchPalAction;
+	
 	/** Menu Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* MenuAction;

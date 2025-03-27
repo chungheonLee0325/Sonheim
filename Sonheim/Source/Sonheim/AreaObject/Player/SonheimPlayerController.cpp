@@ -99,6 +99,22 @@ ASonheimPlayerController::ASonheimPlayerController()
 		PartnerSkillAction = tempPartnerSkill.Object;
 	}
 
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempSwitchPal(
+	TEXT(
+		"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_SwitchPal.IA_SwitchPal'"));
+	if (tempSwitchPal.Succeeded())
+	{
+		SwitchPalAction = tempSwitchPal.Object;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempSummonPal(
+	TEXT(
+		"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_SummonPal.IA_SummonPal'"));
+	if (tempSummonPal.Succeeded())
+	{
+		SummonPalAction = tempSummonPal.Object;
+	}
+
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempMenu(
 		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Menu.IA_Menu'"));
 	if (tempMenu.Succeeded())
@@ -292,6 +308,14 @@ void ASonheimPlayerController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(PartnerSkillAction, ETriggerEvent::Completed, this,
 		                                   &ASonheimPlayerController::On_PartnerSkill_Released);
 
+		// Summon Pal
+		EnhancedInputComponent->BindAction(SummonPalAction, ETriggerEvent::Started, this,
+								   &ASonheimPlayerController::On_SummonPal_Pressed);
+		
+		// Switch Pal
+		EnhancedInputComponent->BindAction(SwitchPalAction, ETriggerEvent::Triggered, this,
+								   &ASonheimPlayerController::On_SwitchPal_Triggered);
+
 		// Menu
 		EnhancedInputComponent->BindAction(MenuAction, ETriggerEvent::Started, this,
 		                                   &ASonheimPlayerController::On_Menu_Pressed);
@@ -444,6 +468,16 @@ void ASonheimPlayerController::On_PartnerSkill_Released(const FInputActionValue&
 {
 	if (!IsLocalController()) return;
 	m_Player->PartnerSkill_Released();
+}
+
+void ASonheimPlayerController::On_SummonPal_Pressed(const FInputActionValue& Value)
+{
+	FLog::Log("SummonPal");
+}
+
+void ASonheimPlayerController::On_SwitchPal_Triggered(const FInputActionValue& Value)
+{
+	FLog::Log("SwitchPal",Value.Get<float>());
 }
 
 void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
