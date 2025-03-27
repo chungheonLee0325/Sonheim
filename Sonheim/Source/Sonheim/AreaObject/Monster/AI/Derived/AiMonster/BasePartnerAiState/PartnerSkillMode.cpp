@@ -14,7 +14,7 @@ void UPartnerSkillMode::CheckIsValid()
 {
 }
 
-void UPartnerSkillMode::Enter()
+void UPartnerSkillMode::ServerEnter()
 {
 	if (m_Owner->bShowDebug)
 	{
@@ -35,7 +35,7 @@ void UPartnerSkillMode::Enter()
 	}
 }
 
-void UPartnerSkillMode::Execute(float dt)
+void UPartnerSkillMode::ServerExecute(float dt)
 {
 	// 스킬 사용
 	if (m_Owner->bActivateSkill)
@@ -51,7 +51,7 @@ void UPartnerSkillMode::Execute(float dt)
 	}
 }
 
-void UPartnerSkillMode::Exit()
+void UPartnerSkillMode::ServerExit()
 {
 }
 
