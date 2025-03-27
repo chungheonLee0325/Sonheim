@@ -45,8 +45,8 @@ void UProjectileAA::OnCastFire()
 {
 	Super::OnCastFire();
 	
-	// FireSandBlast();
-	SeverRPC_FireSandBlast();
+	FireSandBlast();
+	//SeverRPC_FireSandBlast();
 }
 
 void UProjectileAA::OnCastEnd()
