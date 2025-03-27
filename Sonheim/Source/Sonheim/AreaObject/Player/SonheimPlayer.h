@@ -138,6 +138,12 @@ public:
 	void PartnerSkill_Triggered();
 	void PartnerSkill_Released();
 
+	/** Called for SummonPal input */
+	void SummonPal_Pressed();
+
+	/** Called for SwitchPal input */
+	void SwitchPalSlot_Triggered(int Index);
+
 	/** Called for Menu input */
 	void Menu_Pressed();
 
@@ -334,12 +340,15 @@ public:
 private:
 	// UFUNCTION(Server, Reliable)
 	// void Server_ToggleLockOn(bool IsActive);
+	void UpdateSelectedPal();
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Pals")
 	int PalMaxIndex = 4;
 	int CurrentPalIndex = 0;
 	UPROPERTY(VisibleAnywhere, Category = "Pals")
-	TMap<int, ABaseMonster*> OwnedPals;
+	TMap<int, ABaseMonster*> m_OwnedPals;
 	UPROPERTY(VisibleAnywhere, Category = "Pals")
-	ABaseMonster* SelectedPal;
+	ABaseMonster* m_SelectedPal = nullptr;
+	UPROPERTY(VisibleAnywhere, Category = "Pals")
+	ABaseMonster* m_SummonedPal = nullptr;
 };

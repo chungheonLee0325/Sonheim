@@ -100,19 +100,27 @@ ASonheimPlayerController::ASonheimPlayerController()
 	}
 
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempSwitchPal(
-	TEXT(
-		"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_SwitchPal.IA_SwitchPal'"));
+		TEXT(
+			"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_SwitchPal.IA_SwitchPal'"));
 	if (tempSwitchPal.Succeeded())
 	{
 		SwitchPalAction = tempSwitchPal.Object;
 	}
 
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempSummonPal(
-	TEXT(
-		"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_SummonPal.IA_SummonPal'"));
+		TEXT(
+			"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_SummonPal.IA_SummonPal'"));
 	if (tempSummonPal.Succeeded())
 	{
-		SummonPalAction = tempSummonPal.Object;
+		SummonPalSlotAction = tempSummonPal.Object;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempThrowPalSphere(
+		TEXT(
+			"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_ThrowPalSphere.IA_ThrowPalSphere'"));
+	if (tempThrowPalSphere.Succeeded())
+	{
+		ThrowPalSphereAction = tempThrowPalSphere.Object;
 	}
 
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempMenu(
@@ -309,12 +317,20 @@ void ASonheimPlayerController::SetupInputComponent()
 		                                   &ASonheimPlayerController::On_PartnerSkill_Released);
 
 		// Summon Pal
-		EnhancedInputComponent->BindAction(SummonPalAction, ETriggerEvent::Started, this,
-								   &ASonheimPlayerController::On_SummonPal_Pressed);
-		
+		EnhancedInputComponent->BindAction(SummonPalSlotAction, ETriggerEvent::Started, this,
+		                                   &ASonheimPlayerController::On_SummonPal_Pressed);
+
 		// Switch Pal
 		EnhancedInputComponent->BindAction(SwitchPalAction, ETriggerEvent::Triggered, this,
-								   &ASonheimPlayerController::On_SwitchPal_Triggered);
+		                                   &ASonheimPlayerController::On_SwitchPalSlot_Triggered);
+
+		// ThrowPalSphere
+		EnhancedInputComponent->BindAction(ThrowPalSphereAction, ETriggerEvent::Started, this,
+		                                   &ASonheimPlayerController::On_ThrowPalSphere_Pressed);
+		EnhancedInputComponent->BindAction(ThrowPalSphereAction, ETriggerEvent::Triggered, this,
+		                                   &ASonheimPlayerController::On_ThrowPalSphere_Triggered);
+		EnhancedInputComponent->BindAction(ThrowPalSphereAction, ETriggerEvent::Completed, this,
+		                                   &ASonheimPlayerController::On_ThrowPalSphere_Released);
 
 		// Menu
 		EnhancedInputComponent->BindAction(MenuAction, ETriggerEvent::Started, this,
@@ -472,12 +488,28 @@ void ASonheimPlayerController::On_PartnerSkill_Released(const FInputActionValue&
 
 void ASonheimPlayerController::On_SummonPal_Pressed(const FInputActionValue& Value)
 {
-	FLog::Log("SummonPal");
+	m_Player->SummonPal_Pressed();
 }
 
-void ASonheimPlayerController::On_SwitchPal_Triggered(const FInputActionValue& Value)
+void ASonheimPlayerController::On_SwitchPalSlot_Triggered(const FInputActionValue& Value)
 {
-	FLog::Log("SwitchPal",Value.Get<float>());
+	const int32 SwitchData = FMath::Sign(Value.Get<float>());
+	if (SwitchData != 0)
+	{
+		m_Player->SwitchPalSlot_Triggered(SwitchData);
+	}
+}
+
+void ASonheimPlayerController::On_ThrowPalSphere_Pressed(const FInputActionValue& InputActionValue)
+{
+}
+
+void ASonheimPlayerController::On_ThrowPalSphere_Triggered(const FInputActionValue& InputActionValue)
+{
+}
+
+void ASonheimPlayerController::On_ThrowPalSphere_Released(const FInputActionValue& InputActionValue)
+{
 }
 
 void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)

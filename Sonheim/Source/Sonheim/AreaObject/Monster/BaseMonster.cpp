@@ -430,6 +430,55 @@ void ABaseMonster::SetPartnerOwner(ASonheimPlayer* NewOwner)
 	NewOwner->RegisterOwnPal(this);
 }
 
+void ABaseMonster::ActivateMonster()
+{
+	m_AiFSM->ChangeState(EAiStateType::PartnerPatrolMode);
+	// 렌더링 활성화
+	SetActorHiddenInGame(false);
+        
+	// 물리 및 충돌 활성화
+	SetActorEnableCollision(true);
+        
+	// AI 컨트롤러 활성화
+	if (AIController)
+	{
+		AIController->SetActorTickEnabled(true);
+	}
+	else
+	{
+		// ???? 왜??? 확인 필요 
+		AIController = Cast<AAIController>(GetController());
+	}
+
+	if (PartnerOwner != nullptr)
+	{
+		FVector newLocation = PartnerOwner->GetActorLocation() + PartnerOwner->GetActorRightVector() * 100.f;
+		SetActorLocation(newLocation);
+	}
+}
+
+void ABaseMonster::DeactivateMonster()
+{
+	m_AiFSM->StopFSM();
+
+	// 렌더링 비활성화
+	SetActorHiddenInGame(true);
+        
+	// 물리 및 충돌 비활성화
+	SetActorEnableCollision(false);
+        
+	// AI 컨트롤러 비활성화
+	if (AIController)
+	{
+		AIController->SetActorTickEnabled(false);
+	}
+	else
+	{
+		AIController = Cast<AAIController>(GetController());
+	}
+}
+
+
 void ABaseMonster::Surprise()
 {
 	if (bIsForced)

@@ -71,7 +71,11 @@ private:
 	/** Called for Summon Pal input */
 	void On_SummonPal_Pressed(const FInputActionValue& Value);
 	/** Called for Switch Pal input */
-	void On_SwitchPal_Triggered(const FInputActionValue& Value);
+	void On_SwitchPalSlot_Triggered(const FInputActionValue& Value);
+	/** Called for ThrowPalSphere input */
+	void On_ThrowPalSphere_Pressed(const FInputActionValue& InputActionValue);
+	void On_ThrowPalSphere_Triggered(const FInputActionValue& InputActionValue);
+	void On_ThrowPalSphere_Released(const FInputActionValue& InputActionValue);
 	/** Called for Menu input */
 	void On_Menu_Pressed(const FInputActionValue& Value);
 	void On_Menu_Released(const FInputActionValue& Value);
@@ -155,11 +159,15 @@ private:
 
 	/** SummonPal Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	UInputAction* SummonPalAction;
+	UInputAction* SummonPalSlotAction;
 
 	/** SwitchPal Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* SwitchPalAction;
+
+	/** ThrowPalSphere Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* ThrowPalSphereAction;
 	
 	/** Menu Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))

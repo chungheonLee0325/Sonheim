@@ -149,7 +149,6 @@ void ASonheimPlayer::PossessedBy(AController* NewController)
 void ASonheimPlayer::Server_OnDie_Implementation()
 {
 	Super::Server_OnDie_Implementation();
-	
 }
 
 void ASonheimPlayer::Client_OnDie_Implementation()
@@ -253,14 +252,20 @@ void ASonheimPlayer::StatChanged(EAreaObjectStatType StatType, float StatValue)
 
 void ASonheimPlayer::RegisterOwnPal(ABaseMonster* Pal)
 {
-	// ToDo : 수정 예정
-	OwnedPals.Add(0, Pal);
-	SetSelectedPal(0);
+	int palNum = m_OwnedPals.Num();
+	if (palNum == PalMaxIndex + 1)
+	{
+		FLog::Log("Pal Num is Max");
+		return;
+	}
+	m_OwnedPals.Add(palNum, Pal);
+	UpdateSelectedPal();
+	//SetSelectedPal(0);
 }
 
 void ASonheimPlayer::SetSelectedPal(int PalIndex)
 {
-	SelectedPal = OwnedPals[PalIndex];
+	m_SelectedPal = m_OwnedPals[PalIndex];
 }
 
 
@@ -318,7 +323,7 @@ void ASonheimPlayer::Tick(float DeltaTime)
 	}
 
 	// 
-	if (SelectedPal != nullptr)
+	if (m_SelectedPal != nullptr)
 	{
 		TArray<AActor*> TargetArr;
 		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABaseMonster::StaticClass(), TargetArr);
@@ -330,7 +335,7 @@ void ASonheimPlayer::Tick(float DeltaTime)
 		for (auto FindTarget : TargetArr)
 		{
 			auto monster = Cast<ABaseMonster>(FindTarget);
-			if (monster != SelectedPal)
+			if (monster != m_SelectedPal)
 			{
 				IdleMonster.Add(monster);
 			}
@@ -347,7 +352,7 @@ void ASonheimPlayer::Tick(float DeltaTime)
 		{
 			if (FVector::Dist(IdleMonster[0]->GetActorLocation(), PlayerLocation) < 800.f)
 			{
-				SelectedPal->SetAggroTarget(IdleMonster[0]);
+				m_SelectedPal->SetAggroTarget(IdleMonster[0]);
 			}
 		}
 	}
@@ -510,7 +515,7 @@ void ASonheimPlayer::LeftMouse_Pressed()
 {
 	if (bUsingPartnerSkill)
 	{
-		SelectedPal->PartnerSkillTrigger(true);
+		m_SelectedPal->PartnerSkillTrigger(true);
 		return;
 	}
 }
@@ -549,7 +554,7 @@ void ASonheimPlayer::LeftMouse_Released()
 {
 	if (bUsingPartnerSkill)
 	{
-		SelectedPal->PartnerSkillTrigger(false);
+		m_SelectedPal->PartnerSkillTrigger(false);
 		return;
 	}
 }
@@ -560,7 +565,7 @@ void ASonheimPlayer::RightMouse_Pressed()
 	{
 		return;
 	}
-	
+
 	TWeakObjectPtr<ASonheimPlayer> weakThis = this;
 	GetWorld()->GetTimerManager().SetTimer(LockOnCameraTimerHandle, [weakThis]
 	{
@@ -670,7 +675,7 @@ void ASonheimPlayer::WeaponSwitch_Triggered()
 
 void ASonheimPlayer::PartnerSkill_Pressed()
 {
-	if (SelectedPal == nullptr)
+	if (m_SelectedPal == nullptr || m_SummonedPal ==nullptr)
 	{
 		FLog::Log("Partner Pall Is Not Exist");
 		return;
@@ -678,16 +683,14 @@ void ASonheimPlayer::PartnerSkill_Pressed()
 
 	if (!bUsingPartnerSkill)
 	{
-		SelectedPal->PartnerSkillStart();
+		m_SummonedPal->PartnerSkillStart();
 		//SetUsePartnerSkill(true);
 	}
-	else
+	else 
 	{
-		SelectedPal->PartnerSkillEnd();
+		m_SummonedPal->PartnerSkillEnd();
 		//SetUsePartnerSkill(false);
 	}
-
-	// ToDo : 팰이 set
 }
 
 void ASonheimPlayer::PartnerSkill_Triggered()
@@ -696,16 +699,55 @@ void ASonheimPlayer::PartnerSkill_Triggered()
 
 void ASonheimPlayer::PartnerSkill_Released()
 {
-	if (SelectedPal == nullptr)
+	if (m_SelectedPal == nullptr)
 	{
 		FLog::Log("Partner Pall Is Not Exist");
 		return;
 	}
 	//SelectedPal->PartnerSkillEnd();
-
-	// ToDo : 팰이 set
-	//bUsePartnerSkill = false;
 }
+
+void ASonheimPlayer::SummonPal_Pressed()
+{
+	UpdateSelectedPal();
+	if (m_SelectedPal == nullptr)
+	{
+		FLog::Log("Partner Pall Is Not Exist");
+		return;
+	}
+	FLog::Log("SelectedPal Index : ", CurrentPalIndex);
+
+	// 내 우측에 생성 + 근처에 대상 존재하면 상호작용 or 앞으로 전진
+	if (m_SelectedPal != m_SummonedPal)
+	{
+		if (m_SummonedPal != nullptr)
+		{
+			m_SummonedPal->DeactivateMonster();
+		}
+		m_SelectedPal->ActivateMonster();
+		m_SummonedPal = m_SelectedPal;
+	}
+	else
+	{
+		m_SummonedPal->DeactivateMonster();
+		m_SummonedPal = nullptr;
+	}
+}
+
+void ASonheimPlayer::SwitchPalSlot_Triggered(int Index)
+{
+	const int minIndex = 0;
+	const int maxIndex = FMath::Min(PalMaxIndex, m_OwnedPals.Num());
+	// divide by zero 방지
+	if (maxIndex == minIndex) return;
+
+	CurrentPalIndex = (CurrentPalIndex + Index) % maxIndex;
+	if (CurrentPalIndex < minIndex) CurrentPalIndex += maxIndex;
+	UpdateSelectedPal();
+
+	FLog::Log("CurrentPalIndex : ", CurrentPalIndex);
+}
+
 
 void ASonheimPlayer::Menu_Pressed()
 {
@@ -719,6 +761,19 @@ void ASonheimPlayer::Restart_Pressed()
 	}
 	// 
 	RespawnAtCheckpoint();
+}
+
+void ASonheimPlayer::UpdateSelectedPal()
+{
+	if (m_OwnedPals.Num() == 0)
+	{
+		m_SelectedPal = nullptr;
+		return;
+	}
+
+	// 팰 상자나 버림 등 다른 변수로 최신화 안된경우 대비..
+	CurrentPalIndex = FMath::Min(CurrentPalIndex, FMath::Min(m_OwnedPals.Num() - 1, PalMaxIndex));
+	m_SelectedPal = m_OwnedPals[CurrentPalIndex];
 }
 
 void ASonheimPlayer::SaveCheckpoint(FVector Location, FRotator Rotation)
