@@ -21,9 +21,6 @@ struct FMontageItem
 	bool bInterruptible;
 	float BlendOutTime;
 
-	FOnMontageEnded OnMontageEnded;
-	FOnMontageBlendingOutStarted OnMontageBlendingOut;
-
 	FMontageItem()
 		: Montage(nullptr)
 		  , Priority(EAnimationPriority::None)
@@ -35,12 +32,8 @@ struct FMontageItem
 	FMontageItem(UAnimMontage* Montage,
 	             EAnimationPriority Priority,
 	             bool bInterruptible,
-	             float BlendOutTime,
-	             const FOnMontageEnded& OnMontageEnded,
-	             const FOnMontageBlendingOutStarted& OnMontageBlendingOut)
-		: Montage(Montage), Priority(Priority), bInterruptible(bInterruptible), BlendOutTime(BlendOutTime),
-		  OnMontageEnded(OnMontageEnded),
-		  OnMontageBlendingOut(OnMontageBlendingOut)
+	             float BlendOutTime)
+		: Montage(Montage), Priority(Priority), bInterruptible(bInterruptible), BlendOutTime(BlendOutTime)
 	{
 	}
 };
@@ -60,12 +53,16 @@ public:
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 
 	// 몽타주 재생 요청
-	bool PlayMontage(UAnimMontage* Montage,
+	UFUNCTION(Server, Reliable)
+	void ServerMontage(UAnimMontage* Montage,
+					 EAnimationPriority Priority,
+					 bool bInterruptible = true,
+					 float BlendOutTime = 0.1f);
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCastMontage(UAnimMontage* Montage,
 	                 EAnimationPriority Priority,
 	                 bool bInterruptible = true,
-	                 float BlendOutTime = 0.25f,
-	                 const FOnMontageEnded& OnEnded = nullptr,
-	                 const FOnMontageBlendingOutStarted& OnBlendingOut = nullptr);
+	                 float BlendOutTime = 0.1f);
 
 	// 현재 재생중인 몽타주 강제 중단
 	void StopCurrentMontage(float BlendOutTime = 0.25f);

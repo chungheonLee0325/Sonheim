@@ -18,6 +18,7 @@
 #include "Sonheim/UI/FloatingDamageActor.h"
 #include "Sonheim/Utilities/SonheimUtility.h"
 #include "Net/UnrealNetwork.h"
+#include "Sonheim/Animation/Common/AnimInstance/BaseAnimInstance.h"
 
 // Sets default values
 AAreaObject::AAreaObject()
@@ -59,6 +60,11 @@ void AAreaObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	
 	// 사망 상태 리플리케이션
 	DOREPLIFETIME(AAreaObject, bIsDead);
+}
+
+UBaseAnimInstance* AAreaObject::GetSAnimInstance() const
+{
+	return m_AnimInstance;
 }
 
 // Called when the game starts or when spawned
@@ -118,6 +124,9 @@ void AAreaObject::BeginPlay()
 
 	// GameMode Setting
 	m_GameMode = Cast<ASonheimGameMode>(GetWorld()->GetAuthGameMode());
+
+	// AnimInstance Setting
+	m_AnimInstance = Cast<UBaseAnimInstance>(GetMesh()->GetAnimInstance());
 }
 
 void AAreaObject::PostInitializeComponents()
@@ -465,7 +474,14 @@ bool AAreaObject::CastSkill(UBaseSkill* Skill, AAreaObject* Target)
 {
 	if (CanCastSkill(Skill, Target))
 	{
-
+		// 권한 체크
+		if (GetLocalRole() != ROLE_Authority)
+		{
+			// 클라이언트에서는 서버에 요청 보냄
+			Server_CastSkill(Skill->GetSkillID(), Target);
+			//return true;
+		}
+		
 		UpdateCurrentSkill(Skill);
 		Skill->OnCastStart(this, Target);
 		return true;
@@ -478,6 +494,13 @@ bool AAreaObject::CastSkill(UBaseSkill* Skill, AAreaObject* Target)
 		return false;
 	}
 }
+
+void AAreaObject::Server_CastSkill_Implementation(int SkillID, AAreaObject* Target)
+{
+	UBaseSkill* Skill = GetSkillByID(SkillID);
+	CastSkill(Skill, Target);
+}
+
 
 void AAreaObject::ClearCurrentSkill()
 {

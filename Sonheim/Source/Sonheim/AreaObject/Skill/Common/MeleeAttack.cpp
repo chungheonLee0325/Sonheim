@@ -6,27 +6,27 @@
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 
-void UMeleeAttack::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
+void UMeleeAttack::Server_OnCastStart_Implementation(class AAreaObject* Caster, AAreaObject* Target)
 {
 	bDebugDraw = Caster->bShowDebug;
-	Super::OnCastStart(Caster, Target);
+	Super::Server_OnCastStart_Implementation(Caster, Target);
 }
 
-void UMeleeAttack::OnCastEnd()
+void UMeleeAttack::Server_OnCastEnd_Implementation()
 {
-	Super::OnCastEnd();
+	Super::Server_OnCastEnd_Implementation();
 	NotifyStateMap.Empty();
 }
 
-void UMeleeAttack::CancelCast()
+void UMeleeAttack::Server_CancelCast_Implementation()
 {
-	Super::CancelCast();
+	Super::Server_CancelCast_Implementation();
 }
 
-void UMeleeAttack::OnCastTick(float DeltaTime)
+void UMeleeAttack::Server_OnCastTick_Implementation(float DeltaTime)
 {
-	Super::OnCastTick(DeltaTime);
-	
+	Super::Server_OnCastTick_Implementation(DeltaTime);
+		
 	if (m_CurrentPhase != ESkillPhase::PostCasting)
 	{
 		return;

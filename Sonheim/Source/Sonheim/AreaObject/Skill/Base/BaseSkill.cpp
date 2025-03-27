@@ -3,6 +3,7 @@
 #include "BaseSkill.h"
 
 #include "Net/UnrealNetwork.h"
+#include "Sonheim/Animation/Common/AnimInstance/BaseAnimInstance.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 
@@ -48,12 +49,39 @@ bool UBaseSkill::CanCast(AAreaObject* Caster, const AAreaObject* Target) const
 	return IsInRange(Caster, Target);
 }
 
+// void UBaseSkill::OnCastStart_Implementation(class AAreaObject* Caster, AAreaObject* Target)
+// {
+// 	if (!Caster || !Target) return;
+//
+// 	m_Caster = Caster;
+// 	m_Target = Target;
+//
+// 	if (m_Caster->HasAuthority())
+// 	{
+// 		Server_OnCastStart(m_Caster, m_Target);
+// 	}
+// 	Client_OnCastStart(m_Caster, m_Target);
+// }
+
 void UBaseSkill::OnCastStart(AAreaObject* Caster, AAreaObject* Target)
 {
 	if (!Caster || !Target) return;
 
 	m_Caster = Caster;
 	m_Target = Target;
+	
+	if (m_Caster->HasAuthority())
+	{
+		Server_OnCastStart(m_Caster, m_Target);
+	}
+	Client_OnCastStart(m_Caster, m_Target);
+}
+
+void UBaseSkill::Server_OnCastStart_Implementation(class AAreaObject* Caster, AAreaObject* Target)
+{}
+
+void UBaseSkill::Client_OnCastStart_Implementation(class AAreaObject* Caster, AAreaObject* Target)
+{
 	m_TargetPos = m_Target->GetActorLocation();
 	m_NextSkillID = m_SkillData->NextSkillID;
 
@@ -71,41 +99,87 @@ void UBaseSkill::OnCastStart(AAreaObject* Caster, AAreaObject* Target)
 	m_CurrentCoolTime = m_SkillData->CoolTime;
 
 	// 애니메이션 몽타주 재생
-	UAnimInstance* AnimInstance = Caster->GetMesh()->GetAnimInstance();
+	UBaseAnimInstance* AnimInstance = Caster->GetSAnimInstance();
 	if (AnimInstance && m_SkillData->Montage)
 	{
 		// 기존 델리게이트 해제
 		//AnimInstance->Montage_SetEndDelegate(nullptr, m_SkillData->Montage);
-
+	
 		// 몽타주 재생
-		Caster->PlayAnimMontage(m_SkillData->Montage);
-
-
+		AnimInstance->ServerMontage(m_SkillData->Montage, EAnimationPriority::Action);
+	
 		// 델리게이트 바인딩
 		EndDelegate.BindUObject(this, &UBaseSkill::OnMontageEnded);
 		AnimInstance->Montage_SetEndDelegate(EndDelegate, m_SkillData->Montage);
-		//
-		//// 블렌드 아웃
+		
+		// 블렌드 아웃
 		CompleteDelegate.BindUObject(this, &UBaseSkill::OnMontageBlendOut);
 		AnimInstance->Montage_SetBlendingOutDelegate(CompleteDelegate, m_SkillData->Montage);
 	}
 }
 
-void UBaseSkill::OnCastTick(float DeltaTime)
+void UBaseSkill::OnCastTick_Implementation(float DeltaTime)
+{
+	if (m_Caster->HasAuthority())
+	{
+		Server_OnCastTick(DeltaTime);
+	}
+	Client_OnCastTick(DeltaTime);
+}
+
+//void UBaseSkill::OnCastTick(float DeltaTime)
+//{
+//	if (m_Caster->HasAuthority())
+//	{
+//		Server_OnCastTick(DeltaTime);
+//	}
+//	Client_OnCastTick(DeltaTime);
+//}
+
+void UBaseSkill::Server_OnCastTick_Implementation(float DeltaTime)
+{
+}
+
+void UBaseSkill::Client_OnCastTick_Implementation(float DeltaTime)
 {
 }
 
 void UBaseSkill::OnCastFire()
 {
+	if (m_Caster->HasAuthority())
+	{
+		Server_OnCastFire();
+	}
+	Client_OnCastFire();
+}
+
+void UBaseSkill::Server_OnCastFire_Implementation()
+{
+}
+
+void UBaseSkill::Client_OnCastFire_Implementation()
+{
 }
 
 void UBaseSkill::OnCastEnd()
 {
-	
+	if (m_Caster->HasAuthority())
+	{
+		Server_OnCastEnd();
+	}
+	Client_OnCastEnd();
+}
+
+void UBaseSkill::Server_OnCastEnd_Implementation()
+{
+}
+
+void UBaseSkill::Client_OnCastEnd_Implementation()
+{
 	// Casting Phase일때 한번만 처리
 	if (m_CurrentPhase != ESkillPhase::PostCasting) return;
 	if (!m_Caster || !m_Target) return;
-	
+
 	m_CurrentPhase = ESkillPhase::CoolTime;
 
 	// 애니메이션 인스턴스 얻기
@@ -118,7 +192,7 @@ void UBaseSkill::OnCastEnd()
 		// 현재 재생중인 몽타주 정지
 		AnimInstance->Montage_Stop(MontageBlendTime, m_SkillData->Montage);
 	}
-	
+
 	m_Caster->ClearThisCurrentSkill(this);
 	if (0 != m_NextSkillID)
 	{
@@ -144,11 +218,25 @@ void UBaseSkill::OnCastEnd()
 			OnSkillComplete.Unbind();
 		}
 	}
-	
+
 	AdjustCoolTime();
 }
 
 void UBaseSkill::CancelCast()
+{
+	if (m_Caster->HasAuthority())
+	{
+		Server_CancelCast();
+	}
+	Client_CancelCast();
+}
+
+void UBaseSkill::Server_CancelCast_Implementation()
+{
+
+}
+
+void UBaseSkill::Client_CancelCast_Implementation()
 {
 	// Casting Phase일때 한번만 처리
 	if (m_CurrentPhase != ESkillPhase::PostCasting) return;

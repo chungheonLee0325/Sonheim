@@ -51,16 +51,38 @@ public:
 	FTimerHandle CoolTimeTimerHandle;
 
 	virtual bool CanCast(class AAreaObject* Caster, const AAreaObject* Target) const;
+	//UFUNCTION(NetMulticast,Reliable)
 	virtual void OnCastStart(class AAreaObject* Caster, AAreaObject* Target);
+	UFUNCTION(Server, Reliable)
+	virtual void Server_OnCastStart(class AAreaObject* Caster, AAreaObject* Target);
+	UFUNCTION(Client, Reliable)
+	virtual void Client_OnCastStart(class AAreaObject* Caster, AAreaObject* Target);
+	UFUNCTION(NetMulticast,Reliable)
 	virtual void OnCastTick(float DeltaTime);
+	UFUNCTION(Server, Reliable)
+	virtual void Server_OnCastTick(float DeltaTime);
+	UFUNCTION(Client, Reliable)
+	virtual void Client_OnCastTick(float DeltaTime);
 	// 몽타주 종료나 Notify로 호출되는 Skill 시전 종료 메서드
 	virtual void OnCastEnd();
+	UFUNCTION(Server, Reliable)
+	virtual void Server_OnCastEnd();
+	UFUNCTION(Client, Reliable)
+	virtual void Client_OnCastEnd();
 	// 외부에서 호출을 이용한 스킬 cancel
 	virtual void CancelCast();
+	UFUNCTION(Server, Reliable)
+	virtual void Server_CancelCast();
+	UFUNCTION(Client, Reliable)
+	virtual void Client_CancelCast();
 	
 	// Notify를 이용한 Cast Fire(투사체, 장판 등)
 	UFUNCTION(BlueprintCallable)
 	virtual void OnCastFire();
+	UFUNCTION(Server, Reliable)
+	virtual void Server_OnCastFire();
+	UFUNCTION(Client, Reliable)
+	virtual void Client_OnCastFire();
 
 
 

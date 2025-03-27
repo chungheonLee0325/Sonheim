@@ -11,6 +11,7 @@
 #include "Sonheim/UI/Widget/FloatingDamageWidget.h"
 #include "AreaObject.generated.h"
 
+class UBaseAnimInstance;
 class USonheimGameInstance;
 class UMoveUtilComponent;
 class ASonheimGameMode;
@@ -48,6 +49,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "TakeDamage")
 	FVector AdjustKnockBackForce;
 
+	UBaseAnimInstance* GetSAnimInstance() const;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -82,6 +84,8 @@ protected:
 	virtual float HandleAttackDamageCalculation(float Damage);
 	virtual float HandleDefenceDamageCalculation(float Damage);
 	
+	UPROPERTY()
+	class UBaseAnimInstance* m_AnimInstance; 
 	UPROPERTY()
 	USonheimGameInstance* m_GameInstance = nullptr;
 	UPROPERTY()
@@ -209,6 +213,8 @@ public:
 	virtual bool CanCastNextSkill(UBaseSkill* Skill, AAreaObject* Target);
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual bool CastSkill(UBaseSkill* Skill, AAreaObject* Target);
+	UFUNCTION(Server, Reliable)
+	virtual void Server_CastSkill(int SkillID, AAreaObject* Target);
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void UpdateCurrentSkill(UBaseSkill* NewSkill);
 	UFUNCTION(BlueprintCallable, Category = "Combat")

@@ -35,10 +35,10 @@ class SONHEIM_API UMeleeAttack : public UBaseSkill
 	GENERATED_BODY()
 	
 public:
-	virtual void OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void OnCastEnd() override;
-	virtual void CancelCast() override;
-	virtual void OnCastTick(float DeltaTime) override;
+	virtual void Server_OnCastStart_Implementation(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual void Server_OnCastEnd_Implementation() override;
+	virtual void Server_CancelCast_Implementation() override;
+	virtual void Server_OnCastTick_Implementation(float DeltaTime) override;
 	void SetCasterMesh(int AttackDataIndex);
 	void ProcessHitDetection(int AttackDataIndex);
 	void ResetCollisionData(int AttackDataIndex);
