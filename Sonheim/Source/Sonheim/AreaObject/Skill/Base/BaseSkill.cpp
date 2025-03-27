@@ -77,10 +77,10 @@ void UBaseSkill::OnCastStart(AAreaObject* Caster, AAreaObject* Target)
 	Client_OnCastStart(m_Caster, m_Target);
 }
 
-void UBaseSkill::Server_OnCastStart_Implementation(class AAreaObject* Caster, AAreaObject* Target)
+void UBaseSkill::Server_OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
 {}
 
-void UBaseSkill::Client_OnCastStart_Implementation(class AAreaObject* Caster, AAreaObject* Target)
+void UBaseSkill::Client_OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
 {
 	m_TargetPos = m_Target->GetActorLocation();
 	m_NextSkillID = m_SkillData->NextSkillID;
@@ -118,7 +118,7 @@ void UBaseSkill::Client_OnCastStart_Implementation(class AAreaObject* Caster, AA
 	}
 }
 
-void UBaseSkill::OnCastTick_Implementation(float DeltaTime)
+void UBaseSkill::OnCastTick(float DeltaTime)
 {
 	if (m_Caster->HasAuthority())
 	{
@@ -136,11 +136,11 @@ void UBaseSkill::OnCastTick_Implementation(float DeltaTime)
 //	Client_OnCastTick(DeltaTime);
 //}
 
-void UBaseSkill::Server_OnCastTick_Implementation(float DeltaTime)
+void UBaseSkill::Server_OnCastTick(float DeltaTime)
 {
 }
 
-void UBaseSkill::Client_OnCastTick_Implementation(float DeltaTime)
+void UBaseSkill::Client_OnCastTick(float DeltaTime)
 {
 }
 
@@ -153,11 +153,11 @@ void UBaseSkill::OnCastFire()
 	Client_OnCastFire();
 }
 
-void UBaseSkill::Server_OnCastFire_Implementation()
+void UBaseSkill::Server_OnCastFire()
 {
 }
 
-void UBaseSkill::Client_OnCastFire_Implementation()
+void UBaseSkill::Client_OnCastFire()
 {
 }
 
@@ -170,11 +170,11 @@ void UBaseSkill::OnCastEnd()
 	Client_OnCastEnd();
 }
 
-void UBaseSkill::Server_OnCastEnd_Implementation()
+void UBaseSkill::Server_OnCastEnd()
 {
 }
 
-void UBaseSkill::Client_OnCastEnd_Implementation()
+void UBaseSkill::Client_OnCastEnd()
 {
 	// Casting Phase일때 한번만 처리
 	if (m_CurrentPhase != ESkillPhase::PostCasting) return;
@@ -231,12 +231,12 @@ void UBaseSkill::CancelCast()
 	Client_CancelCast();
 }
 
-void UBaseSkill::Server_CancelCast_Implementation()
+void UBaseSkill::Server_CancelCast()
 {
 
 }
 
-void UBaseSkill::Client_CancelCast_Implementation()
+void UBaseSkill::Client_CancelCast()
 {
 	// Casting Phase일때 한번만 처리
 	if (m_CurrentPhase != ESkillPhase::PostCasting) return;
