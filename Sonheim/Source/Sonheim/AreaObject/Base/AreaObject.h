@@ -215,6 +215,8 @@ public:
 	virtual bool CastSkill(UBaseSkill* Skill, AAreaObject* Target);
 	UFUNCTION(Server, Reliable)
 	virtual void Server_CastSkill(int SkillID, AAreaObject* Target);
+	UFUNCTION(NetMulticast, Reliable)
+	virtual void MultiCast_CastSkill(int SkillID, AAreaObject* Target);
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void UpdateCurrentSkill(UBaseSkill* NewSkill);
 	UFUNCTION(BlueprintCallable, Category = "Combat")

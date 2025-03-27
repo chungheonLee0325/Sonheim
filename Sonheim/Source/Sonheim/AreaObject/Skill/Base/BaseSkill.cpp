@@ -106,7 +106,7 @@ void UBaseSkill::Client_OnCastStart(class AAreaObject* Caster, AAreaObject* Targ
 		//AnimInstance->Montage_SetEndDelegate(nullptr, m_SkillData->Montage);
 	
 		// 몽타주 재생
-		AnimInstance->ServerMontage(m_SkillData->Montage, EAnimationPriority::Action);
+		AnimInstance->Montage_Play(m_SkillData->Montage);
 	
 		// 델리게이트 바인딩
 		EndDelegate.BindUObject(this, &UBaseSkill::OnMontageEnded);

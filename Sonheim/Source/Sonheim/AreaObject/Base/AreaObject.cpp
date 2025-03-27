@@ -475,22 +475,14 @@ bool AAreaObject::CastSkill(UBaseSkill* Skill, AAreaObject* Target)
 	if (CanCastSkill(Skill, Target))
 	{
 		// 권한 체크
-		if (GetLocalRole() != ROLE_Authority)
-		{
-			// 클라이언트에서는 서버에 요청 보냄
-			Server_CastSkill(Skill->GetSkillID(), Target);
-			//return true;
-		}
-		
-		UpdateCurrentSkill(Skill);
-		Skill->OnCastStart(this, Target);
+		// 클라이언트에서는 서버에 요청 보냄
+		Server_CastSkill(Skill->GetSkillID(), Target);
 		return true;
 	}
 	else
 	{
 		FString fail = UEnum::GetValueAsString(Skill->SkillFailCase);
 		LOG_PRINT(TEXT("CastSkill Failed: %s"), *fail);
-		//LOG_SCREEN_ERROR(this, "CastSkill Failed");
 		return false;
 	}
 }
@@ -498,7 +490,15 @@ bool AAreaObject::CastSkill(UBaseSkill* Skill, AAreaObject* Target)
 void AAreaObject::Server_CastSkill_Implementation(int SkillID, AAreaObject* Target)
 {
 	UBaseSkill* Skill = GetSkillByID(SkillID);
-	CastSkill(Skill, Target);
+	MultiCast_CastSkill(SkillID, Target);
+}
+
+void AAreaObject::MultiCast_CastSkill_Implementation(int SkillID, AAreaObject* Target)
+{
+	UBaseSkill* Skill = GetSkillByID(SkillID);
+	//m_AnimInstance->ServerMontage(Skill->GetSkillData()->Montage, EAnimationPriority::Action);
+	UpdateCurrentSkill(Skill);
+	Skill->OnCastStart(this, Target);
 }
 
 
