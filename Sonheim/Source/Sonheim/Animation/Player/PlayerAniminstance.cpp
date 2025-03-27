@@ -3,7 +3,17 @@
 
 #include "PlayerAniminstance.h"
 
+#include "Net/UnrealNetwork.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+
+void UPlayerAnimInstance::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UPlayerAnimInstance, bIsMelee);
+	DOREPLIFETIME(UPlayerAnimInstance, bIsLockOn);
+	DOREPLIFETIME(UPlayerAnimInstance, bUsingPartnerSkill);
+}
 
 void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {

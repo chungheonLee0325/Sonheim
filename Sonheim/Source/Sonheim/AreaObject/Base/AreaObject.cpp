@@ -339,6 +339,7 @@ void AAreaObject::StopAll()
 
 void AAreaObject::OnDie_Implementation()
 {
+	bIsDead = true;
 	if (HasAuthority())
 	{
 		// 서버에서만 죽음 처리 로직 실행

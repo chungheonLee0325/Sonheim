@@ -306,7 +306,6 @@ private:
 	UPROPERTY()
 	UBaseSkill* CommonAttack = nullptr;
 
-
 	// ToDO : 이관 예정!!!!
 	float m_Attack = 10.f;
 	float m_Defence = 10.f;
@@ -314,8 +313,7 @@ private:
 	bool bCanRecover = true;
 	float m_RecoveryRate = 5.0f;
 	FTimerHandle RecoveryTimerHandle;
-
-
+	
 	bool bUsingPartnerSkill = false;
 
 public:
@@ -334,6 +332,9 @@ public:
 	}
 
 private:
+	// UFUNCTION(Server, Reliable)
+	// void Server_ToggleLockOn(bool IsActive);
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Pals")
 	int PalMaxIndex = 4;
 	int CurrentPalIndex = 0;

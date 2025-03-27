@@ -13,16 +13,21 @@ class SONHEIM_API UPlayerAnimInstance : public UBaseAnimInstance
 {
 	GENERATED_BODY()
 
+
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category=FSM)
 	float speed = 0;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category=FSM)
 	float direction = 0;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category=FSM)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Replicated,  Category=FSM)
 	bool bIsMelee = false;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category=FSM)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Replicated, Category=FSM)
 	bool bIsLockOn = false;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category=FSM)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Replicated, Category=FSM)
 	bool bUsingPartnerSkill = false;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Replicated, Category=FSM)
+	bool bIsDead = false;
+protected:
 	void NativeUpdateAnimation(float DeltaSeconds);
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 };

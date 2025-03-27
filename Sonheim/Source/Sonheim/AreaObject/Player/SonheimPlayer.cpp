@@ -149,12 +149,12 @@ void ASonheimPlayer::PossessedBy(AController* NewController)
 void ASonheimPlayer::Server_OnDie_Implementation()
 {
 	Super::Server_OnDie_Implementation();
+	
 }
 
 void ASonheimPlayer::Client_OnDie_Implementation()
 {
 	Super::Client_OnDie_Implementation();
-
 	// 로컬 플레이어인 경우만 UI 제한
 	if (IsLocallyControlled())
 	{
@@ -200,11 +200,12 @@ float ASonheimPlayer::HandleDefenceDamageCalculation(float Damage)
 void ASonheimPlayer::OnRep_IsDead()
 {
 	Super::OnRep_IsDead();
-	if (bIsDead && IsLocallyControlled())
-	{
-		SetPlayerState(EPlayerState::DIE);
-		S_PlayerController->GetPlayerStatusWidget()->SetVisibility(ESlateVisibility::Hidden);
-	}
+	S_PlayerAnimInstance->bIsDead = true;
+	// if (bIsDead && IsLocallyControlled())
+	// {
+	// 	SetPlayerState(EPlayerState::DIE);
+	// 	S_PlayerController->GetPlayerStatusWidget()->SetVisibility(ESlateVisibility::Hidden);
+	// }
 }
 
 void ASonheimPlayer::Reward(int ItemID, int ItemValue) const
@@ -418,6 +419,11 @@ bool ASonheimPlayer::CanPerformAction(EPlayerState State, FString ActionName)
 	return false;
 }
 
+// void ASonheimPlayer::Server_ToggleLockOn_Implementation(bool IsActive)
+// {
+// 	S_PlayerAnimInstance->bIsLockOn = IsActive; 
+// }
+
 void ASonheimPlayer::SetComboState(bool bCanCombo, int SkillID)
 {
 	CanCombo = bCanCombo;
@@ -531,8 +537,7 @@ void ASonheimPlayer::LeftMouse_Triggered()
 	}
 
 	auto skill = GetWeaponAttack();
-	//int weakAttackID = 10;
-	//TObjectPtr<UBaseSkill> skill = GetSkillByID(weakAttackID);
+
 	if (CastSkill(skill, this))
 	{
 		SetPlayerState(EPlayerState::ACTION);
@@ -551,8 +556,11 @@ void ASonheimPlayer::LeftMouse_Released()
 
 void ASonheimPlayer::RightMouse_Pressed()
 {
-	// 카메라 변환
-	//CameraBoom->TargetArmLength = RClickCameraBoomAramLength;
+	if (IsDie())
+	{
+		return;
+	}
+	
 	TWeakObjectPtr<ASonheimPlayer> weakThis = this;
 	GetWorld()->GetTimerManager().SetTimer(LockOnCameraTimerHandle, [weakThis]
 	{
@@ -575,9 +583,8 @@ void ASonheimPlayer::RightMouse_Pressed()
 	// 록온 모드
 	bUseControllerRotationYaw = true;
 	GetCharacterMovement()->bOrientRotationToMovement = false;
+	// Server_ToggleLockOn(true);
 	S_PlayerAnimInstance->bIsLockOn = true;
-	// 애니메이션
-	// set Anim state lockon
 }
 
 void ASonheimPlayer::RightMouse_Triggered()
@@ -591,6 +598,7 @@ void ASonheimPlayer::RightMouse_Released()
 	//CameraBoom->TargetArmLength = NormalCameraBoomAramLength;
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
+	// Server_ToggleLockOn(false);
 	S_PlayerAnimInstance->bIsLockOn = false;
 
 	TWeakObjectPtr<ASonheimPlayer> weakThis = this;
