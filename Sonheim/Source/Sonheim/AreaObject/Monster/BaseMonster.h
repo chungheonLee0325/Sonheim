@@ -232,15 +232,16 @@ public:
 	UPROPERTY()
 	class UMaterialInstanceDynamic* MouthMat{nullptr};
 
+	UPROPERTY(Replicated)
 	bool IsDead{false};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite,Replicated)
 	bool IsCalled{false};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated)
 	bool bActivateSkill{false};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated)
 	class ASonheimPlayer* PartnerOwner;
 
 	// ToDo : Begin Play에서 호출하는것 변경 예정

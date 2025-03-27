@@ -304,6 +304,10 @@ void ABaseMonster::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& O
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABaseMonster, m_AiFSM);
+	DOREPLIFETIME(ABaseMonster, IsDead);
+	DOREPLIFETIME(ABaseMonster, bActivateSkill);
+	DOREPLIFETIME(ABaseMonster, IsCalled);
+	DOREPLIFETIME(ABaseMonster, PartnerOwner);
 }
 
 float ABaseMonster::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
