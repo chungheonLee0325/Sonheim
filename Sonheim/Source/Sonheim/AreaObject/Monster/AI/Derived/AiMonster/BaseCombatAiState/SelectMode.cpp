@@ -14,13 +14,15 @@ void USelectMode::CheckIsValid()
 
 void USelectMode::ServerEnter()
 {
-	//FLog::Log("USelectMode");
+	FLog::Log("USelectMode");
 	FlowTime = 0.f;
 	m_Owner->ChangeFace(EFaceType::Sad);
 }
 
 void USelectMode::ServerExecute(float dt)
 {
+	FLog::Log("SelectTick");
+
 	FlowTime += dt;
 	if (FlowTime >= ChooseModeTime)
 	{

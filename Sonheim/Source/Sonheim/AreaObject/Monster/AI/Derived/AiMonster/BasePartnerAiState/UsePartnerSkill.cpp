@@ -13,7 +13,7 @@ void UUsePartnerSkill::InitState()
 void UUsePartnerSkill::CheckIsValid()
 {}
 
-void UUsePartnerSkill::Enter()
+void UUsePartnerSkill::ServerEnter()
 {
 	FLog::Log("UUsePartnerSkill::Enter");
 	
@@ -33,7 +33,7 @@ void UUsePartnerSkill::Enter()
 	
 }
 
-void UUsePartnerSkill::Execute(float dt)
+void UUsePartnerSkill::ServerExecute(float dt)
 {
 	if (!m_Owner->NextSkill)
 	{
@@ -51,5 +51,5 @@ void UUsePartnerSkill::Execute(float dt)
 	
 }
 
-void UUsePartnerSkill::Exit()
+void UUsePartnerSkill::ServerExit()
 {}

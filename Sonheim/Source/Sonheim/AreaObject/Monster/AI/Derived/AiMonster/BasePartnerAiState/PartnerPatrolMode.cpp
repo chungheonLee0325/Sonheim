@@ -17,7 +17,7 @@ void UPartnerPatrolMode::InitState()
 void UPartnerPatrolMode::CheckIsValid()
 {}
 
-void UPartnerPatrolMode::Enter()
+void UPartnerPatrolMode::ServerEnter()
 {
 	if (m_Owner->bShowDebug)
 	{
@@ -27,13 +27,25 @@ void UPartnerPatrolMode::Enter()
 	NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
 }
 
-void UPartnerPatrolMode::Execute(float dt)
+void UPartnerPatrolMode::ServerExecute(float dt)
 {
+	if (m_Owner->GetAggroTarget())
+	{
+		FLog::Log("GetAggroTarget");
+
+		m_Owner->LookAtLocation(m_Owner->GetAggroTarget()->GetActorLocation(),EPMRotationMode::Duration,0.1f);
+
+		// SelectMode
+		ChangeState(m_SuccessState);
+		return;	
+	}
+	// Todo : 파트너 없으면 일반 패트롤 하면 야생 팰도 될듯 ?
 	// 파트너 없으면 일단 정지
 	if (!m_Owner->PartnerOwner)
 	{
 		return;
 	}
+	
 	
 	// 장착 명령 받으면
 	if (m_Owner->IsCalled)
@@ -83,7 +95,7 @@ void UPartnerPatrolMode::Execute(float dt)
 	}
 }
 
-void UPartnerPatrolMode::Exit()
+void UPartnerPatrolMode::ServerExit()
 {}
 
 void UPartnerPatrolMode::Patrol()

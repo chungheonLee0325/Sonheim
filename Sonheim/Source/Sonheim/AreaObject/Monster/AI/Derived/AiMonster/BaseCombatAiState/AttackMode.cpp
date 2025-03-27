@@ -16,11 +16,21 @@ void UAttackMode::CheckIsValid()
 
 void UAttackMode::ServerEnter()
 {
-	//FLog::Log("UAttackMode");
+	FLog::Log("UAttackMode");
 	FlowTime = 0.f;
 	m_Owner->ChangeFace(EFaceType::Exciting);
 
-	ID = SkillRoulette->GetRandomSkillID();
+
+	// ToDo : 파이호 전용 스킬 때문에 .. 나중에 수정 필요
+	while (true)
+	{
+		ID = SkillRoulette->GetRandomSkillID();
+		if (ID != 1060)
+		{
+			break;
+		}
+	}
+
 	if (ID != 0)
 	{
 		m_Owner->NextSkill = m_Owner->GetSkillByID(ID);
@@ -35,7 +45,7 @@ void UAttackMode::ServerExecute(float dt)
 		FLog::Log("Has No Skill");
 		return;
 	}
-	
+
 	FlowTime += dt;
 	if (FlowTime >= ChooseModeTime)
 	{

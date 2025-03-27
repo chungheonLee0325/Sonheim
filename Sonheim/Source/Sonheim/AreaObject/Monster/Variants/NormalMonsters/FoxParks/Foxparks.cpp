@@ -39,16 +39,24 @@ AFoxparks::AFoxparks()
 void AFoxparks::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Eye Material
+	EyeMat = GetMesh()->CreateDynamicMaterialInstance(2);
+	
+	if (!HasAuthority())
+	{
+		m_AiFSM = nullptr;
+	}
 	// ToDo : 삭제 예정
-	// ASonheimPlayer* player = Cast<ASonheimPlayer>(UGameplayStatics::GetPlayerCharacter(this, 0));
-	// if (player != nullptr)
-	// {
-	// 	SetPartnerOwner(player);		
-	// }
-	// else
-	// {
-	// 	FLog::Log("There Is No Player");
-	// }
+	ASonheimPlayer* player = Cast<ASonheimPlayer>(UGameplayStatics::GetPlayerCharacter(this, 0));
+	if (player != nullptr)
+	{
+		SetPartnerOwner(player);		
+	}
+	else
+	{
+		FLog::Log("There Is No Player");
+	}
 }
 
 // Called every frame
