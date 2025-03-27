@@ -147,6 +147,11 @@ public:
 	/** Called for Menu input */
 	void Menu_Pressed();
 
+	/** Called for ThrowPalSphere input */
+	void ThrowPalSphere_Pressed();
+	void ThrowPalSphere_Triggered();
+	void ThrowPalSphere_Released();
+
 	/** Called for Restart input */
 	void Restart_Pressed();
 
@@ -235,8 +240,15 @@ public:
 
 private:
 	// Weapon Setting
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* WeaponComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* PalSphereComponent;
+
+	// ToDo : Skill 로 이관 예정.. 타이밍 등 적용
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Montage, meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* SummonPalMontage;
 
 	// Camera Setting
 	/** Camera boom positioning the camera behind the character */

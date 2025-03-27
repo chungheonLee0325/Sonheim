@@ -463,6 +463,10 @@ struct FSkillData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FAttackData> AttackData;
 
+	// 사용 Element Class ... 처리 고민중...
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<class ABaseElement> ElementClass = nullptr;
+
 	// 다음 스킬 ID (플레이어 및 몬스터 콤보 어택)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int NextSkillID = 0;

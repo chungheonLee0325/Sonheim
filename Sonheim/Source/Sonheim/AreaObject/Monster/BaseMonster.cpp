@@ -428,6 +428,7 @@ void ABaseMonster::SetPartnerOwner(ASonheimPlayer* NewOwner)
 {
 	PartnerOwner = NewOwner;
 	NewOwner->RegisterOwnPal(this);
+	DeactivateMonster();
 }
 
 void ABaseMonster::ActivateMonster()

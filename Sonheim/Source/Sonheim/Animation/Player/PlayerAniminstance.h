@@ -25,6 +25,8 @@ public:
 	bool bIsLockOn = false;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Replicated, Category=FSM)
 	bool bUsingPartnerSkill = false;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category=FSM)
+	bool bIsThrowPalSphere = false;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Replicated, Category=FSM)
 	bool bIsDead = false;
 protected:

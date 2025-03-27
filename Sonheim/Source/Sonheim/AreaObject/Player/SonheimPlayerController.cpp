@@ -502,14 +502,23 @@ void ASonheimPlayerController::On_SwitchPalSlot_Triggered(const FInputActionValu
 
 void ASonheimPlayerController::On_ThrowPalSphere_Pressed(const FInputActionValue& InputActionValue)
 {
+	if (IsMenuActivate) return;
+	m_Player->RightMouse_Pressed();
+	GetPlayerStatusWidget()->SetEnableCrossHair(true);
+	m_Player->ThrowPalSphere_Pressed();
 }
 
 void ASonheimPlayerController::On_ThrowPalSphere_Triggered(const FInputActionValue& InputActionValue)
 {
+	m_Player->ThrowPalSphere_Triggered();
 }
 
 void ASonheimPlayerController::On_ThrowPalSphere_Released(const FInputActionValue& InputActionValue)
 {
+	if (IsMenuActivate) return;
+	GetPlayerStatusWidget()->SetEnableCrossHair(false);
+	m_Player->RightMouse_Released();
+	m_Player->ThrowPalSphere_Released();
 }
 
 void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)

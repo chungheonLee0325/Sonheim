@@ -53,6 +53,11 @@ ASonheimPlayer::ASonheimPlayer()
 	WeaponComponent->SetupAttachment(GetMesh(),TEXT("Weapon_R"));
 	WeaponComponent->ComponentTags.Add("WeaponMesh");
 
+	PalSphereComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("PalSphereMesh"));
+	PalSphereComponent->SetupAttachment(GetMesh(),TEXT("Weapon_R"));
+	PalSphereComponent->SetVisibility(false);
+
+
 	// Set Animation Blueprint
 	ConstructorHelpers::FClassFinder<UAnimInstance> TempABP(TEXT(
 		"/Script/Engine.AnimBlueprint'/Game/_BluePrint/AreaObject/Player/ABP_Player.ABP_Player_C'"));
@@ -675,7 +680,7 @@ void ASonheimPlayer::WeaponSwitch_Triggered()
 
 void ASonheimPlayer::PartnerSkill_Pressed()
 {
-	if (m_SelectedPal == nullptr || m_SummonedPal ==nullptr)
+	if (m_SelectedPal == nullptr || m_SummonedPal == nullptr)
 	{
 		FLog::Log("Partner Pall Is Not Exist");
 		return;
@@ -686,7 +691,7 @@ void ASonheimPlayer::PartnerSkill_Pressed()
 		m_SummonedPal->PartnerSkillStart();
 		//SetUsePartnerSkill(true);
 	}
-	else 
+	else
 	{
 		m_SummonedPal->PartnerSkillEnd();
 		//SetUsePartnerSkill(false);
@@ -717,21 +722,60 @@ void ASonheimPlayer::SummonPal_Pressed()
 	}
 	FLog::Log("SelectedPal Index : ", CurrentPalIndex);
 
-	// 내 우측에 생성 + 근처에 대상 존재하면 상호작용 or 앞으로 전진
-	if (m_SelectedPal != m_SummonedPal)
+	// TODo: 스킬로 이관예정
 	{
-		if (m_SummonedPal != nullptr)
+		FOnMontageEnded EndDelegate;
+		EndDelegate.BindLambda([this](UAnimMontage* Montage, bool bInterrupted)
 		{
-			m_SummonedPal->DeactivateMonster();
-		}
-		m_SelectedPal->ActivateMonster();
-		m_SummonedPal = m_SelectedPal;
+			PalSphereComponent->SetVisibility(false);
+			// 내 우측에 생성 + 근처에 대상 존재하면 상호작용 or 앞으로 전진
+			if (m_SelectedPal != m_SummonedPal)
+			{
+				if (m_SummonedPal != nullptr)
+				{
+					// ToDo : 고민해보자..
+					SetUsePartnerSkill(false);
+
+					m_SummonedPal->DeactivateMonster();
+				}
+				m_SelectedPal->ActivateMonster();
+				m_SummonedPal = m_SelectedPal;
+			}
+			else
+			{
+				// ToDo : 고민해보자..
+				SetUsePartnerSkill(false);
+
+				m_SummonedPal->DeactivateMonster();
+				m_SummonedPal = nullptr;
+			}
+		});
+		PalSphereComponent->SetVisibility(true);
+		PlayAnimMontage(SummonPalMontage);
+		S_PlayerAnimInstance->Montage_SetEndDelegate(EndDelegate, SummonPalMontage);
 	}
-	else
-	{
-		m_SummonedPal->DeactivateMonster();
-		m_SummonedPal = nullptr;
-	}
+
+	// // 내 우측에 생성 + 근처에 대상 존재하면 상호작용 or 앞으로 전진
+	// if (m_SelectedPal != m_SummonedPal)
+	// {
+	// 	if (m_SummonedPal != nullptr)
+	// 	{
+	// 		// ToDo : 고민해보자..
+	// 		SetUsePartnerSkill(false);
+	//
+	// 		m_SummonedPal->DeactivateMonster();
+	// 	}
+	// 	m_SelectedPal->ActivateMonster();
+	// 	m_SummonedPal = m_SelectedPal;
+	// }
+	// else
+	// {
+	// 	// ToDo : 고민해보자..
+	// 	SetUsePartnerSkill(false);
+	//
+	// 	m_SummonedPal->DeactivateMonster();
+	// 	m_SummonedPal = nullptr;
+	// }
 }
 
 void ASonheimPlayer::SwitchPalSlot_Triggered(int Index)
@@ -751,6 +795,24 @@ void ASonheimPlayer::SwitchPalSlot_Triggered(int Index)
 
 void ASonheimPlayer::Menu_Pressed()
 {
+}
+
+void ASonheimPlayer::ThrowPalSphere_Pressed()
+{
+	S_PlayerAnimInstance->bIsThrowPalSphere = true;
+	PalSphereComponent->SetVisibility(true);
+}
+
+void ASonheimPlayer::ThrowPalSphere_Triggered()
+{
+}
+
+void ASonheimPlayer::ThrowPalSphere_Released()
+{
+	PalSphereComponent->SetVisibility(false);
+	S_PlayerAnimInstance->bIsThrowPalSphere = false;
+	UBaseSkill* Skill = GetSkillByID(15);
+	CastSkill(Skill, this);
 }
 
 void ASonheimPlayer::Restart_Pressed()
