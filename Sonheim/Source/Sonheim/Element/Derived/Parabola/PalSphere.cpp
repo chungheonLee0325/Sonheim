@@ -3,24 +3,62 @@
 
 #include "PalSphere.h"
 
+#include "Sonheim/AreaObject/Base/AreaObject.h"
+#include "Sonheim/AreaObject/Monster/BaseMonster.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 
-// Sets default values
 APalSphere::APalSphere()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 }
 
-// Called when the game starts or when spawned
 void APalSphere::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
 
-// Called every frame
 void APalSphere::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }
 
+void APalSphere::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+                                UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	ABaseMonster* pal = Cast<ABaseMonster>(OtherActor);
+	if (m_Caster == OtherActor || !bCanHit || pal == nullptr)
+	{
+		return;
+	}
+
+	FHitResult Hit;
+	if (m_Caster && pal)
+	{
+		bCanHit = true;
+
+		CheckPalCatch(Cast<ASonheimPlayer>(m_Caster), pal);
+		
+		HandleBeginOverlap(m_Caster, pal);
+		//DestroySelf();
+	}
+}
+
+void APalSphere::OnComponentHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	FVector NormalImpulse, const FHitResult& Hit)
+{
+}
+
+void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
+{
+	if (Target->PartnerOwner != nullptr)
+	{
+		FLog::Log("This Pal is a owned pal");
+	}
+	int randNum = FMath::RandRange(1,10);
+
+	// 70 % 확률 포획
+	if (randNum <= 7)
+	{
+		Target->SetPartnerOwner(Caster);
+	}
+}

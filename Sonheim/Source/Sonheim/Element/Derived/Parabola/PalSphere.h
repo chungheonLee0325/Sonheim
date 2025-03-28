@@ -6,6 +6,9 @@
 #include "ParabolaElement.h"
 #include "PalSphere.generated.h"
 
+class ABaseMonster;
+class ASonheimPlayer;
+
 UCLASS()
 class SONHEIM_API APalSphere : public AParabolaElement
 {
@@ -19,7 +22,19 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	virtual void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+							UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
+							const FHitResult& SweepResult) override;
+
+	virtual void OnComponentHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+								FVector NormalImpulse, const FHitResult& Hit) override;
+
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+private:
+	bool bCanHit = true;
+
+	void CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target);
 };
