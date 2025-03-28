@@ -259,7 +259,7 @@ void ASonheimPlayer::StatChanged(EAreaObjectStatType StatType, float StatValue)
 void ASonheimPlayer::RegisterOwnPal(ABaseMonster* Pal)
 {
 	int palNum = m_OwnedPals.Num();
-	if (palNum == PalMaxIndex + 1)
+	if (palNum == PalMaxIndex)
 	{
 		FLog::Log("Pal Num is Max");
 		return;
