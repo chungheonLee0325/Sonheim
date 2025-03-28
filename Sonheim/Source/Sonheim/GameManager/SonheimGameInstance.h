@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
+#include "Interfaces/OnlineSessionInterface.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "SonheimGameInstance.generated.h"
 
@@ -35,4 +36,5 @@ public:
 
 protected:
 	virtual void Init() override;
+
 };

@@ -3,14 +3,14 @@
 
 #include "SonheimGameInstance.h"
 
-#include "GameplayTagsManager.h"
-#include "SonheimGameMode.h"
-#include "K2Node_GetDataTableRow.h"
+#include "Sonheim/Utilities/SessionUtil.h"
 
 void USonheimGameInstance::Init()
 {
 	Super::Init();
 
+	FSessionUtil::Init();
+	
 	// AreaObject Data
 	UDataTable* AreaObjectTable = LoadObject<UDataTable>(
 		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_AreaObject.dt_AreaObject'"));

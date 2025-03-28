@@ -89,8 +89,7 @@ void UBaseAiState::ServerExecute(float dt)
 void UBaseAiState::ServerExit()
 {}
 
-void UBaseAiState::ClientEnter()
-{}
+void UBaseAiState::ClientEnter() {}
 
 void UBaseAiState::ClientExecute(float dt)
 {}
