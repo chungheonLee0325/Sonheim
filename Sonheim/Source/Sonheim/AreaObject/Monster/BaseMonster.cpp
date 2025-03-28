@@ -72,6 +72,8 @@ ABaseMonster::ABaseMonster()
 	}
 
 	HeadVFXPoint = CreateDefaultSubobject<USceneComponent>(TEXT("HeadVFXPoint"));
+	
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
 
 UBaseSkillRoulette* ABaseMonster::GetSkillRoulette() const

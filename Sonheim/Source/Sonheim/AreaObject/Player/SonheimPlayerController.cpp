@@ -551,8 +551,8 @@ void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(InventoryWidget,
 		                                                                      &UInventoryWidget::
 		                                                                      UpdateEquipmentFromData);
-		InventoryWidget->RemoveFromViewport();
-		PlayerStatWidget->RemoveFromViewport();
+		InventoryWidget->RemoveFromParent();
+		PlayerStatWidget->RemoveFromParent();
 		InventoryWidget = nullptr;
 		PlayerStatWidget = nullptr;
 	}
