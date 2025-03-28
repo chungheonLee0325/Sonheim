@@ -33,7 +33,7 @@ void UPartnerPatrolMode::ServerExecute(float dt)
 	FlowTimeForJump += dt;
 
 	// 장착 명령 받으면
-	if (m_Owner->IsCalled || m_Owner->bIsCanCalled)
+	if (m_Owner->IsCalled && m_Owner->bIsCanCalled)
 	{
 		MoveToPlayer();
 		return;
