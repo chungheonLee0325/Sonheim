@@ -440,7 +440,7 @@ void ABaseMonster::SetPartnerOwner(ASonheimPlayer* NewOwner)
 
 void ABaseMonster::ActivateMonster()
 {
-	m_AiFSM->ChangeState(EAiStateType::PartnerPatrolMode);
+	m_AiFSM->ChangeState(EAiStateType::SelectMode);
 	RemoveCondition(EConditionBitsType::Hidden);
 	// 렌더링 활성화
 	SetActorHiddenInGame(false);

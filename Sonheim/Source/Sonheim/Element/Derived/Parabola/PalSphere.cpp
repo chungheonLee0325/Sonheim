@@ -26,7 +26,7 @@ void APalSphere::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor
                                 UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	ABaseMonster* pal = Cast<ABaseMonster>(OtherActor);
-	if (m_Caster == OtherActor || !bCanHit || pal == nullptr)
+	if (m_Caster == OtherActor || !bCanHit || pal == nullptr || !pal->CanAttack(m_Caster))
 	{
 		return;
 	}
@@ -34,7 +34,7 @@ void APalSphere::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor
 	FHitResult Hit;
 	if (m_Caster && pal)
 	{
-		bCanHit = true;
+		bCanHit = false;
 
 		CheckPalCatch(Cast<ASonheimPlayer>(m_Caster), pal);
 		
@@ -57,8 +57,12 @@ void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
 	int randNum = FMath::RandRange(1,10);
 
 	// 70 % 확률 포획
-	if (randNum <= 7)
+	if (randNum <= 5)
 	{
 		Target->SetPartnerOwner(Caster);
+	}
+	else
+	{
+		Target->DeactivateMonster();
 	}
 }
