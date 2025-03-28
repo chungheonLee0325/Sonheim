@@ -36,11 +36,15 @@ void UFloatingDamageWidget::SetDamageInfo(float Damage, EFloatingOutLineDamageTy
 	// 데미지 타입에 따른 색상 설정
 	if (const FLinearColor* Color = DamageWeakPointColors.Find(WeakPointType))
 	{
-		DamageText->Font.OutlineSettings.OutlineColor = *Color;
+		FSlateFontInfo FontInfo = DamageText->GetFont();
+		FontInfo.OutlineSettings.OutlineColor = *Color;
+		DamageText->SetFont(FontInfo);
 	}
 	else
 	{
-		DamageText->Font.OutlineSettings.OutlineColor = FLinearColor(.0f, .0f, .0f, 1.0f); // 흰색
+		FSlateFontInfo FontInfo = DamageText->GetFont();
+		FontInfo.OutlineSettings.OutlineColor = FLinearColor(.0f, .0f, .0f, 1.0f);;
+		DamageText->SetFont(FontInfo);
 	}
 }
 
