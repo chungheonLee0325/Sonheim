@@ -112,6 +112,9 @@ void ABaseMonster::SetHPWidgetVisibility(bool IsVisible)
 void ABaseMonster::SetHPWidgetVisibilityByDuration(float Duration)
 {
 	SetHPWidgetVisibility(true);
+	// 파트너 팰은 항상 UI 보이기
+	if (PartnerOwner != nullptr) return;
+	
 	TWeakObjectPtr<ABaseMonster> weakThis = this;
 	GetWorld()->GetTimerManager().SetTimer(HPWidgetVisibleTimer, [weakThis]()
 	{
@@ -435,6 +438,7 @@ void ABaseMonster::SetPartnerOwner(ASonheimPlayer* NewOwner)
 {
 	PartnerOwner = NewOwner;
 	NewOwner->RegisterOwnPal(this);
+	StatusWidget->SetPartnerPalHPWidget();
 	DeactivateMonster();
 }
 
@@ -447,6 +451,9 @@ void ABaseMonster::ActivateMonster()
 
 	// 물리 및 충돌 활성화
 	SetActorEnableCollision(true);
+
+	// UI 활성화
+	SetHPWidgetVisibility(true);
 
 	// AI 컨트롤러 활성화
 	if (AIController)
@@ -479,6 +486,9 @@ void ABaseMonster::DeactivateMonster()
 	// 물리 및 충돌 비활성화
 	SetActorEnableCollision(false);
 
+	// UI 비활성화
+	SetHPWidgetVisibility(false);
+	
 	// AI 컨트롤러 비활성화
 	if (AIController)
 	{

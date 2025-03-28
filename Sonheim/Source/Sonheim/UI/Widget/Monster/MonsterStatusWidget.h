@@ -21,6 +21,7 @@ public:
 	GENERATED_BODY()
 	
 	void InitMonsterStatusWidget(FAreaObjectData* AreaObjectData,bool Gender , int Level);
+	void SetPartnerPalHPWidget();
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* MonsterNameText;

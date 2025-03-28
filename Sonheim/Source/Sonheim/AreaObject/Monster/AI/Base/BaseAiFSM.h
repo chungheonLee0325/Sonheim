@@ -38,7 +38,9 @@ public:
 
 	virtual void InitStatePool() PURE_VIRTUAL(UBaseAiFSM::InitStatePool,);
 
-	void StopFSM() { m_CurrentState = nullptr; }//틱정지 고민.. 
+	void StopFSM() { m_CurrentState = nullptr; }//틱정지 고민..
+	void PauseFSM() { PrimaryComponentTick.bCanEverTick = false;}
+	void ResumeFSM() { PrimaryComponentTick.bCanEverTick = true;}
 
 	// AiState 검증(Builder Pattern 간 누락 방지)
 	void CheckIsValidAiStates() const;

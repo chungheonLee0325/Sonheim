@@ -72,6 +72,7 @@ bool AAreaObject::CanAttack(AActor* TargetActor)
 {
 	// ToDo : Handle로 변경하는게 좋을듯... resource object 처리 핸들 , monster 처리 핸들 ....
 	AAreaObject* targetAreaObject = Cast<AAreaObject>(TargetActor);
+	if (targetAreaObject!=nullptr)
 	{
 		if (targetAreaObject->HasCondition(EConditionBitsType::Dead) || targetAreaObject->
 			HasCondition(EConditionBitsType::Invincible) || targetAreaObject->HasCondition(

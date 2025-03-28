@@ -5,6 +5,7 @@
 
 #include "Components/Image.h"
 #include "Components/Overlay.h"
+#include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 
@@ -48,6 +49,12 @@ void UMonsterStatusWidget::InitMonsterStatusWidget(FAreaObjectData* AreaObjectDa
 		//TypeTwoImage->SetColorAndOpacity(color2);
 		TypeTwoImage->SetBrushFromTexture(CalcTextureByElementAttributes(elementArray[1]));
 	}
+}
+
+void UMonsterStatusWidget::SetPartnerPalHPWidget()
+{
+	HealthBar->SetFillColorAndOpacity(FLinearColor::Green);
+	SetVisibility(ESlateVisibility::Visible);
 }
 
 FLinearColor UMonsterStatusWidget::CalcImageByElementAttributes(EElementalAttribute Type)
