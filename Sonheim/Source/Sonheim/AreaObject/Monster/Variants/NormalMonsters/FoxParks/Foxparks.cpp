@@ -57,6 +57,8 @@ void AFoxparks::BeginPlay()
 	// {
 	// 	FLog::Log("There Is No Player");
 	// }
+	bIsCanCalled = true;
+	bCanJump = true;
 }
 
 // Called every frame

@@ -312,6 +312,7 @@ void ABaseMonster::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& O
 	DOREPLIFETIME(ABaseMonster, PartnerOwner);
 	DOREPLIFETIME(ABaseMonster, bIsCanAttack);
 	DOREPLIFETIME(ABaseMonster, bIsActive);
+	DOREPLIFETIME(ABaseMonster, bIsCanCalled);
 }
 
 float ABaseMonster::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,

@@ -52,10 +52,10 @@ void UPartnerPatrolMode::ServerExecute(float dt)
 			PatrolWild();
 		}
 		
-		if (FlowTimeForJump > JumpTime)
+		if (FlowTimeForJump > JumpTime && m_Owner->bCanJump)
 		{
 			FlowTimeForJump = 0.f;
-			JumpTime = FMath::RandRange(3.f, 6.f);
+			JumpTime = FMath::RandRange(8.f, 12.f);
 			m_Owner->Jump();
 		}
 		
@@ -63,7 +63,7 @@ void UPartnerPatrolMode::ServerExecute(float dt)
 	}
 	
 	// 장착 명령 받으면
-	if (m_Owner->IsCalled)
+	if (m_Owner->IsCalled || m_Owner->bIsCanCalled)
 	{
 		MoveToPlayer();
 		return;
@@ -99,7 +99,7 @@ void UPartnerPatrolMode::ServerExecute(float dt)
 		Patrol();
 	}
 
-	if (FlowTimeForJump > JumpTime)
+	if (FlowTimeForJump > JumpTime && m_Owner->bCanJump)
 	{
 		FlowTimeForJump = 0.f;
 		JumpTime = FMath::RandRange(3.f, 6.f);

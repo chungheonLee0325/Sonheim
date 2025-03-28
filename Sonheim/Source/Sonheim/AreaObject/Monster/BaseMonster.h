@@ -264,4 +264,9 @@ public:
 	void ActivateMonster();
 	UFUNCTION(BlueprintCallable)
 	void DeactivateMonster();
+
+	UPROPERTY(Replicated)
+	bool bIsCanCalled = false;
+	
+	bool bCanJump = false;
 };

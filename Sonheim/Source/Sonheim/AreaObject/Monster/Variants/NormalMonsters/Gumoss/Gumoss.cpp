@@ -49,6 +49,10 @@ void AGumoss::BeginPlay()
 	{
 		m_AiFSM = nullptr;
 	}
+	
+	bIsCanCalled = false;
+	bCanJump = true;
+
 }
 
 // Called every frame

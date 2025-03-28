@@ -50,6 +50,14 @@ void ALamBall::BeginPlay()
 	EyeMat = GetMesh()->CreateDynamicMaterialInstance(0);
 	MouthMat = GetMesh()->CreateDynamicMaterialInstance(1);
 
+	if (!HasAuthority())
+	{
+		m_AiFSM = nullptr;
+	}
+	
+	bIsCanCalled = false;
+	bCanJump = false;
+
 }
 
 // Called every frame

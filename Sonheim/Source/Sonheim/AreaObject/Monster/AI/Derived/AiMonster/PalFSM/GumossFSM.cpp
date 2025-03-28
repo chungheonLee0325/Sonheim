@@ -10,6 +10,7 @@
 #include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/BaseCombatAiState/PutDistance.h"
 #include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/BaseCombatAiState/SelectMode.h"
 #include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/BaseCombatAiState/UseSkill.h"
+#include "Sonheim/AreaObject/Monster/AI/Derived/AiMonster/BasePartnerAiState/PartnerPatrolMode.h"
 
 
 // Sets default values for this component's properties
@@ -43,13 +44,16 @@ void UGumossFSM::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompo
 
 void UGumossFSM::InitStatePool()
 {
-
+	// PartnerPatrolMode 
+	auto PartnerPatrolMode = CreateState<UPartnerPatrolMode>(this, m_Owner,EAiStateType::PartnerSkillMode, EAiStateType::SelectMode);
+	AddState(EAiStateType::PartnerPatrolMode, PartnerPatrolMode);
+	
 	// PatrolMode
-	auto PatrolMode = CreateState<UPatrolMode>(this, m_Owner, EAiStateType::SelectMode);
-	AddState(EAiStateType::PatrolMode, PatrolMode);
+	// auto PatrolMode = CreateState<UPatrolMode>(this, m_Owner, EAiStateType::SelectMode);
+	// AddState(EAiStateType::PatrolMode, PatrolMode);
 
 	// SelectMode 
-	auto SelectMode = CreateState<USelectMode>(this, m_Owner,EAiStateType::AttackMode, EAiStateType::None, EAiStateType::PatrolMode);
+	auto SelectMode = CreateState<USelectMode>(this, m_Owner,EAiStateType::AttackMode, EAiStateType::None, EAiStateType::PartnerPatrolMode);
 	AddState(EAiStateType::SelectMode, SelectMode);
 
 	// AttackMode 
@@ -58,7 +62,7 @@ void UGumossFSM::InitStatePool()
 	AddState(EAiStateType::AttackMode, AttackMode);
 
 	// Chase 
-	auto Chase = CreateState<UChase>(this, m_Owner,EAiStateType::PatrolMode, EAiStateType::UseSkill);
+	auto Chase = CreateState<UChase>(this, m_Owner,EAiStateType::PartnerPatrolMode, EAiStateType::UseSkill);
 	AddState(EAiStateType::Chase, Chase);
 
 	// PutDistance 
@@ -70,6 +74,6 @@ void UGumossFSM::InitStatePool()
 	AddState(EAiStateType::UseSkill, UseSkill);
 
 	// 시작 State
-	ChangeState(EAiStateType::PatrolMode);
+	ChangeState(EAiStateType::PartnerPatrolMode);
 }
 
