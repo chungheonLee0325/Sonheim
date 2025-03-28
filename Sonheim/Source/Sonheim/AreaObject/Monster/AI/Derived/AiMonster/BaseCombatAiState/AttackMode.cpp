@@ -45,7 +45,12 @@ void UAttackMode::ServerExecute(float dt)
 		FLog::Log("Has No Skill");
 		return;
 	}
-
+	if (m_Owner->IsCalled || m_Owner->bIsCanCalled)
+	{
+		ChangeState(EAiStateType::SelectMode);
+		return;
+	}
+	
 	if (!m_Owner->GetAggroTarget())
 	{
 		ChangeState(EAiStateType::SelectMode);
