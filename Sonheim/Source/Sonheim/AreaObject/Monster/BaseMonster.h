@@ -235,7 +235,7 @@ public:
 	UPROPERTY(Replicated)
 	bool IsDead{false};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite,Replicated)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated)
 	bool IsCalled{false};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated)
@@ -254,10 +254,19 @@ public:
 	void PartnerSkillTrigger(bool IsTrigger) { bActivateSkill = IsTrigger; };
 	void PartnerSkillEnd() { IsCalled = false; }
 
+	UPROPERTY(Replicated)
 	bool bIsActive = true;
 
+	UPROPERTY(Replicated)
+	bool bIsCanAttack = false;
+	
 	UFUNCTION(BlueprintCallable)
 	void ActivateMonster();
 	UFUNCTION(BlueprintCallable)
 	void DeactivateMonster();
+
+	UPROPERTY(Replicated)
+	bool bIsCanCalled = false;
+	
+	bool bCanJump = false;
 };

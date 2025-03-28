@@ -14,15 +14,22 @@ void USelectMode::CheckIsValid()
 
 void USelectMode::ServerEnter()
 {
-	FLog::Log("USelectMode");
+	//FLog::Log("USelectMode");
 	FlowTime = 0.f;
 	m_Owner->ChangeFace(EFaceType::Sad);
 }
 
 void USelectMode::ServerExecute(float dt)
 {
-	FLog::Log("SelectTick");
-
+	//FLog::Log("SelectTick");
+	if (!m_Owner->bIsCanAttack || !m_Owner->GetAggroTarget())
+	{
+		m_Owner->SetAggroTarget(nullptr);
+		
+		// PatrolMode
+		ChangeState(m_FailState);
+	}
+	
 	FlowTime += dt;
 	if (FlowTime >= ChooseModeTime)
 	{

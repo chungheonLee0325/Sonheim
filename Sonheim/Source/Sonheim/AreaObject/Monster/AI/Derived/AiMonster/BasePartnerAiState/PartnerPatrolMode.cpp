@@ -21,7 +21,7 @@ void UPartnerPatrolMode::ServerEnter()
 {
 	if (m_Owner->bShowDebug)
 	{
-		FLog::Log("UPartnerPatrolMode");
+		//FLog::Log("UPartnerPatrolMode");
 	}
 
 	NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
@@ -29,6 +29,9 @@ void UPartnerPatrolMode::ServerEnter()
 
 void UPartnerPatrolMode::ServerExecute(float dt)
 {
+	FlowTime += dt;
+	FlowTimeForJump += dt;
+	
 	if (m_Owner->GetAggroTarget())
 	{
 		FLog::Log("GetAggroTarget");
@@ -39,16 +42,28 @@ void UPartnerPatrolMode::ServerExecute(float dt)
 		ChangeState(m_SuccessState);
 		return;	
 	}
-	// Todo : 파트너 없으면 일반 패트롤 하면 야생 팰도 될듯 ?
-	// 파트너 없으면 일단 정지
+
+	// 파트너 없으면 일반 패트롤
 	if (!m_Owner->PartnerOwner)
 	{
+		if (FlowTime > PatrolTime)
+		{
+			FlowTime = 0.f;
+			PatrolWild();
+		}
+		
+		if (FlowTimeForJump > JumpTime && m_Owner->bCanJump)
+		{
+			FlowTimeForJump = 0.f;
+			JumpTime = FMath::RandRange(8.f, 12.f);
+			m_Owner->Jump();
+		}
+		
 		return;
 	}
 	
-	
 	// 장착 명령 받으면
-	if (m_Owner->IsCalled)
+	if (m_Owner->IsCalled || m_Owner->bIsCanCalled)
 	{
 		MoveToPlayer();
 		return;
@@ -78,16 +93,13 @@ void UPartnerPatrolMode::ServerExecute(float dt)
 		return;
 	}
 
-	FlowTime += dt;
-
 	if (FlowTime > PatrolTime)
 	{
 		FlowTime = 0.f;
 		Patrol();
 	}
 
-	FlowTimeForJump += dt;
-	if (FlowTimeForJump > JumpTime)
+	if (FlowTimeForJump > JumpTime && m_Owner->bCanJump)
 	{
 		FlowTimeForJump = 0.f;
 		JumpTime = FMath::RandRange(3.f, 6.f);
@@ -97,6 +109,28 @@ void UPartnerPatrolMode::ServerExecute(float dt)
 
 void UPartnerPatrolMode::ServerExit()
 {}
+
+void UPartnerPatrolMode::PatrolWild()
+{
+	if (!NavSystem)
+	{
+		return;
+	}
+
+	if (m_Owner->bShowDebug)
+	{
+		//FLog::Log("Patrol");
+	}
+
+	FVector Start{m_Owner->GetActorLocation()};
+	FNavLocation Next;
+	
+	NavSystem->GetRandomReachablePointInRadius(Start, 600.f, Next);
+
+	m_Owner->AIController->MoveToLocation(Next.Location);
+	
+	PatrolTime = FMath::RandRange(5.f, 8.f);
+}
 
 void UPartnerPatrolMode::Patrol()
 {
@@ -114,7 +148,8 @@ void UPartnerPatrolMode::Patrol()
 	ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
 	// ToDo : PartnerOwner 설정되면 없애기
 	ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-	PartnerOwner = Player;
+	//PartnerOwner = Player;
+	PartnerOwner = m_Owner->PartnerOwner;
 	FVector Start{PartnerOwner->GetActorLocation()};
 	FNavLocation Next;
 

@@ -27,6 +27,12 @@ void UChase::ServerEnter()
 
 void UChase::ServerExecute(float dt)
 {
+	if (!m_Owner->GetAggroTarget())
+	{
+		ChangeState(EAiStateType::SelectMode);
+		return;
+	}
+	
 	float Dist{
 		static_cast<float>(FVector::Distance(m_Owner->GetActorLocation(),
 		                                     m_Owner->GetAggroTarget()->GetActorLocation()))

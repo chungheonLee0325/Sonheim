@@ -46,6 +46,12 @@ void UAttackMode::ServerExecute(float dt)
 		return;
 	}
 
+	if (!m_Owner->GetAggroTarget())
+	{
+		ChangeState(EAiStateType::SelectMode);
+		return;
+	}
+	
 	FlowTime += dt;
 	if (FlowTime >= ChooseModeTime)
 	{
