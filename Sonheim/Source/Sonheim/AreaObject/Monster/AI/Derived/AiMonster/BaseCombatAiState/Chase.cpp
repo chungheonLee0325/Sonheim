@@ -27,6 +27,12 @@ void UChase::ServerEnter()
 
 void UChase::ServerExecute(float dt)
 {
+	if (m_Owner->IsCalled || m_Owner->bIsCanCalled)
+	{
+		ChangeState(EAiStateType::SelectMode);
+		return;
+	}
+	
 	if (!m_Owner->GetAggroTarget())
 	{
 		ChangeState(EAiStateType::SelectMode);

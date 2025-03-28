@@ -31,6 +31,13 @@ void UPartnerPatrolMode::ServerExecute(float dt)
 {
 	FlowTime += dt;
 	FlowTimeForJump += dt;
+
+	// 장착 명령 받으면
+	if (m_Owner->IsCalled || m_Owner->bIsCanCalled)
+	{
+		MoveToPlayer();
+		return;
+	}
 	
 	if (m_Owner->GetAggroTarget())
 	{
@@ -59,13 +66,6 @@ void UPartnerPatrolMode::ServerExecute(float dt)
 			m_Owner->Jump();
 		}
 		
-		return;
-	}
-	
-	// 장착 명령 받으면
-	if (m_Owner->IsCalled || m_Owner->bIsCanCalled)
-	{
-		MoveToPlayer();
 		return;
 	}
 
