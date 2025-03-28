@@ -21,6 +21,8 @@ enum class EConditionBitsType : uint32
 	Dead = 1 << 0 UMETA(DisplayName = "Dead"),
 	// 0b0010
 	Invincible = 1 << 1 UMETA(DisplayName = "Invincible"),
+	// 0b0100
+	Hidden = 1 << 2 UMETA(DisplayName = "Hidden"),
 };
 
 ENUM_CLASS_FLAGS(EConditionBitsType);

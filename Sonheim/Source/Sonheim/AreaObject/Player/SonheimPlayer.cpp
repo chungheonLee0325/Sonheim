@@ -16,6 +16,7 @@
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/AreaObject/Utility/GhostTrail.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 #include "Sonheim/Utilities/LogMacro.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Utility/InventoryComponent.h"
@@ -265,7 +266,7 @@ void ASonheimPlayer::RegisterOwnPal(ABaseMonster* Pal)
 	}
 	m_OwnedPals.Add(palNum, Pal);
 	UpdateSelectedPal();
-	S_PlayerController->GetPlayerStatusWidget()->AddOwnedPal(Pal->m_AreaObjectID,palNum);
+	S_PlayerController->GetPlayerStatusWidget()->AddOwnedPal(Pal->m_AreaObjectID, palNum);
 	//SetSelectedPal(0);
 }
 
@@ -824,6 +825,38 @@ void ASonheimPlayer::Restart_Pressed()
 	}
 	// 
 	RespawnAtCheckpoint();
+}
+
+bool ASonheimPlayer::CanAttack(AActor* TargetActor)
+{
+	bool result = Super::CanAttack(TargetActor);
+	if (!result) return false;
+
+	// 자원 처리
+	ABaseResourceObject* targetResourceObject = Cast<ABaseResourceObject>(TargetActor);
+	if (targetResourceObject != nullptr)
+	{
+		return true;
+	}
+
+	// 몬스터 처리
+	ABaseMonster* targetMonster = Cast<ABaseMonster>(TargetActor);
+	if (targetMonster)
+	{
+		// 다른 주인있는 팰 공격 x
+		if (targetMonster->PartnerOwner != nullptr) return false;
+		// 주인없는 팰은 공격 가능
+		else return true;
+	}
+
+	// 플레이어 처리 - IFF 추가로 변경될수도..
+	ASonheimPlayer* targetPlayer = Cast<ASonheimPlayer>(TargetActor);
+	if (targetPlayer)
+	{
+		return false;
+	}
+
+	return false;
 }
 
 void ASonheimPlayer::UpdateSelectedPal()

@@ -50,6 +50,8 @@ public:
 	FVector AdjustKnockBackForce;
 
 	UBaseAnimInstance* GetSAnimInstance() const;
+
+	virtual bool CanAttack(AActor* TargetActor);
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

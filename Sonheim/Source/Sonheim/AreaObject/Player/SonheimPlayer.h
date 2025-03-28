@@ -349,6 +349,8 @@ public:
 		}
 	}
 
+	virtual bool CanAttack(AActor* TargetActor) override;
+
 private:
 	// UFUNCTION(Server, Reliable)
 	// void Server_ToggleLockOn(bool IsActive);

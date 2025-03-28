@@ -265,6 +265,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void DeactivateMonster();
 
+	virtual bool CanAttack(AActor* TargetActor) override;
+
 	UPROPERTY(Replicated)
 	bool bIsCanCalled = false;
 	

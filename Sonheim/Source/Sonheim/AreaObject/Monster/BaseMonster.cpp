@@ -72,7 +72,7 @@ ABaseMonster::ABaseMonster()
 	}
 
 	HeadVFXPoint = CreateDefaultSubobject<USceneComponent>(TEXT("HeadVFXPoint"));
-	
+
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
 
@@ -113,7 +113,8 @@ void ABaseMonster::SetHPWidgetVisibilityByDuration(float Duration)
 {
 	SetHPWidgetVisibility(true);
 	TWeakObjectPtr<ABaseMonster> weakThis = this;
-	GetWorld()->GetTimerManager().SetTimer(HPWidgetVisibleTimer, [weakThis]() {
+	GetWorld()->GetTimerManager().SetTimer(HPWidgetVisibleTimer, [weakThis]()
+	{
 		ABaseMonster* strongThis = weakThis.Get();
 		if (strongThis != nullptr)
 		{
@@ -202,7 +203,8 @@ void ABaseMonster::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 void ABaseMonster::OnBodyBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                       UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
                                       const FHitResult& SweepResult)
-{}
+{
+}
 
 UBaseAiFSM* ABaseMonster::CreateFSM()
 {
@@ -441,10 +443,10 @@ void ABaseMonster::ActivateMonster()
 	m_AiFSM->ChangeState(EAiStateType::PartnerPatrolMode);
 	// 렌더링 활성화
 	SetActorHiddenInGame(false);
-        
+
 	// 물리 및 충돌 활성화
 	SetActorEnableCollision(true);
-        
+
 	// AI 컨트롤러 활성화
 	if (AIController)
 	{
@@ -469,10 +471,10 @@ void ABaseMonster::DeactivateMonster()
 
 	// 렌더링 비활성화
 	SetActorHiddenInGame(true);
-        
+
 	// 물리 및 충돌 비활성화
 	SetActorEnableCollision(false);
-        
+
 	// AI 컨트롤러 비활성화
 	if (AIController)
 	{
@@ -482,6 +484,52 @@ void ABaseMonster::DeactivateMonster()
 	{
 		AIController = Cast<AAIController>(GetController());
 	}
+}
+
+bool ABaseMonster::CanAttack(AActor* TargetActor)
+{
+	bool result = Super::CanAttack(TargetActor);
+	if (!result) return false;
+
+	// 자원 처리
+	ABaseResourceObject* targetResourceObject = Cast<ABaseResourceObject>(TargetActor);
+	if (targetResourceObject != nullptr)
+	{
+		return true;
+	}
+
+	// 몬스터 처리
+	ABaseMonster* targetMonster = Cast<ABaseMonster>(TargetActor);
+	if (targetMonster)
+	{
+		// 주인이 있으면
+		if (PartnerOwner != nullptr)
+		{
+			// 다른 주인있는 팰 공격 x
+			if (targetMonster->PartnerOwner != nullptr) return false;
+				// 주인없는 팰은 공격 가능
+			else return true;
+		}
+		else
+		{
+			// 주인있는 팰은 공격 가능
+			if (targetMonster->PartnerOwner != nullptr) return true;
+				// 다른 야생팰 공격 x
+			else return false;
+		}
+	}
+	
+	// 플레이어 처리
+	ASonheimPlayer* targetPlayer = Cast<ASonheimPlayer>(TargetActor);
+	if (targetPlayer)
+	{
+		// 내가 주인이 있다면 공격 불가
+		if (PartnerOwner != nullptr)
+			return false;
+		else return true;
+	}
+
+	return false;
 }
 
 

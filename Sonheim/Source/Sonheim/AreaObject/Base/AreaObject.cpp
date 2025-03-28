@@ -19,6 +19,7 @@
 #include "Sonheim/Utilities/SonheimUtility.h"
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/Animation/Common/AnimInstance/BaseAnimInstance.h"
+#include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 
 // Sets default values
 AAreaObject::AAreaObject()
@@ -57,7 +58,7 @@ AAreaObject::AAreaObject()
 void AAreaObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	
+
 	// 사망 상태 리플리케이션
 	DOREPLIFETIME(AAreaObject, bIsDead);
 }
@@ -65,6 +66,22 @@ void AAreaObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 UBaseAnimInstance* AAreaObject::GetSAnimInstance() const
 {
 	return m_AnimInstance;
+}
+
+bool AAreaObject::CanAttack(AActor* TargetActor)
+{
+	// ToDo : Handle로 변경하는게 좋을듯... resource object 처리 핸들 , monster 처리 핸들 ....
+	AAreaObject* targetAreaObject = Cast<AAreaObject>(TargetActor);
+	{
+		if (targetAreaObject->HasCondition(EConditionBitsType::Dead) || targetAreaObject->
+			HasCondition(EConditionBitsType::Invincible) || targetAreaObject->HasCondition(
+				EConditionBitsType::Invincible))
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 // Called when the game starts or when spawned
@@ -99,7 +116,7 @@ void AAreaObject::BeginPlay()
 		groggyDuration = dt_AreaObject->GroggyDuration;
 		walkSpeed = dt_AreaObject->WalkSpeed;
 	}
-	
+
 	m_HealthComponent->InitHealth(hpMax);
 	m_StaminaComponent->InitStamina(maxStamina, staminaRecoveryRate, groggyDuration);
 	GetCharacterMovement()->MaxWalkSpeed = walkSpeed;
@@ -192,8 +209,13 @@ void AAreaObject::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 
 void AAreaObject::CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Target, FHitResult& HitInfo)
 {
+	// IFF 부터 확인후 서버 처리
+	if (!CanAttack(Target))
+	{
+		return;
+	}
+
 	// 권한 체크
-	
 	if (GetLocalRole() != ROLE_Authority)
 	{
 		// 클라이언트에서는 서버에 요청만 보냄
@@ -203,7 +225,7 @@ void AAreaObject::CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Ta
 
 	float Damage = FMath::RandRange(AttackData.HealthDamageAmountMin, AttackData.HealthDamageAmountMax);
 	Damage = HandleAttackDamageCalculation(Damage);
-	
+
 	// Stab Damage Process - 포켓몬 자속기
 	for (auto& elementAttribute : this->dt_AreaObject->DefenceElementalAttributes)
 	{
@@ -223,11 +245,12 @@ void AAreaObject::CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Ta
 	DamageEvent.AttackData = AttackData;
 	DamageEvent.HitInfo = HitInfo;
 	DamageEvent.Damage = Damage;
-	
+
 	Target->TakeDamage(Damage, DamageEvent, GetController(), this);
 }
 
-float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, AController* EventInstigator,
+                              AActor* DamageCauser)
 {
 	// 권한 체크
 	if (GetLocalRole() != ROLE_Authority)
@@ -291,7 +314,7 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 		elementDamageMultiplier *= USonheimUtility::CalculateDamageMultiplier(
 			defectElementalAttribute, attackData.AttackElementalAttribute);
 	}
-	ActualDamage *= elementDamageMultiplier; 
+	ActualDamage *= elementDamageMultiplier;
 
 	// apply actual hp damage
 	float CurrentHP = DecreaseHP(ActualDamage);
@@ -371,7 +394,7 @@ void AAreaObject::Client_OnDie_Implementation()
 			if (strongThis->DeathEffect != nullptr)
 			{
 				UGameplayStatics::SpawnEmitterAtLocation(strongThis->GetWorld(), strongThis->DeathEffect,
-														 strongThis->GetActorLocation());
+				                                         strongThis->GetActorLocation());
 			}
 		}
 	}, DestroyDelayTime, false);
@@ -634,7 +657,7 @@ float AAreaObject::IncreaseStamina(float Delta)
 		Server_IncreaseStamina(Delta);
 		return m_StaminaComponent->GetStamina();
 	}
-	
+
 	m_StaminaComponent->IncreaseStamina(Delta);
 	return m_StaminaComponent->GetStamina();
 }
@@ -653,7 +676,7 @@ float AAreaObject::DecreaseStamina(float Delta, bool bIsDamaged)
 		Server_DecreaseStamina(Delta, bIsDamaged);
 		return m_StaminaComponent->GetStamina();
 	}
-	
+
 	m_StaminaComponent->DecreaseStamina(Delta, bIsDamaged);
 	return m_StaminaComponent->GetStamina();
 }
@@ -772,16 +795,18 @@ bool AAreaObject::Server_CalcDamage_Validate(FAttackData AttackData, AActor* Cas
 	return true;
 }
 
-void AAreaObject::Server_CalcDamage_Implementation(FAttackData AttackData, AActor* Caster, AActor* Target, FHitResult HitInfo)
+void AAreaObject::Server_CalcDamage_Implementation(FAttackData AttackData, AActor* Caster, AActor* Target,
+                                                   FHitResult HitInfo)
 {
 	// 서버에서 실행할 데미지 계산 로직
 	CalcDamage(AttackData, Caster, Target, HitInfo);
 }
 
-void AAreaObject::MulticastDamageEffect_Implementation(float Damage, FVector HitLocation, AActor* DamageCauser, bool bWeakPoint, float ElementDamageMultiplier)
+void AAreaObject::MulticastDamageEffect_Implementation(float Damage, FVector HitLocation, AActor* DamageCauser,
+                                                       bool bWeakPoint, float ElementDamageMultiplier)
 {
 	// 클라이언트 및 서버 모두에서 실행되는 데미지 시각/청각 효과
-	
+
 	// Spawn floating damage
 	FTransform SpawnTransform(FRotator::ZeroRotator, HitLocation);
 
@@ -791,16 +816,16 @@ void AAreaObject::MulticastDamageEffect_Implementation(float Damage, FVector Hit
 		// FloatingDamageType 계산
 		// 약점 계산
 		EFloatingOutLineDamageType weakPointDamageType = bWeakPoint
-			                                 ? EFloatingOutLineDamageType::WeakPointDamage
-			                                 : EFloatingOutLineDamageType::Normal;
+			                                                 ? EFloatingOutLineDamageType::WeakPointDamage
+			                                                 : EFloatingOutLineDamageType::Normal;
 		EFloatingTextDamageType elementAttributeDamageType = EFloatingTextDamageType::Normal;
 		if (ElementDamageMultiplier > 1.0f)
 		{
-			elementAttributeDamageType= EFloatingTextDamageType::EffectiveElementDamage;
+			elementAttributeDamageType = EFloatingTextDamageType::EffectiveElementDamage;
 		}
 		else if (ElementDamageMultiplier < 1.0f)
 		{
-			elementAttributeDamageType= EFloatingTextDamageType::InefficientElementDamage;
+			elementAttributeDamageType = EFloatingTextDamageType::InefficientElementDamage;
 		}
 		DamageActor->Initialize(Damage, weakPointDamageType, elementAttributeDamageType);
 	}

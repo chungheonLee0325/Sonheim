@@ -7,10 +7,12 @@
 #include "Sonheim/Utilities/LogMacro.h"
 
 void USelectMode::InitState()
-{}
+{
+}
 
 void USelectMode::CheckIsValid()
-{}
+{
+}
 
 void USelectMode::ServerEnter()
 {
@@ -22,15 +24,15 @@ void USelectMode::ServerEnter()
 void USelectMode::ServerExecute(float dt)
 {
 	//FLog::Log("SelectTick");
-	if (!m_Owner->bIsCanAttack || !m_Owner->GetAggroTarget() || (m_Owner->IsCalled && m_Owner->bIsCanCalled))
+	if (!m_Owner->GetAggroTarget() || !m_Owner->CanAttack(m_Owner->GetAggroTarget()) || m_Owner->IsCalled && m_Owner->bIsCanCalled)
 	{
 		m_Owner->SetAggroTarget(nullptr);
-		
+
 		// PatrolMode
 		ChangeState(m_FailState);
 		return;
 	}
-	
+
 	FlowTime += dt;
 	if (FlowTime >= ChooseModeTime)
 	{
@@ -51,4 +53,5 @@ void USelectMode::ServerExecute(float dt)
 }
 
 void USelectMode::ServerExit()
-{}
+{
+}

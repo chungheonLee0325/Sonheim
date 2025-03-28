@@ -23,7 +23,7 @@ void UUseSkill::ServerEnter()
 	
 	m_Owner->LookAtLocation(m_Owner->GetAggroTarget()->GetActorLocation(), EPMRotationMode::Duration, 0.1f);
 
-	if (m_Owner->CanCastSkill(m_Owner->NextSkill, m_Owner->GetAggroTarget()) || m_Owner->bIsCanAttack)
+	if (m_Owner->CanCastSkill(m_Owner->NextSkill, m_Owner->GetAggroTarget()) && m_Owner->CanAttack(m_Owner->GetAggroTarget()))
 	{	
 		m_Owner->NextSkill->OnSkillComplete.BindUObject(this, &UUseSkill::OnSkillCompleted);
 
