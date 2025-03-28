@@ -43,6 +43,12 @@ void UPutDistance::MoveToAttack()
 	{
 		FLog::Log("MoveToAttack");
 	}
+	
+	if (!m_Owner->GetAggroTarget())
+	{
+		ChangeState(EAiStateType::SelectMode);
+		return;
+	}
 
 	FNavLocation Next;
 	for (int32 i{}; i < 36; ++i)

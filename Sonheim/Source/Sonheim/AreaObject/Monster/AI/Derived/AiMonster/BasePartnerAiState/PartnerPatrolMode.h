@@ -21,6 +21,7 @@ public:
 	virtual void ServerExecute(float dt) override;
 	virtual void ServerExit() override;
 
+	void PatrolWild();
 	void Patrol();
 	void PatrolToPlayer();
 	void TeleportToPlayer();
