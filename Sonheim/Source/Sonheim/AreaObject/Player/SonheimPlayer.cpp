@@ -265,6 +265,7 @@ void ASonheimPlayer::RegisterOwnPal(ABaseMonster* Pal)
 	}
 	m_OwnedPals.Add(palNum, Pal);
 	UpdateSelectedPal();
+	S_PlayerController->GetPlayerStatusWidget()->AddOwnedPal(Pal->m_AreaObjectID,palNum);
 	//SetSelectedPal(0);
 }
 
@@ -836,6 +837,9 @@ void ASonheimPlayer::UpdateSelectedPal()
 	// 팰 상자나 버림 등 다른 변수로 최신화 안된경우 대비..
 	CurrentPalIndex = FMath::Min(CurrentPalIndex, FMath::Min(m_OwnedPals.Num() - 1, PalMaxIndex));
 	m_SelectedPal = m_OwnedPals[CurrentPalIndex];
+
+	// UI Update
+	S_PlayerController->GetPlayerStatusWidget()->SwitchSelectedPalIndex(CurrentPalIndex);
 }
 
 void ASonheimPlayer::SaveCheckpoint(FVector Location, FRotator Rotation)

@@ -290,6 +290,9 @@ struct FAreaObjectData : public FTableRowBase
 	TSet<int> SkillList;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	UTexture2D* AreaObjectIcon = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	float StaminaMax = 100.0f;
 
 	// 스태미나 초당 회복량

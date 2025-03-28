@@ -355,7 +355,7 @@ private:
 	void UpdateSelectedPal();
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Pals")
-	int PalMaxIndex = 4;
+	int PalMaxIndex = 5;
 	int CurrentPalIndex = 0;
 	UPROPERTY(VisibleAnywhere, Category = "Pals")
 	TMap<int, ABaseMonster*> m_OwnedPals;
