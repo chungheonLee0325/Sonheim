@@ -8,6 +8,7 @@
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sonheim/Utilities/SessionUtil.h"
 
 ASonheimGameMode::ASonheimGameMode()
 {
@@ -54,6 +55,7 @@ void ASonheimGameMode::BeginPlay()
 	SoundDataMap = gameInstance->SoundDataMap;
 
 	//PlayBGM(BGMID, true);
+	
 }
 
 

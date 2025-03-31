@@ -5,8 +5,10 @@
 #include "InputMappingContext.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "OnlineSessionSettings.h"
 #include "SonheimPlayer.h"
 #include "SonheimPlayerState.h"
+#include "Online/OnlineSessionNames.h"
 #include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
 #include "Sonheim/AreaObject/Monster/AI/Base/BaseAiFSM.h"
@@ -14,6 +16,7 @@
 #include "Sonheim/UI/Widget/Player/Inventory/InventoryWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/PlayerStatWidget.h"
 #include "Sonheim/Utilities/LogMacro.h"
+#include "Sonheim/Utilities/SessionUtil.h"
 #include "Utility/InventoryComponent.h"
 
 ASonheimPlayerController::ASonheimPlayerController()
