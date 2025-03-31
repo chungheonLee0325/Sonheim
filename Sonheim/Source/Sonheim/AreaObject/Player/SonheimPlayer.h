@@ -109,50 +109,139 @@ public:
 	/** Called for looking input */
 	void Look(FVector2D LookAxisVector);
 
-	/** Called for attack input */
+	// 마우스 왼쪽 입력 처리
 	void LeftMouse_Pressed();
 	void LeftMouse_Triggered();
 	void LeftMouse_Released();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_LeftMouse_Pressed();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_LeftMouse_Pressed();
+	UFUNCTION(Server, Reliable)
+	void Server_LeftMouse_Triggered();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_LeftMouse_Triggered();
+	UFUNCTION(Server, Reliable)
+	void Server_LeftMouse_Released();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_LeftMouse_Released();
+	
+	// 마우스 오른쪽 입력 처리
 	void RightMouse_Pressed();
 	void RightMouse_Triggered();
 	void RightMouse_Released();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_RightMouse_Pressed();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_RightMouse_Pressed();
+	UFUNCTION(Server, Reliable)
+	void Server_RightMouse_Triggered();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_RightMouse_Triggered();
+	UFUNCTION(Server, Reliable)
+	void Server_RightMouse_Released();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_RightMouse_Released();
+	
+	// 재장전 입력 처리
 	void Reload_Pressed();
-
-	/** Called for evade input */
+	
+	UFUNCTION(Server, Reliable)
+	void Server_Reload_Pressed();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_Reload_Pressed();
+	
+	// 회피 입력 처리
 	void Dodge_Pressed();
-
-	/** Called for sprint input */
+	
+	UFUNCTION(Server, Reliable)
+	void Server_Dodge_Pressed();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_Dodge_Pressed();
+	
+	// 달리기 입력 처리
 	void Sprint_Pressed();
 	void Sprint_Triggered();
 	void Sprint_Released();
-
-	/** Called for run input */
+	
+	UFUNCTION(Server, Reliable)
+	void Server_Sprint_Pressed();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_Sprint_Pressed();
+	UFUNCTION(Server, Reliable)
+	void Server_Sprint_Triggered();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_Sprint_Triggered();
+	UFUNCTION(Server, Reliable)
+	void Server_Sprint_Released();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_Sprint_Released();
+	
+	// 점프 입력 처리
 	void Jump_Pressed();
 	void Jump_Released();
-
-	/** Called for WeaponSwitch input */
+	
+	// 무기 전환 입력 처리
 	void WeaponSwitch_Triggered();
-
-	/** Called for PartnerSkill input */
+	
+	// 파트너 스킬 입력 처리
 	void PartnerSkill_Pressed();
 	void PartnerSkill_Triggered();
 	void PartnerSkill_Released();
-
-	/** Called for SummonPal input */
+	
+	UFUNCTION(Server, Reliable)
+	void Server_PartnerSkill_Pressed();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_PartnerSkill_Pressed();
+	UFUNCTION(Server, Reliable)
+	void Server_PartnerSkill_Triggered();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_PartnerSkill_Triggered();
+	UFUNCTION(Server, Reliable)
+	void Server_PartnerSkill_Released();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_PartnerSkill_Released();
+	
+	// 팔 소환 입력 처리
 	void SummonPal_Pressed();
-
-	/** Called for SwitchPal input */
+	
+	UFUNCTION(Server, Reliable)
+	void Server_SummonPal_Pressed();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_SummonPal_Pressed();
+	
+	// 팔 슬롯 전환 입력 처리
 	void SwitchPalSlot_Triggered(int Index);
 
-	/** Called for Menu input */
+	UFUNCTION(Server, Reliable)
+	void Server_SwitchPalSlot_Triggered(int Index);
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_SwitchPalSlot_Triggered(int Index);
+	
+	// 메뉴 입력 처리
 	void Menu_Pressed();
-
-	/** Called for ThrowPalSphere input */
+	
+	// 팔 구체 던지기 입력 처리
 	void ThrowPalSphere_Pressed();
 	void ThrowPalSphere_Triggered();
 	void ThrowPalSphere_Released();
-
-	/** Called for Restart input */
+	
+	UFUNCTION(Server, Reliable)
+	void Server_ThrowPalSphere_Pressed();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_ThrowPalSphere_Pressed();
+	UFUNCTION(Server, Reliable)
+	void Server_ThrowPalSphere_Triggered();
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_ThrowPalSphere_Triggered();
+	UFUNCTION(Server, Reliable)
+	void Server_ThrowPalSphere_Released();
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_ThrowPalSphere_Released();
+	
+	// 재시작 입력 처리
 	void Restart_Pressed();
 
 	UFUNCTION(BlueprintCallable, Category = "Checkpoint")
@@ -235,8 +324,10 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void RegisterOwnPal(ABaseMonster* Pal);
-	UFUNCTION(BlueprintCallable)
-	void SetSelectedPal(int PalIndex);
+	UFUNCTION(Server, Reliable)
+	void Server_RegisterOwnPal(ABaseMonster* Pal);
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_RegisterOwnPal(ABaseMonster* Pal);
 
 private:
 	// Weapon Setting
