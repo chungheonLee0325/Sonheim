@@ -24,7 +24,7 @@ void USelectMode::ServerEnter()
 void USelectMode::ServerExecute(float dt)
 {
 	//FLog::Log("SelectTick");
-	if (!m_Owner->GetAggroTarget() || !m_Owner->CanAttack(m_Owner->GetAggroTarget()) || m_Owner->IsCalled && m_Owner->bIsCanCalled)
+	if (!m_Owner->GetAggroTarget() || !m_Owner->CanAttack(m_Owner->GetAggroTarget()) || (m_Owner->IsCalled && m_Owner->bIsCanCalled))
 	{
 		m_Owner->SetAggroTarget(nullptr);
 
