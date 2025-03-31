@@ -356,42 +356,36 @@ void ASonheimPlayerController::SetupInputComponent()
 
 void ASonheimPlayerController::OnMove(const FInputActionValue& Value)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->Move(Value.Get<FVector2D>());
 }
 
 void ASonheimPlayerController::OnLook(const FInputActionValue& Value)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->Look(Value.Get<FVector2D>());
 }
 
 void ASonheimPlayerController::On_Mouse_Left_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->LeftMouse_Pressed();
 }
 
 void ASonheimPlayerController::On_Mouse_Left_Released(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->LeftMouse_Released();
 }
 
 void ASonheimPlayerController::On_Mouse_Left_Triggered(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->LeftMouse_Triggered();
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->RightMouse_Pressed();
 	GetPlayerStatusWidget()->SetEnableCrossHair(true);
@@ -399,35 +393,30 @@ void ASonheimPlayerController::On_Mouse_Right_Pressed(const FInputActionValue& I
 
 void ASonheimPlayerController::On_Mouse_Right_Triggered(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->RightMouse_Triggered();
 }
 
 void ASonheimPlayerController::On_Sprint_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->Sprint_Pressed();
 }
 
 void ASonheimPlayerController::On_Sprint_Triggered(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->Sprint_Triggered();
 }
 
 void ASonheimPlayerController::On_Sprint_Released(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->Sprint_Released();
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Released(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->RightMouse_Released();
 	GetPlayerStatusWidget()->SetEnableCrossHair(false);
@@ -435,35 +424,30 @@ void ASonheimPlayerController::On_Mouse_Right_Released(const FInputActionValue& 
 
 void ASonheimPlayerController::On_Dodge_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->Dodge_Pressed();
 }
 
 void ASonheimPlayerController::On_Jump_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->Jump_Pressed();
 }
 
 void ASonheimPlayerController::On_Jump_Released(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->Jump_Released();
 }
 
 void ASonheimPlayerController::On_Reload_Pressed(const FInputActionValue& Value)
 {
-	if (!IsLocalController()) return;
 	if (IsMenuActivate) return;
 	m_Player->Reload_Pressed();
 }
 
 void ASonheimPlayerController::On_WeaponSwitch_Triggered(const FInputActionValue& Value)
 {
-	if (!IsLocalController()) return;
 	const int32 SwitchData = FMath::Sign(Value.Get<float>());
 	if (SwitchData != 0)
 	{
@@ -473,19 +457,16 @@ void ASonheimPlayerController::On_WeaponSwitch_Triggered(const FInputActionValue
 
 void ASonheimPlayerController::On_PartnerSkill_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	m_Player->PartnerSkill_Pressed();
 }
 
 void ASonheimPlayerController::On_PartnerSkill_Triggered(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	m_Player->PartnerSkill_Triggered();
 }
 
 void ASonheimPlayerController::On_PartnerSkill_Released(const FInputActionValue& InputActionValue)
 {
-	if (!IsLocalController()) return;
 	m_Player->PartnerSkill_Released();
 }
 
@@ -526,7 +507,7 @@ void ASonheimPlayerController::On_ThrowPalSphere_Released(const FInputActionValu
 
 void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 {
-	if (!IsLocalController()) return;
+	//if (!IsLocalController()) return;
 	if (!IsMenuActivate)
 	{
 		IsMenuActivate = true;
@@ -563,7 +544,7 @@ void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 
 void ASonheimPlayerController::On_Menu_Released(const FInputActionValue& Value)
 {
-	if (!IsLocalController()) return;
+	//if (!IsLocalController()) return;
 }
 
 void ASonheimPlayerController::OnRep_PlayerState()
