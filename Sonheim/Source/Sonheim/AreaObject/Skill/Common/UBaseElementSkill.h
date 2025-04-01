@@ -15,10 +15,15 @@ class SONHEIM_API UUBaseElementSkill : public UBaseSkill
 {
 	GENERATED_BODY()
 
+	virtual void OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual void OnCastFire() override;
 	virtual void Client_OnCastFire() override;
+	virtual void Server_OnCastFire() override;
 
 	virtual void FireElement();
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class ABaseElement> ElementClass = ABaseElement::StaticClass();
+
+	bool IsFired = false;
 };

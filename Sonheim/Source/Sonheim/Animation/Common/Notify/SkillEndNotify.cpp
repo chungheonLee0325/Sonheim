@@ -8,7 +8,7 @@
 
 void USkillEndNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation)
 {
-	if (MeshComp && MeshComp->GetOwner())
+	if (MeshComp && MeshComp->GetOwner() && MeshComp->GetOwner()->HasAuthority())
 	{
 		AAreaObject* owner = Cast<AAreaObject>( MeshComp->GetOwner());
 		if (owner != nullptr && owner->GetCurrentSkill() != nullptr)

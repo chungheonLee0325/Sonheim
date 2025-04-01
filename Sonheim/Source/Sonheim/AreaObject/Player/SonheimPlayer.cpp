@@ -202,17 +202,6 @@ float ASonheimPlayer::HandleDefenceDamageCalculation(float Damage)
 	return FMath::Clamp(Damage - m_Defence, 1, Damage - m_Defence);
 }
 
-void ASonheimPlayer::OnRep_IsDead()
-{
-	Super::OnRep_IsDead();
-	S_PlayerAnimInstance->bIsDead = true;
-	// if (bIsDead && IsLocallyControlled())
-	// {
-	// 	SetPlayerState(EPlayerState::DIE);
-	// 	S_PlayerController->GetPlayerStatusWidget()->SetVisibility(ESlateVisibility::Hidden);
-	// }
-}
-
 void ASonheimPlayer::Reward(int ItemID, int ItemValue) const
 {
 	if (S_PlayerState == nullptr) return;
@@ -312,13 +301,18 @@ void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventory
 		FSkillData* SkillData = m_GameInstance->GetDataSkill(ItemData->EquipmentData.SkillID);
 		if (SkillData == nullptr)
 		{
-			WeaponSkillMap.Add(WeaponSlot, CommonAttack);
+			m_SkillInstanceMap.Remove(WeaponSkillMap[WeaponSlot]->GetSkillData()->SkillID);
+			WeaponSkillMap[WeaponSlot] = CommonAttack;
+			//WeaponSkillMap.Add(WeaponSlot, CommonAttack);
 			return;
 		}
 		UBaseSkill* weaponSkill = NewObject<UBaseSkill>(this, SkillData->SkillClass);
 		weaponSkill->InitSkill(SkillData);
 
-		WeaponSkillMap.Add(WeaponSlot, weaponSkill);
+		WeaponSkillMap[WeaponSlot] = weaponSkill;
+		m_SkillInstanceMap.Remove(SkillData->SkillID);
+		m_SkillInstanceMap.Add(SkillData->SkillID,weaponSkill);
+		//WeaponSkillMap.Add(WeaponSlot, weaponSkill);
 
 		if (SelectedWeaponSlot == WeaponSlot)
 		{
@@ -563,25 +557,27 @@ void ASonheimPlayer::LeftMouse_Triggered()
 void ASonheimPlayer::Server_LeftMouse_Triggered_Implementation()
 {
 	if (!CanPerformAction(CurrentPlayerState, "Action")) return;
+	//if (bUsingPartnerSkill) return;
 
 	if (CanCombo && NextComboSkillID)
 	{
 		TObjectPtr<UBaseSkill> comboSkill = GetSkillByID(NextComboSkillID);
 		if (CastSkill(comboSkill, this))
 		{
-			MultiCast_LeftMouse_Triggered();
 			SetPlayerState(EPlayerState::ACTION);
 			comboSkill->OnSkillComplete.BindUObject(this, &ASonheimPlayer::SetPlayerNormalState);
+			MultiCast_LeftMouse_Triggered();
 		}
 	}
 	else
 	{
 		auto skill = GetWeaponAttack();
+		//auto skill = GetCurrentSkill();
 		if (CastSkill(skill, this))
 		{
-			MultiCast_LeftMouse_Triggered();
 			SetPlayerState(EPlayerState::ACTION);
 			skill->OnSkillComplete.BindUObject(this, &ASonheimPlayer::SetPlayerNormalState);
+			MultiCast_LeftMouse_Triggered();
 		}
 	}
 }
