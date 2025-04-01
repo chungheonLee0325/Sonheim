@@ -24,11 +24,17 @@ public:
 	FItemData* GetDataItem(int ItemID);
 	TMap<int32, FLevelData>* GetDataLevel();
 
+	UPROPERTY()
 	TMap<int32, FAreaObjectData> dt_AreaObject;
+	UPROPERTY()
 	TMap<int32, FSkillData> dt_Skill;
+	UPROPERTY()
 	TMap<int32, FSkillBagData> dt_SkillBag;
+	UPROPERTY()
 	TMap<int32, FResourceObjectData> dt_ResourceObject;
+	UPROPERTY()
 	TMap<int32, FItemData> dt_Item;
+	UPROPERTY()
 	TMap<int32, FLevelData> dt_LevelData;
 
 	UPROPERTY(EditAnywhere)
