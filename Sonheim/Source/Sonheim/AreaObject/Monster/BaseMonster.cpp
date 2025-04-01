@@ -30,13 +30,13 @@ ABaseMonster::ABaseMonster()
 
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetMesh()->SetIsReplicated(true);
-	
+
 	SetNetUpdateFrequency(120.f);
 	SetMinNetUpdateFrequency(50.f);
-	
+
 	GetCapsuleComponent()->SetNetAddressable();
 	GetCapsuleComponent()->SetIsReplicated(true);
-	
+
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 
 	// AI Perception
@@ -85,7 +85,6 @@ ABaseMonster::ABaseMonster()
 
 	bReplicates = true;
 	bNetUseOwnerRelevancy = true;
-
 }
 
 UBaseSkillRoulette* ABaseMonster::GetSkillRoulette() const
@@ -564,27 +563,29 @@ bool ABaseMonster::CanAttack(AActor* TargetActor)
 	return false;
 }
 
+// ToDo: 기회가 된다면 안쓰는 코드 장리
 void ABaseMonster::OnRep_IsAttached()
 {
-	UE_LOG(LogTemp, Display, TEXT("호출 제한1: %s"),
-		*FCommonUtil::GetClassEnumKeyAsString(GetLocalRole()))
-
 	if (PartnerOwner && PartnerOwner->GetMesh())
 	{
 		if (bIsAttach)
 		{
-			UE_LOG(LogTemp, Display, TEXT("호출 제한2: %s"),
-				*FCommonUtil::GetClassEnumKeyAsString(GetLocalRole()))
+			// UE_LOG(LogTemp, Display, TEXT("호출 제한2: %s"),
+			//        *FCommonUtil::GetClassEnumKeyAsString(GetLocalRole()))
 			GetCapsuleComponent()->SetCollisionProfileName(TEXT("NoCollision"));
-			GetMesh()->SetRelativeLocation(FVector(0), false, nullptr, ETeleportType::TeleportPhysics);
+			GetMesh()->SetRelativeLocation(FVector::ZeroVector, false, nullptr, ETeleportType::TeleportPhysics);
+			BaseTranslationOffset = FVector::ZeroVector;
 
 			SetActorEnableCollision(false);
-			GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+			GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
 			GetCharacterMovement()->StopMovementImmediately();
+
+			//UE_LOG(LogTemp, Display, TEXT("movement mode: %s"), *GetCharacterMovement()->GetMovementName());
 			
 			AttachToComponent(PartnerOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale,
 			                  FName("PartnerWeapon"));
 			PartnerOwner->SetUsePartnerSkill(true);
+			Temp_Implementation();
 		}
 		else
 		{
@@ -592,12 +593,22 @@ void ABaseMonster::OnRep_IsAttached()
 			GetCapsuleComponent()->SetCollisionProfileName(TEXT("Monster"));
 			SetActorEnableCollision(true);
 			GetMesh()->SetRelativeLocation(FVector(0, 0, -60));
+			BaseTranslationOffset = FVector(0, 0, -60);
 			PartnerOwner->SetUsePartnerSkill(false);
-
+			
 			GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 			GetCharacterMovement()->SetActive(true);
+			//UE_LOG(LogTemp, Display, TEXT("movement mode: %s"), *GetCharacterMovement()->GetMovementName());
 		}
 	}
+}
+
+void ABaseMonster::Temp_Implementation()
+{
+	 UE_LOG(LogTemp, Display, TEXT("호출: %s"),
+	        *FCommonUtil::GetClassEnumKeyAsString(GetLocalRole()))
+	GetMesh()->SetRelativeLocation(FVector(0), false, nullptr, ETeleportType::TeleportPhysics);
+	BaseTranslationOffset = FVector::ZeroVector;
 }
 
 

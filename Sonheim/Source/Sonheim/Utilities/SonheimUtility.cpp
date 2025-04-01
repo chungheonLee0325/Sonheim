@@ -44,13 +44,15 @@ float USonheimUtility::CalculateDamageMultiplier(EElementalAttribute DefenseAttr
 	return 1.0f;
 }
 
-bool USonheimUtility::CheckMoveEnable(const UObject* WorldContextObject, const class AAreaObject* Caster, const class AAreaObject* Target, const FVector& StartLoc, const FVector& EndLoc)
+bool USonheimUtility::CheckMoveEnable(const UObject* WorldContextObject, const class AAreaObject* Caster, const class AAreaObject* Target, const FVector& StartLoc, FVector& EndLoc)
 {
 	UWorld* World{GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull)};
 	if (!World)
 	{
 		return false;
 	}
+	
+	EndLoc = FVector(EndLoc.X, EndLoc.Y, EndLoc.Z + 20.f);
 	
 	// StartLoc에서 EndLoc까지 중심점
 	const FVector TraceCenter{(StartLoc + EndLoc) * 0.5f};

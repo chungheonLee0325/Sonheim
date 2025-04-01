@@ -249,14 +249,14 @@ void UPartnerPatrolMode::MoveToPlayer()
 		FQuat Rotation{FQuat(FRotator(0.f, Yaw, 0.f))};
 		Direction = Rotation.RotateVector(Direction);
 		
-		FVector DesiredLocation{TargetLocation + Direction * 150.f};
+		FVector DesiredLocation{TargetLocation + Direction * 200.f};
 
 		if (!NavSystem->ProjectPointToNavigation(DesiredLocation, Next))
 		{
 			// 갈 곳 없으면
 			return;
 		}
-		
+
 		//if (!CheckMoveEnable(TargetLocation, Next.Location))
 		if (!USonheimUtility::CheckMoveEnable(this, m_Owner, m_Owner->GetAggroTarget(), TargetLocation, Next.Location))		
 		{

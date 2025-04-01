@@ -30,7 +30,7 @@ void URolling::OnCastTick(float DeltaTime)
 void URolling::OnCastFire()
 {
 	Super::OnCastFire();
-	FLog::Log("Rolling");
+	//FLog::Log("Rolling");
 	StartRoll();
 }
 

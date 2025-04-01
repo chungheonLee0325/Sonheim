@@ -277,4 +277,6 @@ public:
 
 	UFUNCTION()
 	void OnRep_IsAttached();
+	UFUNCTION(NetMulticast, Reliable)
+	void Temp();
 };
