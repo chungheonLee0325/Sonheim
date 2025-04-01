@@ -35,7 +35,7 @@ void APalSphere::InitElement(AAreaObject* Caster, AAreaObject* Target, const FVe
 
 	FVector firePos = Caster->GetMesh()->GetSocketLocation("Weapon_R");
 	FVector targetPos = firePos + CameraForward * 1200.f;
-	
+
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(this);
 	QueryParams.AddIgnoredActor(Caster);
@@ -127,10 +127,21 @@ void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
 	{
 		FLog::Log("This Pal is a owned pal");
 	}
-	int randNum = FMath::RandRange(1, 10);
+	//AddActorWorldOffset(FVector(0, 0, 100));
+	
+	int randX = FMath::RandRange(-80,80);
+	int randY = FMath::RandRange(-80,80);
+	Root->AddImpulse(FVector(randX, randY, 700));
 
-	// 70 % 확률 포획
-	if (randNum <= 5)
+	int randNum = FMath::RandRange(1, 100);
+	// 50 % 확률 포획
+	// 남은 체력 비례해서 확률 up 피 30% 이하 100 %
+	float hpRatio = Target->GetHP() / Target->GetMaxHP();
+	int captureRate = (1.0 - (hpRatio - 0.3f) * (0.5f / 0.7f)) * 100;
+	FLog::Log("Capture Rate: {}", captureRate);
+	FLog::Log("randNum : {}", randNum);
+
+	if (randNum <= captureRate)
 	{
 		Target->SetPartnerOwner(Caster);
 	}
