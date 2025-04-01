@@ -278,19 +278,36 @@ void ASonheimPlayer::Multicast_RegisterOwnPal_Implementation(ABaseMonster* Pal)
 	}
 }
 
+void ASonheimPlayer::RefreshWeaponSkillToSkillInstanceMap()
+{
+	for (auto& pair : WeaponSkillMap)
+	{
+		int skillID = pair.Value->GetSkillID();
+		m_SkillInstanceMap.Remove(skillID);
+		m_SkillInstanceMap.Add(skillID, pair.Value);
+	}
+}
+
 void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventoryItem Item)
 {
-	FItemData* ItemData = m_GameInstance->GetDataItem(Item.ItemID);
 	if (WeaponSlot == EEquipmentSlotType::Weapon1 || WeaponSlot == EEquipmentSlotType::Weapon2 || WeaponSlot ==
 		EEquipmentSlotType::Weapon3 || WeaponSlot == EEquipmentSlotType::Weapon4)
 	{
-		if (!WeaponSkillMap.IsEmpty())
-		{
-			WeaponSkillMap[WeaponSlot] = CommonAttack;
-		}
+		FItemData* ItemData = m_GameInstance->GetDataItem(Item.ItemID);
+		FSkillData* SkillData = ItemData == nullptr
+			                        ? nullptr
+			                        : m_GameInstance->GetDataSkill(ItemData->EquipmentData.SkillID);
 
-		if (ItemData == nullptr)
+		// 아이템 해제 or invalid skill
+		if (ItemData == nullptr || SkillData == nullptr)
 		{
+			// 기존 스킬 지우기
+			m_SkillInstanceMap.Remove(WeaponSkillMap[WeaponSlot]->GetSkillID());
+			// 기본 스킬(주먹 평타) 등록
+			WeaponSkillMap[WeaponSlot] = CommonAttack;
+			// 목록 최신화
+			RefreshWeaponSkillToSkillInstanceMap();
+
 			if (SelectedWeaponSlot == WeaponSlot)
 			{
 				WeaponComponent->SetSkeletalMesh(nullptr);
@@ -299,22 +316,19 @@ void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventory
 			return;
 		}
 
-		FSkillData* SkillData = m_GameInstance->GetDataSkill(ItemData->EquipmentData.SkillID);
-		if (SkillData == nullptr)
-		{
-			m_SkillInstanceMap.Remove(WeaponSkillMap[WeaponSlot]->GetSkillData()->SkillID);
-			WeaponSkillMap[WeaponSlot] = CommonAttack;
-			//WeaponSkillMap.Add(WeaponSlot, CommonAttack);
-			return;
-		}
+		// 새로운 무기 장착
+		// 무기 스킬 생성
 		UBaseSkill* weaponSkill = NewObject<UBaseSkill>(this, SkillData->SkillClass);
 		weaponSkill->InitSkill(SkillData);
-
+		// 무기 스킬 등록
 		WeaponSkillMap[WeaponSlot] = weaponSkill;
-		m_SkillInstanceMap.Remove(SkillData->SkillID);
-		m_SkillInstanceMap.Add(SkillData->SkillID,weaponSkill);
+		// Skill Instance Map 최신화
+		RefreshWeaponSkillToSkillInstanceMap();
+		// m_SkillInstanceMap.Remove(SkillData->SkillID);
+		// m_SkillInstanceMap.Add(SkillData->SkillID,weaponSkill);
 		//WeaponSkillMap.Add(WeaponSlot, weaponSkill);
 
+		// 외형 최신화
 		if (SelectedWeaponSlot == WeaponSlot)
 		{
 			WeaponComponent->SetSkeletalMesh(ItemData->EquipmentData.EquipmentMesh);
@@ -572,7 +586,7 @@ void ASonheimPlayer::Server_LeftMouse_Triggered_Implementation()
 	}
 	else
 	{
-		auto skill = GetWeaponAttack();
+		auto skill = GetSkillByID(GetWeaponAttack()->GetSkillID());
 		//auto skill = GetCurrentSkill();
 		if (CastSkill(skill, this))
 		{
@@ -699,7 +713,10 @@ void ASonheimPlayer::MultiCast_RightMouse_Released_Implementation()
 {
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
-	S_PlayerAnimInstance->bIsLockOn = false;
+	if (S_PlayerAnimInstance != nullptr)
+	{
+		S_PlayerAnimInstance->bIsLockOn = false;
+	}
 }
 
 void ASonheimPlayer::Jump_Pressed()
@@ -895,7 +912,7 @@ void ASonheimPlayer::Server_SummonPal_Pressed_Implementation()
 void ASonheimPlayer::MultiCast_SummonPal_Pressed_Implementation()
 {
 	if (HasAuthority()) return;
-	
+
 	FOnMontageEnded EndDelegate;
 	EndDelegate.BindLambda([this](UAnimMontage* Montage, bool bInterrupted)
 	{
@@ -965,13 +982,11 @@ void ASonheimPlayer::SetUsePartnerSkill(bool UsePartnerSkill)
 	if (UsePartnerSkill)
 	{
 		S_PlayerAnimInstance->bUsingPartnerSkill = true;
-		
 	}
 	else
 	{
 		S_PlayerAnimInstance->bUsingPartnerSkill = false;
 	}
-	
 }
 
 bool ASonheimPlayer::CanAttack(AActor* TargetActor)

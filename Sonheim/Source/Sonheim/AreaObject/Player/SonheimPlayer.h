@@ -251,6 +251,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	ASonheimPlayerState* GetSPlayerState() const {return S_PlayerState;};
 
+	// 같은 무기 중복 사용으로 인한 오류 방지.. 전부 최신화
+	void RefreshWeaponSkillToSkillInstanceMap();
 	UFUNCTION(BlueprintCallable)
 	void UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventoryItem Item);
 

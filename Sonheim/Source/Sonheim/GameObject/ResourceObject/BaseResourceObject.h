@@ -27,7 +27,11 @@ public:
 	void SpawnPartialResources(int32 SegmentsLost);
 	virtual float TakeDamage(float Damage, const FDamageEvent& DamageEvent, AController* EventInstigator,
 							  AActor* DamageCauser) override;
-
+	
+	// 클라이언트에게 데미지 효과 적용 (VFX, SFX 등)
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastDamageEffect(float Damage, FVector HitLocation, AActor* DamageCauser, float ElementDamageMultiplier);
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

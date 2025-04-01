@@ -22,6 +22,10 @@ ABaseItem::ABaseItem()
 	CollectionSphere->SetSphereRadius(35);
 	RootComponent = CollectionSphere;
 
+	// Network Setting
+	bReplicates = true;
+	SetReplicateMovement(true);
+
 	// 컴포넌트 초기화
 	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
 
