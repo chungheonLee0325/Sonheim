@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "Interfaces/OnlineSessionInterface.h"
 #include "Sonheim/Utilities/SessionUtil.h"
 #include "FindRoomUI.generated.h"
 
@@ -31,14 +30,16 @@ public:
 	void OnClickedBackFromFind();
 	UFUNCTION()
 	void OnClickedFind();
-	
+
+	UPROPERTY(meta = (BindWidget))
+	class UScrollBox* Scroll_RoomList;
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class URoomInfoUI> RoomInfoUIFactory;
+
 public:
 	FOnBackButtonClicked OnBackButtonClicked;
-
-	FOnJoinSessionCompleteDelegate OnJoinSessionCompleteDelegate;
 	
 	FSessionSearchData SessionSearchData;
 
-	void OnJoinSession(FName SessionName, EOnJoinSessionCompleteResult::Type Type);
 	void OnCompleteSearch(bool bIsSuccess);
 };

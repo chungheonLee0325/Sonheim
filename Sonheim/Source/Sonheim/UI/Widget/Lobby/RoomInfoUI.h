@@ -3,7 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "OnlineSessionSettings.h"
 #include "Blueprint/UserWidget.h"
+#include "Interfaces/OnlineSessionInterface.h"
+#include "Sonheim/Utilities/SessionUtil.h"
 #include "RoomInfoUI.generated.h"
 
 /**
@@ -28,5 +31,14 @@ public:
 	UFUNCTION()
 	void OnClickedJoinRoom();
 	
-	void SetInfo(int32 Idx, FString Info);
+	void SetInfo(const FOnlineSessionSearchResult& SearchResult, int32 Idx, FString Info);
+
+	FOnJoinSessionCompleteDelegate OnJoinSessionCompleteDelegate;
+
+	FSessionSearchData SessionSearchData;
+	
+	FOnlineSessionSearchResult SessionSearchResult;
+
+	void OnJoinSession(FName SessionName, EOnJoinSessionCompleteResult::Type Type);
+
 };
