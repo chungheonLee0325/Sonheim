@@ -260,7 +260,6 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 	}
 
 	// IFF 처리
-	// ToDo : Can Attack Logic 추가? -> 설인 만들면 추가해야할듯
 	AAreaObject* damageCauser = Cast<AAreaObject>(DamageCauser);
 	if (damageCauser)
 	{
@@ -271,7 +270,7 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 		}
 	}
 
-	if (IsDie() || HasCondition(EConditionBitsType::Invincible))
+	if (IsDie() || HasCondition(EConditionBitsType::Invincible) || HasCondition(EConditionBitsType::Hidden))
 		return 0.0f;
 
 	float ActualDamage = Damage;

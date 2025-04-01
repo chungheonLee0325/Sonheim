@@ -4,6 +4,7 @@
 #include "BaseResourceObject.h"
 
 #include "Components/BoxComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/GameManager/SonheimGameMode.h"
 #include "Sonheim/GameObject/Items/BaseItem.h"
@@ -26,6 +27,9 @@ ABaseResourceObject::ABaseResourceObject()
 	m_StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
 	m_StaticMeshComponent->SetCollisionProfileName("NoCollision");
 	m_StaticMeshComponent->SetupAttachment(RootComponent);
+
+	bReplicates = true;
+	SetReplicateMovement(true);
 }
 
 // Called when the game starts or when spawned
@@ -141,6 +145,11 @@ void ABaseResourceObject::SpawnPartialResources(int32 SegmentsLost)
 float ABaseResourceObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, AController* EventInstigator,
                                       AActor* DamageCauser)
 {
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		return 0.0f; // 클라이언트에서는 데미지 처리 안함
+	}
+	
 	if (!CanHarvest)
 		return 0.0f;
 
@@ -193,14 +202,30 @@ float ABaseResourceObject::TakeDamage(float Damage, const FDamageEvent& DamageEv
 	{
 		if (CanHarvest)
 		{
+			FVector SpawnPosition = hitResult.Location;
+			// Spawn Destroy SFX
+			if (dt_ResourceObject->DestroySoundID != 0)
+			{
+				m_GameMode->PlayPositionalSound(dt_ResourceObject->DestroySoundID, SpawnPosition);
+			}
+			// Spawn Harvest VFX
+			if (dt_ResourceObject->DestroyEffect != nullptr)
+			{
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), dt_ResourceObject->DestroyEffect, SpawnPosition);
+			}
 			OnDestroy();
 		}
 	}
 
-	// Spawn floating damage
+	MulticastDamageEffect(ActualDamage, hitResult.Location, DamageCauser, damageCoefficient);
 
-	//FVector SpawnLocation = GetActorLocation();
-	FVector SpawnLocation = hitResult.Location;
+	return ActualDamage;
+}
+
+void ABaseResourceObject::MulticastDamageEffect_Implementation(float Damage, FVector HitLocation, AActor* DamageCauser, float DamageCoefficient)
+{
+	// Spawn floating damage
+	FVector SpawnLocation = HitLocation;
 
 	FTransform SpawnTransform(FRotator::ZeroRotator, SpawnLocation);
 
@@ -208,17 +233,20 @@ float ABaseResourceObject::TakeDamage(float Damage, const FDamageEvent& DamageEv
 		AFloatingDamageActor::StaticClass(), SpawnTransform))
 	{
 		// FloatingDamageType 계산
-		EFloatingOutLineDamageType damageType = damageCoefficient > 1.0f
-			                                        ? EFloatingOutLineDamageType::WeakPointDamage
-			                                        : EFloatingOutLineDamageType::Normal;
-		DamageActor->Initialize(ActualDamage, damageType);
+		EFloatingOutLineDamageType damageType = DamageCoefficient > 1.0f
+													? EFloatingOutLineDamageType::WeakPointDamage
+													: EFloatingOutLineDamageType::Normal;
+		DamageActor->Initialize(Damage, damageType);
 	}
-
+	
 	// Spawn Harvest SFX
 	if (dt_ResourceObject->HarvestSoundID != 0)
 	{
 		m_GameMode->PlayPositionalSound(dt_ResourceObject->HarvestSoundID, GetActorLocation());
 	}
-
-	return ActualDamage;
+	// Spawn Harvest VFX
+	if (dt_ResourceObject->HarvestEffect != nullptr)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), dt_ResourceObject->HarvestEffect, SpawnLocation);
+	}
 }
