@@ -20,6 +20,7 @@
 #include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 #include "Sonheim/UI/Widget/BaseStatusWidget.h"
 #include "Sonheim/UI/Widget/Monster/MonsterStatusWidget.h"
+#include "Sonheim/Utilities/CommonUtil.h"
 
 // Sets default values
 ABaseMonster::ABaseMonster()
@@ -28,7 +29,14 @@ ABaseMonster::ABaseMonster()
 	PrimaryActorTick.bCanEverTick = true;
 
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
+	GetMesh()->SetIsReplicated(true);
+	
+	SetNetUpdateFrequency(120.f);
+	SetMinNetUpdateFrequency(50.f);
+	
+	GetCapsuleComponent()->SetNetAddressable();
+	GetCapsuleComponent()->SetIsReplicated(true);
+	
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 
 	// AI Perception
@@ -74,6 +82,10 @@ ABaseMonster::ABaseMonster()
 	HeadVFXPoint = CreateDefaultSubobject<USceneComponent>(TEXT("HeadVFXPoint"));
 
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+
+	bReplicates = true;
+	bNetUseOwnerRelevancy = true;
+
 }
 
 UBaseSkillRoulette* ABaseMonster::GetSkillRoulette() const
@@ -113,11 +125,11 @@ void ABaseMonster::SetHPWidgetVisibilityByDuration(float Duration)
 {
 	SetHPWidgetVisibility(true);
 	// 파트너 팰은 항상 UI 보이기
-	if (PartnerOwner != nullptr) return;
-	
+	if (PartnerOwner != nullptr)
+		return;
+
 	TWeakObjectPtr<ABaseMonster> weakThis = this;
-	GetWorld()->GetTimerManager().SetTimer(HPWidgetVisibleTimer, [weakThis]()
-	{
+	GetWorld()->GetTimerManager().SetTimer(HPWidgetVisibleTimer, [weakThis]() {
 		ABaseMonster* strongThis = weakThis.Get();
 		if (strongThis != nullptr)
 		{
@@ -206,8 +218,7 @@ void ABaseMonster::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 void ABaseMonster::OnBodyBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                       UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
                                       const FHitResult& SweepResult)
-{
-}
+{}
 
 UBaseAiFSM* ABaseMonster::CreateFSM()
 {
@@ -318,6 +329,7 @@ void ABaseMonster::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& O
 	DOREPLIFETIME(ABaseMonster, bIsCanAttack);
 	DOREPLIFETIME(ABaseMonster, bIsActive);
 	DOREPLIFETIME(ABaseMonster, bIsCanCalled);
+	DOREPLIFETIME(ABaseMonster, bIsAttach);
 }
 
 float ABaseMonster::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
@@ -488,7 +500,7 @@ void ABaseMonster::DeactivateMonster()
 
 	// UI 비활성화
 	SetHPWidgetVisibility(false);
-	
+
 	// AI 컨트롤러 비활성화
 	if (AIController)
 	{
@@ -503,7 +515,8 @@ void ABaseMonster::DeactivateMonster()
 bool ABaseMonster::CanAttack(AActor* TargetActor)
 {
 	bool result = Super::CanAttack(TargetActor);
-	if (!result) return false;
+	if (!result)
+		return false;
 
 	// 자원 처리
 	ABaseResourceObject* targetResourceObject = Cast<ABaseResourceObject>(TargetActor);
@@ -520,19 +533,23 @@ bool ABaseMonster::CanAttack(AActor* TargetActor)
 		if (PartnerOwner != nullptr)
 		{
 			// 다른 주인있는 팰 공격 x
-			if (targetMonster->PartnerOwner != nullptr) return false;
+			if (targetMonster->PartnerOwner != nullptr)
+				return false;
 				// 주인없는 팰은 공격 가능
-			else return true;
+			else
+				return true;
 		}
 		else
 		{
 			// 주인있는 팰은 공격 가능
-			if (targetMonster->PartnerOwner != nullptr) return true;
+			if (targetMonster->PartnerOwner != nullptr)
+				return true;
 				// 다른 야생팰 공격 x
-			else return false;
+			else
+				return false;
 		}
 	}
-	
+
 	// 플레이어 처리
 	ASonheimPlayer* targetPlayer = Cast<ASonheimPlayer>(TargetActor);
 	if (targetPlayer)
@@ -540,10 +557,47 @@ bool ABaseMonster::CanAttack(AActor* TargetActor)
 		// 내가 주인이 있다면 공격 불가
 		if (PartnerOwner != nullptr)
 			return false;
-		else return true;
+		else
+			return true;
 	}
 
 	return false;
+}
+
+void ABaseMonster::OnRep_IsAttached()
+{
+	UE_LOG(LogTemp, Display, TEXT("호출 제한1: %s"),
+		*FCommonUtil::GetClassEnumKeyAsString(GetLocalRole()))
+
+	if (PartnerOwner && PartnerOwner->GetMesh())
+	{
+		if (bIsAttach)
+		{
+			UE_LOG(LogTemp, Display, TEXT("호출 제한2: %s"),
+				*FCommonUtil::GetClassEnumKeyAsString(GetLocalRole()))
+			GetCapsuleComponent()->SetCollisionProfileName(TEXT("NoCollision"));
+			GetMesh()->SetRelativeLocation(FVector(0), false, nullptr, ETeleportType::TeleportPhysics);
+
+			SetActorEnableCollision(false);
+			GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+			GetCharacterMovement()->StopMovementImmediately();
+			
+			AttachToComponent(PartnerOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+			                  FName("PartnerWeapon"));
+			PartnerOwner->SetUsePartnerSkill(true);
+		}
+		else
+		{
+			DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+			GetCapsuleComponent()->SetCollisionProfileName(TEXT("Monster"));
+			SetActorEnableCollision(true);
+			GetMesh()->SetRelativeLocation(FVector(0, 0, -60));
+			PartnerOwner->SetUsePartnerSkill(false);
+
+			GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+			GetCharacterMovement()->SetActive(true);
+		}
+	}
 }
 
 

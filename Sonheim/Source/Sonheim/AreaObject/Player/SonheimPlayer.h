@@ -426,20 +426,8 @@ private:
 	bool bUsingPartnerSkill = false;
 
 public:
-	void SetUsePartnerSkill(bool UsePartnerSkill)
-	{
-		this->bUsingPartnerSkill = UsePartnerSkill;
-
-		if (UsePartnerSkill)
-		{
-			S_PlayerAnimInstance->bUsingPartnerSkill = true;
-		}
-		else
-		{
-			S_PlayerAnimInstance->bUsingPartnerSkill = false;
-		}
-	}
-
+	void SetUsePartnerSkill(bool UsePartnerSkill);
+	
 	virtual bool CanAttack(AActor* TargetActor) override;
 
 private:
@@ -452,8 +440,9 @@ private:
 	int CurrentPalIndex = 0;
 	UPROPERTY(VisibleAnywhere, Category = "Pals")
 	TMap<int, ABaseMonster*> m_OwnedPals;
-	UPROPERTY(VisibleAnywhere, Category = "Pals")
+	UPROPERTY(VisibleAnywhere, Category = "Pals")	
 	ABaseMonster* m_SelectedPal = nullptr;
 	UPROPERTY(VisibleAnywhere, Category = "Pals")
 	ABaseMonster* m_SummonedPal = nullptr;
+	
 };

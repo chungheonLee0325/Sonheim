@@ -4,6 +4,7 @@
 
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "BaseAiFSM.h"
+#include "Net/UnrealNetwork.h"
 
 
 void UBaseAiState::SetAiFSM(UBaseAiFSM* AiFSM)
@@ -24,6 +25,12 @@ EAiStateType UBaseAiState::AiStateType() const
 void UBaseAiState::ChangeState(EAiStateType NewState) const
 {
 	m_AiFSM->ChangeState(NewState);
+}
+
+void UBaseAiState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	UObject::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(UBaseAiState, m_Owner);
 }
 
 void UBaseAiState::SetOwner(ABaseMonster* Owner)

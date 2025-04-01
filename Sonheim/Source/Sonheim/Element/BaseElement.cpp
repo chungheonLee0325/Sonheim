@@ -73,12 +73,12 @@ FVector ABaseElement::Fire(AAreaObject* Caster, AAreaObject* Target, FVector Tar
 	{
 		if (m_Caster->bShowDebug)
 		{
-			FPredictProjectilePathParams PredictParams(5.f, StartLoc, OutVelocity, 15.f);
-			PredictParams.DrawDebugTime = 2.f;
-			PredictParams.DrawDebugType = EDrawDebugTrace::Type::ForDuration;
-			PredictParams.OverrideGravityZ = GetWorld()->GetGravityZ();
-			FPredictProjectilePathResult Result;
-			UGameplayStatics::PredictProjectilePath(this, PredictParams, Result);
+			// FPredictProjectilePathParams PredictParams(5.f, StartLoc, OutVelocity, 15.f);
+			// PredictParams.DrawDebugTime = 2.f;
+			// PredictParams.DrawDebugType = EDrawDebugTrace::Type::ForDuration;
+			// PredictParams.OverrideGravityZ = GetWorld()->GetGravityZ();
+			// FPredictProjectilePathResult Result;
+			// UGameplayStatics::PredictProjectilePath(this, PredictParams, Result);
 		}
 	}
 

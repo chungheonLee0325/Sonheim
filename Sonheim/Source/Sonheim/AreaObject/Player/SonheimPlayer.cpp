@@ -11,6 +11,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Net/UnrealNetwork.h"
 #include "Sonheim/Animation/Player/PlayerAniminstance.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
@@ -959,6 +960,22 @@ void ASonheimPlayer::Restart_Pressed()
 	}
 	// 
 	RespawnAtCheckpoint();
+}
+
+void ASonheimPlayer::SetUsePartnerSkill(bool UsePartnerSkill)
+{
+	this->bUsingPartnerSkill = UsePartnerSkill;
+
+	if (UsePartnerSkill)
+	{
+		S_PlayerAnimInstance->bUsingPartnerSkill = true;
+		
+	}
+	else
+	{
+		S_PlayerAnimInstance->bUsingPartnerSkill = false;
+	}
+	
 }
 
 bool ASonheimPlayer::CanAttack(AActor* TargetActor)

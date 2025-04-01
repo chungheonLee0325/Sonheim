@@ -271,4 +271,10 @@ public:
 	bool bIsCanCalled = false;
 	
 	bool bCanJump = false;
+
+	UPROPERTY(ReplicatedUsing = OnRep_IsAttached)
+	bool bIsAttach{false};
+
+	UFUNCTION()
+	void OnRep_IsAttached();
 };

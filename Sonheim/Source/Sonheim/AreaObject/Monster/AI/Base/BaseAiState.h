@@ -62,7 +62,7 @@ protected:
 	UPROPERTY()
 	UBaseAiFSM* m_AiFSM;
 
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	ABaseMonster* m_Owner;
 
 	UPROPERTY()
@@ -74,4 +74,7 @@ protected:
 	// 실패 후 전이 State
 	UPROPERTY()
 	EAiStateType m_FailState;
+
+public:
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 };

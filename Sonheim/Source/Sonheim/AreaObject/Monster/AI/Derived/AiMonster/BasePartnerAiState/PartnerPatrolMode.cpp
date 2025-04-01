@@ -23,7 +23,8 @@ void UPartnerPatrolMode::ServerEnter()
 	{
 		//FLog::Log("UPartnerPatrolMode");
 	}
-
+	
+	JumpTime = FMath::RandRange(1.f, 12.f);
 	NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
 }
 
@@ -237,11 +238,6 @@ void UPartnerPatrolMode::TeleportToPlayer()
 void UPartnerPatrolMode::MoveToPlayer()
 {
 	FNavLocation Next;
-
-	// ASonheimPlayer* PartnerOwner = {Cast<ABaseMonster>(m_Owner)->PartnerOwner};
-	// // ToDo : PartnerOwner 설정되면 없애기
-	// ASonheimPlayer* Player{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-	// PartnerOwner = Player;
 	
 	FVector TargetLocation{m_Owner->PartnerOwner->GetActorLocation()};
 	FVector Direction{m_Owner->PartnerOwner->GetActorForwardVector()};
@@ -260,8 +256,7 @@ void UPartnerPatrolMode::MoveToPlayer()
 			// 갈 곳 없으면
 			return;
 		}
-
-		// 공격이 안되는 곳이면
+		
 		//if (!CheckMoveEnable(TargetLocation, Next.Location))
 		if (!USonheimUtility::CheckMoveEnable(this, m_Owner, m_Owner->GetAggroTarget(), TargetLocation, Next.Location))		
 		{
