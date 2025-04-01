@@ -2,6 +2,8 @@
 
 
 #include "AreaObject.h"
+
+#include "NiagaraFunctionLibrary.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Sonheim/AreaObject/Attribute/HealthComponent.h"
@@ -333,7 +335,8 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 
 	// 모든 클라이언트에게 데미지 효과 전파
 	FVector spawnLocation = hitResult.Location != FVector::ZeroVector ? hitResult.Location : GetActorLocation();
-	MulticastDamageEffect(ActualDamage, spawnLocation, DamageCauser, bIsWeakPointHit, elementDamageMultiplier);
+	MulticastDamageEffect(ActualDamage, spawnLocation, DamageCauser, bIsWeakPointHit, elementDamageMultiplier,
+	                      attackData);
 
 	return ActualDamage;
 }
@@ -805,7 +808,8 @@ void AAreaObject::Server_CalcDamage_Implementation(FAttackData AttackData, AActo
 }
 
 void AAreaObject::MulticastDamageEffect_Implementation(float Damage, FVector HitLocation, AActor* DamageCauser,
-                                                       bool bWeakPoint, float ElementDamageMultiplier)
+                                                       bool bWeakPoint, float ElementDamageMultiplier,
+                                                       const FAttackData& AttackData)
 {
 	// 클라이언트 및 서버 모두에서 실행되는 데미지 시각/청각 효과
 
@@ -836,6 +840,25 @@ void AAreaObject::MulticastDamageEffect_Implementation(float Damage, FVector Hit
 	if (dt_AreaObject->HitSoundID != 0)
 	{
 		PlayPositionalSound(dt_AreaObject->HitSoundID, HitLocation);
+	}
+
+	// Spawn Hit SFX
+	if (AttackData.HitSFX != nullptr)
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), AttackData.HitSFX, HitLocation);
+	}
+
+	// Spawn Hit SFX
+	if (AttackData.HitVFX_N != nullptr)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), AttackData.HitVFX_N, HitLocation,
+		                                               FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
+	}
+	// Spawn Hit SFX
+	else if (AttackData.HitVFX_P != nullptr)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), AttackData.HitVFX_P, HitLocation,
+		                                         FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
 	}
 }
 

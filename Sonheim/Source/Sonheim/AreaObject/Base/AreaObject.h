@@ -123,7 +123,7 @@ public:
 
 	// 클라이언트에게 데미지 효과 적용 (VFX, SFX 등)
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastDamageEffect(float Damage, FVector HitLocation, AActor* DamageCauser, bool bWeakPoint, float ElementDamageMultiplier);
+	void MulticastDamageEffect(float Damage, FVector HitLocation, AActor* DamageCauser, bool bWeakPoint, float ElementDamageMultiplier, const FAttackData& AttackData);
 
 	//UFUNCTION(BlueprintCallable)
 	UFUNCTION(BlueprintCallable, NetMulticast, reliable)

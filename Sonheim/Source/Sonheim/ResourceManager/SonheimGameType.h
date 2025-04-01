@@ -10,6 +10,7 @@
 // Enum
 // 언리얼 리플렉션 시스템과 통합하기 위해 UENUM() 매크로를 사용
 
+class UNiagaraSystem;
 class ABaseItem;
 class UBaseSkill;
 // ConditionBits - 비트마스크를 활용한 죽음, 무적 
@@ -427,6 +428,22 @@ struct FAttackData
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bUseCustomKnockbackDirection"))
 	FVector KnockBackDirection = FVector::ForwardVector; // 커스텀 넉백 방향
+
+	// Attack이 Hit했을때 SFX
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* HitSFX = nullptr;
+
+	// Attack이 Hit했을때 VFX - ParticleSystem
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UParticleSystem* HitVFX_P = nullptr;
+
+	// Attack이 Hit했을때 VFX - NiagaraSystem
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UNiagaraSystem* HitVFX_N = nullptr;
+	
+	// VFX 스케일 배율 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float VFXScale = 1.0f;
 };
 
 // m_SkillData 테이블 정보, 데미지 정보등 관리
