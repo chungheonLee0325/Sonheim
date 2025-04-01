@@ -80,6 +80,10 @@ private:
 	void On_Menu_Pressed(const FInputActionValue& Value);
 	void On_Menu_Released(const FInputActionValue& Value);
 
+	/** Called for Glider input */
+	void On_Glider_Pressed(const FInputActionValue& InputActionValue);
+	void On_Glider_Released(const FInputActionValue& InputActionValue);
+
 	// Owner
 	UPROPERTY(VisibleAnywhere)
 	ASonheimPlayer* m_Player;
@@ -177,7 +181,16 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* RestartAction;
 
+	/** Glider Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* GliderAction;
+
 	bool IsMenuActivate = false;
+
+	// 점프 횟수 추적을 위한 변수
+	float LastJumpTime = 0.0f;
+	int JumpCount = 0;
+	const float DoubleJumpTimeThreshold = 0.5f; // 더블 점프 인식 시간
 
 public:
 	// UFUNCTION(Server, Reliable)

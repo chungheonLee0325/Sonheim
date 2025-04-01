@@ -8,6 +8,7 @@
 #include "OnlineSessionSettings.h"
 #include "SonheimPlayer.h"
 #include "SonheimPlayerState.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Online/OnlineSessionNames.h"
 #include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
@@ -133,12 +134,12 @@ ASonheimPlayerController::ASonheimPlayerController()
 		MenuAction = tempMenu.Object;
 	}
 
-	// static ConstructorHelpers::FObjectFinder<UInputAction> tempRestart(
-	// TEXT("/Script/EnhancedInput.InputAction'/Game/_Input/IA_Restart.IA_Restart'"));
-	// if (tempRestart.Succeeded())
-	// {
-	// 	RestartAction = tempRestart.Object;
-	// }
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempGliderAction(
+		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Glider.IA_Glider'"));
+	if (tempGliderAction.Succeeded())
+	{
+		GliderAction = tempGliderAction.Object;
+	}
 
 	m_Player = nullptr;
 
@@ -344,6 +345,12 @@ void ASonheimPlayerController::SetupInputComponent()
 		// Restart
 		EnhancedInputComponent->BindAction(RestartAction, ETriggerEvent::Started, this,
 		                                   &ASonheimPlayerController::On_Menu_Pressed);
+
+		// Glider (점프 버튼 두 번 누름으로도 활성화)
+		EnhancedInputComponent->BindAction(GliderAction, ETriggerEvent::Started, this,
+		                                   &ASonheimPlayerController::On_Glider_Pressed);
+		EnhancedInputComponent->BindAction(GliderAction, ETriggerEvent::Completed, this,
+		                                   &ASonheimPlayerController::On_Glider_Released);
 	}
 	else
 	{
@@ -431,7 +438,30 @@ void ASonheimPlayerController::On_Dodge_Pressed(const FInputActionValue& InputAc
 void ASonheimPlayerController::On_Jump_Pressed(const FInputActionValue& InputActionValue)
 {
 	if (IsMenuActivate) return;
-	m_Player->Jump_Pressed();
+	
+	float CurrentTime = GetWorld()->GetTimeSeconds();
+	
+	// 첫 번째 점프 후 짧은 시간 내에 두 번째 점프가 입력되면 글라이더 활성화
+	if (CurrentTime - LastJumpTime < DoubleJumpTimeThreshold)
+	{
+  		JumpCount++;
+		
+		// 공중에 있을 때만 글라이더 작동
+		if (JumpCount >= 2 && m_Player && !m_Player->GetCharacterMovement()->IsMovingOnGround())
+		{
+			// 글라이더 활성화
+			m_Player->ActivateGlider();
+			JumpCount = 0;
+		}
+	}
+	else
+	{
+		// 첫 번째 점프
+		JumpCount = 1;
+		m_Player->Jump_Pressed();
+	}
+	
+	LastJumpTime = CurrentTime;
 }
 
 void ASonheimPlayerController::On_Jump_Released(const FInputActionValue& InputActionValue)
@@ -545,6 +575,24 @@ void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 void ASonheimPlayerController::On_Menu_Released(const FInputActionValue& Value)
 {
 	//if (!IsLocalController()) return;
+}
+
+void ASonheimPlayerController::On_Glider_Pressed(const FInputActionValue& InputActionValue)
+{
+	if (IsMenuActivate) return;
+	if (m_Player && !m_Player->GetCharacterMovement()->IsMovingOnGround())
+	{
+		m_Player->ActivateGlider();
+	}
+}
+
+void ASonheimPlayerController::On_Glider_Released(const FInputActionValue& InputActionValue)
+{
+	if (IsMenuActivate) return;
+	if (m_Player)
+	{
+		m_Player->DeactivateGlider();
+	}
 }
 
 void ASonheimPlayerController::OnRep_PlayerState()
