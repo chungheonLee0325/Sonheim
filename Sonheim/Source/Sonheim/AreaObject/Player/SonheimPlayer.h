@@ -80,7 +80,6 @@ public:
 	void SetPlayerState(EPlayerState NewState);
 	void SetPlayerNormalState() { SetPlayerState(EPlayerState::NORMAL); }
 	void SetComboState(bool bCanCombo, int SkillID);
-
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -97,9 +96,6 @@ protected:
 
 	virtual float HandleAttackDamageCalculation(float Damage) override;
 	virtual float HandleDefenceDamageCalculation(float Damage) override;
-
-	virtual void OnRep_IsDead() override;
-
 public:
 	// Movement
 	/** Called for movement input */

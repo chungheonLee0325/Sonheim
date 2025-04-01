@@ -9,7 +9,7 @@
 void UMeleeAttackNotifyState::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
                                           float TotalDuration)
 {
-	if (MeshComp && MeshComp->GetOwner())
+	if (MeshComp && MeshComp->GetOwner() && MeshComp->GetOwner()->HasAuthority())
 	{
 		AAreaObject* m_Owner = Cast<AAreaObject>(MeshComp->GetOwner());
 		if (m_Owner != nullptr && m_Owner->GetCurrentSkill() != nullptr)
@@ -25,7 +25,7 @@ void UMeleeAttackNotifyState::NotifyBegin(USkeletalMeshComponent* MeshComp, UAni
 
 void UMeleeAttackNotifyState::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation)
 {
-	if (MeshComp && MeshComp->GetOwner())
+	if (MeshComp && MeshComp->GetOwner() && MeshComp->GetOwner()->HasAuthority())
 	{
 		AAreaObject* m_Owner = Cast<AAreaObject>(MeshComp->GetOwner());
 		if (m_Owner != nullptr && m_Owner->GetCurrentSkill() != nullptr)

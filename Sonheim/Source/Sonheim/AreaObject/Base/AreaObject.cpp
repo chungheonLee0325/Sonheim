@@ -72,7 +72,7 @@ bool AAreaObject::CanAttack(AActor* TargetActor)
 {
 	// ToDo : Handle로 변경하는게 좋을듯... resource object 처리 핸들 , monster 처리 핸들 ....
 	AAreaObject* targetAreaObject = Cast<AAreaObject>(TargetActor);
-	if (targetAreaObject!=nullptr)
+	if (targetAreaObject != nullptr)
 	{
 		if (targetAreaObject->HasCondition(EConditionBitsType::Dead) || targetAreaObject->
 			HasCondition(EConditionBitsType::Invincible) || targetAreaObject->HasCondition(
@@ -196,7 +196,7 @@ void AAreaObject::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (m_CurrentSkill != nullptr)
+	if (HasAuthority() && m_CurrentSkill != nullptr)
 	{
 		m_CurrentSkill->OnCastTick(DeltaTime);
 	}
@@ -516,15 +516,17 @@ bool AAreaObject::CastSkill(UBaseSkill* Skill, AAreaObject* Target)
 void AAreaObject::Server_CastSkill_Implementation(int SkillID, AAreaObject* Target)
 {
 	UBaseSkill* Skill = GetSkillByID(SkillID);
+	Skill->OnCastStart(this, Target);
 	MultiCast_CastSkill(SkillID, Target);
 }
 
 void AAreaObject::MultiCast_CastSkill_Implementation(int SkillID, AAreaObject* Target)
 {
 	UBaseSkill* Skill = GetSkillByID(SkillID);
-	//m_AnimInstance->ServerMontage(Skill->GetSkillData()->Montage, EAnimationPriority::Action);
+	//if (!HasAuthority()) m_AnimInstance->ServerMontage(Skill->GetSkillData()->Montage, EAnimationPriority::Action);
+	if (!HasAuthority()) m_AnimInstance->Montage_Play(Skill->GetSkillData()->Montage);
 	UpdateCurrentSkill(Skill);
-	Skill->OnCastStart(this, Target);
+	//Skill->OnCastStart(this, Target);
 }
 
 
