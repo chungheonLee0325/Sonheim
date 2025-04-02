@@ -32,6 +32,8 @@ enum class EPlayerState : uint8
 	CANACTION,
 	// 사망 상태
 	DIE,
+	// 글라이딩 상태
+	GLIDING,
 };
 
 // 액션 제한을 관리하는 구조체
@@ -327,6 +329,29 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_RegisterOwnPal(ABaseMonster* Pal);
 
+	// Glider
+	UFUNCTION(BlueprintCallable, Category = "Movement|Glider")
+	void ActivateGlider();
+	
+	UFUNCTION(BlueprintCallable, Category = "Movement|Glider")
+	void DeactivateGlider();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_ActivateGlider();
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_ActivateGlider();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_DeactivateGlider();
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_DeactivateGlider();
+	
+	// 글라이더 상태 확인
+	UFUNCTION(BlueprintPure, Category = "Movement|Glider")
+	bool IsGliding() const { return bIsGliding; }
+
 private:
 	// Weapon Setting
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
@@ -442,5 +467,32 @@ private:
 	ABaseMonster* m_SelectedPal = nullptr;
 	UPROPERTY(VisibleAnywhere, Category = "Pals")
 	ABaseMonster* m_SummonedPal = nullptr;
+
+	// Glider Variable
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement|Glider", meta = (AllowPrivateAccess = "true"))
+	bool bIsGliding = false;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Glider")
+	float GliderFallSpeed = 200.0f;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Glider")
+	float GliderForwardSpeed = 800.0f;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Glider")
+	UAnimMontage* GliderOpenMontage;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Glider")
+	UAnimMontage* GliderLoopMontage;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Glider")
+	UAnimMontage* GliderCloseMontage;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement|Glider", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* GliderMeshComponent;
+	
+	// Glider Helper Function
+	void UpdateGliding(float DeltaTime);
+
+	virtual void Landed(const FHitResult& Hit) override;
 	
 };

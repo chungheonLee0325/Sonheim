@@ -84,8 +84,8 @@ ASonheimPlayer::ASonheimPlayer()
 	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.f;
-	GetCharacterMovement()->JumpZVelocity = 700.f;
-	GetCharacterMovement()->AirControl = 0.7f;
+	GetCharacterMovement()->JumpZVelocity = 900.f;
+	GetCharacterMovement()->AirControl = 0.2f;
 
 	// Create Camera Boom
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -105,6 +105,20 @@ ASonheimPlayer::ASonheimPlayer()
 	// Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 	FollowCamera->FieldOfView = 100;
+
+	// 글라이더 메시 컴포넌트 생성
+	GliderMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("GliderMesh"));
+	GliderMeshComponent->SetupAttachment(GetMesh(),TEXT("Weapon_R"));
+	GliderMeshComponent->SetRelativeLocation(FVector(14, -4.6f, 6));
+	GliderMeshComponent->SetRelativeRotation(FRotator(-45, -90, 115));
+	GliderMeshComponent->SetRelativeScale3D(FVector(0.006, 0, 0));
+	GliderMeshComponent->SetVisibility(false);
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> GliderMeshFinder(
+		TEXT("/Script/Engine.SkeletalMesh'/Game/_Resource/Item/Glider/Glider.Glider'"));
+	if (GliderMeshFinder.Succeeded())
+	{
+		GliderMeshComponent->SetSkeletalMesh(GliderMeshFinder.Object);
+	}
 }
 
 // Called when the game starts or when spawned
@@ -350,8 +364,14 @@ void ASonheimPlayer::Tick(float DeltaTime)
 		IncreaseHP(recovery);
 	}
 
-	// 
-	if (m_SelectedPal != nullptr)
+	// 글라이딩 상태일 때 업데이트
+	if (bIsGliding)
+	{
+		UpdateGliding(DeltaTime);
+	}
+
+	// ToDo : 별도의 지시사항으로 Enable Disable
+	if (m_SummonedPal != nullptr)
 	{
 		TArray<AActor*> TargetArr;
 		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABaseMonster::StaticClass(), TargetArr);
@@ -427,6 +447,12 @@ void ASonheimPlayer::InitializeStateRestrictions()
 	DieRestrictions.bCanMove = false;
 	DieRestrictions.bCanAction = false;
 	StateRestrictions.Add(EPlayerState::DIE, DieRestrictions);
+
+	// 글라이딩 상태 추가 - 회전과 특정 입력만 허용
+	FActionRestrictions GlidingRestrictions;
+	GlidingRestrictions.bCanMove = false; // 이동은 글라이더 로직에서 처리
+	GlidingRestrictions.bCanAction = false; // 액션 불가
+	StateRestrictions.Add(EPlayerState::GLIDING, GlidingRestrictions);
 
 	SetPlayerState(EPlayerState::NORMAL);
 }
@@ -721,6 +747,13 @@ void ASonheimPlayer::MultiCast_RightMouse_Released_Implementation()
 
 void ASonheimPlayer::Jump_Pressed()
 {
+	// 글라이딩 중에는 점프를 무시하고 글라이더 해제
+	if (bIsGliding)
+	{
+		DeactivateGlider();
+		return;
+	}
+
 	Jump();
 }
 
@@ -1155,4 +1188,138 @@ void ASonheimPlayer::Server_ThrowPalSphere_Triggered_Implementation()
 void ASonheimPlayer::MultiCast_ThrowPalSphere_Triggered_Implementation()
 {
 	// 필요한 경우 추가 동작 구현
+}
+
+void ASonheimPlayer::ActivateGlider()
+{
+	// 이미 글라이딩 중이거나 땅에 있거나 죽었으면 리턴
+	if (bIsGliding || GetCharacterMovement()->IsMovingOnGround() || IsDie())
+		return;
+
+	Server_ActivateGlider();
+}
+
+void ASonheimPlayer::Server_ActivateGlider_Implementation()
+{
+	// 서버 측 검증
+	if (GetCharacterMovement()->IsMovingOnGround() || IsDie())
+		return;
+
+	MultiCast_ActivateGlider();
+}
+
+void ASonheimPlayer::MultiCast_ActivateGlider_Implementation()
+{
+	bIsGliding = true;
+
+	// 글라이더 메시 표시
+	GliderMeshComponent->SetVisibility(true);
+
+	// 애니메이션 재생
+	if (GliderOpenMontage)
+	{
+		PlayAnimMontage(GliderOpenMontage);
+	}
+
+	// 상태 변경
+	SetPlayerState(EPlayerState::GLIDING);
+
+	// 무브먼트 컴포넌트 설정 변경
+	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
+	MovementComp->SetMovementMode(MOVE_Falling);
+	MovementComp->GravityScale = 0.1f; // 중력 감소
+	MovementComp->AirControl = 1.0f; // 공중 제어 최대화
+	MovementComp->FallingLateralFriction = 2.0f; // 측면 마찰력 증가
+
+	// 애니메이션 설정
+	if (S_PlayerAnimInstance)
+	{
+		S_PlayerAnimInstance->bIsGliding = true;
+	}
+}
+
+void ASonheimPlayer::DeactivateGlider()
+{
+	if (!bIsGliding)
+		return;
+
+	Server_DeactivateGlider();
+}
+
+void ASonheimPlayer::Server_DeactivateGlider_Implementation()
+{
+	MultiCast_DeactivateGlider();
+}
+
+void ASonheimPlayer::MultiCast_DeactivateGlider_Implementation()
+{
+	bIsGliding = false;
+
+	// 글라이더 닫는 애니메이션 재생
+	if (GliderCloseMontage)
+	{
+		PlayAnimMontage(GliderCloseMontage);
+	}
+
+	// 애니메이션 이벤트로 메시를 숨기도록 설정하거나 여기서 타이머로 처리
+	GliderMeshComponent->SetVisibility(false);
+
+	// 상태 초기화
+	SetPlayerState(EPlayerState::NORMAL);
+
+	// 무브먼트 컴포넌트 설정 복원
+	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
+	MovementComp->SetMovementMode(MOVE_Falling);
+	MovementComp->GravityScale = 1.0f;
+	MovementComp->AirControl = 0.2f;
+	MovementComp->FallingLateralFriction = 0.0f;
+
+	// 애니메이션 설정
+	if (S_PlayerAnimInstance)
+	{
+		S_PlayerAnimInstance->bIsGliding = false;
+	}
+}
+
+void ASonheimPlayer::UpdateGliding(float DeltaTime)
+{
+	if (!bIsGliding)
+		return;
+
+	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
+
+	// // 지면에 닿으면 글라이더 비활성화
+	// if (MovementComp->IsMovingOnGround())
+	// {
+	// 	DeactivateGlider();
+	// 	return;
+	// }
+
+	// 카메라 방향으로 이동
+	FVector ForwardVector = GetFollowCamera()->GetForwardVector();
+	ForwardVector.Z = 0; // 수평 방향만 유지
+	ForwardVector.Normalize();
+
+	// 속도 조절
+	FVector NewVelocity = ForwardVector * GliderForwardSpeed;
+	NewVelocity.Z = -GliderFallSpeed; // 천천히 하강
+
+	// 캐릭터 속도 설정
+	MovementComp->Velocity = NewVelocity;
+
+	// 캐릭터 회전 - 진행 방향으로
+	if (!ForwardVector.IsNearlyZero())
+	{
+		FRotator NewRotation = ForwardVector.Rotation();
+		SetActorRotation(FMath::RInterpTo(GetActorRotation(), NewRotation, DeltaTime, 5.0f));
+	}
+}
+
+void ASonheimPlayer::Landed(const FHitResult& Hit)
+{
+	// 착륙 시 글라이더가 활성화되어 있으면 비활성화
+	if (bIsGliding)
+	{
+		DeactivateGlider();
+	}
 }

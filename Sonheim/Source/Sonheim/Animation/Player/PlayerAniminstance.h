@@ -29,6 +29,8 @@ public:
 	bool bIsThrowPalSphere = false;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Replicated, Category=FSM)
 	bool bIsDead = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	bool bIsGliding = false;
 protected:
 	void NativeUpdateAnimation(float DeltaSeconds);
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
