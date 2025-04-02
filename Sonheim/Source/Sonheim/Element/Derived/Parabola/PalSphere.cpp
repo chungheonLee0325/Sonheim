@@ -123,6 +123,13 @@ void APalSphere::OnComponentHit(UPrimitiveComponent* HitComponent, AActor* Other
 
 void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
 {
+	// ToDo - Legacy :: 보스 안잡히도록..
+	if (Target->m_AreaObjectID == 118)
+	{
+		Target->DeactivateMonster();
+		return;
+	}
+	
 	if (Target->PartnerOwner != nullptr)
 	{
 		FLog::Log("This Pal is a owned pal");
@@ -140,7 +147,7 @@ void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
 	int captureRate = (1.0 - (hpRatio - 0.3f) * (0.5f / 0.7f)) * 100;
 	FLog::Log("Capture Rate: {}", captureRate);
 	FLog::Log("randNum : {}", randNum);
-
+	
 	if (randNum <= captureRate)
 	{
 		Target->SetPartnerOwner(Caster);
