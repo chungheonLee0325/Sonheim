@@ -248,6 +248,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Checkpoint")
 	void RespawnAtCheckpoint();
 
+	UFUNCTION(BlueprintCallable)
 	void Reward(int ItemID, int ItemValue) const;
 
 	UFUNCTION(BlueprintCallable)

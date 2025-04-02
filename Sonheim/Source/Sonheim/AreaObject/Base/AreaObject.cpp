@@ -471,9 +471,9 @@ UBaseSkill* AAreaObject::GetSkillByID(int SkillID)
 {
 	auto skillPointer = m_SkillInstanceMap.Find(SkillID);
 
-	if (!IsValid(*skillPointer))
+	if (skillPointer == nullptr || !IsValid(*skillPointer))
 	{
-		LOG_PRINT(TEXT("스킬 댕글링 포인터 문제발생!!!!"));
+		//LOG_PRINT(TEXT("스킬 댕글링 포인터 문제발생!!!!"));
 		return nullptr;
 	}
 	return *skillPointer;
@@ -526,7 +526,7 @@ void AAreaObject::MultiCast_CastSkill_Implementation(int SkillID, AAreaObject* T
 {
 	UBaseSkill* Skill = GetSkillByID(SkillID);
 	//if (!HasAuthority()) m_AnimInstance->ServerMontage(Skill->GetSkillData()->Montage, EAnimationPriority::Action);
-	if (!HasAuthority()) m_AnimInstance->Montage_Play(Skill->GetSkillData()->Montage);
+	if (!HasAuthority() && Skill != nullptr) m_AnimInstance->Montage_Play(Skill->GetSkillData()->Montage);
 	UpdateCurrentSkill(Skill);
 	//Skill->OnCastStart(this, Target);
 }
