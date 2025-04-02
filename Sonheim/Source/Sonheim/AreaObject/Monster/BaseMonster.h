@@ -139,10 +139,9 @@ protected:
 	// GameJam으로 추가
 	// ToDo: 필요한 기능들 위로 올리기
 public:
-
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	class AAIController* AIController;
 
@@ -226,7 +225,7 @@ public:
 	void ChangeFace(EFaceType Type);
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastRPC_ChangeFace(EFaceType Type);
-	
+
 	UPROPERTY()
 	class UMaterialInstanceDynamic* EyeMat{nullptr};
 	UPROPERTY()
@@ -241,8 +240,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated)
 	bool bActivateSkill{false};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, ReplicatedUsing = OnRep_PartnerOwner)
 	class ASonheimPlayer* PartnerOwner;
+
+	UFUNCTION()
+	void OnRep_PartnerOwner();
 
 	// ToDo : Begin Play에서 호출하는것 변경 예정
 	UFUNCTION(BlueprintCallable)
@@ -259,7 +261,7 @@ public:
 
 	UPROPERTY(Replicated)
 	bool bIsCanAttack = false;
-	
+
 	UFUNCTION(BlueprintCallable)
 	void ActivateMonster();
 	UFUNCTION(BlueprintCallable)
@@ -269,7 +271,7 @@ public:
 
 	UPROPERTY(Replicated)
 	bool bIsCanCalled = false;
-	
+
 	bool bCanJump = false;
 
 	UPROPERTY(ReplicatedUsing = OnRep_IsAttached)

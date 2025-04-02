@@ -445,6 +445,14 @@ void ABaseMonster::MulticastRPC_ChangeFace_Implementation(EFaceType Type)
 	}
 }
 
+void ABaseMonster::OnRep_PartnerOwner()
+{
+	if (PartnerOwner != nullptr)
+	{
+		StatusWidget->SetPartnerPalHPWidget();
+	}
+}
+
 void ABaseMonster::SetPartnerOwner(ASonheimPlayer* NewOwner)
 {
 	PartnerOwner = NewOwner;
