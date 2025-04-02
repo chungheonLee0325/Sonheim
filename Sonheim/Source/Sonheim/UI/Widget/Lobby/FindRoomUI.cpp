@@ -7,6 +7,7 @@
 #include "Components/Button.h"
 #include "Components/ScrollBox.h"
 #include "RoomInfoUI.h"
+#include "Components/VerticalBoxSlot.h"
 #include "Sonheim/Utilities/SessionUtil.h"
 
 void UFindRoomUI::NativeConstruct()
@@ -51,7 +52,9 @@ void UFindRoomUI::OnCompleteSearch(bool bIsSuccess)
 	for (int i = 0; i < SessionSearchData.SessionSearch->SearchResults.Num(); i++)
 	{
 		URoomInfoUI* Item{CreateWidget<URoomInfoUI>(GetWorld(), RoomInfoUIFactory)};
+		Item->SetPadding(FMargin(0, 0, 0, 5));
 		Scroll_RoomList->AddChild(Item);
-		Item->SetInfo(SessionSearchData.SessionSearch->SearchResults[i], 77, "0000");
+		
+		Item->SetInfo(SessionSearchData.SessionSearch->SearchResults[i], i + 1000, "0000");
 	}
 }

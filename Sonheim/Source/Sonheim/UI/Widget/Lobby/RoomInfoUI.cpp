@@ -5,6 +5,7 @@
 
 #include "OnlineSessionSettings.h"
 #include "Components/Button.h"
+#include "Components/TextBlock.h"
 #include "Sonheim/Utilities/SessionUtil.h"
 
 
@@ -20,6 +21,18 @@ void URoomInfoUI::NativeConstruct()
 void URoomInfoUI::SetInfo(const FOnlineSessionSearchResult& SearchResult, int32 Idx, FString Info)
 {
 	SessionSearchResult = SearchResult;
+
+	FString RoomName;
+	SearchResult.Session.SessionSettings.Get(TEXT("RoomName"), RoomName);
+
+	Text_RoomIdx->SetText(FText::AsNumber(Idx));
+	Text_RoomName->SetText(FText::FromString(FSessionUtil::DecodeData(RoomName)));
+
+	uint8 MaxPlayerCount = SearchResult.Session.SessionSettings.NumPublicConnections;
+	uint8 RemainPlayerCount = SearchResult.Session.NumOpenPublicConnections;
+	
+	Text_CurrentPlayer->SetText(FText::FromString(FString::FromInt(MaxPlayerCount - RemainPlayerCount)));
+	Text_MaxPlayer->SetText(FText::FromString(FString::FromInt(MaxPlayerCount)));
 }
 
 void URoomInfoUI::OnClickedJoinRoom()

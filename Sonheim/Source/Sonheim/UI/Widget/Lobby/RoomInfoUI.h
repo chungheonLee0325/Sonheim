@@ -24,9 +24,12 @@ public:
 	class UTextBlock* Text_RoomName;
 	UPROPERTY(meta = (BindWidget))
 	class UButton* Button_JoinRoom;
-
-	int32 RoomIdx;
-
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* Text_RoomIdx;
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* Text_CurrentPlayer;
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* Text_MaxPlayer;
 public:
 	UFUNCTION()
 	void OnClickedJoinRoom();

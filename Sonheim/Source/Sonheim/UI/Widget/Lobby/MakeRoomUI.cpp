@@ -4,6 +4,7 @@
 #include "MakeRoomUI.h"
 
 #include "Components/Button.h"
+#include "Components/EditableTextBox.h"
 #include "Components/Slider.h"
 #include "Components/TextBlock.h"
 #include "Sonheim/Utilities/LogMacro.h"
@@ -34,8 +35,8 @@ void UMakeRoomUI::OnClickedCreateRoom()
 {
 	FSessionCreateData CreateData;
 	CreateData.IsPublic = true;
-	CreateData.MaxPlayer = 2;
-	CreateData.RoomName = "111";
+	CreateData.MaxPlayer = Slider_PlayerCount->GetValue();
+	CreateData.RoomName = Edit_RoomName->GetText().ToString();
 	
 	FSessionUtil::CreateSession(CreateData);
 	
