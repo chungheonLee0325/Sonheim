@@ -59,7 +59,12 @@ void UProjectileAA::OnCastEnd()
 
 void UProjectileAA::FireSandBlast()
 {
-	FLog::Log("UProjectileAA::OnCastFire");
+
+	// Data Table에서 셋팅했으면 셋팅 하기
+	if (m_SkillData->ElementClass != nullptr)
+	{
+		SandBlastFactory = m_SkillData->ElementClass;
+	}
 	
 	ASandBlast* SpawnedSandBlast{
 		GetWorld()->SpawnActor<ASandBlast>(SandBlastFactory, m_Caster->GetActorLocation(), m_Caster->GetActorRotation())

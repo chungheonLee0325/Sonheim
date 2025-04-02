@@ -8,6 +8,7 @@
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/Element/BaseElement.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
 
@@ -35,8 +36,7 @@ void UFlamethrower::OnCastFire()
 
 void UFlamethrower::FireFlame()
 {
-	FLog::Log();
-	
+
 	// FVector StartPos{m_Caster->GetActorLocation()};
 	// FVector EndPos{
 	// 	StartPos + UKismetMathLibrary::RandomUnitVectorInEllipticalConeInDegrees(

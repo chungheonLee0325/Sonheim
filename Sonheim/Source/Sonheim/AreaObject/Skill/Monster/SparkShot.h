@@ -18,10 +18,9 @@ class SONHEIM_API USparkShot : public UBaseSkill
 public:
 	USparkShot();
 	
-	virtual void OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void OnCastTick(float DeltaTime) override;
-
-	virtual void OnCastFire() override;
+	virtual void Server_OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual void Server_OnCastTick(float DeltaTime) override;
+	virtual void Server_OnCastFire() override;
 
 	void FireSparkShot();
 
@@ -31,5 +30,8 @@ public:
 	
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class ALightningBall> LightingBallFactory;
+
+	bool IsFired = false;
+
 	
 };

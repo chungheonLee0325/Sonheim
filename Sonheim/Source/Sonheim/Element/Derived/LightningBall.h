@@ -34,9 +34,13 @@ public:
 									bool bFromSweep,
 									const FHitResult& SweepResult) override;
 
+	virtual void OnComponentHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+							FVector NormalImpulse, const FHitResult& Hit) override;
+
 public:
 	FVector StartPos;
 	FVector EndPos;
-	float Range{1000.f};
-	float Speed{600.f};
+	float Range{5000.f};
+	float Speed{1200.f};
+	FVector InitialLoc{};
 };

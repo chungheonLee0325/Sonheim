@@ -66,10 +66,13 @@ void URolling::MoveCompleted(FAIRequestID FaiRequestID, const FPathFollowingResu
 	// {
 	// 	
 	// }
-	CastPal->isDizzy = true;
-	CastPal->GetCapsuleComponent()->SetSimulatePhysics(true);
-
-	GetWorld()->GetTimerManager().SetTimer(DizzyWaitTimer, this, &URolling::DizzyEnd, 1.f, false);
+	// Todo: 일단 도로롱일때만 ..
+	if (CastPal)
+	{
+		CastPal->isDizzy = true;
+		CastPal->GetCapsuleComponent()->SetSimulatePhysics(true);
+		GetWorld()->GetTimerManager().SetTimer(DizzyWaitTimer, this, &URolling::DizzyEnd, 1.f, false);
+	}
 
 	// 바인딩 해제
 	AAIController* CasterAiController{Cast<ABaseMonster>(m_Caster)->AIController};
@@ -81,5 +84,4 @@ void URolling::DizzyEnd()
 	CastPal->isDizzy = false;
 	CastPal->GetCapsuleComponent()->SetSimulatePhysics(false);
 	CastPal->LookAtLocation(CastPal->GetAggroTarget()->GetActorLocation(), EPMRotationMode::Duration, 0.1f);
-
 }

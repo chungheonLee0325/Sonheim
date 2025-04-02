@@ -13,9 +13,9 @@ ALightningBall::ALightningBall()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
+	
 	Root->SetSimulatePhysics(false);
-
+	
 	Root->SetSphereRadius(15.f);
 	Mesh->SetRelativeScale3D(FVector(0.3f));
 }
@@ -26,7 +26,10 @@ void ALightningBall::BeginPlay()
 	Super::BeginPlay();
 	
 	Root->OnComponentBeginOverlap.AddDynamic(this, &ALightningBall::OnBeginOverlap);
-
+	Root->OnComponentHit.AddDynamic(this, &ALightningBall::OnComponentHit);
+	
+	InitialLoc = GetActorLocation();
+	InitialLoc.Z = GetActorLocation().Z - 70;
 }
 
 // Called every frame
@@ -34,7 +37,9 @@ void ALightningBall::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	SetActorLocation(GetActorLocation() + DeltaTime * m_TargetLocation * Speed);
+	FVector NextLoc{InitialLoc + DeltaTime * m_TargetLocation * Speed};
+	InitialLoc = NextLoc;
+	SetActorLocation(NextLoc);
 	
 	if (FVector::Dist(StartPos, GetActorLocation()) > Range)
 	{
@@ -56,7 +61,9 @@ void ALightningBall::InitElement(AAreaObject* Caster, AAreaObject* Target, const
 	{
 		DrawDebugLine(GetWorld(), StartPos, EndPos, FColor::Emerald, false, 1.f, 0, 1.f);
 	}
-
+	
+	// float ArcValue{0.95f};
+	// Root->AddImpulse(Fire(m_Caster, m_Target, EndPos, ArcValue));
 	//FLog::Log("count");
 
 }
@@ -64,8 +71,13 @@ void ALightningBall::InitElement(AAreaObject* Caster, AAreaObject* Target, const
 void ALightningBall::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	Super::OnBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);
+	//Super::OnBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);
 
+	if (m_Caster == OtherActor)
+	{
+		return;
+	}
+	
 	FHitResult Hit;
 	if (m_Caster)
 	{
@@ -74,6 +86,17 @@ void ALightningBall::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AA
 	else
 	{
 		FLog::Log("No m_Caster");
+	}
+	
+	DestroySelf();
+}
+
+void ALightningBall::OnComponentHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+{
+	if (m_Caster == OtherActor)
+	{
+		return;
 	}
 	
 	DestroySelf();

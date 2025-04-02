@@ -17,37 +17,41 @@ ULightningSphere::ULightningSphere()
 	}
 }
 
-void ULightningSphere::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
+void ULightningSphere::Server_OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
 {
-	Super::OnCastStart(Caster, Target);
+	IsFired = false;
+
+	Super::Server_OnCastStart(Caster, Target);
 	
 	CurrentTime = 0.f;
 	
-	OnCastFire();
-
 }
 
-void ULightningSphere::OnCastTick(float DeltaTime)
+void ULightningSphere::Server_OnCastTick(float DeltaTime)
 {
-	Super::OnCastTick(DeltaTime);
+	Super::Server_OnCastTick(DeltaTime);
 
-	CurrentTime += DeltaTime;
-	if (CurrentTime > DelayTime)
-	{
-		CurrentTime = 0.f;
-		OnCastFire();
-	}
+	// CurrentTime += DeltaTime;
+	// if (CurrentTime > DelayTime)
+	// {
+	// 	CurrentTime = 0.f;
+	// 	OnCastFire();
+	// }
 }
 
-void ULightningSphere::OnCastFire()
+void ULightningSphere::Server_OnCastFire()
 {
-	Super::OnCastFire();
+	if (IsFired) return;
+
+	Super::Server_OnCastFire();
 
 	FireElectricBall();
 }
 
 void ULightningSphere::FireElectricBall()
 {
+	IsFired = true;
+
 	AElectricBall* SpawnedElectricBall{
 		GetWorld()->SpawnActor<AElectricBall>(ElectricBallFactory, m_Caster->GetActorLocation(),
 											   m_Caster->GetActorRotation())
@@ -58,7 +62,7 @@ void ULightningSphere::FireElectricBall()
 	// ToDo : TempTarget -> m_Target으로 수정
 	ASonheimPlayer* TempTarget{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
 
-	m_Target = TempTarget;
+	//m_Target = TempTarget;
 	
 	m_TargetPos = m_Caster->GetActorForwardVector();
 

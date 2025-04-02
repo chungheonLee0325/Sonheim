@@ -33,10 +33,24 @@ public:
 									int32 OtherBodyIndex,
 									bool bFromSweep,
 									const FHitResult& SweepResult) override;
+	
+	virtual void OnComponentHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+						FVector NormalImpulse, const FHitResult& Hit) override;
 
 public:
+	UPROPERTY(Replicated)
 	FVector StartPos;
+	UPROPERTY(Replicated)
 	FVector EndPos;
-	float Range{1000.f};
-	float Speed{250.f};
+	UPROPERTY(Replicated)
+	float Range{5000.f};
+	UPROPERTY(Replicated)
+	float Speed{500.f};
+
+	UPROPERTY(Replicated)
+	float FlowTime{0.f};
+	UPROPERTY(Replicated)
+	float AttackTime{5.f};
+
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;	
 };

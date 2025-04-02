@@ -50,8 +50,14 @@ void UProjectileBlade::OnCastEnd()
 
 void UProjectileBlade::FireBladeWind()
 {
-	FLog::Log("UProjectileBlade::OnCastFire");
+	//FLog::Log("UProjectileBlade::OnCastFire");
 
+	// Data Table에서 셋팅했으면 셋팅 하기
+	if (m_SkillData->ElementClass != nullptr)
+	{
+		BladeWindFactory = m_SkillData->ElementClass;
+	}
+	
 	ABladeWind* SpawnedBladeWind{
 		GetWorld()->SpawnActor<ABladeWind>(BladeWindFactory, m_Caster->GetActorLocation(), m_Caster->GetActorRotation())
 	};
