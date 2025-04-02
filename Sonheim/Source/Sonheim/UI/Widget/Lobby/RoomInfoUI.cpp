@@ -33,10 +33,14 @@ void URoomInfoUI::SetInfo(const FOnlineSessionSearchResult& SearchResult, int32 
 	
 	Text_CurrentPlayer->SetText(FText::FromString(FString::FromInt(MaxPlayerCount - RemainPlayerCount)));
 	Text_MaxPlayer->SetText(FText::FromString(FString::FromInt(MaxPlayerCount)));
+
+	Button_JoinRoom->SetIsEnabled(true);
 }
 
 void URoomInfoUI::OnClickedJoinRoom()
 {
+	Button_JoinRoom->SetIsEnabled(false);
+	
 	FSessionUtil::JoinSession(GetWorld(), SessionSearchResult,
 		OnJoinSessionCompleteDelegate);
 }

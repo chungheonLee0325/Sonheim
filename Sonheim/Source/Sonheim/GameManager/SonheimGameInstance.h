@@ -40,6 +40,10 @@ public:
 	UPROPERTY(EditAnywhere)
 	TMap<int, USoundBase*> SoundDataMap;
 
+	UPROPERTY(EditAnywhere)
+	uint8 MaxPlayer{};
+	UPROPERTY(EditAnywhere)
+	FString RoomName{};
 protected:
 	virtual void Init() override;
 
