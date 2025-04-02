@@ -5,6 +5,7 @@
 
 #include "SlotWidget.h"
 #include "Components/UniformGridPanel.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
@@ -287,6 +288,13 @@ void UInventoryWidget::HandleInventorySlotInteraction(USlotWidget* SlotWidget, b
 							 ItemData->ItemCategory == EItemCategory::Weapon))
 			{
 				InventoryComponent->EquipItemByIndex(SlotWidget->SlotIndex);
+			}
+			// ToDo : 임시코드 - 베타 발표용
+			else if (ItemData->ItemID == 1 ||ItemData->ItemID == 5 ||ItemData->ItemID == 10 ||ItemData->ItemID == 15)
+			{
+				int itemCount = InventoryComponent->GetItemCount(ItemData->ItemID);
+				InventoryComponent->RemoveItem(ItemData->ItemID,itemCount);
+				InventoryComponent->GetSonheimPlayer()->RestoreStair(ItemData->ItemID,itemCount);
 			}
 			// 소비 아이템인 경우 사용 (추가 구현 필요)
 			// else if (ItemData && ItemData->ItemCategory == EItemCategory::Consumable)

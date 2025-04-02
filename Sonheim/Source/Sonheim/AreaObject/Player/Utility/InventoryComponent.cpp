@@ -40,7 +40,7 @@ void UInventoryComponent::BeginPlay()
 			EquippedItems.Add(SlotType, InventoryItem); // 0은 비어있음을 의미
 		}
 	}
-	
+
 	// StatBonusComponent에 초기 무기 슬롯 설정
 	if (m_PlayerState && m_PlayerState->m_StatBonusComponent)
 	{
@@ -460,15 +460,15 @@ void UInventoryComponent::SwitchWeaponSlot(int Index)
 
 	// 다시 원래 Enum 범위로 변환 (Weapon1 ~ Weapon4)
 	EEquipmentSlotType newWeaponSlot = static_cast<EEquipmentSlotType>(normalizedIndex + minIndex);
-	
+
 	// 무기 슬롯이 실제로 변경된 경우에만 처리
 	if (CurrentWeaponSlot != newWeaponSlot)
 	{
 		CurrentWeaponSlot = newWeaponSlot;
-		
+
 		// StatBonusComponent에 현재 무기 슬롯 업데이트
 		m_PlayerState->m_StatBonusComponent->SetCurrentWeaponSlot(CurrentWeaponSlot);
-		
+
 		// 무기 변경 이벤트 호출
 		OnWeaponChanged.Broadcast(CurrentWeaponSlot, GetEquippedItem(CurrentWeaponSlot).ItemID);
 	}
@@ -501,4 +501,15 @@ bool UInventoryComponent::SwapItems(int32 FromIndex, int32 ToIndex)
 	BroadcastInventoryChanged();
 
 	return true;
+}
+
+ASonheimPlayer* UInventoryComponent::GetSonheimPlayer() 
+{
+	{
+		if (m_Player == nullptr)
+		{
+			m_Player = Cast<ASonheimPlayer>(m_PlayerState->GetSonheimPlayer());
+		}
+		return m_Player;
+	}
 }

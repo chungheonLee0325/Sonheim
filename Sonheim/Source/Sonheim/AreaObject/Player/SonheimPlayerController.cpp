@@ -135,7 +135,8 @@ ASonheimPlayerController::ASonheimPlayerController()
 	}
 
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempGliderAction(
-		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Glider.IA_Glider'"));
+		TEXT(
+			"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Glider.IA_Glider'"));
 	if (tempGliderAction.Succeeded())
 	{
 		GliderAction = tempGliderAction.Object;
@@ -202,7 +203,11 @@ void ASonheimPlayerController::OnPossess(APawn* InPawn)
 		LOG_SCREEN("Player:: IsLocalControllerSuccess");
 		ASonheimPlayer* player = Cast<ASonheimPlayer>(InPawn);
 		if (m_Player == nullptr) m_Player = player;
-		if (m_PlayerState == nullptr) m_PlayerState = Cast<ASonheimPlayerState>(m_Player->GetPlayerState());
+		if (m_PlayerState == nullptr)
+		{
+			m_PlayerState = Cast<ASonheimPlayerState>(m_Player->GetPlayerState());
+			m_PlayerState->InitPlayerState();
+		}
 		//InitializeHUD(player);
 	}
 }
@@ -438,14 +443,14 @@ void ASonheimPlayerController::On_Dodge_Pressed(const FInputActionValue& InputAc
 void ASonheimPlayerController::On_Jump_Pressed(const FInputActionValue& InputActionValue)
 {
 	if (IsMenuActivate) return;
-	
+
 	float CurrentTime = GetWorld()->GetTimeSeconds();
-	
+
 	// 첫 번째 점프 후 짧은 시간 내에 두 번째 점프가 입력되면 글라이더 활성화
 	if (CurrentTime - LastJumpTime < DoubleJumpTimeThreshold)
 	{
-  		JumpCount++;
-		
+		JumpCount++;
+
 		// 공중에 있을 때만 글라이더 작동
 		if (JumpCount >= 2 && m_Player && !m_Player->GetCharacterMovement()->IsMovingOnGround())
 		{
@@ -460,7 +465,7 @@ void ASonheimPlayerController::On_Jump_Pressed(const FInputActionValue& InputAct
 		JumpCount = 1;
 		m_Player->Jump_Pressed();
 	}
-	
+
 	LastJumpTime = CurrentTime;
 }
 

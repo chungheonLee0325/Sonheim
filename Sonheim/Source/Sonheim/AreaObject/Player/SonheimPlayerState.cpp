@@ -20,7 +20,6 @@ void ASonheimPlayerState::BeginPlay()
 	Super::BeginPlay();
 
 	m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
-	m_Player = Cast<ASonheimPlayer>(GetOwner());
 
 	// 기본 스탯 초기화
 	BaseStat.Add(EAreaObjectStatType::HP, 300.0f);
@@ -50,6 +49,11 @@ void ASonheimPlayerState::BeginPlay()
 
 	// 초기 스탯 업데이트
 	UpdateStats();
+}
+
+void ASonheimPlayerState::InitPlayerState()
+{
+	m_Player = Cast<ASonheimPlayer>(GetPawn());
 }
 
 float ASonheimPlayerState::GetStatValue(EAreaObjectStatType StatType) const
@@ -83,6 +87,15 @@ void ASonheimPlayerState::UpdateStat(EAreaObjectStatType StatType)
 	float ModifiedValue = m_StatBonusComponent->GetModifiedStatValue(StatType, BaseStat[StatType]);
 	ModifiedStat.Add(StatType, ModifiedValue);
 	OnPlayerStatsChanged.Broadcast(StatType, ModifiedValue);
+}
+
+ASonheimPlayer* ASonheimPlayerState::GetSonheimPlayer()
+{
+	if (m_Player == nullptr)
+	{
+		InitPlayerState();
+	}
+	return m_Player;
 }
 
 void ASonheimPlayerState::OnWeaponSlotChanged(EEquipmentSlotType Slot, int ItemID)
