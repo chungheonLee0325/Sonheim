@@ -200,7 +200,7 @@ void ASonheimPlayerController::OnPossess(APawn* InPawn)
 	Super::OnPossess(InPawn);
 	//if (IsLocalController())
 	{
-		LOG_SCREEN("Player:: IsLocalControllerSuccess");
+		//LOG_SCREEN("Player:: IsLocalControllerSuccess");
 		ASonheimPlayer* player = Cast<ASonheimPlayer>(InPawn);
 		if (m_Player == nullptr) m_Player = player;
 		if (m_PlayerState == nullptr)
@@ -220,7 +220,7 @@ UPlayerStatusWidget* ASonheimPlayerController::GetPlayerStatusWidget() const
 void ASonheimPlayerController::InitializeHUD_Implementation(ASonheimPlayer* NewPlayer)
 {
 	//if (!IsLocalController()) return;
-	LOG_SCREEN("ASonheimPlayerController::InitializeHUD");
+	//LOG_SCREEN("ASonheimPlayerController::InitializeHUD");
 	if (m_Player == nullptr) m_Player = NewPlayer;
 	if (m_PlayerState == nullptr) m_PlayerState = Cast<ASonheimPlayerState>(PlayerState);
 	if (!StatusWidgetClass || !m_Player) return;

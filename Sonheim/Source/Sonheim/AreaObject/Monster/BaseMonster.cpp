@@ -279,6 +279,9 @@ void ABaseMonster::OnDie()
 	// 굴러다니게
 	GetCapsuleComponent()->SetSimulatePhysics(true);
 
+	// UI Disable
+	StatusWidget->RemoveFromParent();
+
 	// TWeakObjectPtr<AAreaObject> weakThis = this;
 	// GetWorld()->GetTimerManager().SetTimer(DeathTimerHandle, [weakThis]()
 	// {
