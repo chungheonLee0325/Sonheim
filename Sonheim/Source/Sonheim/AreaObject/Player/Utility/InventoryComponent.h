@@ -54,6 +54,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Inventory")
 	EEquipmentSlotType CurrentWeaponSlot = EEquipmentSlotType::Weapon1;
 
+
 	// 인벤토리 관련 함수
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool AddItem(int ItemID, int ItemCount);
@@ -116,12 +117,16 @@ public:
 	UPROPERTY(BlueprintAssignable, Category="Events")
 	FOnItemRemoved OnItemRemoved;
 
+	ASonheimPlayer* GetSonheimPlayer()  ;
 private:
 	UPROPERTY()
 	USonheimGameInstance* m_GameInstance;
 
 	UPROPERTY()
 	ASonheimPlayerState* m_PlayerState;
+
+	UPROPERTY()
+	ASonheimPlayer* m_Player;
 
 	// 내부 헬퍼 함수
 	bool IsValidItemID(int ItemID) const;

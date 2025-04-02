@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
+#include "Net/UnrealNetwork.h"
 #include "SonheimPlayerState.generated.h"
 
 class UStatBonusComponent;
@@ -25,6 +26,7 @@ class SONHEIM_API ASonheimPlayerState : public APlayerState
 
 public:
 	ASonheimPlayerState();
+	void InitPlayerState();
 
 protected:
 	virtual void BeginPlay() override;
@@ -69,6 +71,8 @@ public:
 	// 스탯 변경 델리게이트
 	UPROPERTY()
 	FOnPlayerStatsChanged OnPlayerStatsChanged;
+
+	ASonheimPlayer* GetSonheimPlayer();
 
 private:
 	// 무기 슬롯 변경 시 호출되는 함수 (이벤트 델리게이트에 바인딩)

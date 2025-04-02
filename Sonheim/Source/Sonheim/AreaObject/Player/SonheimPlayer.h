@@ -453,6 +453,9 @@ public:
 	
 	virtual bool CanAttack(AActor* TargetActor) override;
 
+	UFUNCTION(BlueprintImplementableEvent)
+	void RestoreStair(int ItemID, int ItemCount);
+
 private:
 	// UFUNCTION(Server, Reliable)
 	// void Server_ToggleLockOn(bool IsActive);
