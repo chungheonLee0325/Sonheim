@@ -15,7 +15,14 @@ void UMonsterStatusWidget::InitMonsterStatusWidget(FAreaObjectData* AreaObjectDa
 	this->MonsterNameText->SetText(FText::FromName(AreaObjectData->Name));
 
 	// Set Level
-	this->LevelText->SetText(FText::FromString(FString::Printf(TEXT("%d"), Level)));
+	if (AreaObjectData->AreaObjectID == 118)
+	{
+		this->LevelText->SetText(FText::FromString(FString::Printf(TEXT("%d"), 30)));
+	}
+	else
+	{
+		this->LevelText->SetText(FText::FromString(FString::Printf(TEXT("%d"), Level)));
+	}
 
 	// Set Gender
 	FString gender = "♂♀";
@@ -62,41 +69,41 @@ FLinearColor UMonsterStatusWidget::CalcImageByElementAttributes(EElementalAttrib
 	switch (Type)
 	{
 	case (EElementalAttribute::Dark):
-	{
-		return FLinearColor(0.52f, 0.f, 0.f);
-	}
+		{
+			return FLinearColor(0.52f, 0.f, 0.f);
+		}
 	case (EElementalAttribute::Dragon):
-	{
-		return FLinearColor(0.5f, 0.f, 0.5f);
-	}
+		{
+			return FLinearColor(0.5f, 0.f, 0.5f);
+		}
 	case (EElementalAttribute::Electric):
-	{
-		return FLinearColor(1.0f, 1.0f, 0.0f);
-	}
+		{
+			return FLinearColor(1.0f, 1.0f, 0.0f);
+		}
 	case (EElementalAttribute::Fire):
-	{
-		return FLinearColor(1.0f, 0.f, 0.f);
-	}
+		{
+			return FLinearColor(1.0f, 0.f, 0.f);
+		}
 	case (EElementalAttribute::Grass):
-	{
-		return FLinearColor(0.f, 1.f, 0.f);
-	}
+		{
+			return FLinearColor(0.f, 1.f, 0.f);
+		}
 	case (EElementalAttribute::Ground):
-	{
-		return FLinearColor(0.5882f, 0.2941f, 0.f);
-	}
+		{
+			return FLinearColor(0.5882f, 0.2941f, 0.f);
+		}
 	case (EElementalAttribute::Ice):
-	{
-		return FLinearColor(0.3137f, 0.7373f, 0.8745f);
-	}
+		{
+			return FLinearColor(0.3137f, 0.7373f, 0.8745f);
+		}
 	case (EElementalAttribute::Neutral):
-	{
-		return FLinearColor(0.9608f, 0.9608f, 0.8627f);
-	}
+		{
+			return FLinearColor(0.9608f, 0.9608f, 0.8627f);
+		}
 	case (EElementalAttribute::Water):
-	{
-		return FLinearColor(0.f, 0.f, 1.0f);
-	}
+		{
+			return FLinearColor(0.f, 0.f, 1.0f);
+		}
 	}
 	return FLinearColor(0.f, 0.f, 0.f);
 }
@@ -106,41 +113,41 @@ UTexture2D* UMonsterStatusWidget::CalcTextureByElementAttributes(EElementalAttri
 	switch (Type)
 	{
 	case (EElementalAttribute::Dark):
-	{
-		return DarkTexture;
-	}
+		{
+			return DarkTexture;
+		}
 	case (EElementalAttribute::Dragon):
-	{
-		return DragonTexture;
-	}
+		{
+			return DragonTexture;
+		}
 	case (EElementalAttribute::Electric):
-	{
-		return ElectricTexture;
-	}
+		{
+			return ElectricTexture;
+		}
 	case (EElementalAttribute::Fire):
-	{
-		return FireTexture;
-	}
+		{
+			return FireTexture;
+		}
 	case (EElementalAttribute::Grass):
-	{
-		return GrassTexture;
-	}
+		{
+			return GrassTexture;
+		}
 	case (EElementalAttribute::Ground):
-	{
-		return GroundTexture;
-	}
+		{
+			return GroundTexture;
+		}
 	case (EElementalAttribute::Ice):
-	{
-		return IceTexture;
-	}
+		{
+			return IceTexture;
+		}
 	case (EElementalAttribute::Neutral):
-	{
-		return NeutralTexture;
-	}
+		{
+			return NeutralTexture;
+		}
 	case (EElementalAttribute::Water):
-	{
-		return WaterTexture;
-	}
+		{
+			return WaterTexture;
+		}
 	}
 	return NoneTexture;
 }
