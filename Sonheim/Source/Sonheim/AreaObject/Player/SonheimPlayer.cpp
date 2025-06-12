@@ -217,14 +217,9 @@ void ASonheimPlayer::UnbindDelegates()
 	}
 }
 
-void ASonheimPlayer::Server_OnDie_Implementation()
+void ASonheimPlayer::OnRep_IsDead()
 {
-	Super::Server_OnDie_Implementation();
-}
-
-void ASonheimPlayer::Client_OnDie_Implementation()
-{
-	Super::Client_OnDie_Implementation();
+	Super::OnRep_IsDead();
 	// 로컬 플레이어인 경우만 UI 제한
 	if (IsLocallyControlled())
 	{

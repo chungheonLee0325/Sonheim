@@ -1,173 +1,240 @@
 #include "StaminaComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
+#include "Engine/World.h"
+#include "TimerManager.h"
 
 UStaminaComponent::UStaminaComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
-	
-	// 컴포넌트 리플리케이션 활성화
-	SetIsReplicatedByDefault(true);
+    PrimaryComponentTick.bCanEverTick = true;
+    SetIsReplicatedByDefault(true);
 }
 
 void UStaminaComponent::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 }
 
 void UStaminaComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	
-	// 스태미나 값들 복제
-	DOREPLIFETIME(UStaminaComponent, m_Stamina);
-	DOREPLIFETIME(UStaminaComponent, m_StaminaMax);
-	DOREPLIFETIME(UStaminaComponent, m_RecoveryRate);
-	DOREPLIFETIME(UStaminaComponent, m_RecoveryDelay);
-	DOREPLIFETIME(UStaminaComponent, bCanRecover);
-	DOREPLIFETIME(UStaminaComponent, m_GroggyDuration);
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    
+    DOREPLIFETIME(UStaminaComponent, m_Stamina);
+    DOREPLIFETIME(UStaminaComponent, m_StaminaMax);
+    DOREPLIFETIME(UStaminaComponent, m_RecoveryRate);
+    DOREPLIFETIME(UStaminaComponent, m_RecoveryDelay);
+    DOREPLIFETIME(UStaminaComponent, m_GroggyDuration);
+    DOREPLIFETIME(UStaminaComponent, bCanRecover);
 }
 
 void UStaminaComponent::TickComponent(float DeltaTime, ELevelTick TickType,
                                       FActorComponentTickFunction* ThisTickFunction)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// 서버에서만 스태미나 회복 처리
-	if (GetOwnerRole() == ROLE_Authority)
-	{
-		// 스태미나 자동 회복
-		if (bCanRecover && m_Stamina < m_StaminaMax)
-		{
-			float recovery = m_RecoveryRate * DeltaTime;
+    // 서버에서만 스태미나 회복 처리
+    if (GetOwnerRole() != ROLE_Authority)
+        return;
 
-			IncreaseStamina(recovery);
-		}
-	}
+    // 자동 회복
+    if (bCanRecover && m_Stamina < m_StaminaMax)
+    {
+        ModifyStamina(m_RecoveryRate * DeltaTime);
+    }
 }
 
-void UStaminaComponent::InitStamina_Implementation(float StaminaMax, float RecoveryRate, float GroggyDuration)
+void UStaminaComponent::InitStamina(float StaminaMax, float RecoveryRate, float GroggyDuration)
 {
-	m_StaminaMax = StaminaMax;
-	m_Stamina = m_StaminaMax;
-	m_RecoveryRate = RecoveryRate;
-	m_GroggyDuration = GroggyDuration;
-	OnStaminaChanged.Broadcast(m_Stamina, 0, m_StaminaMax);
-	
-	// 클라이언트에게 변경 사항 알림
-	AAreaObject* Owner = Cast<AAreaObject>(GetOwner());
-	if (Owner && Owner->GetLocalRole() == ROLE_Authority)
-	{
-		Client_OnStaminaChanged(m_Stamina, 0, m_StaminaMax);
-	}
+    // 서버에서만 실행
+    if (GetOwnerRole() != ROLE_Authority)
+        return;
+
+    m_StaminaMax = StaminaMax;
+    m_Stamina = m_StaminaMax;
+    m_RecoveryRate = RecoveryRate;
+    m_GroggyDuration = GroggyDuration;
+    
+    // 로컬 이벤트
+    OnStaminaChanged.Broadcast(m_Stamina, 0, m_StaminaMax);
 }
 
-void UStaminaComponent::DecreaseStamina_Implementation(float Delta, bool bIsDamaged)
+void UStaminaComponent::ModifyStamina(float Delta, bool bIsDamaged)
 {
-	if (Delta <= 0.0f) return;
+    // 서버에서만 실행
+    if (GetOwnerRole() != ROLE_Authority || FMath::IsNearlyZero(Delta))
+        return;
 
-	// 스태미나 감소
-	float oldStamina = m_Stamina;
-	m_Stamina = FMath::Clamp(m_Stamina - Delta, 0.0f, m_StaminaMax);
+    float OldStamina = m_Stamina;
+    m_Stamina = FMath::Clamp(m_Stamina + Delta, 0.0f, m_StaminaMax);
 
-	if (!FMath::IsNearlyEqual(oldStamina, m_Stamina))
-	{
-		OnStaminaChanged.Broadcast(m_Stamina, -(oldStamina - m_Stamina), m_StaminaMax);
-		
-		// 클라이언트에게 변경 사항 알림
-		AAreaObject* Owner = Cast<AAreaObject>(GetOwner());
-		if (Owner && Owner->GetLocalRole() == ROLE_Authority)
-		{
-			Client_OnStaminaChanged(m_Stamina, -(oldStamina - m_Stamina), m_StaminaMax);
-		}
+    // 변경사항이 있을 때만 처리
+    if (FMath::IsNearlyEqual(OldStamina, m_Stamina))
+        return;
 
-		// 회복 중지 및 딜레이 타이머 시작
-		StopStaminaRecovery();
-		GetWorld()->GetTimerManager().SetTimer(
-			RecoveryDelayHandle,
-			this,
-			&UStaminaComponent::StartStaminaRecovery,
-			m_RecoveryDelay,
-			false
-		);
-	}
-	
-	if (bIsDamaged && FMath::IsNearlyZero(m_Stamina))
-	{
-		// ToDo : 수정 예정
-		OnApplyGroggyDelegate.Broadcast(m_GroggyDuration);
-		OnStaminaChanged.Broadcast(m_Stamina, 0, m_StaminaMax);
-		GetWorld()->GetTimerManager().ClearTimer(RecoveryDelayHandle);
-		m_Stamina = m_StaminaMax;
-		
-		// 클라이언트에게 변경 사항 알림
-		AAreaObject* Owner = Cast<AAreaObject>(GetOwner());
-		if (Owner && Owner->GetLocalRole() == ROLE_Authority)
-		{
-			Client_OnStaminaChanged(m_Stamina, m_StaminaMax, m_StaminaMax);
-		}
-	}
+    // 스태미나 감소 시 회복 중단
+    if (Delta < 0.0f)
+    {
+        StopStaminaRecovery();
+        
+        // 회복 재시작 타이머
+        if (UWorld* World = GetWorld())
+        {
+            World->GetTimerManager().ClearTimer(RecoveryDelayHandle);
+            World->GetTimerManager().SetTimer(
+                RecoveryDelayHandle,
+                this,
+                &UStaminaComponent::StartStaminaRecovery,
+                m_RecoveryDelay,
+                false
+            );
+        }
+    }
+
+    // 그로기 상태 체크
+    if (bIsDamaged && FMath::IsNearlyZero(m_Stamina))
+    {
+        ApplyGroggyState();
+    }
+
+    // 서버 이벤트
+    OnStaminaChanged.Broadcast(m_Stamina, m_Stamina - OldStamina, m_StaminaMax);
 }
 
-void UStaminaComponent::IncreaseStamina_Implementation(float Delta)
+void UStaminaComponent::SetStaminaByRate(float Rate)
 {
-	if (Delta <= 0.0f) return;
+    if (GetOwnerRole() != ROLE_Authority)
+        return;
 
-	float oldStamina = m_Stamina;
-	m_Stamina = FMath::Clamp(m_Stamina + Delta, 0.0f, m_StaminaMax);
-
-	if (!FMath::IsNearlyEqual(oldStamina, m_Stamina))
-	{
-		OnStaminaChanged.Broadcast(m_Stamina, m_Stamina - oldStamina, m_StaminaMax);
-		
-		// 클라이언트에게 변경 사항 알림
-		AAreaObject* Owner = Cast<AAreaObject>(GetOwner());
-		if (Owner && Owner->GetLocalRole() == ROLE_Authority)
-		{
-			Client_OnStaminaChanged(m_Stamina, m_Stamina - oldStamina, m_StaminaMax);
-		}
-	}
+    float NewStamina = m_StaminaMax * FMath::Clamp(Rate, 0.0f, 1.0f);
+    float Delta = NewStamina - m_Stamina;
+    
+    if (!FMath::IsNearlyZero(Delta))
+    {
+        m_Stamina = NewStamina;
+        OnStaminaChanged.Broadcast(m_Stamina, Delta, m_StaminaMax);
+    }
 }
 
-void UStaminaComponent::StartStaminaRecovery_Implementation()
+void UStaminaComponent::StartStaminaRecovery()
 {
-	bCanRecover = true;
-	
-	// 클라이언트에게 변경 사항 알림은 OnRep_CanRecover에서 처리
+    if (GetOwnerRole() != ROLE_Authority)
+        return;
+
+    bCanRecover = true;
 }
 
-void UStaminaComponent::StopStaminaRecovery_Implementation()
+void UStaminaComponent::StopStaminaRecovery()
 {
-	bCanRecover = false;
-	
-	// 클라이언트에게 변경 사항 알림은 OnRep_CanRecover에서 처리
+    if (GetOwnerRole() != ROLE_Authority)
+        return;
+
+    bCanRecover = false;
+    LastDamageTime = GetWorld()->GetTimeSeconds();
 }
 
-void UStaminaComponent::Client_OnStaminaChanged_Implementation(float CurrentStamina, float Delta, float MaxStamina)
+void UStaminaComponent::ModifyMaxStamina(float Delta)
 {
-	// 클라이언트에서 호출되는 함수
-	OnStaminaChanged.Broadcast(CurrentStamina, Delta, MaxStamina);
+    if (GetOwnerRole() != ROLE_Authority || FMath::IsNearlyZero(Delta))
+        return;
+
+    float OldMax = m_StaminaMax;
+    m_StaminaMax = FMath::Max(1.0f, m_StaminaMax + Delta);
+    
+    // 현재 스태미나가 최대치를 초과하지 않도록
+    if (m_Stamina > m_StaminaMax)
+    {
+        m_Stamina = m_StaminaMax;
+    }
+    
+    OnStaminaChanged.Broadcast(m_Stamina, 0, m_StaminaMax);
 }
 
-void UStaminaComponent::OnRep_Stamina()
+void UStaminaComponent::SetMaxStamina(float NewMax)
 {
-	// 스태미나가 복제되었을 때 클라이언트에서 호출됨
-	OnStaminaChanged.Broadcast(m_Stamina, 0, m_StaminaMax);
+    if (GetOwnerRole() != ROLE_Authority)
+        return;
+
+    m_StaminaMax = FMath::Max(1.0f, NewMax);
+    
+    // 현재 스태미나 조정
+    if (m_Stamina > m_StaminaMax)
+    {
+        m_Stamina = m_StaminaMax;
+    }
+    
+    OnStaminaChanged.Broadcast(m_Stamina, 0, m_StaminaMax);
 }
 
-void UStaminaComponent::OnRep_StaminaMax()
+void UStaminaComponent::ApplyGroggyState()
 {
-	// 최대 스태미나가 복제되었을 때 클라이언트에서 호출됨
-	OnStaminaChanged.Broadcast(m_Stamina, 0, m_StaminaMax);
+    // 그로기 이벤트 발생
+    OnApplyGroggyDelegate.Broadcast(m_GroggyDuration);
+    
+    // 타이머 정리
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().ClearTimer(RecoveryDelayHandle);
+    }
+    
+    // 스태미나 즉시 회복 (그로기 후)
+    m_Stamina = m_StaminaMax;
+    bCanRecover = true;
+    
+    // 오너에게 그로기 상태 적용
+    if (AAreaObject* Owner = Cast<AAreaObject>(GetOwner()))
+    {
+        //Owner->AddCondition(EConditionBitsType::Groggy, m_GroggyDuration);
+    }
+    
+    OnStaminaChanged.Broadcast(m_Stamina, m_StaminaMax, m_StaminaMax);
+}
+
+void UStaminaComponent::OnRep_Stamina(float OldStamina)
+{
+    // 클라이언트에서 스태미나 변경 감지
+    float Delta = m_Stamina - OldStamina;
+    OnStaminaChanged.Broadcast(m_Stamina, Delta, m_StaminaMax);
+    
+    // 스태미나 소모 시각 효과
+    if (Delta < 0 && GetOwner())
+    {
+        if (AAreaObject* Owner = Cast<AAreaObject>(GetOwner()))
+        {
+            if (Owner->IsLocallyControlled())
+            {
+                // 스태미나 소모 UI 피드백
+                // 예: 스태미나 바 깜빡임, 경고음 등
+            }
+        }
+    }
+}
+
+void UStaminaComponent::OnRep_StaminaMax(float OldStaminaMax)
+{
+    // 최대 스태미나 변경 시 UI 업데이트
+    OnStaminaChanged.Broadcast(m_Stamina, 0, m_StaminaMax);
 }
 
 void UStaminaComponent::OnRep_CanRecover()
 {
-	// 회복 상태가 변경되었을 때 필요한 클라이언트 로직
-	// 예: 회복 상태에 따른 UI 업데이트 등
-}
-
-void UStaminaComponent::OnRep_GroggyDuration()
-{
-	// 그로기 지속시간이 변경되었을 때 필요한 클라이언트 로직
+    // 회복 상태 변경 시 시각적 피드백
+    if (GetOwner())
+    {
+        if (AAreaObject* Owner = Cast<AAreaObject>(GetOwner()))
+        {
+            if (Owner->IsLocallyControlled())
+            {
+                if (bCanRecover)
+                {
+                    // 회복 시작 효과
+                    // 예: 스태미나 바 색상 변경, 회복 파티클 등
+                }
+                else
+                {
+                    // 회복 중단 효과
+                    // 예: 스태미나 바 빨간색 표시 등
+                }
+            }
+        }
+    }
 }

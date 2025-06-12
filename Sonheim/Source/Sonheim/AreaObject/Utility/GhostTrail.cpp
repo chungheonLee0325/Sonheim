@@ -13,12 +13,12 @@ AGhostTrail::AGhostTrail()
 	PoseableMesh = CreateDefaultSubobject<UPoseableMeshComponent>(TEXT("POSEABLEMESH"));
 	RootComponent = PoseableMesh;
 
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> tempGhostTail(
-		TEXT("/Script/Engine.Material'/Game/_Resource/Materials/GhostMaterial.GhostMaterial'"));
-	if (tempGhostTail.Succeeded())
-	{
-		GhostMaterial = tempGhostTail.Object;
-	}
+	// static ConstructorHelpers::FObjectFinder<UMaterialInterface> tempGhostTail(
+	// 	TEXT("/Script/Engine.Material'/Game/_Resource/Materials/GhostMaterial.GhostMaterial'"));
+	// if (tempGhostTail.Succeeded())
+	// {
+	// 	GhostMaterial = tempGhostTail.Object;
+	// }
 }
 
 

@@ -1,101 +1,108 @@
+// StaminaComponent.h
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "StaminaComponent.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnStaminaChangedDelegate, float, CurrentStamina, float, Delta, float,
-                                               MaxStamina);
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnStaminaChangedDelegate, float, CurrentStamina, float, Delta, float, MaxStamina);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnApplyGroggyDelegate, float, Duration);
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class SONHEIM_API UStaminaComponent : public UActorComponent
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	UStaminaComponent();
+    UStaminaComponent();
 
 protected:
-	virtual void BeginPlay() override;
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
-	                           FActorComponentTickFunction* ThisTickFunction) override;
+    virtual void BeginPlay() override;
+    virtual void TickComponent(float DeltaTime, ELevelTick TickType,
+                               FActorComponentTickFunction* ThisTickFunction) override;
 
 public:
-	// 리플리케이션 설정 함수
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	
-	// 초기화
-	UFUNCTION(Server, Reliable)
-	void InitStamina(float StaminaMax, float RecoveryRate, float GroggyDuration);
+    // 리플리케이션 설정
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    
+    // 초기화 - 서버에서만 호출
+    void InitStamina(float StaminaMax, float RecoveryRate, float GroggyDuration);
 
-	// 스태미나 증감
-	UFUNCTION(Server, Reliable)
-	void DecreaseStamina(float Delta, bool bIsDamaged = true);
+    // 스태미나 수정 - 권한 체크 내부 처리
+    void ModifyStamina(float Delta, bool bIsDamaged = false);
+    
+    // 스태미나 비율로 설정
+    void SetStaminaByRate(float Rate);
 
-	UFUNCTION(Server, Reliable)
-	void IncreaseStamina(float Delta);
+    // 스태미나 회복 제어
+    void StartStaminaRecovery();
+    void StopStaminaRecovery();
 
-	// 스태미나 회복 관련
-	UFUNCTION(Server, Reliable)
-	void StartStaminaRecovery();
-	
-	UFUNCTION(Server, Reliable)
-	void StopStaminaRecovery();
+    // Getter
+    UFUNCTION(BlueprintCallable, Category = "Stamina")
+    float GetStamina() const { return m_Stamina; }
 
-	// Getter/Setter
-	UFUNCTION()
-	float GetStamina() const { return m_Stamina; }
+    UFUNCTION(BlueprintCallable, Category = "Stamina")
+    float GetMaxStamina() const { return m_StaminaMax; }
 
-	UFUNCTION()
-	float GetMaxStamina() const { return m_StaminaMax; }
+    UFUNCTION(BlueprintCallable, Category = "Stamina")
+    float GetStaminaPercent() const { return (m_StaminaMax > 0) ? (m_Stamina / m_StaminaMax) : 0.0f; }
 
-	UFUNCTION()
-	bool CanUseStamina(float Cost) const { return m_Stamina >= Cost * 0.3f; }
+    UFUNCTION(BlueprintCallable, Category = "Stamina")
+    bool CanUseStamina(float Cost) const { return m_Stamina >= Cost; }
 
-	// 클라이언트에 스태미나 변경 알림
-	UFUNCTION(Client, Reliable)
-	void Client_OnStaminaChanged(float CurrentStamina, float Delta, float MaxStamina);
+    UFUNCTION(BlueprintCallable, Category = "Stamina")
+    bool IsRecovering() const { return bCanRecover; }
 
-	// 델리게이트
-	UPROPERTY(BlueprintAssignable, Category = "Events")
-	FOnStaminaChangedDelegate OnStaminaChanged;
-	UPROPERTY(BlueprintAssignable, Category = "Events")
-	FOnApplyGroggyDelegate OnApplyGroggyDelegate;
-	
-	UPROPERTY(ReplicatedUsing = OnRep_GroggyDuration)
-	float m_GroggyDuration = 4.f;
+    // 최대 스태미나 수정
+    void ModifyMaxStamina(float Delta);
+    void SetMaxStamina(float NewMax);
+
+    // 델리게이트
+    UPROPERTY(BlueprintAssignable, Category = "Events")
+    FOnStaminaChangedDelegate OnStaminaChanged;
+    
+    UPROPERTY(BlueprintAssignable, Category = "Events")
+    FOnApplyGroggyDelegate OnApplyGroggyDelegate;
+
+protected:
+    // OnRep 함수들
+    UFUNCTION()
+    void OnRep_Stamina(float OldStamina);
+    
+    UFUNCTION()
+    void OnRep_StaminaMax(float OldStaminaMax);
+    
+    UFUNCTION()
+    void OnRep_CanRecover();
 
 private:
-	UPROPERTY(ReplicatedUsing = OnRep_StaminaMax)
-	float m_StaminaMax = 100.0f;
+    // 그로기 처리
+    void ApplyGroggyState();
 
-	UPROPERTY(ReplicatedUsing = OnRep_Stamina)
-	float m_Stamina;
+private:
+    // Replicated 변수들
+    UPROPERTY(ReplicatedUsing = OnRep_Stamina)
+    float m_Stamina = 100.0f;
+    
+    UPROPERTY(ReplicatedUsing = OnRep_StaminaMax)
+    float m_StaminaMax = 100.0f;
 
-	// 스태미나 회복 관련 변수
-	UPROPERTY(Replicated)
-	float m_RecoveryRate = 10.0f; // 초당 회복량
+    UPROPERTY(Replicated)
+    float m_RecoveryRate = 10.0f; // 초당 회복량
 
-	UPROPERTY(Replicated)
-	float m_RecoveryDelay = 2.0f; // 회복 시작까지 대기 시간
+    UPROPERTY(Replicated)
+    float m_RecoveryDelay = 2.0f; // 회복 시작까지 대기 시간
 
-	UPROPERTY(ReplicatedUsing = OnRep_CanRecover)
-	bool bCanRecover = true;
-	
-	FTimerHandle RecoveryDelayHandle;
+    UPROPERTY(Replicated)
+    float m_GroggyDuration = 4.0f;
 
-	// 복제 속성에 대한 응답 함수들
-	UFUNCTION()
-	void OnRep_Stamina();
-	
-	UFUNCTION()
-	void OnRep_StaminaMax();
-	
-	UFUNCTION()
-	void OnRep_CanRecover();
-	
-	UFUNCTION()
-	void OnRep_GroggyDuration();
+    UPROPERTY(ReplicatedUsing = OnRep_CanRecover)
+    bool bCanRecover = true;
+    
+    // 로컬 변수
+    FTimerHandle RecoveryDelayHandle;
+    
+    // 회복 중단 시간 추적 (서버)
+    float LastDamageTime = 0.0f;
 };

@@ -1,6 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -14,69 +12,43 @@ class SONHEIM_API UHealthComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this component's properties
 	UHealthComponent();
 
-protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
-
-public:
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
-	                           FActorComponentTickFunction* ThisTickFunction) override;
-	
-	// 리플리케이션 설정 함수
+	// 리플리케이션 설정
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	
-	//Health 초기화
-	UFUNCTION(Server, Reliable)
+    
+	// 서버에서만 호출되는 초기화
 	void InitHealth(float hpMax);
 
-	// 체력 증감
-	UFUNCTION(Server, Reliable)
-	void IncreaseHP(float Delta);
-
-	UFUNCTION(Server, Reliable)
-	void DecreaseHP(float Delta);
-
-	//최대체력기준 현재체력
-	UFUNCTION(Server, Reliable)
+	// 체력 변경 - 내부에서 권한 체크
+	void ModifyHP(float Delta);
 	void SetHPByRate(float Rate);
-
-	//현제체력
-	UFUNCTION()
-	float GetHP();
-
-	// 최대체력
-	UFUNCTION()
-	float GetMaxHP();
-
-	UFUNCTION(Server, Reliable)
-	void AddMaxHP(float Delta);
-	
-	UFUNCTION(Server, Reliable)
+    
+	// 단순 Getter - RPC 불필요
+	UFUNCTION(BlueprintCallable, Category = "Health")
+	float GetHP() const { return m_HP; }
+    
+	UFUNCTION(BlueprintCallable, Category = "Health")
+	float GetMaxHP() const { return m_HPMax; }
+    
+	// 최대 체력 수정
+	void ModifyMaxHP(float Delta);
 	void SetMaxHP(float MaxHP);
 
-	// 클라이언트에서 HP 변경 알림을 받는 함수
-	UFUNCTION(Client, Reliable)
-	void Client_OnHealthChanged(float CurrentHP, float Delta, float MaxHP);
-
-	// 체력 변경 델리게이트
+	// 체력 변경 이벤트
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnHealthChangedDelegate OnHealthChanged;
 
 private:
-	UPROPERTY(ReplicatedUsing = OnRep_HPMax)
-	float m_HPMax = 1.0f;
-
 	UPROPERTY(ReplicatedUsing = OnRep_HP)
-	float m_HP;
-	
-	// 복제 속성에 대한 응답 함수들
+	float m_HP = 100.0f;
+    
+	UPROPERTY(ReplicatedUsing = OnRep_HPMax)
+	float m_HPMax = 100.0f;
+    
 	UFUNCTION()
-	void OnRep_HP();
-	
+	void OnRep_HP(float OldHP);
+    
 	UFUNCTION()
-	void OnRep_HPMax();
+	void OnRep_HPMax(float OldHPMax);
 };

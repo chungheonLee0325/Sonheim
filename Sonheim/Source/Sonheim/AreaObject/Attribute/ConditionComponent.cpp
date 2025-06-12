@@ -1,198 +1,138 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "ConditionComponent.h"
+﻿#include "ConditionComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
-#include "Sonheim/Utilities/LogMacro.h"
 
-
-// Sets default values for this component's properties
-UConditionComponent::UConditionComponent(): ConditionFlags(0)
+UConditionComponent::UConditionComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
-
-	// 컴포넌트 리플리케이션 활성화
-	SetIsReplicatedByDefault(true);
+    PrimaryComponentTick.bCanEverTick = false;
+    SetIsReplicatedByDefault(true);
 }
 
 void UConditionComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	// 컨디션 플래그 복제
-	DOREPLIFETIME(UConditionComponent, ConditionFlags);
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(UConditionComponent, ConditionFlags);
 }
 
-bool UConditionComponent::AddCondition_Validate(EConditionBitsType Condition, float Duration)
+void UConditionComponent::AddCondition(EConditionBitsType Condition, float Duration)
 {
-	return true; // 추가적인 검증 로직이 필요하면 여기 추가
+    // 서버에서만 실행
+    if (GetOwnerRole() != ROLE_Authority)
+        return;
+
+    // 이미 있는 조건이면 타이머만 갱신
+    if (HasCondition(Condition))
+    {
+        if (Duration > 0.0f)
+        {
+            // 기존 타이머 제거 후 재설정
+            if (FTimerHandle* ExistingTimer = ConditionTimers.Find(Condition))
+            {
+                GetWorld()->GetTimerManager().ClearTimer(*ExistingTimer);
+            }
+            
+            FTimerHandle& TimerHandle = ConditionTimers.FindOrAdd(Condition);
+            FTimerDelegate TimerDelegate;
+            TimerDelegate.BindUObject(this, &UConditionComponent::RemoveConditionInternal, Condition);
+            
+            GetWorld()->GetTimerManager().SetTimer(TimerHandle, TimerDelegate, Duration, false);
+        }
+        return;
+    }
+
+    // 새로운 조건 추가
+    ConditionFlags |= static_cast<uint32>(Condition);
+
+    // Duration 타이머 설정
+    if (Duration > 0.0f && GetWorld())
+    {
+        FTimerHandle& TimerHandle = ConditionTimers.FindOrAdd(Condition);
+        FTimerDelegate TimerDelegate;
+        TimerDelegate.BindUObject(this, &UConditionComponent::RemoveConditionInternal, Condition);
+        
+        GetWorld()->GetTimerManager().SetTimer(TimerHandle, TimerDelegate, Duration, false);
+    }
 }
 
-void UConditionComponent::AddCondition_Implementation(EConditionBitsType Condition, float Duration)
+void UConditionComponent::RemoveCondition(EConditionBitsType Condition)
 {
-	// 권한 확인
-	if (GetOwnerRole() != ROLE_Authority)
-	{
-		return;
-	}
+    // 서버에서만 실행
+    if (GetOwnerRole() != ROLE_Authority)
+        return;
 
-	// Condition 적용
-	bool bApplied = _addCondition(Condition);
+    if (!HasCondition(Condition))
+        return;
 
-	// Duration이 유효한 경우 타이머 설정
-	if (Duration > 0.0f && bApplied)
-	{
-		if (UWorld* World = GetWorld())
-		{
-			// 기존 타이머가 있다면 제거
-			if (FTimerHandle* ExistingTimer = ConditionTimers.Find(Condition))
-			{
-				World->GetTimerManager().ClearTimer(*ExistingTimer);
-			}
+    // 타이머 정리
+    if (FTimerHandle* ExistingTimer = ConditionTimers.Find(Condition))
+    {
+        if (UWorld* World = GetWorld())
+        {
+            World->GetTimerManager().ClearTimer(*ExistingTimer);
+        }
+        ConditionTimers.Remove(Condition);
+    }
 
-			FTimerHandle& TimerHandle = ConditionTimers.FindOrAdd(Condition);
-
-			FTimerDelegate TimerDelegate;
-			TimerDelegate.BindUObject(this, &UConditionComponent::RemoveConditionInternal, Condition);
-
-			World->GetTimerManager().SetTimer(
-				TimerHandle,
-				TimerDelegate,
-				Duration,
-				false
-			);
-		}
-	}
-
-	// 클라이언트에게 변경 사항 알림
-	if (bApplied)
-	{
-		AAreaObject* Owner = Cast<AAreaObject>(GetOwner());
-		if (Owner && Owner->GetLocalRole() == ROLE_Authority)
-		{
-			Client_OnConditionChanged(ConditionFlags);
-		}
-	}
-
-	return;
+    // 조건 제거
+    ConditionFlags &= ~static_cast<uint32>(Condition);
 }
 
 void UConditionComponent::RemoveConditionInternal(EConditionBitsType Condition)
 {
-	// 타이머 제거
-	ConditionTimers.Remove(Condition);
-
-	// Condition 제거
-	RemoveCondition(Condition);
-}
-
-bool UConditionComponent::RemoveCondition_Validate(EConditionBitsType Condition)
-{
-	return true; // 추가적인 검증 로직이 필요하면 여기 추가
-}
-
-void UConditionComponent::RemoveCondition_Implementation(EConditionBitsType Condition)
-{
-	// 권한 확인
-	if (GetOwnerRole() != ROLE_Authority)
-	{
-		return;
-	}
-
-	// 기존 타이머가 있다면 제거
-	if (FTimerHandle* ExistingTimer = ConditionTimers.Find(Condition))
-	{
-		if (UWorld* World = GetWorld())
-		{
-			World->GetTimerManager().ClearTimer(*ExistingTimer);
-		}
-		ConditionTimers.Remove(Condition);
-	}
-
-	bool bApplied = _removeCondition(Condition);
-
-	// 클라이언트에게 변경 사항 알림
-	if (bApplied)
-	{
-		AAreaObject* Owner = Cast<AAreaObject>(GetOwner());
-		if (Owner && Owner->GetLocalRole() == ROLE_Authority)
-		{
-			Client_OnConditionChanged(ConditionFlags);
-		}
-	}
-
-	return;
-}
-
-bool UConditionComponent::_addCondition(EConditionBitsType Condition)
-{
-	if (HasCondition(Condition))
-		return false;
-
-	ConditionFlags |= static_cast<uint32>(Condition);
-	return true;
-}
-
-bool UConditionComponent::_removeCondition(EConditionBitsType Condition)
-{
-	if (!HasCondition(Condition))
-		return false;
-
-	ConditionFlags &= ~static_cast<uint32>(Condition);
-	return true;
+    ConditionTimers.Remove(Condition);
+    RemoveCondition(Condition);
 }
 
 bool UConditionComponent::HasCondition(EConditionBitsType Condition) const
 {
-	//상태 활성화 확인
-	return (((ConditionFlags) & (static_cast<uint32>(Condition))) != 0);
+    return (ConditionFlags & static_cast<uint32>(Condition)) != 0;
 }
 
-bool UConditionComponent::ExchangeDead_Validate()
+void UConditionComponent::ExchangeDead()
 {
-	return true;
+    if (GetOwnerRole() != ROLE_Authority || HasCondition(EConditionBitsType::Dead))
+        return;
+        
+    AddCondition(EConditionBitsType::Dead);
 }
 
-void UConditionComponent::ExchangeDead_Implementation()
+void UConditionComponent::Restart()
 {
-	// 권한 확인
-	if (GetOwnerRole() != ROLE_Authority)
-	{
-		return;
-	}
+    if (GetOwnerRole() != ROLE_Authority)
+        return;
 
-	if (HasCondition(EConditionBitsType::Dead))
-		return;
-	AddCondition(EConditionBitsType::Dead);
+    // 모든 타이머 정리
+    if (UWorld* World = GetWorld())
+    {
+        for (auto& TimerPair : ConditionTimers)
+        {
+            World->GetTimerManager().ClearTimer(TimerPair.Value);
+        }
+    }
+    ConditionTimers.Empty();
+    
+    // 플래그 초기화
+    ConditionFlags = 0;
 }
 
-void UConditionComponent::Restart_Implementation()
+void UConditionComponent::OnRep_ConditionFlags(uint32 OldFlags)
 {
-	// 권한 확인
-	if (GetOwnerRole() != ROLE_Authority)
-	{
-		return;
-	}
-
-	ConditionFlags = 0;
-
-	// 클라이언트에게 변경 사항 알림
-	AAreaObject* Owner = Cast<AAreaObject>(GetOwner());
-	if (Owner && Owner->GetLocalRole() == ROLE_Authority)
-	{
-		Client_OnConditionChanged(ConditionFlags);
-	}
-}
-
-void UConditionComponent::OnRep_ConditionFlags()
-{
-	// 클라이언트에서 컨디션 플래그가 변경되었을 때 필요한 처리
-	// 특별한 시각 효과나 사운드 등을 여기서 처리할 수 있음
-}
-
-void UConditionComponent::Client_OnConditionChanged_Implementation(uint32 NewConditionFlags)
-{
-	// 클라이언트측에서 컨디션 변경 이벤트 처리
-	// 시각적 효과나 UI 업데이트 등
+    // 변경된 조건 찾기
+    uint32 ChangedFlags = ConditionFlags ^ OldFlags;
+    
+    // 추가된 조건 처리
+    uint32 AddedFlags = ChangedFlags & ConditionFlags;
+    if (AddedFlags != 0)
+    {
+        // 시각적 효과나 사운드 재생
+        // 예: 상태이상 이펙트 시작
+    }
+    
+    // 제거된 조건 처리
+    uint32 RemovedFlags = ChangedFlags & OldFlags;
+    if (RemovedFlags != 0)
+    {
+        // 시각적 효과 제거
+        // 예: 상태이상 이펙트 종료
+    }
 }

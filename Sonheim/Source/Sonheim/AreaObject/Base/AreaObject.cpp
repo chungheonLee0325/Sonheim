@@ -120,10 +120,20 @@ void AAreaObject::BeginPlay()
 		walkSpeed = dt_AreaObject->WalkSpeed;
 	}
 
-	m_HealthComponent->InitHealth(hpMax);
-	m_StaminaComponent->InitStamina(maxStamina, staminaRecoveryRate, groggyDuration);
-	GetCharacterMovement()->MaxWalkSpeed = walkSpeed;
-	m_LevelComponent->InitLevel(this);
+	// 서버에서만 초기화
+	if (HasAuthority() && dt_AreaObject)
+	{
+		// Component 초기화
+		m_HealthComponent->InitHealth(dt_AreaObject->HPMax);
+		m_StaminaComponent->InitStamina(
+			dt_AreaObject->StaminaMax, 
+			dt_AreaObject->StaminaRecoveryRate, 
+			dt_AreaObject->GroggyDuration
+		);
+		m_LevelComponent->InitLevel(this);
+        
+		GetCharacterMovement()->MaxWalkSpeed = dt_AreaObject->WalkSpeed;
+	}
 
 	// 스킬 인스턴스 생성
 	for (auto& skill : m_OwnSkillIDSet)
@@ -212,20 +222,18 @@ void AAreaObject::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 
 void AAreaObject::CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Target, FHitResult& HitInfo)
 {
-	// IFF 부터 확인후 서버 처리
+	// IFF 확인후 공격 가능
 	if (!CanAttack(Target))
-	{
 		return;
-	}
 
-	// 권한 체크
-	if (GetLocalRole() != ROLE_Authority)
+	// 클라이언트는 서버에 요청
+	if (!HasAuthority())
 	{
-		// 클라이언트에서는 서버에 요청만 보냄
 		Server_CalcDamage(AttackData, Caster, Target, HitInfo);
 		return;
 	}
 
+	// 서버는 직접 처리
 	float Damage = FMath::RandRange(AttackData.HealthDamageAmountMin, AttackData.HealthDamageAmountMax);
 	Damage = HandleAttackDamageCalculation(Damage);
 
@@ -239,10 +247,7 @@ void AAreaObject::CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Ta
 		}
 	}
 
-	if (Target == nullptr)
-	{
-		return;
-	}
+	if (!Target) return;
 
 	FCustomDamageEvent DamageEvent;
 	DamageEvent.AttackData = AttackData;
@@ -252,93 +257,85 @@ void AAreaObject::CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Ta
 	Target->TakeDamage(Damage, DamageEvent, GetController(), this);
 }
 
+
+void AAreaObject::Server_CalcDamage_Implementation(FAttackData AttackData, AActor* Caster, AActor* Target,
+												   FHitResult HitInfo)
+{
+	// 서버에서 실행할 데미지 계산 로직
+	CalcDamage(AttackData, Caster, Target, HitInfo);
+}
+
 float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, AController* EventInstigator,
                               AActor* DamageCauser)
 {
-	// 권한 체크
-	if (GetLocalRole() != ROLE_Authority)
-	{
-		return 0.0f; // 클라이언트에서는 데미지 처리 안함
-	}
+// 서버에서만 처리
+    if (!HasAuthority())
+        return 0.0f;
 
-	// IFF 처리
-	AAreaObject* damageCauser = Cast<AAreaObject>(DamageCauser);
-	if (damageCauser)
+    // IFF 및 상태 체크
+    AAreaObject* damageCauser = Cast<AAreaObject>(DamageCauser);
+	if (damageCauser->CanAttack(this) == false)
 	{
-		// 같은 타입의 AreaObject끼리는 데미지 x
-		if (damageCauser->dt_AreaObject->AreaObjectType == this->dt_AreaObject->AreaObjectType)
-		{
-			//return 0;
-		}
-	}
-
-	if (IsDie() || HasCondition(EConditionBitsType::Invincible) || HasCondition(EConditionBitsType::Hidden))
 		return 0.0f;
-
-	float ActualDamage = Damage;
-	ActualDamage = HandleDefenceDamageCalculation(ActualDamage);
-
-	FHitResult hitResult;
-	FVector hitDir;
-	FAttackData attackData;
-	bool bIsWeakPointHit = false;
-	float elementDamageMultiplier = 1.0f;
-
-	if (DamageEvent.IsOfType(FCustomDamageEvent::ClassID))
-	{
-		FCustomDamageEvent* const customDamageEvent = (FCustomDamageEvent*)&DamageEvent;
-		attackData = customDamageEvent->AttackData;
-		customDamageEvent->GetBestHitInfo(this, DamageCauser, hitResult, hitDir);
-
-		// Check for weak point hit
-		bIsWeakPointHit = IsWeakPointHit(hitResult.Location);
-
-		// HitStop 처리
-		if (attackData.bEnableHitStop)
-		{
-			// 월드의 시간 스케일을 조절하거나
-			// 캐릭터의 애니메이션만 일시 정지
-			ApplyHitStop(attackData.HitStopDuration);
-		}
-
-		// 넉백 처리
-		HandleKnockBack(DamageCauser->GetActorLocation(), attackData, m_KnockBackForceMultiplier);
 	}
 
-	ActualDamage = Super::TakeDamage(ActualDamage, DamageEvent, EventInstigator, DamageCauser);
+    if (bIsDead || HasCondition(EConditionBitsType::Invincible) || HasCondition(EConditionBitsType::Hidden))
+        return 0.0f;
 
-	// damage multiply by weak point Hit
-	ActualDamage = bIsWeakPointHit ? ActualDamage * 1.5f : ActualDamage;
+	// Instigator 설정 - 경험치 보상에 사용 -> Aggro System으로 확장시 변경 예정
+	SetInstigator(EventInstigator->GetPawn());
+	
+    // 데미지 계산
+    float ActualDamage = HandleDefenceDamageCalculation(Damage);
+    
+    FHitResult hitResult;
+    FVector hitDir;
+    FAttackData attackData;
+    bool bIsWeakPointHit = false;
+    float elementDamageMultiplier = 1.0f;
 
-	// damage multiply by Element Attribute Type
-	for (auto defectElementalAttribute : dt_AreaObject->DefenceElementalAttributes)
-	{
-		elementDamageMultiplier *= USonheimUtility::CalculateDamageMultiplier(
-			defectElementalAttribute, attackData.AttackElementalAttribute);
-	}
-	ActualDamage *= elementDamageMultiplier;
+    if (DamageEvent.IsOfType(FCustomDamageEvent::ClassID))
+    {
+        FCustomDamageEvent* const customDamageEvent = (FCustomDamageEvent*)&DamageEvent;
+        attackData = customDamageEvent->AttackData;
+        customDamageEvent->GetBestHitInfo(this, DamageCauser, hitResult, hitDir);
 
-	// apply actual hp damage
-	float CurrentHP = DecreaseHP(ActualDamage);
-	if (FMath::IsNearlyZero(CurrentHP))
-	{
-		if (true == ExchangeDead())
-		{
-			bIsDead = true;
-			// 서버에서 죽음 처리
-			OnDie();
-		}
-	}
+        bIsWeakPointHit = IsWeakPointHit(hitResult.Location);
 
-	// apply stamina damage
-	DecreaseStamina(attackData.StaminaDamageAmount);
+        if (attackData.bEnableHitStop)
+            ApplyHitStop(attackData.HitStopDuration);
 
-	// 모든 클라이언트에게 데미지 효과 전파
-	FVector spawnLocation = hitResult.Location != FVector::ZeroVector ? hitResult.Location : GetActorLocation();
-	MulticastDamageEffect(ActualDamage, spawnLocation, DamageCauser, bIsWeakPointHit, elementDamageMultiplier,
-	                      attackData);
+        HandleKnockBack(DamageCauser->GetActorLocation(), attackData, m_KnockBackForceMultiplier);
+    }
 
-	return ActualDamage;
+    // 약점 및 속성 계산
+    ActualDamage = bIsWeakPointHit ? ActualDamage * 1.5f : ActualDamage;
+    
+    for (auto defectElementalAttribute : dt_AreaObject->DefenceElementalAttributes)
+    {
+        elementDamageMultiplier *= USonheimUtility::CalculateDamageMultiplier(
+            defectElementalAttribute, attackData.AttackElementalAttribute);
+    }
+    ActualDamage *= elementDamageMultiplier;
+
+    // HP 감소 (Component가 알아서 동기화)
+    float CurrentHP = DecreaseHP(ActualDamage);
+    
+    // 사망 처리
+    if (FMath::IsNearlyZero(CurrentHP) && !bIsDead)
+    {
+        bIsDead = true;  // Replicated 변수
+        OnDie();  // Multicast로 모두에게 전파
+    }
+
+    // 스태미나 감소
+    DecreaseStamina(attackData.StaminaDamageAmount);
+
+    // 시각 효과 전파
+    FVector spawnLocation = hitResult.Location != FVector::ZeroVector ? hitResult.Location : GetActorLocation();
+    MulticastDamageEffect(ActualDamage, spawnLocation, DamageCauser, bIsWeakPointHit, elementDamageMultiplier, attackData);
+
+    return ActualDamage;
 }
 
 
@@ -365,56 +362,50 @@ void AAreaObject::StopAll()
 
 void AAreaObject::OnDie_Implementation()
 {
-	bIsDead = true;
 	if (HasAuthority())
 	{
-		// 서버에서만 죽음 처리 로직 실행
-		Server_OnDie();
-	}
-	Client_OnDie();
-}
+		// 서버: 게임플레이 로직
+		StopAll();
+		AddCondition(EConditionBitsType::Dead);
 
-
-void AAreaObject::Client_OnDie_Implementation()
-{
-	UAnimInstance* animInstance = GetMesh()->GetAnimInstance();
-	// 몽타주 정지
-	animInstance->StopAllMontages(0.1f);
-	if (UAnimMontage* montage = dt_AreaObject->Die_AnimMontage)
-	{
-		// 죽음 몽타주 재생
-		animInstance->Montage_Play(montage);
-	}
-
-	TWeakObjectPtr<AAreaObject> weakThis = this;
-	GetWorld()->GetTimerManager().SetTimer(DeathTimerHandle, [weakThis]()
-	{
-		AAreaObject* strongThis = weakThis.Get();
-
-		if (strongThis != nullptr)
+		if (AAreaObject* Killer = Cast<AAreaObject>(GetInstigator()))
 		{
-			// Death Effect
-			if (strongThis->DeathEffect != nullptr)
-			{
-				UGameplayStatics::SpawnEmitterAtLocation(strongThis->GetWorld(), strongThis->DeathEffect,
-				                                         strongThis->GetActorLocation());
-			}
+			OnKill(Killer);
 		}
-	}, DestroyDelayTime, false);
+        
+		// 타이머로 제거 예약
+		// GetWorld()->GetTimerManager().SetTimer(DeathTimerHandle, 
+		// 	[this]() { 
+		// 		if (IsValid(this)) 
+		// 			Destroy(); 
+		// 	}, 
+		// 	DestroyDelayTime, false);
+	}
+
+	// 모든 곳: 시각적 효과
+	if (UAnimInstance* AnimInst = GetMesh()->GetAnimInstance())
+	{
+		AnimInst->StopAllMontages(0.1f);
+		if (dt_AreaObject->Die_AnimMontage)
+		{
+			AnimInst->Montage_Play(dt_AreaObject->Die_AnimMontage);
+		}
+	}
+
+	// 죽음 이펙트
+	if (DeathEffect)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DeathEffect, GetActorLocation());
+	}
 }
 
-void AAreaObject::Server_OnDie_Implementation()
+void AAreaObject::OnKill(AAreaObject* Killer)
 {
-	//bIsDead = true;
-	StopAll();
-
-	//DropLoot(); // 아이템 드롭
-	//GiveExperience(); // 경험치 분배
-	//RemoveFromGameplay(); // 서버 측 제거 로직
-}
-
-void AAreaObject::OnKill()
-{
+	// 죽인 사람에게 Reward 처리
+	if (Killer)
+	{
+		Killer->m_LevelComponent->AddExp(this->m_LevelComponent->RewardHuntExp());
+	}
 }
 
 void AAreaObject::OnRevival()
@@ -594,47 +585,19 @@ void AAreaObject::LookAtLocationDirect(const FVector& TargetLocation) const
 
 float AAreaObject::IncreaseHP(float Delta)
 {
-	// 클라이언트에서 호출되면 서버에서 처리하도록 함
-	if (GetLocalRole() != ROLE_Authority)
-	{
-		// 클라이언트에서는 HP 변경 안함, 서버에 요청하는 로직 필요
-		Server_IncreaseHP(Delta);
-		return m_HealthComponent->GetHP();
-	}
-	m_HealthComponent->IncreaseHP(Delta);
+	m_HealthComponent->ModifyHP(Delta);
 	return m_HealthComponent->GetHP();
-}
-
-void AAreaObject::Server_IncreaseHP_Implementation(float Delta)
-{
-	IncreaseHP(Delta);
 }
 
 float AAreaObject::DecreaseHP(float Delta)
 {
-	// 클라이언트에서 호출되면 서버에서 처리하도록 함
-	if (GetLocalRole() != ROLE_Authority)
-	{
-		Server_DecreaseHP(Delta);
-		return m_HealthComponent->GetHP();
-	}
-	m_HealthComponent->DecreaseHP(Delta);
+	m_HealthComponent->ModifyHP(-Delta);
 	return m_HealthComponent->GetHP();
 }
 
-void AAreaObject::Server_DecreaseHP_Implementation(float Delta)
-{
-	DecreaseHP(Delta);
-}
 
-void AAreaObject::SetHPByRate(float Rate) const
+void AAreaObject::SetHPByRate(float Rate)
 {
-	// 클라이언트에서 호출되면 서버에서 처리하도록 함
-	if (GetLocalRole() != ROLE_Authority)
-	{
-		// 클라이언트에서는 HP 변경 안함, 서버에 요청하는 로직 필요
-		return;
-	}
 	m_HealthComponent->SetHPByRate(Rate);
 }
 
@@ -655,40 +618,14 @@ bool AAreaObject::IsMaxHP() const
 
 float AAreaObject::IncreaseStamina(float Delta)
 {
-	// 클라이언트에서 호출되면 서버에서 처리하도록 함
-	if (GetLocalRole() != ROLE_Authority)
-	{
-		// 클라이언트에서는 스태미나 변경 안함
-		Server_IncreaseStamina(Delta);
-		return m_StaminaComponent->GetStamina();
-	}
-
-	m_StaminaComponent->IncreaseStamina(Delta);
+	m_StaminaComponent->ModifyStamina(Delta);
 	return m_StaminaComponent->GetStamina();
-}
-
-void AAreaObject::Server_IncreaseStamina_Implementation(float Delta)
-{
-	IncreaseStamina(Delta);
 }
 
 float AAreaObject::DecreaseStamina(float Delta, bool bIsDamaged)
 {
-	// 클라이언트에서 호출되면 서버에서 처리하도록 함
-	if (GetLocalRole() != ROLE_Authority)
-	{
-		// 클라이언트에서는 스태미나 변경 안함
-		Server_DecreaseStamina(Delta, bIsDamaged);
-		return m_StaminaComponent->GetStamina();
-	}
-
-	m_StaminaComponent->DecreaseStamina(Delta, bIsDamaged);
+	m_StaminaComponent->ModifyStamina(-Delta, bIsDamaged);
 	return m_StaminaComponent->GetStamina();
-}
-
-void AAreaObject::Server_DecreaseStamina_Implementation(float Delta, bool bIsDamaged)
-{
-	DecreaseStamina(Delta, bIsDamaged);
 }
 
 float AAreaObject::GetStamina() const
@@ -794,19 +731,6 @@ void AAreaObject::StopBGM()
 	m_GameMode->StopBGM();
 }
 
-bool AAreaObject::Server_CalcDamage_Validate(FAttackData AttackData, AActor* Caster, AActor* Target, FHitResult HitInfo)
-{
-	// 유효성 검사 로직
-	return true;
-}
-
-void AAreaObject::Server_CalcDamage_Implementation(FAttackData AttackData, AActor* Caster, AActor* Target,
-                                                   FHitResult HitInfo)
-{
-	// 서버에서 실행할 데미지 계산 로직
-	CalcDamage(AttackData, Caster, Target, HitInfo);
-}
-
 void AAreaObject::MulticastDamageEffect_Implementation(float Damage, FVector HitLocation, AActor* DamageCauser,
                                                        bool bWeakPoint, float ElementDamageMultiplier,
                                                        const FAttackData& AttackData)
@@ -862,29 +786,12 @@ void AAreaObject::MulticastDamageEffect_Implementation(float Damage, FVector Hit
 	}
 }
 
-// bool AAreaObject::Server_OnDie_Validate()
-// {
-// 	return true;
-// }
-//
-// void AAreaObject::Server_OnDie_Implementation()
-// {
-// 	OnDie();
-// }
-
 void AAreaObject::OnRep_IsDead()
 {
-	// 클라이언트에서 사망 상태가 변경되었을 때 호출
-	//if (bIsDead)
-	//{
-	//	// 클라이언트측 사망 효과 (애니메이션 등)
-	//	StopAll();
-	//
-	//	UAnimInstance* animInstance = GetMesh()->GetAnimInstance();
-	//	animInstance->StopAllMontages(0.1f);
-	//	if (UAnimMontage* montage = dt_AreaObject->Die_AnimMontage)
-	//	{
-	//		animInstance->Montage_Play(montage);
-	//	}
-	//}
+	// 사망 상태 변경 시 필요한 클라이언트 처리
+	if (bIsDead)
+	{
+		// 콜리전 비활성화 등 로컬 처리만
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
 }

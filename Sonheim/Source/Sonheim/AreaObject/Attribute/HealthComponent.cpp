@@ -1,189 +1,90 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "HealthComponent.h"
+﻿#include "HealthComponent.h"
 #include "Net/UnrealNetwork.h"
-#include "VectorUtil.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 
-
-// Sets default values for this component's properties
 UHealthComponent::UHealthComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = false;
-	
-	// 컴포넌트 리플리케이션 활성화
-	SetIsReplicatedByDefault(true);
-}
-
-
-// Called when the game starts
-void UHealthComponent::BeginPlay()
-{
-	Super::BeginPlay();
-
-	// ...
-}
-
-
-// Called every frame
-void UHealthComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
+    PrimaryComponentTick.bCanEverTick = false;
+    SetIsReplicatedByDefault(true);
 }
 
 void UHealthComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	
-	// HP 값을 모든 클라이언트에 복제
-	DOREPLIFETIME(UHealthComponent, m_HP);
-	DOREPLIFETIME(UHealthComponent, m_HPMax);
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    
+    DOREPLIFETIME(UHealthComponent, m_HP);
+    DOREPLIFETIME(UHealthComponent, m_HPMax);
 }
 
-void UHealthComponent::InitHealth_Implementation(float _hpMax)
+void UHealthComponent::InitHealth(float hpMax)
 {
-	m_HPMax = _hpMax;
-	m_HP = m_HPMax;
-	OnHealthChanged.Broadcast(m_HP, 0, m_HPMax);
+    if (GetOwnerRole() != ROLE_Authority)
+        return;
+        
+    m_HPMax = hpMax;
+    m_HP = m_HPMax;
+    
+    // 초기화 시 로컬에서 이벤트 발생
+    OnHealthChanged.Broadcast(m_HP, 0, m_HPMax);
 }
 
-void UHealthComponent::IncreaseHP_Implementation(float Delta)
+void UHealthComponent::ModifyHP(float Delta)
 {
-	if (Delta <= 0.0f) return;
-
-	float oldHP = m_HP;
-	m_HP = FMath::Clamp(m_HP + Delta, 0.0f, m_HPMax);
-
-	if (!FMath::IsNearlyEqual(oldHP, m_HP))
-	{
-		OnHealthChanged.Broadcast(m_HP, m_HP - oldHP, m_HPMax);
-		
-		// 클라이언트에게 변경 사항 알림
-		AAreaObject* Owner = Cast<AAreaObject>(GetOwner());
-		if (Owner && Owner->GetLocalRole() == ROLE_Authority)
-		{
-			Client_OnHealthChanged(m_HP, m_HP - oldHP, m_HPMax);
-		}
-	}
-
-	return;
+    if (GetOwnerRole() != ROLE_Authority || FMath::IsNearlyZero(Delta))
+        return;
+        
+    float OldHP = m_HP;
+    m_HP = FMath::Clamp(m_HP + Delta, 0.0f, m_HPMax);
+    
+    // 서버에서만 이벤트 발생, OnRep이 클라이언트 처리
+    if (!FMath::IsNearlyEqual(OldHP, m_HP))
+    {
+        OnHealthChanged.Broadcast(m_HP, m_HP - OldHP, m_HPMax);
+    }
 }
 
-void UHealthComponent::DecreaseHP_Implementation(float Delta)
+void UHealthComponent::SetHPByRate(float Rate)
 {
-	if (Delta <= 0.0f) return;
-
-	float oldHP = m_HP;
-	m_HP = FMath::Clamp(m_HP - Delta, 0.0f, m_HPMax);
-
-	if (!FMath::IsNearlyEqual(oldHP, m_HP))
-	{
-		OnHealthChanged.Broadcast(m_HP, -(oldHP - m_HP), m_HPMax);
-		
-		// 클라이언트에게 변경 사항 알림
-		AAreaObject* Owner = Cast<AAreaObject>(GetOwner());
-		if (Owner && Owner->GetLocalRole() == ROLE_Authority)
-		{
-			Client_OnHealthChanged(m_HP, -(oldHP - m_HP), m_HPMax);
-		}
-	}
-
-	return;
+    if (GetOwnerRole() != ROLE_Authority)
+        return;
+        
+    float NewHP = m_HPMax * FMath::Clamp(Rate, 0.0f, 1.0f);
+    float Delta = NewHP - m_HP;
+    
+    if (!FMath::IsNearlyZero(Delta))
+    {
+        m_HP = NewHP;
+        OnHealthChanged.Broadcast(m_HP, Delta, m_HPMax);
+    }
 }
 
-void UHealthComponent::SetHPByRate_Implementation(float Rate)
+void UHealthComponent::ModifyMaxHP(float Delta)
 {
-	float oldHP = m_HP;
-	m_HP = m_HPMax * Rate;
-	if (false == FMath::IsNearlyEqual((oldHP), (m_HP)))
-	{
-		OnHealthChanged.Broadcast(m_HP, m_HP - oldHP, m_HPMax);
-		
-		// 클라이언트에게 변경 사항 알림
-		AAreaObject* Owner = Cast<AAreaObject>(GetOwner());
-		if (Owner && Owner->GetLocalRole() == ROLE_Authority)
-		{
-			Client_OnHealthChanged(m_HP, m_HP - oldHP, m_HPMax);
-		}
-	}
+    if (GetOwnerRole() != ROLE_Authority || FMath::IsNearlyZero(Delta))
+        return;
+        
+    m_HPMax = FMath::Max(1.0f, m_HPMax + Delta);
+    OnHealthChanged.Broadcast(m_HP, 0, m_HPMax);
 }
 
-float UHealthComponent::GetHP()
+void UHealthComponent::SetMaxHP(float MaxHP)
 {
-	// 클라이언트에게 변경 사항 알림
-	AAreaObject* Owner = Cast<AAreaObject>(GetOwner());
-	if (Owner && Owner->GetLocalRole() == ROLE_Authority)
-	{
-		Client_OnHealthChanged(m_HP, 0.f, m_HPMax);
-	}
-	return m_HP;
+    if (GetOwnerRole() != ROLE_Authority)
+        return;
+        
+    m_HPMax = FMath::Max(1.0f, MaxHP);
+    OnHealthChanged.Broadcast(m_HP, 0, m_HPMax);
 }
 
-float UHealthComponent::GetMaxHP()
+void UHealthComponent::OnRep_HP(float OldHP)
 {
-	// 클라이언트에게 변경 사항 알림
-	AAreaObject* Owner = Cast<AAreaObject>(GetOwner());
-	if (Owner && Owner->GetLocalRole() == ROLE_Authority)
-	{
-		Client_OnHealthChanged(m_HP, 0.f, m_HPMax);
-	}
-	return m_HPMax;
+    // 클라이언트에서 HP 변경 알림
+    float Delta = m_HP - OldHP;
+    OnHealthChanged.Broadcast(m_HP, Delta, m_HPMax);
 }
 
-void UHealthComponent::AddMaxHP_Implementation(float Delta)
+void UHealthComponent::OnRep_HPMax(float OldHPMax)
 {
-	float oldHPMax = m_HPMax;
-	m_HPMax = FMath::Clamp(m_HPMax + Delta, 1.0f, 99999);
-
-	if (!FMath::IsNearlyEqual(oldHPMax, m_HPMax))
-	{
-		OnHealthChanged.Broadcast(m_HP, 0.f, m_HPMax);
-		
-		// 클라이언트에게 변경 사항 알림
-		AAreaObject* Owner = Cast<AAreaObject>(GetOwner());
-		if (Owner && Owner->GetLocalRole() == ROLE_Authority)
-		{
-			Client_OnHealthChanged(m_HP, 0.f, m_HPMax);
-		}
-	}
-
-	return;
-}
-
-void UHealthComponent::SetMaxHP_Implementation(float MaxHP)
-{
-	m_HPMax = MaxHP;
-	OnHealthChanged.Broadcast(m_HP, 0.f, m_HPMax);
-	
-	// 클라이언트에게 변경 사항 알림
-	AAreaObject* Owner = Cast<AAreaObject>(GetOwner());
-	if (Owner && Owner->GetLocalRole() == ROLE_Authority)
-	{
-		Client_OnHealthChanged(m_HP, 0.f, m_HPMax);
-	}
-	
-	return;
-}
-
-void UHealthComponent::OnRep_HP()
-{
-	// HP가 복제되었을 때 클라이언트에서 호출됨
-	OnHealthChanged.Broadcast(m_HP, 0, m_HPMax);
-}
-
-void UHealthComponent::OnRep_HPMax()
-{
-	// HPMax가 복제되었을 때 클라이언트에서 호출됨
-	OnHealthChanged.Broadcast(m_HP, 0, m_HPMax);
-}
-
-void UHealthComponent::Client_OnHealthChanged_Implementation(float CurrentHP, float Delta, float MaxHP)
-{
-	// 클라이언트에서 호출되는 함수
-	OnHealthChanged.Broadcast(CurrentHP, Delta, MaxHP);
+    // 클라이언트에서 최대 HP 변경 알림
+    OnHealthChanged.Broadcast(m_HP, 0, m_HPMax);
 }

@@ -91,8 +91,7 @@ protected:
 
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 
-	virtual void Server_OnDie_Implementation() override;
-	virtual void Client_OnDie_Implementation() override;
+	virtual void OnRep_IsDead() override;
 
 	virtual void OnRevival() override;
 
