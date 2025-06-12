@@ -525,10 +525,10 @@ void AAreaObject::Server_CastSkill_Implementation(int SkillID, AAreaObject* Targ
 void AAreaObject::MultiCast_CastSkill_Implementation(int SkillID, AAreaObject* Target)
 {
 	UBaseSkill* Skill = GetSkillByID(SkillID);
-	//if (!HasAuthority()) m_AnimInstance->ServerMontage(Skill->GetSkillData()->Montage, EAnimationPriority::Action);
-	if (!HasAuthority() && Skill != nullptr) m_AnimInstance->Montage_Play(Skill->GetSkillData()->Montage);
+	FSkillData* SkillData = m_GameInstance->GetDataSkill(SkillID);
+
+	if (!HasAuthority()) m_AnimInstance->Montage_Play(SkillData->Montage);
 	UpdateCurrentSkill(Skill);
-	//Skill->OnCastStart(this, Target);
 }
 
 

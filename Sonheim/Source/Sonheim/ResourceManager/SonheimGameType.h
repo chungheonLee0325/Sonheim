@@ -99,6 +99,7 @@ enum class EWorkTrait : uint8
 UENUM(BlueprintType)
 enum class EAreaObjectStatType : uint8
 {
+	None UMETA(DisplayName = "None"), 
 	HP UMETA(DisplayName = "Health"),
 	Attack UMETA(DisplayName = "Attack"),
 	Defense UMETA(DisplayName = "Defense"),
@@ -572,6 +573,12 @@ struct FEquipmentData : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
 	float StaminaBonus = 0.0f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
+    float WorkSpeedBonus = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
+	float RunSpeedBonus = 0.0f;
 
 	// 무기 타입 (무기인 경우)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon",

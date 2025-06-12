@@ -126,45 +126,95 @@ void ASonheimPlayer::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 무기 없을때 공격 바인드
-	CommonAttack = GetSkillByID(10);
-
-	S_PlayerAnimInstance = Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance());
-
-	if (S_PlayerState == nullptr)S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
-	if (S_PlayerController == nullptr) S_PlayerController = Cast<ASonheimPlayerController>(GetController());
-	if (S_PlayerController != nullptr) S_PlayerController->InitializeHUD(this);
-
-	// 장비 변경 이벤트 바인드
-	//S_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
-	// 무기 변경 이벤트 바인드
-	//S_PlayerState->m_InventoryComponent->OnWeaponChanged.AddDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
-	WeaponSkillMap.Add(EEquipmentSlotType::Weapon1, CommonAttack);
-	WeaponSkillMap.Add(EEquipmentSlotType::Weapon2, CommonAttack);
-	WeaponSkillMap.Add(EEquipmentSlotType::Weapon3, CommonAttack);
-	WeaponSkillMap.Add(EEquipmentSlotType::Weapon4, CommonAttack);
-
+	// 컴포넌트 초기화
+	InitPlayer();
 	InitializeStateRestrictions();
-
-	// 게임 시작 시 첫 위치를 체크포인트로 저장
 	SaveCheckpoint(GetActorLocation(), GetActorRotation());
-
-	//S_PlayerState->OnPlayerStatsChanged.AddDynamic(this, &ASonheimPlayer::StatChanged);
 }
 
 void ASonheimPlayer::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-
+	
 	S_PlayerController = Cast<ASonheimPlayerController>(NewController);
 	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
 
-	// 장비 변경 이벤트 바인드
-	S_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
-	// 무기 변경 이벤트 바인드
-	S_PlayerState->m_InventoryComponent->OnWeaponChanged.AddDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
+	// 서버에서만 델리게이트 바인딩
+	if (HasAuthority())
+	{
+		BindDelegates();
+	}
+}
 
-	S_PlayerState->OnPlayerStatsChanged.AddDynamic(this, &ASonheimPlayer::StatChanged);
+void ASonheimPlayer::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	UnbindDelegates();
+	Super::EndPlay(EndPlayReason);
+}
+
+void ASonheimPlayer::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	    
+	DOREPLIFETIME(ASonheimPlayer, CurrentWeaponItemID);
+}
+
+void ASonheimPlayer::InitPlayer()
+{
+	// 무기 없을때 공격 바인드
+	CommonAttack = GetSkillByID(10);
+
+	S_PlayerAnimInstance = Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance());
+
+	if (S_PlayerState == nullptr) 
+		S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
+    
+	if (S_PlayerController == nullptr) 
+		S_PlayerController = Cast<ASonheimPlayerController>(GetController());
+    
+	if (S_PlayerController != nullptr && IsLocallyControlled()) 
+		S_PlayerController->InitializeHUD(this);
+
+	// 기본 무기 스킬 맵 초기화
+	WeaponSkillMap.Add(EEquipmentSlotType::Weapon1, CommonAttack);
+	WeaponSkillMap.Add(EEquipmentSlotType::Weapon2, CommonAttack);
+	WeaponSkillMap.Add(EEquipmentSlotType::Weapon3, CommonAttack);
+	WeaponSkillMap.Add(EEquipmentSlotType::Weapon4, CommonAttack);
+}
+
+void ASonheimPlayer::BindDelegates()
+{
+	if (S_PlayerState && S_PlayerState->m_InventoryComponent)
+	{
+		// 기존 바인딩 제거
+		S_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
+		S_PlayerState->m_InventoryComponent->OnWeaponChanged.RemoveDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
+        
+		// 새로 바인딩
+		S_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
+		S_PlayerState->m_InventoryComponent->OnWeaponChanged.AddDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
+	}
+
+	if (S_PlayerState)
+	{
+		S_PlayerState->OnPlayerStatsChanged.RemoveDynamic(this, &ASonheimPlayer::StatChanged);
+		S_PlayerState->OnPlayerStatsChanged.AddDynamic(this, &ASonheimPlayer::StatChanged);
+	}
+}
+
+void ASonheimPlayer::UnbindDelegates()
+{
+	if (S_PlayerState && S_PlayerState->m_InventoryComponent)
+	{
+		// 기존 바인딩 제거
+		S_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
+		S_PlayerState->m_InventoryComponent->OnWeaponChanged.RemoveDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
+	}
+
+	if (S_PlayerState)
+	{
+		S_PlayerState->OnPlayerStatsChanged.RemoveDynamic(this, &ASonheimPlayer::StatChanged);
+	}
 }
 
 void ASonheimPlayer::Server_OnDie_Implementation()
@@ -217,46 +267,194 @@ float ASonheimPlayer::HandleDefenceDamageCalculation(float Damage)
 	return FMath::Clamp(Damage - m_Defence, 1, Damage - m_Defence);
 }
 
-void ASonheimPlayer::Reward(int ItemID, int ItemValue) const
+void ASonheimPlayer::Reward(int ItemID, int ItemValue)
 {
-	if (S_PlayerState == nullptr) return;
-	S_PlayerState->m_InventoryComponent->AddItem(ItemID, ItemValue);
+	if (HasAuthority())
+	{
+		Server_Reward(ItemID, ItemValue);
+	}
+	else
+	{
+		// 클라이언트면 서버에 요청
+		Server_Reward(ItemID, ItemValue);
+	}
+}
+
+void ASonheimPlayer::Server_Reward_Implementation(int ItemID, int ItemValue)
+{
+	if (S_PlayerState && S_PlayerState->m_InventoryComponent)
+	{
+		S_PlayerState->m_InventoryComponent->AddItem(ItemID, ItemValue);
+        
+#if !UE_BUILD_SHIPPING
+		UE_LOG(LogTemp, Log, TEXT("Player rewarded: ItemID=%d, Value=%d"), ItemID, ItemValue);
+#endif
+	}
 }
 
 void ASonheimPlayer::UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int ItemID)
 {
-	SelectedWeaponSlot = WeaponSlot;
-
-	if (ItemID == 0)
+	if (HasAuthority())
 	{
-		WeaponComponent->SetSkeletalMesh(nullptr);
-		S_PlayerAnimInstance->bIsMelee = false;
-		return;
-	}
-	else
-	{
-		FItemData* ItemData = m_GameInstance->GetDataItem(ItemID);
-		// 무기 메쉬 설정
-		WeaponComponent->SetSkeletalMesh(ItemData->EquipmentData.EquipmentMesh);
-		S_PlayerAnimInstance->bIsMelee = true;
-
-		// 애니메이션 모드 설정
+		Server_UpdateSelectedWeapon(WeaponSlot, ItemID);
 	}
 }
 
+void ASonheimPlayer::Server_UpdateSelectedWeapon_Implementation(EEquipmentSlotType WeaponSlot, int ItemID)
+{
+	CurrentWeaponItemID = ItemID;
+	MultiCast_UpdateSelectedWeapon(WeaponSlot, ItemID);
+}
+
+void ASonheimPlayer::MultiCast_UpdateSelectedWeapon_Implementation(EEquipmentSlotType WeaponSlot, int ItemID)
+{
+	SelectedWeaponSlot = WeaponSlot;
+    
+	if (ItemID == 0)
+	{
+		ClearWeaponMesh();
+	}
+	else
+	{
+		UpdateWeaponMesh(ItemID);
+	}
+}
+
+void ASonheimPlayer::UpdateWeaponMesh(int ItemID)
+{
+	if (!m_GameInstance) return;
+    
+	FItemData* ItemData = m_GameInstance->GetDataItem(ItemID);
+	if (ItemData && ItemData->EquipmentData.EquipmentMesh)
+	{
+		WeaponComponent->SetSkeletalMesh(ItemData->EquipmentData.EquipmentMesh);
+        
+		if (S_PlayerAnimInstance)
+		{
+			S_PlayerAnimInstance->bIsMelee = (ItemData->EquipmentData.WeaponType == EWeaponType::Melee);
+		}
+	}
+}
+
+void ASonheimPlayer::ClearWeaponMesh()
+{
+	WeaponComponent->SetSkeletalMesh(nullptr);
+    
+	if (S_PlayerAnimInstance)
+	{
+		S_PlayerAnimInstance->bIsMelee = false;
+	}
+}
+
+void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventoryItem Item)
+{
+	// 무기 슬롯인지 확인
+	if (WeaponSlot < EEquipmentSlotType::Weapon1 || WeaponSlot > EEquipmentSlotType::Weapon4)
+		return;
+
+	// 아이템 데이터 가져오기
+	FItemData* ItemData = nullptr;
+	FSkillData* SkillData = nullptr;
+    
+	if (Item.ItemID > 0 && m_GameInstance)
+	{
+		ItemData = m_GameInstance->GetDataItem(Item.ItemID);
+		if (ItemData)
+		{
+			SkillData = m_GameInstance->GetDataSkill(ItemData->EquipmentData.SkillID);
+		}
+	}
+
+	// 기존 스킬 제거
+	if (WeaponSkillMap.Contains(WeaponSlot))
+	{
+		UBaseSkill* OldSkill = WeaponSkillMap[WeaponSlot];
+		if (OldSkill && OldSkill != CommonAttack)
+		{
+			m_SkillInstanceMap.Remove(OldSkill->GetSkillID());
+		}
+	}
+
+	// 새 스킬 설정
+	if (ItemData && SkillData && SkillData->SkillClass)
+	{
+		// 무기 스킬 생성
+		UBaseSkill* NewWeaponSkill = NewObject<UBaseSkill>(this, SkillData->SkillClass);
+		NewWeaponSkill->InitSkill(SkillData);
+        
+		// 스킬 등록
+		WeaponSkillMap[WeaponSlot] = NewWeaponSkill;
+		m_SkillInstanceMap.Add(SkillData->SkillID, NewWeaponSkill);
+	}
+	else
+	{
+		// 기본 스킬로 복귀
+		WeaponSkillMap[WeaponSlot] = CommonAttack;
+		if (CommonAttack)
+		{
+			m_SkillInstanceMap.Add(CommonAttack->GetSkillID(), CommonAttack);
+		}
+	}
+
+	// 현재 선택된 무기면 외형 업데이트
+	if (SelectedWeaponSlot == WeaponSlot)
+	{
+		if (ItemData)
+		{
+			UpdateWeaponMesh(Item.ItemID);
+		}
+		else
+		{
+			ClearWeaponMesh();
+		}
+	}
+}
+
+
 void ASonheimPlayer::StatChanged(EAreaObjectStatType StatType, float StatValue)
 {
-	if (StatType == EAreaObjectStatType::HP)
+	// 서버에서만 실제 값 적용
+	if (!HasAuthority()) return;
+
+	switch (StatType)
 	{
-		m_HealthComponent->SetMaxHP(StatValue);
-	}
-	else if (StatType == EAreaObjectStatType::Attack)
-	{
+	case EAreaObjectStatType::HP:
+		if (m_HealthComponent)
+		{
+			m_HealthComponent->SetMaxHP(StatValue);
+		}
+		break;
+        
+	case EAreaObjectStatType::Attack:
 		m_Attack = StatValue;
-	}
-	else if (StatType == EAreaObjectStatType::Defense)
-	{
+		break;
+        
+	case EAreaObjectStatType::Defense:
 		m_Defence = StatValue;
+		break;
+        
+	case EAreaObjectStatType::RunSpeed:
+		if (GetCharacterMovement())
+		{
+			GetCharacterMovement()->MaxWalkSpeed = StatValue;
+		}
+		break;
+        
+	case EAreaObjectStatType::JumpHeight:
+		if (GetCharacterMovement())
+		{
+			GetCharacterMovement()->JumpZVelocity = StatValue;
+		}
+		break;
+	}
+}
+
+void ASonheimPlayer::WeaponSwitch_Triggered(int Index)
+{
+	if (S_PlayerState && S_PlayerState->m_InventoryComponent)
+	{
+		// InventoryComponent에서 처리 (이미 네트워크 동기화됨)
+		S_PlayerState->m_InventoryComponent->SwitchWeaponSlot(Index);
 	}
 }
 
@@ -302,55 +500,9 @@ void ASonheimPlayer::RefreshWeaponSkillToSkillInstanceMap()
 	}
 }
 
-void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventoryItem Item)
+void ASonheimPlayer::Server_WeaponSwitch_Triggered_Implementation(int Index)
 {
-	if (WeaponSlot == EEquipmentSlotType::Weapon1 || WeaponSlot == EEquipmentSlotType::Weapon2 || WeaponSlot ==
-		EEquipmentSlotType::Weapon3 || WeaponSlot == EEquipmentSlotType::Weapon4)
-	{
-		FItemData* ItemData = m_GameInstance->GetDataItem(Item.ItemID);
-		FSkillData* SkillData = ItemData == nullptr
-			                        ? nullptr
-			                        : m_GameInstance->GetDataSkill(ItemData->EquipmentData.SkillID);
-
-		// 아이템 해제 or invalid skill
-		if (ItemData == nullptr || SkillData == nullptr)
-		{
-			// 기존 스킬 지우기
-			m_SkillInstanceMap.Remove(WeaponSkillMap[WeaponSlot]->GetSkillID());
-			// 기본 스킬(주먹 평타) 등록
-			WeaponSkillMap[WeaponSlot] = CommonAttack;
-			// 목록 최신화
-			RefreshWeaponSkillToSkillInstanceMap();
-
-			if (SelectedWeaponSlot == WeaponSlot)
-			{
-				WeaponComponent->SetSkeletalMesh(nullptr);
-				S_PlayerAnimInstance->bIsMelee = false;
-			}
-			return;
-		}
-
-		// 새로운 무기 장착
-		// 무기 스킬 생성
-		UBaseSkill* weaponSkill = NewObject<UBaseSkill>(this, SkillData->SkillClass);
-		weaponSkill->InitSkill(SkillData);
-		// 무기 스킬 등록
-		WeaponSkillMap[WeaponSlot] = weaponSkill;
-		// Skill Instance Map 최신화
-		RefreshWeaponSkillToSkillInstanceMap();
-		// m_SkillInstanceMap.Remove(SkillData->SkillID);
-		// m_SkillInstanceMap.Add(SkillData->SkillID,weaponSkill);
-		//WeaponSkillMap.Add(WeaponSlot, weaponSkill);
-
-		// 외형 최신화
-		if (SelectedWeaponSlot == WeaponSlot)
-		{
-			WeaponComponent->SetSkeletalMesh(ItemData->EquipmentData.EquipmentMesh);
-			S_PlayerAnimInstance->bIsMelee = true;
-		}
-	}
 }
-
 // Called every frame
 void ASonheimPlayer::Tick(float DeltaTime)
 {
@@ -503,7 +655,7 @@ void ASonheimPlayer::SetPlayerState(EPlayerState NewState)
 	//	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 
 	// 회전 제한 적용
-	GetCharacterMovement()->bOrientRotationToMovement = NewRestrictions.bCanRotate;
+	GetCharacterMovement()->bOrientRotationToMovement = NewRestrictions.bCanRotate; 
 }
 
 void ASonheimPlayer::Move(const FVector2D MovementVector)
@@ -760,10 +912,6 @@ void ASonheimPlayer::Jump_Pressed()
 void ASonheimPlayer::Jump_Released()
 {
 	StopJumping();
-}
-
-void ASonheimPlayer::WeaponSwitch_Triggered()
-{
 }
 
 void ASonheimPlayer::Sprint_Pressed()

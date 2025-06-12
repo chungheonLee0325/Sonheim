@@ -1,27 +1,30 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "InventoryComponent.h"
-
 #include "Sonheim/AreaObject/Attribute/StatBonusComponent.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/Utilities/LogMacro.h"
+#include "Net/UnrealNetwork.h"
+#include "Engine/ActorChannel.h"
 
-
-// Sets default values for this component's properties
 UInventoryComponent::UInventoryComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = true;
-
-	// ...
+	PrimaryComponentTick.bCanEverTick = false;
+	SetIsReplicatedByDefault(true);
 }
 
+void UInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
+	// 조건부 복제로 네트워크 트래픽 감소
+	DOREPLIFETIME_CONDITION(UInventoryComponent, InventoryItems, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UInventoryComponent, EquippedSlots, COND_OwnerOnly);
+	DOREPLIFETIME(UInventoryComponent, CurrentWeaponSlot); // 모든 클라이언트가 볼 수 있어야 함
+}
 
-// Called when the game starts
 void UInventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
@@ -30,37 +33,154 @@ void UInventoryComponent::BeginPlay()
 	m_GameInstance = Cast<USonheimGameInstance>(GetWorld()->GetGameInstance());
 	m_PlayerState = Cast<ASonheimPlayerState>(GetOwner());
 
-	// 장비 슬롯 초기화
-	for (EEquipmentSlotType Value : TEnumRange<EEquipmentSlotType>())
+	// 서버에서만 초기화
+	if (GetOwnerRole() == ROLE_Authority)
 	{
-		EEquipmentSlotType SlotType = Value;
-		FInventoryItem InventoryItem{};
-		if (SlotType != EEquipmentSlotType::None)
+		// 장비 슬롯 초기화
+		for (uint8 i = 0; i < (uint8)EEquipmentSlotType::Max; i++)
 		{
-			EquippedItems.Add(SlotType, InventoryItem); // 0은 비어있음을 의미
+			EEquipmentSlotType SlotType = (EEquipmentSlotType)i;
+			if (SlotType != EEquipmentSlotType::None)
+			{
+				EquippedSlots.Add(FEquippedSlot(SlotType, FInventoryItem()));
+			}
+		}
+
+		// StatBonusComponent에 초기 무기 슬롯 설정
+		if (m_PlayerState && m_PlayerState->m_StatBonusComponent)
+		{
+			m_PlayerState->m_StatBonusComponent->SetCurrentWeaponSlot(CurrentWeaponSlot);
 		}
 	}
+}
 
-	// StatBonusComponent에 초기 무기 슬롯 설정
-	if (m_PlayerState && m_PlayerState->m_StatBonusComponent)
+void UInventoryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// 참조 정리
+	m_Player = nullptr;
+	m_PlayerState = nullptr;
+	m_GameInstance = nullptr;
+	
+	// 델리게이트 정리
+	OnInventoryChanged.Clear();
+	OnEquipmentChanged.Clear();
+	OnWeaponChanged.Clear();
+	OnItemAdded.Clear();
+	OnItemRemoved.Clear();
+	
+	Super::EndPlay(EndPlayReason);
+}
+
+void UInventoryComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+}
+
+// OnRep 함수들
+void UInventoryComponent::OnRep_InventoryItems()
+{
+	BroadcastInventoryChanged();
+	
+	#if !UE_BUILD_SHIPPING
+	if (GEngine)
 	{
-		m_PlayerState->m_StatBonusComponent->SetCurrentWeaponSlot(CurrentWeaponSlot);
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, 
+			FString::Printf(TEXT("[Client] Inventory Updated: %d items"), InventoryItems.Num()));
+	}
+	#endif
+}
+
+void UInventoryComponent::OnRep_EquippedItems()
+{
+	// 장착 아이템 변경 이벤트 호출
+	for (const FEquippedSlot& Slot : EquippedSlots)
+	{
+		OnEquipmentChanged.Broadcast(Slot.SlotType, Slot.Item);
 	}
 }
 
-
-// Called every frame
-void UInventoryComponent::TickComponent(float DeltaTime, ELevelTick TickType,
-                                        FActorComponentTickFunction* ThisTickFunction)
+void UInventoryComponent::OnRep_CurrentWeaponSlot()
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
+	FInventoryItem CurrentWeapon = GetEquippedItem(CurrentWeaponSlot);
+	OnWeaponChanged.Broadcast(CurrentWeaponSlot, CurrentWeapon.ItemID);
 }
 
+// 서버 RPC 구현
+void UInventoryComponent::ServerAddItem_Implementation(int ItemID, int ItemCount)
+{
+	AddItem(ItemID, ItemCount);
+}
+
+void UInventoryComponent::ServerRemoveItem_Implementation(int ItemID, int ItemCount)
+{
+	RemoveItem(ItemID, ItemCount);
+}
+
+void UInventoryComponent::ServerRemoveItemByIndex_Implementation(int Index)
+{
+	RemoveItemByIndex(Index);
+}
+
+void UInventoryComponent::ServerEquipItem_Implementation(int ItemID)
+{
+	EquipItem(ItemID);
+}
+
+void UInventoryComponent::ServerEquipItemByIndex_Implementation(int32 InventoryIndex)
+{
+	EquipItemByIndex(InventoryIndex);
+}
+
+void UInventoryComponent::ServerUnEquipItem_Implementation(EEquipmentSlotType SlotType)
+{
+	UnEquipItem(SlotType);
+}
+
+void UInventoryComponent::ServerSwitchWeaponSlot_Implementation(int Index)
+{
+	SwitchWeaponSlot(Index);
+}
+
+void UInventoryComponent::ServerSwapItems_Implementation(int32 FromIndex, int32 ToIndex)
+{
+	SwapItems(FromIndex, ToIndex);
+}
+
+// 데이터 유효성 검증 함수들
+bool UInventoryComponent::ValidateItemCount(int ItemCount) const
+{
+	return ItemCount > 0 && ItemCount <= MaxItemStackCount;
+}
+
+bool UInventoryComponent::ValidateItemOperation(int ItemID, int ItemCount) const
+{
+	if (!IsValidItemID(ItemID))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid ItemID: %d"), ItemID);
+		return false;
+	}
+	
+	if (!ValidateItemCount(ItemCount))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid item count: %d (Max: %d)"), ItemCount, MaxItemStackCount);
+		return false;
+	}
+	
+	return true;
+}
+
+// 인벤토리 함수들
 bool UInventoryComponent::AddItem(int ItemID, int ItemCount)
 {
-	if (ItemCount <= 0 || !IsValidItemID(ItemID))
+	// 권한 체크
+	if (GetOwnerRole() < ROLE_Authority)
+	{
+		ServerAddItem(ItemID, ItemCount);
+		return false;
+	}
+
+	// 데이터 유효성 검증
+	if (!ValidateItemOperation(ItemID, ItemCount))
 		return false;
 
 	FItemData* ItemData = GetItemData(ItemID);
@@ -70,74 +190,74 @@ bool UInventoryComponent::AddItem(int ItemID, int ItemCount)
 	// 인벤토리에서 같은 아이템 찾기
 	int ExistingItemIndex = FindItemIndexInInventory(ItemID);
 
-	if (ExistingItemIndex != INDEX_NONE && ItemData->bStackable == true)
+	if (ExistingItemIndex != INDEX_NONE && ItemData->bStackable)
 	{
+		// 스택 제한 확인
+		int NewCount = InventoryItems[ExistingItemIndex].Count + ItemCount;
+		if (NewCount > MaxItemStackCount)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Stack overflow prevented: %d + %d > %d"), 
+				InventoryItems[ExistingItemIndex].Count, ItemCount, MaxItemStackCount);
+			return false;
+		}
+		
 		// 이미 있는 아이템, 수량 증가
-		InventoryItems[ExistingItemIndex].Count += ItemCount;
-		// 이벤트 발생
+		InventoryItems[ExistingItemIndex].Count = NewCount;
 		OnItemAdded.Broadcast(ItemID, InventoryItems[ExistingItemIndex].Count);
 	}
 	else
 	{
 		// 새 아이템 추가
 		if (InventoryItems.Num() >= MaxInventorySlots)
-			return false; // 인벤토리 가득 참
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Inventory full: %d/%d"), InventoryItems.Num(), MaxInventorySlots);
+			return false;
+		}
 
-		InventoryItems.Add(FInventoryItem(ItemID, ItemCount));
-		// 이벤트 발생
+		FInventoryItem NewItem(ItemID, ItemCount);
+		InventoryItems.Add(NewItem);
 		OnItemAdded.Broadcast(ItemID, ItemCount);
 	}
 
-	BroadcastInventoryChanged();
+	#if !UE_BUILD_SHIPPING
+	if (GEngine)
+	{
+		FString RoleString = GetOwnerRole() == ROLE_Authority ? TEXT("Server") : TEXT("Client");
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, 
+			FString::Printf(TEXT("[%s] Item Added: %d x%d"), *RoleString, ItemID, ItemCount));
+	}
+	#endif
 
+	BroadcastInventoryChanged();
 	return true;
 }
 
-bool UInventoryComponent::AddItemByInventoryItem(FInventoryItem InventoryItem)
+bool UInventoryComponent::AddItemByInventoryItem(const FInventoryItem& InventoryItem)
 {
-	FItemData* ItemData = GetItemData(InventoryItem.ItemID);
-	if (!ItemData)
-		return false;
-
-	// 인벤토리에서 같은 아이템 찾기
-	int ExistingItemIndex = FindItemIndexInInventory(InventoryItem.ItemID);
-
-	if (ExistingItemIndex != INDEX_NONE && ItemData->bStackable == true)
-	{
-		// 이미 있는 아이템, 수량 증가
-		InventoryItems[ExistingItemIndex].Count += InventoryItem.Count;
-		// 이벤트 발생
-		OnItemAdded.Broadcast(InventoryItem.ItemID, InventoryItems[ExistingItemIndex].Count);
-	}
-	else
-	{
-		// 새 아이템 추가
-		if (InventoryItems.Num() >= MaxInventorySlots)
-			return false; // 인벤토리 가득 참
-
-		InventoryItems.Add(InventoryItem);
-		// 이벤트 발생
-		OnItemAdded.Broadcast(InventoryItem.ItemID, InventoryItem.Count);
-	}
-
-	BroadcastInventoryChanged();
-
-	return true;
+	return AddItem(InventoryItem.ItemID, InventoryItem.Count);
 }
 
 bool UInventoryComponent::RemoveItem(int ItemID, int ItemCount)
 {
-	if (ItemCount <= 0 || !IsValidItemID(ItemID))
+	// 권한 체크
+	if (GetOwnerRole() < ROLE_Authority)
+	{
+		ServerRemoveItem(ItemID, ItemCount);
+		return false;
+	}
+
+	// 데이터 유효성 검증
+	if (!ValidateItemOperation(ItemID, ItemCount))
 		return false;
 
 	int ItemIndex = FindItemIndexInInventory(ItemID);
 	if (ItemIndex == INDEX_NONE)
-		return false; // 아이템 없음
+		return false;
 
 	FInventoryItem& Item = InventoryItems[ItemIndex];
 
 	if (Item.Count < ItemCount)
-		return false; // 충분한 수량 없음
+		return false;
 
 	// 수량 감소
 	Item.Count -= ItemCount;
@@ -145,21 +265,9 @@ bool UInventoryComponent::RemoveItem(int ItemID, int ItemCount)
 	// 수량이 0이면 제거
 	if (Item.Count <= 0)
 	{
-		// 장착된 아이템이면 장착 해제:: ToDo: 프로젝트마다 customize 될 부분
-		//if (Item.bIsEquipped)
-		//{
-		//	FItemData* ItemData = GetItemData(ItemID);
-		//	EEquipmentSlotType EquipSlotType = FindEmptySlotForType(ItemData->EquipmentData.EquipKind);
-		//	if (ItemData && EquipSlotType != EEquipmentSlotType::None)
-		//	{
-		//		UnEquipItem(EquipSlotType);
-		//	}
-		//}
-
 		InventoryItems.RemoveAt(ItemIndex);
 	}
 
-	// 이벤트 발생
 	OnItemRemoved.Broadcast(ItemID, Item.Count);
 	BroadcastInventoryChanged();
 
@@ -168,14 +276,21 @@ bool UInventoryComponent::RemoveItem(int ItemID, int ItemCount)
 
 bool UInventoryComponent::RemoveItemByIndex(int Index)
 {
-	if (InventoryItems.IsEmpty())
+	// 권한 체크
+	if (GetOwnerRole() < ROLE_Authority)
+	{
+		ServerRemoveItemByIndex(Index);
+		return false;
+	}
+
+	if (Index < 0 || Index >= InventoryItems.Num())
 		return false;
 
 	int ItemID = InventoryItems[Index].ItemID;
 	int Count = InventoryItems[Index].Count;
 
 	InventoryItems.RemoveAt(Index);
-	// 이벤트 발생
+	
 	OnItemRemoved.Broadcast(ItemID, Count);
 	BroadcastInventoryChanged();
 
@@ -184,87 +299,136 @@ bool UInventoryComponent::RemoveItemByIndex(int Index)
 
 bool UInventoryComponent::EquipItem(int ItemID)
 {
+	// 권한 체크
+	if (GetOwnerRole() < ROLE_Authority)
+	{
+		ServerEquipItem(ItemID);
+		return false;
+	}
+
 	if (!IsValidItemID(ItemID))
 		return false;
 
 	FItemData* ItemData = GetItemData(ItemID);
+	if (!ItemData)
+		return false;
+
 	EEquipmentSlotType EquipSlotType = FindEmptySlotForType(ItemData->EquipmentData.EquipKind);
-	if (!ItemData || EquipSlotType == EEquipmentSlotType::None)
-		return false; // 장착 불가능한 아이템
+	if (EquipSlotType == EEquipmentSlotType::None)
+		return false;
 
 	// 인벤토리에서 아이템 찾기
 	int ItemIndex = FindItemIndexInInventory(ItemID);
 	if (ItemIndex == INDEX_NONE)
-		return false; // 아이템 없음
+		return false;
 
 	// 같은 슬롯에 장착된 아이템이 있으면 해제
-	if (EquippedItems.Contains(EquipSlotType) && EquippedItems[EquipSlotType].ItemID != 0)
+	FInventoryItem* ExistingItem = GetEquippedSlotItem(EquipSlotType);
+	if (ExistingItem && ExistingItem->ItemID != 0)
 	{
 		UnEquipItem(EquipSlotType);
 	}
 
 	// 아이템 장착
-	InventoryItems[ItemIndex].bIsEquipped = true;
 	FInventoryItem Item = InventoryItems[ItemIndex];
-	EquippedItems[EquipSlotType] = Item;
+	Item.bIsEquipped = true;
+	SetEquippedSlot(EquipSlotType, Item);
 
-	// 스탯 적용 - 무기와 일반 장비를 구분하여 처리
-	if (ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon)
+	// 스탯 적용
+	if (m_PlayerState && m_PlayerState->m_StatBonusComponent)
 	{
-		m_PlayerState->m_StatBonusComponent->RegisterEquippedItem(EquipSlotType, ItemID, true);
-	}
-	else
-	{
-		ApplyEquipmentStats(ItemID, true);
+		if (ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon)
+		{
+			m_PlayerState->m_StatBonusComponent->RegisterEquippedItem(EquipSlotType, ItemID, true);
+		}
+		else
+		{
+			ApplyEquipmentStats(ItemID, true);
+		}
 	}
 
-	// Inventory에서 아이템 삭제 :: ToDo: 프로젝트마다 customize 될 부분
+	// Inventory에서 아이템 삭제
 	RemoveItemByIndex(ItemIndex);
 
 	// 이벤트 발생
 	OnEquipmentChanged.Broadcast(EquipSlotType, Item);
+	
+	// 무기인 경우 무기 변경 이벤트도 발생
+	if (ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon)
+	{
+		OnWeaponChanged.Broadcast(EquipSlotType, ItemID);
+	}
+
 	BroadcastInventoryChanged();
 
 	return true;
 }
 
+bool UInventoryComponent::EquipItemByIndex(int32 InventoryIndex)
+{
+	// 권한 체크
+	if (GetOwnerRole() < ROLE_Authority)
+	{
+		ServerEquipItemByIndex(InventoryIndex);
+		return false;
+	}
+
+	if (InventoryIndex < 0 || InventoryIndex >= InventoryItems.Num())
+		return false;
+
+	int ItemID = InventoryItems[InventoryIndex].ItemID;
+	return EquipItem(ItemID);
+}
+
 bool UInventoryComponent::UnEquipItem(EEquipmentSlotType SlotType)
 {
-	if (SlotType == EEquipmentSlotType::None || !EquippedItems.Contains(SlotType))
-		return false;
-
-	int ItemID = EquippedItems[SlotType].ItemID;
-	if (ItemID == 0)
-		return false;
-
-	// 인벤토리에 아이템 추가:: ToDo: 프로젝트마다 customize 될 부분
-	EquippedItems[SlotType].bIsEquipped = false;
-	AddItemByInventoryItem(EquippedItems[SlotType]);
-
-	// 인벤토리에서 아이템 찾기 :: ToDo: 프로젝트마다 customize 될 부분
-	// int ItemIndex = FindItemIndexInInventory(ItemID);
-	// if (ItemIndex != INDEX_NONE)
-	// {
-	// 	InventoryItems[ItemIndex].bIsEquipped = false;
-	// }
-
-	// 스탯 제거 - 무기와 일반 장비를 구분하여 처리
-	FItemData* ItemData = GetItemData(ItemID);
-	if (ItemData && ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon)
+	// 권한 체크
+	if (GetOwnerRole() < ROLE_Authority)
 	{
-		m_PlayerState->m_StatBonusComponent->RegisterEquippedItem(SlotType, ItemID, false);
+		ServerUnEquipItem(SlotType);
+		return false;
 	}
-	else
+
+	if (SlotType == EEquipmentSlotType::None)
+		return false;
+
+	FInventoryItem* EquippedItem = GetEquippedSlotItem(SlotType);
+	if (!EquippedItem || EquippedItem->ItemID == 0)
+		return false;
+
+	int ItemID = EquippedItem->ItemID;
+	FInventoryItem ItemToReturn = *EquippedItem;
+	ItemToReturn.bIsEquipped = false;
+
+	// 인벤토리에 공간이 있는지 확인
+	if (InventoryItems.Num() >= MaxInventorySlots)
 	{
-		ApplyEquipmentStats(ItemID, false);
+		UE_LOG(LogTemp, Warning, TEXT("Cannot unequip: Inventory full"));
+		return false;
+	}
+
+	// 스탯 제거
+	if (m_PlayerState && m_PlayerState->m_StatBonusComponent)
+	{
+		FItemData* ItemData = GetItemData(ItemID);
+		if (ItemData && ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon)
+		{
+			m_PlayerState->m_StatBonusComponent->RegisterEquippedItem(SlotType, ItemID, false);
+		}
+		else
+		{
+			ApplyEquipmentStats(ItemID, false);
+		}
 	}
 
 	// 장착 해제
-	EquippedItems[SlotType] = FInventoryItem();
+	RemoveEquippedSlot(SlotType);
+
+	// 인벤토리에 아이템 추가
+	AddItemByInventoryItem(ItemToReturn);
 
 	// 이벤트 발생
-	OnEquipmentChanged.Broadcast(SlotType, EquippedItems[SlotType]);
-	BroadcastInventoryChanged();
+	OnEquipmentChanged.Broadcast(SlotType, FInventoryItem());
 
 	return true;
 }
@@ -297,9 +461,125 @@ TArray<FInventoryItem> UInventoryComponent::GetInventory() const
 
 TMap<EEquipmentSlotType, FInventoryItem> UInventoryComponent::GetEquippedItems() const
 {
-	return EquippedItems;
+	TMap<EEquipmentSlotType, FInventoryItem> Result;
+	for (const FEquippedSlot& Slot : EquippedSlots)
+	{
+		Result.Add(Slot.SlotType, Slot.Item);
+	}
+	return Result;
 }
 
+FInventoryItem UInventoryComponent::GetEquippedItem(EEquipmentSlotType SlotType) const
+{
+	int32 Index = FindEquippedSlotIndex(SlotType);
+	if (Index != INDEX_NONE)
+	{
+		return EquippedSlots[Index].Item;
+	}
+	return FInventoryItem();
+}
+
+void UInventoryComponent::SwitchWeaponSlot(int Index)
+{
+	// 권한 체크
+	if (GetOwnerRole() < ROLE_Authority)
+	{
+		ServerSwitchWeaponSlot(Index);
+		return;
+	}
+
+	int minIndex = static_cast<int>(EEquipmentSlotType::Weapon1);
+	int currentIndex = static_cast<int>(CurrentWeaponSlot);
+	int normalizedIndex = currentIndex - minIndex;
+
+	normalizedIndex = (normalizedIndex + Index) % 4;
+	if (normalizedIndex < 0) normalizedIndex += 4;
+
+	EEquipmentSlotType newWeaponSlot = static_cast<EEquipmentSlotType>(normalizedIndex + minIndex);
+
+	if (CurrentWeaponSlot != newWeaponSlot)
+	{
+		CurrentWeaponSlot = newWeaponSlot;
+
+		// StatBonusComponent에 현재 무기 슬롯 업데이트
+		if (m_PlayerState && m_PlayerState->m_StatBonusComponent)
+		{
+			m_PlayerState->m_StatBonusComponent->SetCurrentWeaponSlot(CurrentWeaponSlot);
+		}
+
+		// 무기 변경 이벤트 호출
+		OnWeaponChanged.Broadcast(CurrentWeaponSlot, GetEquippedItem(CurrentWeaponSlot).ItemID);
+	}
+}
+
+bool UInventoryComponent::SwapItems(int32 FromIndex, int32 ToIndex)
+{
+	// 권한 체크
+	if (GetOwnerRole() < ROLE_Authority)
+	{
+		ServerSwapItems(FromIndex, ToIndex);
+		return false;
+	}
+	
+	// 인덱스 유효성 검사
+	if (FromIndex < 0 || FromIndex >= InventoryItems.Num() ||
+		ToIndex < 0 || ToIndex >= InventoryItems.Num())
+		return false;
+
+	// 같은 인덱스인 경우 무시
+	if (FromIndex == ToIndex)
+		return true;
+
+	// 아이템 스왑
+	InventoryItems.Swap(FromIndex, ToIndex);
+
+	// 이벤트 발생
+	BroadcastInventoryChanged();
+
+	return true;
+}
+
+FItemData* UInventoryComponent::GetCurrentWeaponData()
+{
+	FInventoryItem CurrentWeapon = GetEquippedItem(CurrentWeaponSlot);
+	return GetItemData(CurrentWeapon.ItemID);
+}
+
+// Blueprint 헬퍼 함수들
+FItemData UInventoryComponent::GetEquippedWeaponData(EEquipmentSlotType SlotType) const
+{
+	FInventoryItem Item = GetEquippedItem(SlotType);
+	if (FItemData* Data = GetItemData(Item.ItemID))
+	{
+		return *Data;
+	}
+	return FItemData();
+}
+
+void UInventoryComponent::GetCurrentWeaponInfo(bool& bHasWeapon, FItemData& OutWeaponData) const
+{
+	FInventoryItem CurrentWeapon = GetEquippedItem(CurrentWeaponSlot);
+	bHasWeapon = (CurrentWeapon.ItemID > 0);
+	
+	if (bHasWeapon)
+	{
+		if (FItemData* Data = GetItemData(CurrentWeapon.ItemID))
+		{
+			OutWeaponData = *Data;
+		}
+	}
+}
+
+ASonheimPlayer* UInventoryComponent::GetSonheimPlayer()
+{
+	if (!m_Player && m_PlayerState)
+	{
+		m_Player = m_PlayerState->GetSonheimPlayer();
+	}
+	return m_Player;
+}
+
+// 내부 헬퍼 함수들
 bool UInventoryComponent::IsValidItemID(int ItemID) const
 {
 	return m_GameInstance && m_GameInstance->GetDataItem(ItemID) != nullptr;
@@ -312,7 +592,10 @@ FItemData* UInventoryComponent::GetItemData(int ItemID) const
 
 void UInventoryComponent::ApplyEquipmentStats(int ItemID, bool bEquipping)
 {
-	m_PlayerState->m_StatBonusComponent->ApplyItemStatBonuses(ItemID, bEquipping);
+	if (m_PlayerState && m_PlayerState->m_StatBonusComponent)
+	{
+		m_PlayerState->m_StatBonusComponent->ApplyItemStatBonuses(ItemID, bEquipping);
+	}
 }
 
 int UInventoryComponent::FindItemIndexInInventory(int ItemID) const
@@ -322,7 +605,6 @@ int UInventoryComponent::FindItemIndexInInventory(int ItemID) const
 		if (InventoryItems[i].ItemID == ItemID)
 			return i;
 	}
-
 	return INDEX_NONE;
 }
 
@@ -332,43 +614,39 @@ EEquipmentSlotType UInventoryComponent::FindEmptySlotForType(EEquipmentKindType 
 	{
 	case EEquipmentKindType::Head:
 		return EEquipmentSlotType::Head;
-	//return EquippedItems[EEquipmentSlotType::Head].IsEmpty() ?  EEquipmentSlotType::Head: EEquipmentSlotType::None;
 
 	case EEquipmentKindType::Body:
 		return EEquipmentSlotType::Body;
-	//return EquippedItems[EEquipmentSlotType::Body].IsEmpty() ? EEquipmentSlotType::Body : EEquipmentSlotType::None;
 
 	case EEquipmentKindType::Weapon:
 		// 무기 슬롯 4개 중 빈 슬롯 찾기
-		if (EquippedItems[EEquipmentSlotType::Weapon1].IsEmpty())
+		if (GetEquippedItem(EEquipmentSlotType::Weapon1).IsEmpty())
 			return EEquipmentSlotType::Weapon1;
-		if (EquippedItems[EEquipmentSlotType::Weapon2].IsEmpty())
+		if (GetEquippedItem(EEquipmentSlotType::Weapon2).IsEmpty())
 			return EEquipmentSlotType::Weapon2;
-		if (EquippedItems[EEquipmentSlotType::Weapon3].IsEmpty())
+		if (GetEquippedItem(EEquipmentSlotType::Weapon3).IsEmpty())
 			return EEquipmentSlotType::Weapon3;
-		if (EquippedItems[EEquipmentSlotType::Weapon4].IsEmpty())
+		if (GetEquippedItem(EEquipmentSlotType::Weapon4).IsEmpty())
 			return EEquipmentSlotType::Weapon4;
+		// 모두 차있으면 첫 번째 슬롯 반환
 		return EEquipmentSlotType::Weapon1;
 
 	case EEquipmentKindType::Accessory:
 		// 악세서리 슬롯 2개 중 빈 슬롯 찾기
-		if (EquippedItems[EEquipmentSlotType::Accessory1].IsEmpty())
+		if (GetEquippedItem(EEquipmentSlotType::Accessory1).IsEmpty())
 			return EEquipmentSlotType::Accessory1;
-		if (EquippedItems[EEquipmentSlotType::Accessory2].IsEmpty())
+		if (GetEquippedItem(EEquipmentSlotType::Accessory2).IsEmpty())
 			return EEquipmentSlotType::Accessory2;
 		return EEquipmentSlotType::None;
 
 	case EEquipmentKindType::Glider:
 		return EEquipmentSlotType::Glider;
-	//return EquippedItems[EEquipmentSlotType::Glider].IsEmpty()? EEquipmentSlotType::Glider: EEquipmentSlotType::None;
 
 	case EEquipmentKindType::Shield:
 		return EEquipmentSlotType::Shield;
-	//return EquippedItems[EEquipmentSlotType::Shield].IsEmpty() ? EEquipmentSlotType::Shield  : EEquipmentSlotType::None;
 
 	case EEquipmentKindType::SphereModule:
 		return EEquipmentSlotType::SphereModule;
-	//return EquippedItems[EEquipmentSlotType::SphereModule].IsEmpty()? EEquipmentSlotType::SphereModule: EEquipmentSlotType::None;
 
 	default:
 		return EEquipmentSlotType::None;
@@ -380,136 +658,37 @@ void UInventoryComponent::BroadcastInventoryChanged()
 	OnInventoryChanged.Broadcast(InventoryItems);
 }
 
-bool UInventoryComponent::EquipItemByIndex(int32 InventoryIndex)
+// 장착 슬롯 헬퍼 함수들
+int32 UInventoryComponent::FindEquippedSlotIndex(EEquipmentSlotType SlotType) const
 {
-	if (InventoryIndex < 0 || InventoryIndex >= InventoryItems.Num())
-		return false;
-
-	FInventoryItem Item = InventoryItems[InventoryIndex];
-	FItemData* ItemData = GetItemData(Item.ItemID);
-
-	EEquipmentSlotType EquipSlotType = FindEmptySlotForType(ItemData->EquipmentData.EquipKind);
-	if (!ItemData || EquipSlotType == EEquipmentSlotType::None)
-		return false; // 장착 불가능한 아이템
-
-	// 같은 슬롯에 장착된 아이템이 있으면 해제
-	if (!EquippedItems[EquipSlotType].IsEmpty())
+	for (int32 i = 0; i < EquippedSlots.Num(); i++)
 	{
-		UnEquipItem(EquipSlotType);
+		if (EquippedSlots[i].SlotType == SlotType)
+			return i;
 	}
-
-	// 아이템 장착
-	Item.bIsEquipped = true;
-	EquippedItems[EquipSlotType] = Item;
-
-
-	// 스탯 적용 - 무기와 일반 장비를 구분하여 처리
-	if (ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon)
-	{
-		m_PlayerState->m_StatBonusComponent->RegisterEquippedItem(EquipSlotType, Item.ItemID, true);
-	}
-	else
-	{
-		ApplyEquipmentStats(Item.ItemID, true);
-	}
-
-
-	// Inventory에서 아이템 삭제 :: ToDo: 프로젝트마다 customize 될 부분
-	RemoveItemByIndex(InventoryIndex);
-
-	// 이벤트 발생
-	OnEquipmentChanged.Broadcast(EquipSlotType, Item);
-	BroadcastInventoryChanged();
-
-	return true;
+	return INDEX_NONE;
 }
 
-FInventoryItem UInventoryComponent::GetEquippedItem(EEquipmentSlotType SlotType) const
+FInventoryItem* UInventoryComponent::GetEquippedSlotItem(EEquipmentSlotType SlotType)
 {
-	return EquippedItems[SlotType];
-	// if (SlotType == EEquipmentSlotType::None || !EquippedItems.Contains(SlotType))
-	// 	return INDEX_NONE;
-	//
-	// int32 ItemID = EquippedItems[SlotType];
-	// if (ItemID == 0)
-	// 	return INDEX_NONE;
-	//
-	// // 인벤토리에서 해당 ID를 가진 장착된 아이템 찾기
-	// for (int32 i = 0; i < InventoryItems.Num(); i++)
-	// {
-	// 	if (InventoryItems[i].ItemID == ItemID && InventoryItems[i].bIsEquipped)
-	// 		return i;
-	// }
-	//
-	// return INDEX_NONE;
+	int32 Index = FindEquippedSlotIndex(SlotType);
+	if (Index != INDEX_NONE)
+	{
+		return &EquippedSlots[Index].Item;
+	}
+	return nullptr;
 }
 
-
-void UInventoryComponent::SwitchWeaponSlot(int Index)
+void UInventoryComponent::SetEquippedSlot(EEquipmentSlotType SlotType, const FInventoryItem& Item)
 {
-	int minIndex = static_cast<int>(EEquipmentSlotType::Weapon1);
-	int maxIndex = static_cast<int>(EEquipmentSlotType::Weapon4);
-	int currentIndex = static_cast<int>(CurrentWeaponSlot);
-
-	// Weapon1 ~ Weapon4 의 범위를 0 ~ 3으로 변환
-	int normalizedIndex = currentIndex - minIndex;
-
-	// Index 를 추가하고, 0 ~ 3 범위에서 순환
-	normalizedIndex = (normalizedIndex + Index) % 4;
-	if (normalizedIndex < 0) normalizedIndex += 4; // 음수일 때 보정
-
-	// 다시 원래 Enum 범위로 변환 (Weapon1 ~ Weapon4)
-	EEquipmentSlotType newWeaponSlot = static_cast<EEquipmentSlotType>(normalizedIndex + minIndex);
-
-	// 무기 슬롯이 실제로 변경된 경우에만 처리
-	if (CurrentWeaponSlot != newWeaponSlot)
+	int32 Index = FindEquippedSlotIndex(SlotType);
+	if (Index != INDEX_NONE)
 	{
-		CurrentWeaponSlot = newWeaponSlot;
-
-		// StatBonusComponent에 현재 무기 슬롯 업데이트
-		m_PlayerState->m_StatBonusComponent->SetCurrentWeaponSlot(CurrentWeaponSlot);
-
-		// 무기 변경 이벤트 호출
-		OnWeaponChanged.Broadcast(CurrentWeaponSlot, GetEquippedItem(CurrentWeaponSlot).ItemID);
+		EquippedSlots[Index].Item = Item;
 	}
 }
 
-FItemData* UInventoryComponent::GetCurrentWeaponData()
+void UInventoryComponent::RemoveEquippedSlot(EEquipmentSlotType SlotType)
 {
-	auto item = GetEquippedItem(CurrentWeaponSlot);
-
-	return m_GameInstance->GetDataItem(item.ItemID);
-}
-
-bool UInventoryComponent::SwapItems(int32 FromIndex, int32 ToIndex)
-{
-	// 인덱스 유효성 검사
-	if (FromIndex < 0 || FromIndex >= InventoryItems.Num() ||
-		ToIndex < 0 || ToIndex >= InventoryItems.Num())
-		return false;
-
-	// 같은 인덱스인 경우 무시
-	if (FromIndex == ToIndex)
-		return true;
-
-	// 아이템 스왑
-	FInventoryItem TempItem = InventoryItems[FromIndex];
-	InventoryItems[FromIndex] = InventoryItems[ToIndex];
-	InventoryItems[ToIndex] = TempItem;
-
-	// 이벤트 발생
-	BroadcastInventoryChanged();
-
-	return true;
-}
-
-ASonheimPlayer* UInventoryComponent::GetSonheimPlayer() 
-{
-	{
-		if (m_Player == nullptr)
-		{
-			m_Player = Cast<ASonheimPlayer>(m_PlayerState->GetSonheimPlayer());
-		}
-		return m_Player;
-	}
+	SetEquippedSlot(SlotType, FInventoryItem());
 }

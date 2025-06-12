@@ -87,7 +87,9 @@ protected:
 	virtual void BeginPlay() override;
 
 	virtual void PossessedBy(AController* NewController) override;
+	void EndPlay(EEndPlayReason::Type EndPlayReason);
 
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 
 	virtual void Server_OnDie_Implementation() override;
 	virtual void Client_OnDie_Implementation() override;
@@ -181,9 +183,6 @@ public:
 	void Jump_Pressed();
 	void Jump_Released();
 	
-	// 무기 전환 입력 처리
-	void WeaponSwitch_Triggered();
-	
 	// 파트너 스킬 입력 처리
 	void PartnerSkill_Pressed();
 	void PartnerSkill_Triggered();
@@ -249,57 +248,40 @@ public:
 	void RespawnAtCheckpoint();
 
 	UFUNCTION(BlueprintCallable)
-	void Reward(int ItemID, int ItemValue) const;
-
-	UFUNCTION(BlueprintCallable)
 	ASonheimPlayerState* GetSPlayerState() const {return S_PlayerState;};
 
+	// 아이템 획득 - const 제거 및 서버 RPC 추가
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void Reward(int ItemID, int ItemValue);
+    
+	UFUNCTION(Server, Reliable)
+	void Server_Reward(int ItemID, int ItemValue);
+
+	// 장비 업데이트 
+	UFUNCTION()
+	void UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventoryItem Item);
+    
+	UFUNCTION()
+	void UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int ItemID);
+    
+	UFUNCTION(Server, Reliable)
+	void Server_UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int ItemID);
+    
+	UFUNCTION(NetMulticast, Reliable)
+	void MultiCast_UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int ItemID);
+
+	// 스탯 변경 - 서버 권한 추가
+	UFUNCTION()
+	void StatChanged(EAreaObjectStatType StatType, float StatValue);
+
+	// 무기 전환 수정
+	void WeaponSwitch_Triggered(int Index);
+    
+	UFUNCTION(Server, Reliable)
+	void Server_WeaponSwitch_Triggered(int Index);
+	
 	// 같은 무기 중복 사용으로 인한 오류 방지.. 전부 최신화
 	void RefreshWeaponSkillToSkillInstanceMap();
-	UFUNCTION(BlueprintCallable)
-	void UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventoryItem Item);
-
-	UFUNCTION(BlueprintCallable)
-	void UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int ItemID);
-
-	UFUNCTION(BlueprintCallable)
-	void StatChanged(EAreaObjectStatType StatType, float StatValue);
-	//// 장비 시각화 관련 함수 추가
-	//UFUNCTION(BlueprintCallable, Category = "Equipment")
-	//void EquipVisualItem(EEquipmentSlotType SlotType, int ItemID);
-	//
-	//UFUNCTION(BlueprintCallable, Category = "Equipment")
-	//void UnequipVisualItem(EEquipmentSlotType SlotType);
-	//
-	//// 장비 관련 컴포넌트 추가
-	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
-	//USkeletalMeshComponent* HeadMesh;
-	//
-	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
-	//USkeletalMeshComponent* BodyMesh;
-
-	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
-	//USkeletalMeshComponent* SubWeaponMesh;
-
-	// 현재 무기 타입
-	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
-	//EWeaponType CurrentWeaponType;
-
-	// 무기 타입별 스킬
-	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
-	//TMap<EWeaponType, TArray<int32>> WeaponTypeSkills;
-
-	// 무기 타입 설정
-	//UFUNCTION(BlueprintCallable, Category = "Equipment")
-	//void SetWeaponType(EWeaponType NewWeaponType);
-
-	// // 무기 스킬 추가
-	// UFUNCTION(BlueprintCallable, Category = "Equipment")
-	// void AddWeaponSkill(int32 SkillID);
-	//
-	// // 무기 스킬 클리어
-	// UFUNCTION(BlueprintCallable, Category = "Equipment")
-	// void ClearWeaponSkills();
 
 	// 현재 무기에 따른 공격 처리
 	UFUNCTION(BlueprintCallable, Category = "Combat")
@@ -310,18 +292,6 @@ public:
 
 	UPROPERTY()
 	EEquipmentSlotType SelectedWeaponSlot = EEquipmentSlotType::Weapon1;
-
-	//// 현재 도구에 따른 상호작용 처리
-	//UFUNCTION(BlueprintCallable, Category = "Interaction")
-	//bool TryToolInteraction(AActor* TargetActor);
-
-	//// 특수 능력 관리자
-	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities")
-	//UAbilityManagerComponent* AbilityManager;
-
-	//// 특수 능력 관리자 반환
-	//UFUNCTION(BlueprintCallable, Category = "Abilities")
-	//UAbilityManagerComponent* GetAbilityManager() const { return AbilityManager; }
 
 	UFUNCTION(BlueprintCallable)
 	void RegisterOwnPal(ABaseMonster* Pal);
@@ -361,7 +331,7 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* PalSphereComponent;
 
-	// ToDo : Skill 로 이관 예정.. 타이밍 등 적용
+	// Skill 로 이관 예정.. 타이밍 등 적용
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Montage, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* SummonPalMontage;
 
@@ -449,6 +419,19 @@ private:
 	
 	bool bUsingPartnerSkill = false;
 
+	// 중복 제거를 위한 초기화 함수
+	void InitPlayer();
+	void BindDelegates();
+	void UnbindDelegates();
+
+	// 무기 메시 업데이트 헬퍼 함수
+	void UpdateWeaponMesh(int ItemID);
+	void ClearWeaponMesh();
+
+	// 현재 장착된 무기 아이템 ID 추적
+	UPROPERTY(Replicated)
+	int32 CurrentWeaponItemID = 0;
+
 public:
 	void SetUsePartnerSkill(bool UsePartnerSkill);
 	
@@ -458,8 +441,6 @@ public:
 	void RestoreStair(int ItemID, int ItemCount);
 
 private:
-	// UFUNCTION(Server, Reliable)
-	// void Server_ToggleLockOn(bool IsActive);
 	void UpdateSelectedPal();
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Pals")

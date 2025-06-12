@@ -7,6 +7,26 @@
 UStatBonusComponent::UStatBonusComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+	SetIsReplicatedByDefault(true);
+}
+
+void UStatBonusComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	// 게임 인스턴스 참조 캐싱
+	GameInstance = Cast<USonheimGameInstance>(GetWorld()->GetGameInstance());
+}
+
+void UStatBonusComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// 메모리 정리
+	ClearAllBonuses();
+	OnStatBonusChangedDelegate.Unbind();
+	
+	GameInstance = nullptr;
+	
+	Super::EndPlay(EndPlayReason);
 }
 
 void UStatBonusComponent::AddStatBonus(EAreaObjectStatType StatType, float Value, EStatModifierType ModType, int SourceID)
@@ -33,7 +53,19 @@ void UStatBonusComponent::AddStatBonus(EAreaObjectStatType StatType, float Value
 		ItemStatBonuses[SourceID].Add(NewModifier);
 	}
 
+	// 이벤트 발생
 	OnStatChanged.Broadcast(StatType);
+	
+	// PlayerState에 변경 통지
+	if (OnStatBonusChangedDelegate.IsBound())
+	{
+		OnStatBonusChangedDelegate.Execute(StatType);
+	}
+
+	#if !UE_BUILD_SHIPPING
+	UE_LOG(LogTemp, Log, TEXT("StatBonus Added: Type=%d, Value=%.2f, ModType=%d, Source=%d"), 
+		(int32)StatType, Value, (int32)ModType, SourceID);
+	#endif
 }
 
 void UStatBonusComponent::RemoveStatBonus(EAreaObjectStatType StatType, float Value, EStatModifierType ModType, int SourceID)
@@ -48,7 +80,7 @@ void UStatBonusComponent::RemoveStatBonus(EAreaObjectStatType StatType, float Va
 	// 일치하는 첫 번째 수정자 찾아 제거
 	for (int i = 0; i < Modifiers.Num(); i++)
 	{
-		if (Modifiers[i].Value == Value && 
+		if (FMath::IsNearlyEqual(Modifiers[i].Value, Value) && 
 			Modifiers[i].ModifierType == ModType && 
 			Modifiers[i].SourceID == SourceID)
 		{
@@ -57,13 +89,22 @@ void UStatBonusComponent::RemoveStatBonus(EAreaObjectStatType StatType, float Va
 		}
 	}
 	
+	// 빈 배열 정리
+	CleanupEmptyStatArrays();
+	
+	// 이벤트 발생
 	OnStatChanged.Broadcast(StatType);
+	
+	// PlayerState에 변경 통지
+	if (OnStatBonusChangedDelegate.IsBound())
+	{
+		OnStatBonusChangedDelegate.Execute(StatType);
+	}
 }
 
 void UStatBonusComponent::ApplyItemStatBonuses(int ItemID, bool bApply)
 {
 	// 게임 인스턴스에서 아이템 데이터 가져오기
-	USonheimGameInstance* GameInstance = Cast<USonheimGameInstance>(GetWorld()->GetGameInstance());
 	if (!GameInstance)
 	{
 		return;
@@ -108,7 +149,17 @@ void UStatBonusComponent::ApplyItemStatBonuses(int ItemID, bool bApply)
 			AddStatBonus(EAreaObjectStatType::Defense, ItemData->EquipmentData.DefenseBonus, EStatModifierType::Additive, ItemID);
 		}
 		
-		// 추가 스탯 적용...
+		// 작업 속도 보너스 적용
+		if (ItemData->EquipmentData.WorkSpeedBonus != 0)
+		{
+			AddStatBonus(EAreaObjectStatType::WorkSpeed, ItemData->EquipmentData.WorkSpeedBonus, EStatModifierType::Additive, ItemID);
+		}
+		
+		// 이동 속도 보너스 적용
+		if (ItemData->EquipmentData.RunSpeedBonus != 0)
+		{
+			AddStatBonus(EAreaObjectStatType::RunSpeed, ItemData->EquipmentData.RunSpeedBonus, EStatModifierType::Additive, ItemID);
+		}
 	}
 	else
 	{
@@ -126,7 +177,6 @@ void UStatBonusComponent::RegisterEquippedItem(EEquipmentSlotType SlotType, int 
 						 SlotType == EEquipmentSlotType::Weapon4);
 	
 	// 게임 인스턴스 가져오기
-	USonheimGameInstance* GameInstance = Cast<USonheimGameInstance>(GetWorld()->GetGameInstance());
 	if (!GameInstance)
 	{
 		return;
@@ -296,13 +346,31 @@ void UStatBonusComponent::ClearAllStatBonuses(EAreaObjectStatType StatType)
 	if (StatBonuses.Contains(StatType))
 	{
 		StatBonuses[StatType].Empty();
+		OnStatChanged.Broadcast(StatType);
+		
+		if (OnStatBonusChangedDelegate.IsBound())
+		{
+			OnStatBonusChangedDelegate.Execute(StatType);
+		}
 	}
 }
 
 void UStatBonusComponent::ClearAllBonuses()
 {
+	// 모든 스탯에 대해 변경 이벤트 발생
+	for (const auto& Pair : StatBonuses)
+	{
+		OnStatChanged.Broadcast(Pair.Key);
+		
+		if (OnStatBonusChangedDelegate.IsBound())
+		{
+			OnStatBonusChangedDelegate.Execute(Pair.Key);
+		}
+	}
+	
 	StatBonuses.Empty();
 	ItemStatBonuses.Empty();
+	WeaponSlotBonuses.Empty();
 }
 
 void UStatBonusComponent::RemoveAllBonusesFromSource(int SourceID)
@@ -310,26 +378,55 @@ void UStatBonusComponent::RemoveAllBonusesFromSource(int SourceID)
 	// 소스 ID로 등록된 모든 보너스 찾아 제거
 	if (ItemStatBonuses.Contains(SourceID))
 	{
-		TArray<FStatModifier>& SourceModifiers = ItemStatBonuses[SourceID];
+		TArray<FStatModifier> SourceModifiers = ItemStatBonuses[SourceID];
 		
 		// 각 스탯 유형별 보너스에서도 제거
 		for (const FStatModifier& Mod : SourceModifiers)
 		{
-			if (StatBonuses.Contains(Mod.StatType))
-			{
-				RemoveStatBonus(Mod.StatType, Mod.Value, Mod.ModifierType, Mod.SourceID);
-				//TArray<FStatModifier>& TypeModifiers = StatBonuses[Mod.StatType];
-				//for (int i = TypeModifiers.Num() - 1; i >= 0; i--)
-				//{
-				//	if (TypeModifiers[i].SourceID == SourceID)
-				//	{
-				//		//TypeModifiers.RemoveAt(i);
-				//	}
-				//}
-			}
+			RemoveStatBonus(Mod.StatType, Mod.Value, Mod.ModifierType, Mod.SourceID);
 		}
 		
 		// 소스 목록에서 제거
 		ItemStatBonuses.Remove(SourceID);
 	}
-} 
+}
+
+TArray<FStatModifier> UStatBonusComponent::GetAllStatBonuses() const
+{
+	TArray<FStatModifier> AllBonuses;
+	
+	for (const auto& Pair : StatBonuses)
+	{
+		AllBonuses.Append(Pair.Value);
+	}
+	
+	return AllBonuses;
+}
+
+TArray<FStatModifier> UStatBonusComponent::GetStatBonuses(EAreaObjectStatType StatType) const
+{
+	if (StatBonuses.Contains(StatType))
+	{
+		return StatBonuses[StatType];
+	}
+	
+	return TArray<FStatModifier>();
+}
+
+void UStatBonusComponent::CleanupEmptyStatArrays()
+{
+	TArray<EAreaObjectStatType> KeysToRemove;
+	
+	for (const auto& Pair : StatBonuses)
+	{
+		if (Pair.Value.Num() == 0)
+		{
+			KeysToRemove.Add(Pair.Key);
+		}
+	}
+	
+	for (EAreaObjectStatType Key : KeysToRemove)
+	{
+		StatBonuses.Remove(Key);
+	}
+}
