@@ -5,7 +5,9 @@
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Player/Utility/PalCaptureComponent.h"
+#include "Sonheim/AreaObject/Player/Utility/PalManagementComponent.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
 APalSphere::APalSphere()
@@ -116,12 +118,8 @@ void APalSphere::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor
 	bCanHit = false;
 	TargetMonster = pal;
 
-	// 충돌 시 물리 정지
-	Root->SetSimulatePhysics(false);
-	Root->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	// 포획 시도
-	AttemptCapture(player, pal);
+	// 포획 처리
+	CheckPalCatch(player, pal);
 }
 
 void APalSphere::OnComponentHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
@@ -130,6 +128,76 @@ void APalSphere::OnComponentHit(UPrimitiveComponent* HitComponent, AActor* Other
 	// 지면이나 벽에 충돌 시 처리
 	if (!bCanHit || Cast<ABaseMonster>(OtherActor))
 		return;
+}
+
+void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
+{
+	if (!Caster || !Target)
+		return;
+
+	// 기존 물리 효과 유지
+	AddActorWorldOffset(FVector(0, 0, 100));
+	int randX = FMath::RandRange(-80, 80);
+	int randY = FMath::RandRange(-80, 80);
+	Root->AddImpulse(FVector(randX, randY, 700));
+
+	// 타겟을 임시로 숨김 (포획 애니메이션 중)
+	Target->SetActorHiddenInGame(true);
+	Target->SetActorEnableCollision(false);
+
+	// 떨어지는 애니메이션을 위한 타이머
+	FTimerHandle FallTimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(FallTimerHandle, [this, Caster, Target]()
+	{
+		// 바닥에 떨어진 위치로 이동
+		FVector GroundLocation = Target->GetActorLocation();
+		GroundLocation.Z = GetActorLocation().Z - 50.0f; // 바닥 위치 조정
+		SetActorLocation(GroundLocation);
+		
+		// 물리 시뮬레이션 중지
+		Root->SetSimulatePhysics(false);
+		Root->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		
+		// 흔들림 애니메이션 시작
+		StartShakeAnimation(Caster, Target);
+	}, 1.0f, false);
+}
+
+void APalSphere::StartShakeAnimation(ASonheimPlayer* Caster, ABaseMonster* Target)
+{
+	ShakeCount = 0;
+	FVector OriginalLocation = GetActorLocation();
+	
+	// 흔들림 애니메이션
+	GetWorld()->GetTimerManager().SetTimer(ShakeTimerHandle, [this, Caster, Target, OriginalLocation]()
+	{
+		ShakeCount++;
+		
+		// 3번 흔들림
+		if (ShakeCount <= 3)
+		{
+			// 좌우로 흔들림
+			float ShakeOffset = FMath::Sin(ShakeCount * PI) * 10.0f;
+			FVector NewLocation = OriginalLocation;
+			NewLocation.Y += ShakeOffset;
+			SetActorLocation(NewLocation);
+			
+			// 흔들림 사운드 재생
+			if (ShakeSound)
+			{
+				UGameplayStatics::PlaySoundAtLocation(GetWorld(), ShakeSound, GetActorLocation());
+			}
+		}
+		else
+		{
+			// 원위치로 복귀
+			SetActorLocation(OriginalLocation);
+			GetWorld()->GetTimerManager().ClearTimer(ShakeTimerHandle);
+			
+			// 포획 시도
+			AttemptCapture(Caster, Target);
+		}
+	}, 0.5f, true);
 }
 
 void APalSphere::AttemptCapture(ASonheimPlayer* Caster, ABaseMonster* Target)
@@ -141,94 +209,102 @@ void APalSphere::AttemptCapture(ASonheimPlayer* Caster, ABaseMonster* Target)
 	if (!CaptureComp)
 		return;
 
-	// 포획 시도 전 몬스터 비활성화
-	Target->SetActorHiddenInGame(true);
-	Target->SetActorEnableCollision(false);
+	// 포획률 계산
+	float CaptureRate = CaptureComp->CalculateCaptureRate(Target, SphereItemID);
 	
-	// 스피어를 타겟 위치로 이동
-	SetActorLocation(Target->GetActorLocation() + FVector(0, 0, 50));
+	// 포획 시도
+	float RandomValue = FMath::FRand();
+	bool bSuccess = RandomValue <= CaptureRate;
 	
-	// 흔들림 애니메이션 시작
-	ShakeCount = 0;
-	GetWorld()->GetTimerManager().SetTimer(ShakeTimerHandle, [this, CaptureComp, Target]()
-	{
-		ShakeCount++;
-		
-		// 흔들림 효과
-		float ShakeIntensity = FMath::Sin(ShakeCount * 0.5f) * 10.0f;
-		AddActorWorldOffset(FVector(ShakeIntensity, 0, 0));
-		
-		// 3번 흔들린 후 포획 시도
-		if (ShakeCount >= 6)
-		{
-			GetWorld()->GetTimerManager().ClearTimer(ShakeTimerHandle);
-			
-			// 포획 결과 이벤트 바인딩
-			CaptureComp->OnCaptureAttempt.AddDynamic(this, &APalSphere::OnCaptureResult);
-			
-			// 포획 시도
-			CaptureComp->AttemptCapture(Target, SphereItemID);
-		}
-	}, 0.3f, true);
-}
-
-void APalSphere::OnCaptureResult(ABaseMonster* Target, float CaptureRate, bool bSuccess)
-{
-	if (Target != TargetMonster)
-		return;
-
-	// 이벤트 언바인딩
-	if (ASonheimPlayer* Player = Cast<ASonheimPlayer>(m_Caster))
-	{
-		if (UPalCaptureComponent* CaptureComp = Player->GetPalCaptureComponent())
-		{
-			CaptureComp->OnCaptureAttempt.RemoveDynamic(this, &APalSphere::OnCaptureResult);
-		}
-	}
-
-	// 포획 애니메이션 재생
-	PlayCaptureAnimation(bSuccess);
+	FLog::Log("Capture Attempt - Rate: %.2f%%, Roll: %.2f, Success: %s", 
+		CaptureRate * 100.0f, RandomValue * 100.0f, bSuccess ? "YES" : "NO");
 	
-	// 일정 시간 후 파괴
-	SetLifeSpan(1.0f);
-}
-
-void APalSphere::PlayCaptureAnimation(bool bSuccess)
-{
+	// 결과 처리
 	if (bSuccess)
 	{
-		// 성공 이펙트
-		if (CaptureSuccessEffect)
-		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), CaptureSuccessEffect, 
-				GetActorLocation(), FRotator::ZeroRotator, FVector(2.0f));
-		}
-		
-		// 성공 사운드
-		if (CaptureSuccessSound)
-		{
-			UGameplayStatics::PlaySoundAtLocation(GetWorld(), CaptureSuccessSound, GetActorLocation());
-		}
-		
-		// 스피어 사라지는 애니메이션
-		// TODO: 스케일 애니메이션 또는 디졸브 효과
+		ProcessCaptureSuccess(Caster, Target);
 	}
 	else
 	{
-		// 실패 이펙트 (스피어 깨짐)
-		if (CaptureFailEffect)
-		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), CaptureFailEffect, 
-				GetActorLocation(), FRotator::ZeroRotator);
-		}
-		
-		// 실패 사운드
-		if (CaptureFailSound)
-		{
-			UGameplayStatics::PlaySoundAtLocation(GetWorld(), CaptureFailSound, GetActorLocation());
-		}
-		
-		// 스피어 파괴 애니메이션
-		// TODO: 깨지는 애니메이션 또는 파티클 효과
+		ProcessCaptureFailed(Target);
 	}
+}
+
+void APalSphere::ProcessCaptureSuccess(ASonheimPlayer* Caster, ABaseMonster* Target)
+{
+	// 성공 이펙트
+	if (CaptureSuccessEffect)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), CaptureSuccessEffect, 
+			GetActorLocation(), FRotator::ZeroRotator, FVector(2.0f));
+	}
+	
+	// 성공 사운드
+	if (CaptureSuccessSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), CaptureSuccessSound, GetActorLocation());
+	}
+	
+	// PalManagementComponent를 통해 팰 등록
+	if (UPalManagementComponent* PalMgmt = Caster->GetPalManagementComponent())
+	{
+		// 체력 회복
+		Target->SetHPByRate(1.0f);
+		
+		// 팰 등록
+		PalMgmt->RegisterPal(Target);
+		
+		// 성공 UI 알림
+		if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(Caster->GetController()))
+		{
+			// UI 업데이트는 PalManagementComponent의 이벤트로 처리됨
+		}
+	}
+	
+	// 스피어 제거
+	Destroy();
+}
+
+void APalSphere::ProcessCaptureFailed(ABaseMonster* Target)
+{
+	// 실패 이펙트 (스피어 깨짐)
+	if (CaptureFailEffect)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), CaptureFailEffect, 
+			GetActorLocation(), FRotator::ZeroRotator);
+	}
+	
+	// 실패 사운드
+	if (CaptureFailSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), CaptureFailSound, GetActorLocation());
+	}
+	
+	// 타겟 다시 표시
+	Target->SetActorHiddenInGame(false);
+	Target->SetActorEnableCollision(true);
+	
+	// 잠시 기절 상태로 만들기
+	//Target->AddCondition(EConditionBitsType::Stunned, 2.0f);
+	
+	// 스피어 파괴 애니메이션
+	// 스케일을 0으로 줄이면서 사라지기
+	FTimerHandle DestroyTimerHandle;
+	float DestroyTime = 0.3f;
+	float ElapsedTime = 0.0f;
+	
+	GetWorld()->GetTimerManager().SetTimer(DestroyTimerHandle, [this, DestroyTime, ElapsedTime]() mutable
+	{
+		ElapsedTime += 0.05f;
+		float Alpha = ElapsedTime / DestroyTime;
+		
+		if (Alpha >= 1.0f)
+		{
+			Destroy();
+		}
+		else
+		{
+			SetActorScale3D(FVector(1.0f - Alpha));
+		}
+	}, 0.05f, true);
 }

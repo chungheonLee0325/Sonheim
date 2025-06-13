@@ -144,7 +144,7 @@ void ASonheimPlayer::BeginPlay()
 void ASonheimPlayer::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-	
+
 	S_PlayerController = Cast<ASonheimPlayerController>(NewController);
 	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
 
@@ -164,7 +164,7 @@ void ASonheimPlayer::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ASonheimPlayer::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	    
+
 	DOREPLIFETIME(ASonheimPlayer, CurrentWeaponItemID);
 }
 
@@ -175,13 +175,13 @@ void ASonheimPlayer::InitPlayer()
 
 	S_PlayerAnimInstance = Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance());
 
-	if (S_PlayerState == nullptr) 
+	if (S_PlayerState == nullptr)
 		S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
-    
-	if (S_PlayerController == nullptr) 
+
+	if (S_PlayerController == nullptr)
 		S_PlayerController = Cast<ASonheimPlayerController>(GetController());
-    
-	if (S_PlayerController != nullptr && IsLocallyControlled()) 
+
+	if (S_PlayerController != nullptr && IsLocallyControlled())
 		S_PlayerController->InitializeHUD(this);
 
 	// 기본 무기 스킬 맵 초기화
@@ -198,7 +198,7 @@ void ASonheimPlayer::BindDelegates()
 		// 기존 바인딩 제거
 		S_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
 		S_PlayerState->m_InventoryComponent->OnWeaponChanged.RemoveDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
-        
+
 		// 새로 바인딩
 		S_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
 		S_PlayerState->m_InventoryComponent->OnWeaponChanged.AddDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
@@ -303,7 +303,7 @@ void ASonheimPlayer::Server_Reward_Implementation(int ItemID, int ItemValue)
 	if (S_PlayerState && S_PlayerState->m_InventoryComponent)
 	{
 		S_PlayerState->m_InventoryComponent->AddItem(ItemID, ItemValue);
-        
+
 #if !UE_BUILD_SHIPPING
 		UE_LOG(LogTemp, Log, TEXT("Player rewarded: ItemID=%d, Value=%d"), ItemID, ItemValue);
 #endif
@@ -327,7 +327,7 @@ void ASonheimPlayer::Server_UpdateSelectedWeapon_Implementation(EEquipmentSlotTy
 void ASonheimPlayer::MultiCast_UpdateSelectedWeapon_Implementation(EEquipmentSlotType WeaponSlot, int ItemID)
 {
 	SelectedWeaponSlot = WeaponSlot;
-    
+
 	if (ItemID == 0)
 	{
 		ClearWeaponMesh();
@@ -341,12 +341,12 @@ void ASonheimPlayer::MultiCast_UpdateSelectedWeapon_Implementation(EEquipmentSlo
 void ASonheimPlayer::UpdateWeaponMesh(int ItemID)
 {
 	if (!m_GameInstance) return;
-    
+
 	FItemData* ItemData = m_GameInstance->GetDataItem(ItemID);
 	if (ItemData && ItemData->EquipmentData.EquipmentMesh)
 	{
 		WeaponComponent->SetSkeletalMesh(ItemData->EquipmentData.EquipmentMesh);
-        
+
 		if (S_PlayerAnimInstance)
 		{
 			S_PlayerAnimInstance->bIsMelee = (ItemData->EquipmentData.WeaponType == EWeaponType::Melee);
@@ -357,7 +357,7 @@ void ASonheimPlayer::UpdateWeaponMesh(int ItemID)
 void ASonheimPlayer::ClearWeaponMesh()
 {
 	WeaponComponent->SetSkeletalMesh(nullptr);
-    
+
 	if (S_PlayerAnimInstance)
 	{
 		S_PlayerAnimInstance->bIsMelee = false;
@@ -373,7 +373,7 @@ void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventory
 	// 아이템 데이터 가져오기
 	FItemData* ItemData = nullptr;
 	FSkillData* SkillData = nullptr;
-    
+
 	if (Item.ItemID > 0 && m_GameInstance)
 	{
 		ItemData = m_GameInstance->GetDataItem(Item.ItemID);
@@ -399,7 +399,7 @@ void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventory
 		// 무기 스킬 생성
 		UBaseSkill* NewWeaponSkill = NewObject<UBaseSkill>(this, SkillData->SkillClass);
 		NewWeaponSkill->InitSkill(SkillData);
-        
+
 		// 스킬 등록
 		WeaponSkillMap[WeaponSlot] = NewWeaponSkill;
 		m_SkillInstanceMap.Add(SkillData->SkillID, NewWeaponSkill);
@@ -442,22 +442,22 @@ void ASonheimPlayer::StatChanged(EAreaObjectStatType StatType, float StatValue)
 			m_HealthComponent->SetMaxHP(StatValue);
 		}
 		break;
-        
+
 	case EAreaObjectStatType::Attack:
 		m_Attack = StatValue;
 		break;
-        
+
 	case EAreaObjectStatType::Defense:
 		m_Defence = StatValue;
 		break;
-        
+
 	case EAreaObjectStatType::RunSpeed:
 		if (GetCharacterMovement())
 		{
 			GetCharacterMovement()->MaxWalkSpeed = StatValue;
 		}
 		break;
-        
+
 	case EAreaObjectStatType::JumpHeight:
 		if (GetCharacterMovement())
 		{
@@ -489,6 +489,7 @@ void ASonheimPlayer::RefreshWeaponSkillToSkillInstanceMap()
 void ASonheimPlayer::Server_WeaponSwitch_Triggered_Implementation(int Index)
 {
 }
+
 // Called every frame
 void ASonheimPlayer::Tick(float DeltaTime)
 {
@@ -498,7 +499,6 @@ void ASonheimPlayer::Tick(float DeltaTime)
 	if (bCanRecover && !IsMaxHP() && !IsDie())
 	{
 		float recovery = m_RecoveryRate * DeltaTime;
-
 		IncreaseHP(recovery);
 	}
 
@@ -506,6 +506,35 @@ void ASonheimPlayer::Tick(float DeltaTime)
 	if (bIsGliding)
 	{
 		UpdateGliding(DeltaTime);
+	}
+	
+	// 팰 체력 UI 업데이트 (0.1초마다)
+	static float PalHealthUpdateTimer = 0.0f;
+	PalHealthUpdateTimer += DeltaTime;
+	
+	if (PalHealthUpdateTimer >= 0.1f && IsLocallyControlled() && PalManagementComponent && S_PlayerController)
+	{
+		PalHealthUpdateTimer = 0.0f;
+		
+		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
+		if (StatusWidget)
+		{
+			TArray<ABaseMonster*> OwnedPals = PalManagementComponent->GetOwnedPals();
+			for (int32 i = 0; i < OwnedPals.Num(); i++)
+			{
+				if (OwnedPals[i])
+				{
+					float HealthPercent = OwnedPals[i]->GetHP() / OwnedPals[i]->GetMaxHP();
+					StatusWidget->UpdatePalHealth(i, HealthPercent);
+					
+					// 레벨이 변경되었으면 업데이트
+					if (OwnedPals[i]->m_LevelComponent)
+					{
+						StatusWidget->UpdatePalLevel(i, OwnedPals[i]->m_LevelComponent->GetCurrentLevel());
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -606,7 +635,7 @@ void ASonheimPlayer::SetPlayerState(EPlayerState NewState)
 	//	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 
 	// 회전 제한 적용
-	GetCharacterMovement()->bOrientRotationToMovement = NewRestrictions.bCanRotate; 
+	GetCharacterMovement()->bOrientRotationToMovement = NewRestrictions.bCanRotate;
 }
 
 void ASonheimPlayer::Move(const FVector2D MovementVector)
@@ -938,7 +967,7 @@ void ASonheimPlayer::PartnerSkill_Pressed()
 {
 	if (!PalManagementComponent)
 		return;
-		
+
 	PalManagementComponent->StartPartnerSkill();
 }
 
@@ -946,7 +975,7 @@ void ASonheimPlayer::PartnerSkill_Released()
 {
 	if (!PalManagementComponent)
 		return;
-		
+
 	PalManagementComponent->EndPartnerSkill();
 }
 
@@ -954,7 +983,7 @@ void ASonheimPlayer::SummonPal_Pressed()
 {
 	if (!PalManagementComponent)
 		return;
-		
+
 	PalManagementComponent->TogglePalSummon();
 }
 
@@ -962,7 +991,7 @@ void ASonheimPlayer::SwitchPalSlot_Triggered(int Index)
 {
 	if (!PalManagementComponent)
 		return;
-		
+
 	PalManagementComponent->SwitchPalSlot(Index);
 }
 
@@ -1047,6 +1076,17 @@ void ASonheimPlayer::RespawnAtCheckpoint()
 void ASonheimPlayer::ThrowPalSphere_Pressed()
 {
 	Server_ThrowPalSphere_Pressed();
+
+	// 로컬에서 포획률 표시 시작
+	if (IsLocallyControlled() && S_PlayerController)
+	{
+		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
+		if (StatusWidget)
+		{
+			// 타겟 업데이트 시작
+			StatusWidget->UpdateTargetInfo();
+		}
+	}
 }
 
 void ASonheimPlayer::Server_ThrowPalSphere_Pressed_Implementation()
@@ -1067,6 +1107,16 @@ void ASonheimPlayer::ThrowPalSphere_Triggered()
 void ASonheimPlayer::ThrowPalSphere_Released()
 {
 	Server_ThrowPalSphere_Released();
+
+	// 로컬에서 포획률 표시 종료
+	if (IsLocallyControlled() && S_PlayerController)
+	{
+		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
+		if (StatusWidget)
+		{
+			StatusWidget->HideCaptureRate();
+		}
+	}
 }
 
 void ASonheimPlayer::Server_ThrowPalSphere_Released_Implementation()
@@ -1268,7 +1318,21 @@ void ASonheimPlayer::OnPalRegistered(ABaseMonster* Pal, int32 SlotIndex)
 {
 	if (IsLocallyControlled() && S_PlayerController)
 	{
-		S_PlayerController->GetPlayerStatusWidget()->AddOwnedPal(Pal->m_AreaObjectID, SlotIndex);
+		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
+		if (StatusWidget && Pal)
+		{
+			StatusWidget->AddOwnedPal(Pal->m_AreaObjectID, SlotIndex);
+
+			// 팰 체력 업데이트
+			float HealthPercent = Pal->GetHP() / Pal->GetMaxHP();
+			StatusWidget->UpdatePalHealth(SlotIndex, HealthPercent);
+
+			// 팰 레벨 업데이트
+			if (Pal->m_LevelComponent)
+			{
+				StatusWidget->UpdatePalLevel(SlotIndex, Pal->m_LevelComponent->GetCurrentLevel());
+			}
+		}
 	}
 }
 
@@ -1276,7 +1340,11 @@ void ASonheimPlayer::OnPalSwitched(int32 OldIndex, int32 NewIndex)
 {
 	if (IsLocallyControlled() && S_PlayerController)
 	{
-		S_PlayerController->GetPlayerStatusWidget()->SwitchSelectedPalIndex(NewIndex);
+		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
+		if (StatusWidget)
+		{
+			StatusWidget->SwitchSelectedPalIndex(NewIndex);
+		}
 	}
 }
 
@@ -1284,10 +1352,45 @@ void ASonheimPlayer::OnCaptureSuccess(ABaseMonster* CapturedPal)
 {
 	// 포획 성공 시 처리 (이펙트, 사운드 등)
 	FLog::Log("Successfully captured: %s", *CapturedPal->GetName());
+	if (IsLocallyControlled() && S_PlayerController)
+	{
+		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
+		if (StatusWidget && CapturedPal && CapturedPal->dt_AreaObject)
+		{
+			FString PalName = CapturedPal->dt_AreaObject->Name.ToString();
+			StatusWidget->ShowCaptureSuccess(PalName);
+		}
+	}
+
+	// 포획 성공 사운드 재생
+	// TODO: 실제 사운드 ID로 변경
+	//PlayGlobalSound(0);
 }
 
 void ASonheimPlayer::OnCaptureFailed(ABaseMonster* Target, float CaptureRate)
 {
 	// 포획 실패 시 처리
 	FLog::Log("Failed to capture: %s (Rate: %.1f%%)", *Target->GetName(), CaptureRate * 100.0f);
+	if (IsLocallyControlled() && S_PlayerController)
+	{
+		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
+		if (StatusWidget)
+		{
+			StatusWidget->ShowCaptureFailed();
+		}
+	}
+
+	// 포획 실패 사운드 재생
+	// TODO: 실제 사운드 ID로 변경
+	//PlayGlobalSound(0);
+}
+
+bool ASonheimPlayer::IsHoldingPalSphere() const
+{
+	// 현재 애니메이션 상태 확인
+	if (S_PlayerAnimInstance)
+	{
+		return S_PlayerAnimInstance->bIsThrowPalSphere;
+	}
+	return false;
 }

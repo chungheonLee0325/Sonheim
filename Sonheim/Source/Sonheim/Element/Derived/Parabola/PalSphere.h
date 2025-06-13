@@ -6,7 +6,6 @@
 
 class ABaseMonster;
 class ASonheimPlayer;
-class UPalCaptureComponent;
 
 UCLASS()
 class SONHEIM_API APalSphere : public AParabolaElement
@@ -35,7 +34,7 @@ public:
 	virtual void InitElement(AAreaObject* Caster, AAreaObject* Target, const FVector& TargetLocation, FAttackData* AttackData) override;
 
 	virtual FVector Fire(AAreaObject* Caster, AAreaObject* Target, FVector TargetLocation, float ArcValue) override;
-
+	
 	// 스피어 타입 설정 (아이템 ID)
 	UFUNCTION(BlueprintCallable, Category = "Pal Sphere")
 	void SetSphereType(int32 ItemID) { SphereItemID = ItemID; }
@@ -43,15 +42,12 @@ public:
 private:
 	bool bCanHit = true;
 	
-	// 포획 시도
+	// 포획 프로세스 함수들
+	void CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target);
+	void StartShakeAnimation(ASonheimPlayer* Caster, ABaseMonster* Target);
 	void AttemptCapture(ASonheimPlayer* Caster, ABaseMonster* Target);
-	
-	// 포획 결과 처리
-	UFUNCTION()
-	void OnCaptureResult(ABaseMonster* Target, float CaptureRate, bool bSuccess);
-	
-	// 포획 애니메이션
-	void PlayCaptureAnimation(bool bSuccess);
+	void ProcessCaptureSuccess(ASonheimPlayer* Caster, ABaseMonster* Target);
+	void ProcessCaptureFailed(ABaseMonster* Target);
 
 	// 스피어 아이템 ID (포획률 계산에 사용)
 	UPROPERTY(EditDefaultsOnly, Category = "Pal Sphere")
@@ -74,6 +70,10 @@ private:
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Sound")
 	USoundBase* CaptureFailSound;
+	
+	// 흔들림 사운드
+	UPROPERTY(EditDefaultsOnly, Category = "Sound")
+	USoundBase* ShakeSound;
 	
 	// 포획 중 흔들림 애니메이션
 	FTimerHandle ShakeTimerHandle;

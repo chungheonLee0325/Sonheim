@@ -309,6 +309,24 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Movement|Glider")
 	bool IsGliding() const { return bIsGliding; }
 
+	// 팰 관련 이벤트 핸들러
+	UFUNCTION()
+	void OnPalRegistered(ABaseMonster* Pal, int32 SlotIndex);
+	
+	UFUNCTION()
+	void OnPalSwitched(int32 OldIndex, int32 NewIndex);
+	
+	UFUNCTION()
+	void OnCaptureSuccess(ABaseMonster* CapturedPal);
+	
+	UFUNCTION()
+	void OnCaptureFailed(ABaseMonster* Target, float CaptureRate);
+	
+	// 팰 스피어 소지 확인
+	UFUNCTION(BlueprintPure, Category = "Combat")
+	bool IsHoldingPalSphere() const;
+
+
 private:
 	// === 컴포넌트 ===
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
@@ -457,13 +475,4 @@ private:
 	void UpdateGliding(float DeltaTime);
 
 	virtual void Landed(const FHitResult& Hit) override;
-
-	UFUNCTION()
-	void OnPalRegistered(ABaseMonster* Pal, int32 SlotIndex);
-	UFUNCTION()
-	void OnPalSwitched(int32 OldIndex, int32 NewIndex);
-	UFUNCTION()
-	void OnCaptureSuccess(ABaseMonster* CapturedPal);
-	UFUNCTION()
-	void OnCaptureFailed(ABaseMonster* Target, float CaptureRate);
 };
