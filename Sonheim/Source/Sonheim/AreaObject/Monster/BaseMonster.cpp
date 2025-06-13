@@ -11,6 +11,7 @@
 #include "AIController.h"
 #include "BaseSkillRoulette.h"
 #include "NiagaraFunctionLibrary.h"
+#include "Attribute/AggroComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
@@ -38,6 +39,9 @@ ABaseMonster::ABaseMonster()
 	GetCapsuleComponent()->SetIsReplicated(true);
 
 	GetCharacterMovement()->bOrientRotationToMovement = true;
+
+	// Aggro Component 생성
+	AggroComponent = CreateDefaultSubobject<UAggroComponent>(TEXT("AggroComponent"));
 
 	// AI Perception
 	/*
@@ -200,6 +204,12 @@ void ABaseMonster::BeginPlay()
 	{
 		PickaxeMesh->SetVisibility(false);
 	}
+
+	// Aggro 이벤트 바인딩
+	if (AggroComponent)
+	{
+		AggroComponent->OnAggroTargetChanged.AddDynamic(this, &ABaseMonster::OnAggroTargetChanged);
+	}
 }
 
 // Called every frame
@@ -226,7 +236,20 @@ UBaseAiFSM* ABaseMonster::CreateFSM()
 
 AAreaObject* ABaseMonster::GetAggroTarget() const
 {
-	return m_AggroTarget;
+	if (AggroComponent)
+	{
+		return Cast<AAreaObject>(AggroComponent->GetCurrentTarget());
+	}
+	return nullptr;
+}
+
+void ABaseMonster::SetAggroTarget(AAreaObject* NewTarget)
+{
+	if (AggroComponent && NewTarget)
+	{
+		// 높은 우선순위로 위협 추가
+		AggroComponent->AddThreat(NewTarget, 100.0f, EAggroPriority::High);
+	}
 }
 
 float ABaseMonster::GetDistToTarget()
@@ -338,18 +361,19 @@ float ABaseMonster::TakeDamage(float DamageAmount, struct FDamageEvent const& Da
                                class AController* EventInstigator, AActor* DamageCauser)
 {
 	float damage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-	FLog::Log("TakeDamage", damage);
+	
 	if (damage > 0.f)
 	{
 		TArray<int> array = {1, 5, 10};
 		int index = FMath::RandRange(0, 2);
 		GetNearResourceObject(array[index]);
 
-		// 어그로 설정
-		AAreaObject* Player{Cast<AAreaObject>(DamageCauser)};
-		if (Player)
+		// AggroComponent를 통한 어그로 관리
+		if (AggroComponent && DamageCauser)
 		{
-			m_AggroTarget = Player;
+			// 데미지 양에 비례한 위협 추가
+			float ThreatValue = damage * 1.5f; // 데미지의 1.5배 위협
+			AggroComponent->AddThreat(DamageCauser, ThreatValue, EAggroPriority::High);
 		}
 	}
 
@@ -458,11 +482,11 @@ void ABaseMonster::OnRep_PartnerOwner()
 
 void ABaseMonster::SetPartnerOwner(ASonheimPlayer* NewOwner)
 {
-	PartnerOwner = NewOwner;
-	NewOwner->RegisterOwnPal(this);
-	IncreaseHP(10000);
-	StatusWidget->SetPartnerPalHPWidget();
-	DeactivateMonster();
+	// PartnerOwner = NewOwner;
+	// NewOwner->RegisterOwnPal(this);
+	// IncreaseHP(10000);
+	// StatusWidget->SetPartnerPalHPWidget();
+	// DeactivateMonster();
 }
 
 void ABaseMonster::ActivateMonster()
@@ -748,6 +772,77 @@ void ABaseMonster::AddSkillEntryByID(const int id)
 	m_SkillRoulette->AddSkillEntryByID(id);
 }
 
+void ABaseMonster::OnAggroTargetChanged(AActor* OldTarget, AActor* NewTarget)
+{
+	// AI FSM에 타겟 변경 알림
+	if (m_AiFSM)
+	{
+		if (NewTarget)
+		{
+			// 새 타겟이 있으면 공격 모드로
+			m_AiFSM->ChangeState(EAiStateType::AttackMode);
+		}
+		else
+		{
+			// 타겟이 없으면 대기 또는 복귀
+			m_AiFSM->ChangeState(EAiStateType::Return);
+		}
+	}
+	
+	// 파트너 팰인 경우 주인에게 알림
+	if (PartnerOwner && NewTarget)
+	{
+		FLog::Log("Partner Pal engaged target: %s", *NewTarget->GetName());
+	}
+}
+
+void ABaseMonster::AddThreatToTarget(AActor* Target, float ThreatAmount)
+{
+	if (AggroComponent && Target)
+	{
+		AggroComponent->AddThreat(Target, ThreatAmount);
+	}
+}
+
+void ABaseMonster::ClearAllThreats()
+{
+	if (AggroComponent)
+	{
+		AggroComponent->ClearAllThreats();
+	}
+}
+
+TArray<AActor*> ABaseMonster::GetThreatList() const
+{
+	if (AggroComponent)
+	{
+		return AggroComponent->GetThreatList();
+	}
+	return TArray<AActor*>();
+}
+
+EAggroPriority ABaseMonster::CalculateThreatPriority(AActor* Target) const
+{
+	// 플레이어는 항상 높은 우선순위
+	if (Cast<ASonheimPlayer>(Target))
+	{
+		return EAggroPriority::High;
+	}
+	
+	// 다른 몬스터
+	if (ABaseMonster* Monster = Cast<ABaseMonster>(Target))
+	{
+		// 파트너 팰은 중간 우선순위
+		if (Monster->PartnerOwner)
+		{
+			return EAggroPriority::Medium;
+		}
+		// 야생 몬스터는 낮은 우선순위
+		return EAggroPriority::Low;
+	}
+	
+	return EAggroPriority::Medium;
+}
 
 //void ABaseMonster::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 //{

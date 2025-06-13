@@ -47,6 +47,109 @@ enum class EEnemyType : uint8
 	Boss UMETA(DisplayName = "Boss"),
 };
 
+// 팰 포획 난이도
+UENUM(BlueprintType)
+enum class EPalCaptureGrade : uint8
+{
+	Normal UMETA(DisplayName = "Normal"),
+	Rare UMETA(DisplayName = "Rare"),
+	Epic UMETA(DisplayName = "Epic"),
+	Legendary UMETA(DisplayName = "Legendary"),
+	Boss UMETA(DisplayName = "Boss")
+};
+
+// 어그로 우선순위 타입
+UENUM(BlueprintType)
+enum class EAggroPriority : uint8
+{
+	None UMETA(DisplayName = "None"),
+	Low UMETA(DisplayName = "Low"),
+	Medium UMETA(DisplayName = "Medium"),
+	High UMETA(DisplayName = "High"),
+	Highest UMETA(DisplayName = "Highest")
+};
+
+// 팰 포획 데이터
+USTRUCT(BlueprintType)
+struct FPalCaptureData : public FTableRowBase
+{
+	GENERATED_USTRUCT_BODY()
+
+	// 포획 등급
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Capture")
+	EPalCaptureGrade CaptureGrade = EPalCaptureGrade::Normal;
+
+	// 기본 포획률 (0.0 ~ 1.0)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Capture", meta=(ClampMin="0.0", ClampMax="1.0"))
+	float BaseCaptureRate = 0.5f;
+
+	// HP 비율에 따른 포획률 증가 계수
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Capture")
+	float HPRatioMultiplier = 2.0f;
+
+	// 상태이상에 따른 포획률 보너스
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Capture")
+	TMap<EConditionBitsType, float> ConditionBonusMap;
+
+	// 포획 불가능 여부
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Capture")
+	bool bCannotCapture = false;
+
+	// 포획 시 획득 경험치
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Capture")
+	int32 CaptureExpReward = 100;
+};
+
+// 어그로 엔트리
+USTRUCT(BlueprintType)
+struct FAggroEntry
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(BlueprintReadWrite)
+	TWeakObjectPtr<AActor> Target;
+
+	UPROPERTY(BlueprintReadWrite)
+	float ThreatValue = 0.0f;
+
+	UPROPERTY(BlueprintReadWrite)
+	float LastUpdateTime = 0.0f;
+
+	UPROPERTY(BlueprintReadWrite)
+	EAggroPriority Priority = EAggroPriority::Medium;
+
+	FAggroEntry()
+	{
+		Target = nullptr;
+		ThreatValue = 0.0f;
+		LastUpdateTime = 0.0f;
+		Priority = EAggroPriority::Medium;
+	}
+};
+
+// 팰 인벤토리 슬롯
+USTRUCT(BlueprintType)
+struct FPalSlot
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(BlueprintReadWrite)
+	TWeakObjectPtr<class ABaseMonster> Pal;
+
+	UPROPERTY(BlueprintReadWrite)
+	int32 SlotIndex = -1;
+
+	UPROPERTY(BlueprintReadWrite)
+	bool bIsActive = false;
+
+	FPalSlot()
+	{
+		Pal = nullptr;
+		SlotIndex = -1;
+		bIsActive = false;
+	}
+};
+
 UENUM(BlueprintType)
 enum class EAIVoiceActor : uint8
 {

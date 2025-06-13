@@ -85,14 +85,8 @@ public:
 	                                bool bFromSweep,
 	                                const FHitResult& SweepResult);
 
-	// Combat Interface
-	UFUNCTION(BlueprintCallable, Category = "Combat")
-	virtual AAreaObject* GetAggroTarget() const;
 
 	// Combat System
-	UFUNCTION(BlueprintCallable, Category = "Combat")
-	virtual void SetAggroTarget(AAreaObject* NewTarget) { m_AggroTarget = NewTarget; }
-
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	float GetDistToTarget();
 
@@ -112,6 +106,31 @@ public:
 	void RemoveSkillEntryByID(const int id);
 	void AddSkillEntryByID(const int id);
 
+	// === Aggro 시스템 ===
+	UFUNCTION(BlueprintPure, Category = "Combat")
+	UAggroComponent* GetAggroComponent() const { return AggroComponent; }
+	
+	// 기존 GetAggroTarget을 AggroComponent로 위임
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual AAreaObject* GetAggroTarget() const;
+	
+	// 기존 SetAggroTarget을 AggroComponent로 위임
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void SetAggroTarget(AAreaObject* NewTarget);
+
+	UFUNCTION()
+	void OnAggroTargetChanged(AActor* OldTarget, AActor* NewTarget);
+	void AddThreatToTarget(AActor* Target, float ThreatAmount);
+	void ClearAllThreats();
+	TArray<AActor*> GetThreatList() const;
+	EAggroPriority CalculateThreatPriority(AActor* Target) const;
+
+private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UAggroComponent* AggroComponent;
+
+	
+public:
 	/*
 	// AI Perception 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
@@ -246,7 +265,7 @@ public:
 	UFUNCTION()
 	void OnRep_PartnerOwner();
 
-	// ToDo : Begin Play에서 호출하는것 변경 예정
+	// ToDo : 삭제 예정
 	UFUNCTION(BlueprintCallable)
 	void SetPartnerOwner(ASonheimPlayer* NewOwner);
 

@@ -16,6 +16,8 @@ class USpringArmComponent;
 class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
+class UPalManagementComponent;
+class UPalCaptureComponent;
 struct FInputActionValue;
 
 // 플레이어의 상태를 정의하는 열거형
@@ -82,6 +84,17 @@ public:
 	void SetPlayerState(EPlayerState NewState);
 	void SetPlayerNormalState() { SetPlayerState(EPlayerState::NORMAL); }
 	void SetComboState(bool bCanCombo, int SkillID);
+	
+	// 컴포넌트 Getter
+	UFUNCTION(BlueprintPure, Category = "Components")
+	UPalManagementComponent* GetPalManagementComponent() const { return PalManagementComponent; }
+	
+	UFUNCTION(BlueprintPure, Category = "Components")
+	UPalCaptureComponent* GetPalCaptureComponent() const { return PalCaptureComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "Components")
+	UExperienceShareComponent* GetExperienceShareComponent() const { return ExperienceShareComponent; }
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -99,6 +112,7 @@ protected:
 
 	virtual float HandleAttackDamageCalculation(float Damage) override;
 	virtual float HandleDefenceDamageCalculation(float Damage) override;
+	
 public:
 	// Movement
 	/** Called for movement input */
@@ -182,39 +196,16 @@ public:
 	void Jump_Pressed();
 	void Jump_Released();
 	
-	// 파트너 스킬 입력 처리
+	// 파트너 스킬 입력 처리 - 컴포넌트로 위임
 	void PartnerSkill_Pressed();
 	void PartnerSkill_Triggered();
 	void PartnerSkill_Released();
 	
-	UFUNCTION(Server, Reliable)
-	void Server_PartnerSkill_Pressed();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_PartnerSkill_Pressed();
-	UFUNCTION(Server, Reliable)
-	void Server_PartnerSkill_Triggered();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_PartnerSkill_Triggered();
-	UFUNCTION(Server, Reliable)
-	void Server_PartnerSkill_Released();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_PartnerSkill_Released();
-	
-	// 팔 소환 입력 처리
+	// 팔 소환 입력 처리 - 컴포넌트로 위임
 	void SummonPal_Pressed();
 	
-	UFUNCTION(Server, Reliable)
-	void Server_SummonPal_Pressed();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_SummonPal_Pressed();
-	
-	// 팔 슬롯 전환 입력 처리
+	// 팔 슬롯 전환 입력 처리 - 컴포넌트로 위임
 	void SwitchPalSlot_Triggered(int Index);
-
-	UFUNCTION(Server, Reliable)
-	void Server_SwitchPalSlot_Triggered(int Index);
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_SwitchPalSlot_Triggered(int Index);
 	
 	// 메뉴 입력 처리
 	void Menu_Pressed();
@@ -292,12 +283,8 @@ public:
 	UPROPERTY()
 	EEquipmentSlotType SelectedWeaponSlot = EEquipmentSlotType::Weapon1;
 
-	UFUNCTION(BlueprintCallable)
-	void RegisterOwnPal(ABaseMonster* Pal);
-	UFUNCTION(Server, Reliable)
-	void Server_RegisterOwnPal(ABaseMonster* Pal);
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_RegisterOwnPal(ABaseMonster* Pal);
+	// 파트너 스킬 사용 상태 설정
+	void SetUsePartnerSkill(bool UsePartnerSkill);
 
 	// Glider
 	UFUNCTION(BlueprintCallable, Category = "Movement|Glider")
@@ -323,16 +310,22 @@ public:
 	bool IsGliding() const { return bIsGliding; }
 
 private:
+	// === 컴포넌트 ===
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UPalManagementComponent* PalManagementComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UPalCaptureComponent* PalCaptureComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UExperienceShareComponent* ExperienceShareComponent;
+
 	// Weapon Setting
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* WeaponComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* PalSphereComponent;
-
-	// Skill 로 이관 예정.. 타이밍 등 적용
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Montage, meta = (AllowPrivateAccess = "true"))
-	UAnimMontage* SummonPalMontage;
 
 	// Camera Setting
 	/** Camera boom positioning the camera behind the character */
@@ -432,26 +425,12 @@ private:
 	int32 CurrentWeaponItemID = 0;
 
 public:
-	void SetUsePartnerSkill(bool UsePartnerSkill);
-	
 	virtual bool CanAttack(AActor* TargetActor) override;
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void RestoreStair(int ItemID, int ItemCount);
 
 private:
-	void UpdateSelectedPal();
-	
-	UPROPERTY(EditDefaultsOnly, Category = "Pals")
-	int PalMaxIndex = 5;
-	int CurrentPalIndex = 0;
-	UPROPERTY(VisibleAnywhere, Category = "Pals")
-	TMap<int, ABaseMonster*> m_OwnedPals;
-	UPROPERTY(VisibleAnywhere, Category = "Pals")	
-	ABaseMonster* m_SelectedPal = nullptr;
-	UPROPERTY(VisibleAnywhere, Category = "Pals")
-	ABaseMonster* m_SummonedPal = nullptr;
-
 	// Glider Variable
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement|Glider", meta = (AllowPrivateAccess = "true"))
 	bool bIsGliding = false;
@@ -478,5 +457,13 @@ private:
 	void UpdateGliding(float DeltaTime);
 
 	virtual void Landed(const FHitResult& Hit) override;
-	
+
+	UFUNCTION()
+	void OnPalRegistered(ABaseMonster* Pal, int32 SlotIndex);
+	UFUNCTION()
+	void OnPalSwitched(int32 OldIndex, int32 NewIndex);
+	UFUNCTION()
+	void OnCaptureSuccess(ABaseMonster* CapturedPal);
+	UFUNCTION()
+	void OnCaptureFailed(ABaseMonster* Target, float CaptureRate);
 };

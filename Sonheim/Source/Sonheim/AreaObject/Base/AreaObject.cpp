@@ -21,6 +21,8 @@
 #include "Sonheim/Utilities/SonheimUtility.h"
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/Animation/Common/AnimInstance/BaseAnimInstance.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/Utility/ExperienceShareComponent.h"
 #include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 
 // Sets default values
@@ -404,7 +406,40 @@ void AAreaObject::OnKill(AAreaObject* Killer)
 	// 죽인 사람에게 Reward 처리
 	if (Killer)
 	{
-		Killer->m_LevelComponent->AddExp(this->m_LevelComponent->RewardHuntExp());
+		// 기본 경험치 지급
+		int32 BaseExp = this->m_LevelComponent->RewardHuntExp();
+		
+		// 플레이어인 경우 경험치 공유 시스템 사용
+		if (ASonheimPlayer* PlayerKiller = Cast<ASonheimPlayer>(Killer))
+		{
+			if (UExperienceShareComponent* ExpShare = PlayerKiller->GetExperienceShareComponent())
+			{
+				ExpShare->ShareExperience(BaseExp);
+			}
+			else
+			{
+				// 경험치 공유 컴포넌트가 없으면 단순 경험치 Reward
+				Killer->m_LevelComponent->AddExp(BaseExp);
+			}
+		}
+		else
+		{
+			// 플레이어가 아닌 경우 단순 경험치 Reward
+			Killer->m_LevelComponent->AddExp(BaseExp);
+		}
+		
+		// 파트너 팰이 킬한 경우 주인에게도 경험치
+		if (ABaseMonster* MonsterKiller = Cast<ABaseMonster>(Killer))
+		{
+			if (MonsterKiller->PartnerOwner)
+			{
+				if (UExperienceShareComponent* ExpShare = MonsterKiller->PartnerOwner->GetExperienceShareComponent())
+				{
+					// 파트너 팰 킬 보너스 (50%)
+					ExpShare->ShareExperience(BaseExp * 0.5f);
+				}
+			}
+		}
 	}
 }
 
