@@ -83,5 +83,8 @@ void URolling::DizzyEnd()
 {
 	CastPal->isDizzy = false;
 	CastPal->GetCapsuleComponent()->SetSimulatePhysics(false);
-	CastPal->LookAtLocation(CastPal->GetAggroTarget()->GetActorLocation(), EPMRotationMode::Duration, 0.1f);
+	if (CastPal->GetAggroTarget())
+	{
+		CastPal->LookAtLocation(CastPal->GetAggroTarget()->GetActorLocation(), EPMRotationMode::Duration, 0.1f);
+	}
 }
