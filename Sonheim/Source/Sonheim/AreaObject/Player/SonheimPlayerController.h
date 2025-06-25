@@ -1,6 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "SonheimPlayer.h"
@@ -8,8 +6,8 @@
 #include "SonheimPlayerController.generated.h"
 
 struct FInputActionValue;
-//DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCurrencyChangeDelegate, ECurrencyType, CurrencyType, int,
-//                                               CurrencyValue, int, Delta);
+class UPlayerStatusWidget;
+class ABaseMonster;
 
 /**
  * 
@@ -26,13 +24,19 @@ public:
 	virtual void BeginPlay() override;
 
 	virtual void OnPossess(APawn* InPawn) override;
+	
 	// UI 초기화 및 바인딩 - Player에서 Component 모두 초기화 후 호출
 	UFUNCTION(Client, Reliable)
 	void InitializeHUD(ASonheimPlayer* NewPlayer);
+	
+	// UI 이벤트 바인딩
+	void BindUIEvents();
 
 	UPROPERTY()
 	class UUserWidget* FailWidget;
 
+	// === UI 관련 공개 함수 ===
+	UFUNCTION(BlueprintPure, Category = "UI")
 	class UPlayerStatusWidget* GetPlayerStatusWidget() const;
 
 	bool GetIsMenuActivate() { return IsMenuActivate; }
@@ -93,9 +97,7 @@ private:
 	ASonheimPlayerState* m_PlayerState;
 
 	virtual void OnRep_PlayerState() override;
-	// 재화 관련 데이터
-	// TMap<ECurrencyType, int> CurrencyValues;
-
+	
 	// UI 관련
 	UPROPERTY()
 	class UPlayerStatusWidget* StatusWidget;
@@ -191,7 +193,28 @@ private:
 	float LastJumpTime = 0.0f;
 	int JumpCount = 0;
 	const float DoubleJumpTimeThreshold = 0.5f; // 더블 점프 인식 시간
+	
+	// === 포획 관련 변수 ===
+	FTimerHandle CaptureRateUpdateTimer;
 
+	// UI 이벤트 핸들러
+	UFUNCTION()
+	void OnHealthChanged(float CurrentHealth, float DeltaHealth, float MaxHealth);
+	
+	UFUNCTION()
+	void OnStaminaChanged(float CurrentStamina, float DeltaStamina, float MaxStamina);
+	
+	UFUNCTION()
+	void OnLevelChanged(int32 OldLevel, int32 NewLevel, bool bIsInitialized);
+	
+	UFUNCTION()
+	void OnExpChanged(int32 CurrentExp, int32 ExpToNextLevel, int32 DeltaExp);
+
+	UFUNCTION()
+	void OnCaptureAttemptCallback(ABaseMonster* Target, float CaptureRate, bool bSuccess);
+	// 현재 조준 중인 타겟
+	UPROPERTY()
+	TWeakObjectPtr<ABaseMonster> CurrentAimingTarget;
 public:
 	// UFUNCTION(Server, Reliable)
 	// void ServerRPC_ChangeState(UBaseAiFSM* FSM, EAiStateType StateType);

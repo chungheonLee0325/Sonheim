@@ -265,7 +265,7 @@ float UPalCaptureComponent::GetConditionBonus(ABaseMonster* Target, const FPalCa
 
 void UPalCaptureComponent::ProcessCaptureSuccess(ABaseMonster* Target)
 {
-	if (!Target || !OwnerPlayer)
+	if (!Target || !OwnerPlayer || !OwnerPlayer->HasAuthority())
 		return;
 	
 	// 팰 관리 컴포넌트에 등록

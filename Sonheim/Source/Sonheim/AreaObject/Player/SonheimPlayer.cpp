@@ -14,6 +14,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/Animation/Player/PlayerAniminstance.h"
 #include "Sonheim/AreaObject/Attribute/LevelComponent.h"
+#include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/AreaObject/Utility/GhostTrail.h"
@@ -166,6 +167,7 @@ void ASonheimPlayer::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>&
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ASonheimPlayer, CurrentWeaponItemID);
+	DOREPLIFETIME(ASonheimPlayer, CurrentPalSphereID);
 }
 
 void ASonheimPlayer::InitPlayer()
@@ -304,12 +306,21 @@ void ASonheimPlayer::Server_Reward_Implementation(int ItemID, int ItemValue)
 	{
 		S_PlayerState->m_InventoryComponent->AddItem(ItemID, ItemValue);
 
+		// 아이템 픽업 UI 알림
+		if (IsLocallyControlled() && S_PlayerController)
+		{
+			UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
+			if (StatusWidget)
+			{
+				StatusWidget->ShowItemPickup(ItemID, ItemValue);
+			}
+		}
+
 #if !UE_BUILD_SHIPPING
 		UE_LOG(LogTemp, Log, TEXT("Player rewarded: ItemID=%d, Value=%d"), ItemID, ItemValue);
 #endif
 	}
 }
-
 void ASonheimPlayer::UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int ItemID)
 {
 	if (HasAuthority())
@@ -361,6 +372,15 @@ void ASonheimPlayer::ClearWeaponMesh()
 	if (S_PlayerAnimInstance)
 	{
 		S_PlayerAnimInstance->bIsMelee = false;
+	}
+}
+
+void ASonheimPlayer::OnRep_CurrentPalSphereID(int32 OldPalSphereID)
+{
+	// 다른 플레이어의 팰 스피어 상태 업데이트
+	if (!IsLocallyControlled() && PalSphereComponent)
+	{
+		PalSphereComponent->SetVisibility(CurrentPalSphereID > 0);
 	}
 }
 
@@ -508,33 +528,10 @@ void ASonheimPlayer::Tick(float DeltaTime)
 		UpdateGliding(DeltaTime);
 	}
 	
-	// 팰 체력 UI 업데이트 (0.1초마다)
-	static float PalHealthUpdateTimer = 0.0f;
-	PalHealthUpdateTimer += DeltaTime;
-	
-	if (PalHealthUpdateTimer >= 0.1f && IsLocallyControlled() && PalManagementComponent && S_PlayerController)
+	// UI 상태 업데이트 (로컬 플레이어만)
+	if (IsLocallyControlled())
 	{
-		PalHealthUpdateTimer = 0.0f;
-		
-		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
-		if (StatusWidget)
-		{
-			TArray<ABaseMonster*> OwnedPals = PalManagementComponent->GetOwnedPals();
-			for (int32 i = 0; i < OwnedPals.Num(); i++)
-			{
-				if (OwnedPals[i])
-				{
-					float HealthPercent = OwnedPals[i]->GetHP() / OwnedPals[i]->GetMaxHP();
-					StatusWidget->UpdatePalHealth(i, HealthPercent);
-					
-					// 레벨이 변경되었으면 업데이트
-					if (OwnedPals[i]->m_LevelComponent)
-					{
-						StatusWidget->UpdatePalLevel(i, OwnedPals[i]->m_LevelComponent->GetCurrentLevel());
-					}
-				}
-			}
-		}
+		UpdateUIState(DeltaTime);
 	}
 }
 
@@ -1083,11 +1080,14 @@ void ASonheimPlayer::ThrowPalSphere_Pressed()
 		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
 		if (StatusWidget)
 		{
+			// 팰 스피어 장착 알림
+			NotifyPalSphereEquipped(CurrentPalSphereID);
 			// 타겟 업데이트 시작
 			StatusWidget->UpdateTargetInfo();
 		}
 	}
 }
+
 
 void ASonheimPlayer::Server_ThrowPalSphere_Pressed_Implementation()
 {
@@ -1114,10 +1114,13 @@ void ASonheimPlayer::ThrowPalSphere_Released()
 		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
 		if (StatusWidget)
 		{
+			// 팰 스피어 해제 알림
+			NotifyPalSphereUnequipped();
 			StatusWidget->HideCaptureRate();
 		}
 	}
 }
+
 
 void ASonheimPlayer::Server_ThrowPalSphere_Released_Implementation()
 {
@@ -1316,24 +1319,30 @@ void ASonheimPlayer::Landed(const FHitResult& Hit)
 // === 팰 관련 이벤트 핸들러 ===
 void ASonheimPlayer::OnPalRegistered(ABaseMonster* Pal, int32 SlotIndex)
 {
-	if (IsLocallyControlled() && S_PlayerController)
+	if (!IsLocallyControlled() || !S_PlayerController)
+		return;
+	
+	// 지연 처리로 데이터 동기화 대기
+	FTimerHandle UpdateTimer;
+	GetWorld()->GetTimerManager().SetTimer(UpdateTimer, [this, Pal, SlotIndex]()
 	{
-		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
-		if (StatusWidget && Pal)
+		if (IsValid(Pal) && S_PlayerController)
 		{
-			StatusWidget->AddOwnedPal(Pal->m_AreaObjectID, SlotIndex);
-
-			// 팰 체력 업데이트
-			float HealthPercent = Pal->GetHP() / Pal->GetMaxHP();
-			StatusWidget->UpdatePalHealth(SlotIndex, HealthPercent);
-
-			// 팰 레벨 업데이트
-			if (Pal->m_LevelComponent)
+			UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
+			if (StatusWidget)
 			{
-				StatusWidget->UpdatePalLevel(SlotIndex, Pal->m_LevelComponent->GetCurrentLevel());
+				// 안전하게 데이터 가져오기
+				FPalSlotData SlotData;
+				SlotData.PalID = Pal->m_AreaObjectID;
+				SlotData.Name = Pal->dt_AreaObject ? Pal->dt_AreaObject->Name.ToString() : TEXT("Unknown");
+				SlotData.Level = Pal->m_LevelComponent ? Pal->m_LevelComponent->GetCurrentLevel() : 1;
+				SlotData.HealthPercent = Pal->GetHP() / FMath::Max(1.0f, Pal->GetMaxHP());
+				SlotData.bIsEmpty = false;
+                
+				StatusWidget->AddPalToSlot(SlotIndex, SlotData);
 			}
 		}
-	}
+	}, 0.1f, false);
 }
 
 void ASonheimPlayer::OnPalSwitched(int32 OldIndex, int32 NewIndex)
@@ -1358,7 +1367,10 @@ void ASonheimPlayer::OnCaptureSuccess(ABaseMonster* CapturedPal)
 		if (StatusWidget && CapturedPal && CapturedPal->dt_AreaObject)
 		{
 			FString PalName = CapturedPal->dt_AreaObject->Name.ToString();
-			StatusWidget->ShowCaptureSuccess(PalName);
+			StatusWidget->ShowCaptureResult(true, PalName);
+			
+			// 포획 진행 상태 업데이트
+			StatusWidget->UpdateCaptureProgress(ECaptureUIState::Success);
 		}
 	}
 
@@ -1366,6 +1378,7 @@ void ASonheimPlayer::OnCaptureSuccess(ABaseMonster* CapturedPal)
 	// TODO: 실제 사운드 ID로 변경
 	//PlayGlobalSound(0);
 }
+
 
 void ASonheimPlayer::OnCaptureFailed(ABaseMonster* Target, float CaptureRate)
 {
@@ -1376,7 +1389,10 @@ void ASonheimPlayer::OnCaptureFailed(ABaseMonster* Target, float CaptureRate)
 		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
 		if (StatusWidget)
 		{
-			StatusWidget->ShowCaptureFailed();
+			StatusWidget->ShowCaptureResult(false);
+			
+			// 포획 진행 상태 업데이트
+			StatusWidget->UpdateCaptureProgress(ECaptureUIState::Failed);
 		}
 	}
 
@@ -1393,4 +1409,104 @@ bool ASonheimPlayer::IsHoldingPalSphere() const
 		return S_PlayerAnimInstance->bIsThrowPalSphere;
 	}
 	return false;
+}
+
+int32 ASonheimPlayer::GetCurrentPalSphereID() const
+{
+	return CurrentPalSphereID;
+}
+
+float ASonheimPlayer::GetHealthPercent() const
+{
+	if (m_HealthComponent)
+	{
+		return m_HealthComponent->GetHP() / m_HealthComponent->GetMaxHP();
+	}
+	return 1.0f;
+}
+
+float ASonheimPlayer::GetStaminaPercent() const
+{
+	if (m_StaminaComponent)
+	{
+		return m_StaminaComponent->GetStamina() / m_StaminaComponent->GetMaxStamina();
+	}
+	return 1.0f;
+}
+
+void ASonheimPlayer::UpdateUIState(float DeltaTime)
+{
+	// 팰 체력 UI 업데이트 (0.1초마다)
+	static float PalHealthUpdateTimer = 0.0f;
+	PalHealthUpdateTimer += DeltaTime;
+	
+	if (PalHealthUpdateTimer >= UIUpdateInterval && PalManagementComponent && S_PlayerController)
+	{
+		PalHealthUpdateTimer = 0.0f;
+		
+		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
+		if (StatusWidget)
+		{
+			TArray<ABaseMonster*> OwnedPals = PalManagementComponent->GetOwnedPals();
+			for (int32 i = 0; i < OwnedPals.Num(); i++)
+			{
+				if (OwnedPals[i])
+				{
+					float HealthPercent = OwnedPals[i]->GetHP() / OwnedPals[i]->GetMaxHP();
+					StatusWidget->UpdatePalHealth(i, HealthPercent);
+					
+					// 레벨이 변경되었으면 업데이트
+					if (OwnedPals[i]->m_LevelComponent)
+					{
+						StatusWidget->UpdatePalLevel(i, OwnedPals[i]->m_LevelComponent->GetCurrentLevel());
+					}
+				}
+			}
+		}
+	}
+}
+
+void ASonheimPlayer::UpdateTargetInfo()
+{
+	if (!IsLocallyControlled() || !S_PlayerController)
+		return;
+	
+	UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
+	if (!StatusWidget)
+		return;
+	
+	// 팰 스피어를 들고 있을 때만 타겟 정보 업데이트
+	if (IsHoldingPalSphere())
+	{
+		// StatusWidget에서 타겟 업데이트 처리
+		StatusWidget->UpdateTargetInfo();
+	}
+}
+
+void ASonheimPlayer::NotifyPalSphereEquipped(int32 SphereItemID)
+{
+	CurrentPalSphereID = SphereItemID;
+	
+	if (IsLocallyControlled() && S_PlayerController)
+	{
+		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
+		if (StatusWidget)
+		{
+			StatusWidget->OnPalSphereEquipped(SphereItemID);
+		}
+	}
+}
+
+void ASonheimPlayer::NotifyPalSphereUnequipped()
+{
+	CurrentPalSphereID = 0;
+	
+	if (IsLocallyControlled() && S_PlayerController)
+	{
+		UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget();
+		if (StatusWidget)
+		{
+			StatusWidget->OnPalSphereUnequipped();
+		}
+	}
 }

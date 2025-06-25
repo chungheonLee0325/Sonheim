@@ -1,7 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "SonheimPlayerController.h"
+﻿#include "SonheimPlayerController.h"
 #include "InputMappingContext.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -12,13 +9,19 @@
 #include "Online/OnlineSessionNames.h"
 #include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
+#include "Sonheim/AreaObject/Attribute/HealthComponent.h"
 #include "Sonheim/AreaObject/Monster/AI/Base/BaseAiFSM.h"
+#include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/InventoryWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/PlayerStatWidget.h"
 #include "Sonheim/Utilities/LogMacro.h"
 #include "Sonheim/Utilities/SessionUtil.h"
 #include "Utility/InventoryComponent.h"
+#include "Utility/PalManagementComponent.h"
+#include "Utility/PalCaptureComponent.h"
+#include "Engine/World.h"
+#include "DrawDebugHelpers.h"
 
 ASonheimPlayerController::ASonheimPlayerController()
 {
@@ -190,25 +193,18 @@ void ASonheimPlayerController::BeginPlay()
 	{
 		Subsystem->AddMappingContext(DefaultMappingContext, 0);
 	}
-
-	// UI 초기화
-	//InitializeHUD();
 }
 
 void ASonheimPlayerController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
-	//if (IsLocalController())
+	
+	ASonheimPlayer* player = Cast<ASonheimPlayer>(InPawn);
+	if (m_Player == nullptr) m_Player = player;
+	if (m_PlayerState == nullptr)
 	{
-		//LOG_SCREEN("Player:: IsLocalControllerSuccess");
-		ASonheimPlayer* player = Cast<ASonheimPlayer>(InPawn);
-		if (m_Player == nullptr) m_Player = player;
-		if (m_PlayerState == nullptr)
-		{
-			m_PlayerState = Cast<ASonheimPlayerState>(m_Player->GetPlayerState());
-			m_PlayerState->InitPlayerState();
-		}
-		//InitializeHUD(player);
+		m_PlayerState = Cast<ASonheimPlayerState>(m_Player->GetPlayerState());
+		m_PlayerState->InitPlayerState();
 	}
 }
 
@@ -219,10 +215,9 @@ UPlayerStatusWidget* ASonheimPlayerController::GetPlayerStatusWidget() const
 
 void ASonheimPlayerController::InitializeHUD_Implementation(ASonheimPlayer* NewPlayer)
 {
-	//if (!IsLocalController()) return;
-	//LOG_SCREEN("ASonheimPlayerController::InitializeHUD");
 	if (m_Player == nullptr) m_Player = NewPlayer;
 	if (m_PlayerState == nullptr) m_PlayerState = Cast<ASonheimPlayerState>(PlayerState);
+	
 	if (!StatusWidgetClass || !m_Player) return;
 
 	// UI 위젯 생성
@@ -236,30 +231,56 @@ void ASonheimPlayerController::InitializeHUD_Implementation(ASonheimPlayer* NewP
 		{
 			m_Player->m_HealthComponent->OnHealthChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateHealth);
 			// 초기값 설정
-			StatusWidget->UpdateHealth(m_Player->GetHP(), 0.0f, m_Player->m_HealthComponent->GetMaxHP());
+			float MaxHP = m_Player->m_HealthComponent->GetMaxHP();
+			float CurrentHP = m_Player->GetHP();
+			StatusWidget->UpdateHealthBar(CurrentHP / MaxHP);
 		}
 
 		// Stamina 변경 이벤트 바인딩
 		if (m_Player->m_StaminaComponent)
 		{
-			m_Player->m_StaminaComponent->OnStaminaChanged.
-			          AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateStamina);
+			m_Player->m_StaminaComponent->OnStaminaChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateStamina);
 			// 초기값 설정
-			StatusWidget->UpdateStamina(m_Player->GetStamina(), 0.0f, m_Player->m_StaminaComponent->GetMaxStamina());
+			float MaxStamina = m_Player->m_StaminaComponent->GetMaxStamina();
+			float CurrentStamina = m_Player->GetStamina();
+			StatusWidget->UpdateStaminaBar(CurrentStamina / MaxStamina);
 		}
+		
+		// Level/Exp 변경 이벤트 바인딩
 		if (m_Player->m_LevelComponent)
 		{
 			m_Player->m_LevelComponent->OnLevelChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateLevel);
-			StatusWidget->UpdateLevel(m_Player->m_LevelComponent->GetCurrentLevel(),
-			                          m_Player->m_LevelComponent->GetCurrentLevel(), true);
+			StatusWidget->UpdateLevel(m_Player->m_LevelComponent->GetCurrentLevel(), 
+									  m_Player->m_LevelComponent->GetCurrentLevel(), true);
+			
 			m_Player->m_LevelComponent->OnExperienceChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateExp);
 			StatusWidget->UpdateExp(m_Player->m_LevelComponent->GetCurrentExp(),
-			                        m_Player->m_LevelComponent->GetExpToNextLevel(), 0);
+									m_Player->m_LevelComponent->GetExpToNextLevel(), 0);
 		}
+		
+		// 초기 크로스헤어 숨김
 		StatusWidget->SetEnableCrossHair(false);
+		
+		// UI 이벤트 바인딩
+		BindUIEvents();
+	}
+}
+void ASonheimPlayerController::BindUIEvents()
+{
+	if (!m_Player || !StatusWidget) return;
+
+	// 팰 관리 컴포넌트 이벤트 바인딩
+	if (UPalManagementComponent* PalMgmt = m_Player->GetPalManagementComponent())
+	{
+		// 이미 Player에서 바인딩되어 있으므로 추가 바인딩 불필요
 	}
 
-	//FailWidget = CreateWidget<UUserWidget>(this, MissionFailClass);
+	// 팰 포획 컴포넌트 이벤트 바인딩
+	if (UPalCaptureComponent* PalCapture = m_Player->GetPalCaptureComponent())
+	{
+		// 포획 시도 이벤트 - UI 업데이트용
+		PalCapture->OnCaptureAttempt.AddDynamic(this, &ASonheimPlayerController::OnCaptureAttemptCallback);
+	}
 }
 
 void ASonheimPlayerController::SetupInputComponent()
@@ -399,8 +420,13 @@ void ASonheimPlayerController::On_Mouse_Left_Triggered(const FInputActionValue& 
 void ASonheimPlayerController::On_Mouse_Right_Pressed(const FInputActionValue& InputActionValue)
 {
 	if (IsMenuActivate) return;
-	m_Player->RightMouse_Pressed();
-	GetPlayerStatusWidget()->SetEnableCrossHair(true);
+	
+	// 팰 스피어를 들고 있지 않을 때만 일반 조준
+	if (!m_Player->IsHoldingPalSphere())
+	{
+		m_Player->RightMouse_Pressed();
+		GetPlayerStatusWidget()->SetEnableCrossHair(true);
+	}
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Triggered(const FInputActionValue& InputActionValue)
@@ -430,8 +456,13 @@ void ASonheimPlayerController::On_Sprint_Released(const FInputActionValue& Input
 void ASonheimPlayerController::On_Mouse_Right_Released(const FInputActionValue& InputActionValue)
 {
 	if (IsMenuActivate) return;
-	m_Player->RightMouse_Released();
-	GetPlayerStatusWidget()->SetEnableCrossHair(false);
+	
+	// 팰 스피어를 들고 있지 않을 때만 일반 조준 해제
+	if (!m_Player->IsHoldingPalSphere())
+	{
+		m_Player->RightMouse_Released();
+		GetPlayerStatusWidget()->SetEnableCrossHair(false);
+	}
 }
 
 void ASonheimPlayerController::On_Dodge_Pressed(const FInputActionValue& InputActionValue)
@@ -537,12 +568,11 @@ void ASonheimPlayerController::On_ThrowPalSphere_Released(const FInputActionValu
 	if (IsMenuActivate) return;
 	GetPlayerStatusWidget()->SetEnableCrossHair(false);
 	m_Player->RightMouse_Released();
-	m_Player->ThrowPalSphere_Released();
+	m_Player->ThrowPalSphere_Released();;
 }
 
 void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 {
-	//if (!IsLocalController()) return;
 	if (!IsMenuActivate)
 	{
 		IsMenuActivate = true;
@@ -552,13 +582,19 @@ void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 		InventoryWidget->AddToViewport(0);
 		InventoryWidget->SetInventoryComponent(m_PlayerState->m_InventoryComponent);
 		m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(InventoryWidget,
-		                                                                   &UInventoryWidget::UpdateInventoryFromData);
+																		   &UInventoryWidget::UpdateInventoryFromData);
 		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(InventoryWidget,
-		                                                                   &UInventoryWidget::UpdateEquipmentFromData);
+																		   &UInventoryWidget::UpdateEquipmentFromData);
 		PlayerStatWidget = CreateWidget<UPlayerStatWidget>(this, PlayerStatWidgetClass);
 		PlayerStatWidget->AddToViewport(0);
 		PlayerStatWidget->InitializePlayerStatWidget(m_PlayerState);
 		SetShowMouseCursor(true);
+		
+		// 메뉴 열림 알림
+		if (StatusWidget)
+		{
+			StatusWidget->ShowNotification(FText::FromString(TEXT("Menu Opened")), 1.0f);
+		}
 	}
 	else
 	{
@@ -568,8 +604,8 @@ void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 		m_PlayerState->m_InventoryComponent->OnInventoryChanged.RemoveDynamic(
 			InventoryWidget, &UInventoryWidget::UpdateInventoryFromData);
 		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(InventoryWidget,
-		                                                                      &UInventoryWidget::
-		                                                                      UpdateEquipmentFromData);
+																			  &UInventoryWidget::
+																			  UpdateEquipmentFromData);
 		InventoryWidget->RemoveFromParent();
 		PlayerStatWidget->RemoveFromParent();
 		InventoryWidget = nullptr;
@@ -605,6 +641,54 @@ void ASonheimPlayerController::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 	m_PlayerState = Cast<ASonheimPlayerState>(PlayerState);
 }
+
+void ASonheimPlayerController::OnHealthChanged(float CurrentHealth, float DeltaHealth, float MaxHealth)
+{
+	if (StatusWidget)
+	{
+		StatusWidget->UpdateHealthBar(CurrentHealth / MaxHealth);
+	}
+}
+
+void ASonheimPlayerController::OnStaminaChanged(float CurrentStamina, float DeltaStamina, float MaxStamina)
+{
+	if (StatusWidget)
+	{
+		StatusWidget->UpdateStaminaBar(CurrentStamina / MaxStamina);
+	}
+}
+
+void ASonheimPlayerController::OnLevelChanged(int32 OldLevel, int32 NewLevel, bool bIsInitialized)
+{
+	if (StatusWidget && !bIsInitialized)
+	{
+		StatusWidget->UpdateLevel(OldLevel, NewLevel,  bIsInitialized);
+	}
+}
+
+void ASonheimPlayerController::OnExpChanged(int32 CurrentExp, int32 ExpToNextLevel, int32 DeltaExp)
+{
+	if (StatusWidget)
+	{
+		StatusWidget->UpdateExp(CurrentExp, ExpToNextLevel, DeltaExp);
+	}
+}
+
+void ASonheimPlayerController::OnCaptureAttemptCallback(ABaseMonster* Target, float CaptureRate, bool bSuccess)
+{
+	if (StatusWidget)
+	{
+		if (bSuccess)
+		{
+			StatusWidget->UpdateCaptureProgress(ECaptureUIState::Shaking, CaptureRate);
+		}
+		else
+		{
+			StatusWidget->UpdateCaptureProgress(ECaptureUIState::Shaking, CaptureRate);
+		}
+	}
+}
+
 
 // void ASonheimPlayerController::ServerRPC_ChangeState_Implementation(UBaseAiFSM* FSM, EAiStateType StateType)
 // {

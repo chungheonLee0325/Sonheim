@@ -96,6 +96,14 @@ UBaseSkillRoulette* ABaseMonster::GetSkillRoulette() const
 	return m_SkillRoulette;
 }
 
+bool ABaseMonster::CanBeCaptured() const
+{
+	if (PartnerOwner != nullptr && !IsDead)
+		return true;
+	else
+		return false;
+}
+
 float ABaseMonster::DecreaseHP(float Delta)
 {
 	MultiCastRPC_Show();
@@ -254,22 +262,22 @@ void ABaseMonster::SetAggroTarget(AAreaObject* NewTarget)
 
 float ABaseMonster::GetDistToTarget()
 {
-	if (m_AggroTarget == nullptr)
+	if (GetAggroTarget() == nullptr)
 	{
 		LOG_PRINT(TEXT("AggroTarget is null."));
 		return 0;
 	}
-	return GetDistanceTo(m_AggroTarget);
+	return GetDistanceTo(GetAggroTarget());
 }
 
 FVector ABaseMonster::GetDirToTarget()
 {
-	if (m_AggroTarget == nullptr)
+	if (GetAggroTarget() == nullptr)
 	{
 		LOG_PRINT(TEXT("AggroTarget is null."));
 		return FVector::ZeroVector;
 	}
-	return m_AggroTarget->GetActorLocation() - GetActorLocation();
+	return GetAggroTarget()->GetActorLocation() - GetActorLocation();
 }
 
 float ABaseMonster::GetNextSkillRange()

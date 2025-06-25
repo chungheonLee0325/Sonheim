@@ -69,6 +69,17 @@ enum class EAggroPriority : uint8
 	Highest UMETA(DisplayName = "Highest")
 };
 
+UENUM(BlueprintType)
+enum class EPalRarity : uint8
+{
+	None UMETA(DisplayName = "None"),
+	Common UMETA(DisplayName = "Common"),
+	Uncommon UMETA(DisplayName = "Uncommon"),
+	Rare UMETA(DisplayName = "Rare"),
+	Epic UMETA(DisplayName = "Epic"),
+	Legendary UMETA(DisplayName = "Legendary"),
+};
+
 // 팰 포획 데이터
 USTRUCT(BlueprintType)
 struct FPalCaptureData : public FTableRowBase

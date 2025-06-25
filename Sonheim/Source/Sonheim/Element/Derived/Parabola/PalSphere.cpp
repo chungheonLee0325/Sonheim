@@ -12,17 +12,28 @@
 
 APalSphere::APalSphere()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
+
+	SkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMeshMesh"));
+	SkeletalMesh->SetupAttachment(RootComponent);
+	SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SkeletalMeshObject
+	(TEXT("/Script/Engine.SkeletalMesh'/Game/_Resource/ResourceObject/Weapon/Palsphere/SK_Weapon_PalSphere_001_LOD0.SK_Weapon_PalSphere_001_LOD0'"));
+	if (SkeletalMeshObject.Succeeded())
+	{
+		SkeletalMesh->SetSkeletalMesh(SkeletalMeshObject.Object);
+	}
+	static ConstructorHelpers::FClassFinder<UAnimInstance> ABP_PalSphere(TEXT("/Script/Engine.AnimBlueprintGeneratedClass'/Game/_BluePrint/Element/Parabola/ABP_PalSphere.ABP_PalSphere_C'"));
+	if (ABP_PalSphere.Succeeded())
+	{
+		SkeletalMesh->SetAnimInstanceClass(ABP_PalSphere.Class);
+	}
 }
 
 void APalSphere::BeginPlay()
 {
 	Super::BeginPlay();
-}
-
-void APalSphere::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
 }
 
 void APalSphere::InitElement(AAreaObject* Caster, AAreaObject* Target, const FVector& TargetLocation,
@@ -96,10 +107,15 @@ void APalSphere::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor
                                 UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
                                 const FHitResult& SweepResult)
 {
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
 	ABaseMonster* pal = Cast<ABaseMonster>(OtherActor);
 	ASonheimPlayer* player = Cast<ASonheimPlayer>(m_Caster);
-	
-	if (!player || !pal || !bCanHit || m_Caster == OtherActor)
+    
+	if (!player || !pal || !bCanHit || bIsProcessingCapture || m_Caster == OtherActor)
 	{
 		return;
 	}
@@ -116,6 +132,7 @@ void APalSphere::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor
 	}
 
 	bCanHit = false;
+	bIsProcessingCapture = true;
 	TargetMonster = pal;
 
 	// 포획 처리
@@ -132,11 +149,16 @@ void APalSphere::OnComponentHit(UPrimitiveComponent* HitComponent, AActor* Other
 
 void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
 {
-	if (!Caster || !Target)
-		return;
+    if (!Caster || !Target)
+    {
+        bIsProcessingCapture = false;
+        return;
+    }
 
-	// 기존 물리 효과 유지
-	AddActorWorldOffset(FVector(0, 0, 100));
+    // 팰의 현재 상태 저장
+    SavePalState(Target);
+
+	Root->SetSimulatePhysics(true);
 	int randX = FMath::RandRange(-80, 80);
 	int randY = FMath::RandRange(-80, 80);
 	Root->AddImpulse(FVector(randX, randY, 700));
@@ -144,6 +166,8 @@ void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
 	// 타겟을 임시로 숨김 (포획 애니메이션 중)
 	Target->SetActorHiddenInGame(true);
 	Target->SetActorEnableCollision(false);
+
+	HandlePalSphereAnimation();
 
 	// 떨어지는 애니메이션을 위한 타이머
 	FTimerHandle FallTimerHandle;
@@ -160,7 +184,7 @@ void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
 		
 		// 흔들림 애니메이션 시작
 		StartShakeAnimation(Caster, Target);
-	}, 1.0f, false);
+	}, 1.9f, false);
 }
 
 void APalSphere::StartShakeAnimation(ASonheimPlayer* Caster, ABaseMonster* Target)
@@ -267,7 +291,13 @@ void APalSphere::ProcessCaptureSuccess(ASonheimPlayer* Caster, ABaseMonster* Tar
 
 void APalSphere::ProcessCaptureFailed(ABaseMonster* Target)
 {
-	// 실패 이펙트 (스피어 깨짐)
+	// 타임아웃 타이머 제거
+	GetWorld()->GetTimerManager().ClearTimer(CaptureTimeoutHandle);
+	GetWorld()->GetTimerManager().ClearTimer(ShakeTimerHandle);
+
+	HandlePalSphereAnimation();
+	
+	// 실패 이펙트
 	if (CaptureFailEffect)
 	{
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), CaptureFailEffect, 
@@ -283,6 +313,7 @@ void APalSphere::ProcessCaptureFailed(ABaseMonster* Target)
 	// 타겟 다시 표시
 	Target->SetActorHiddenInGame(false);
 	Target->SetActorEnableCollision(true);
+	RestorePalState(Target);
 	
 	// 잠시 기절 상태로 만들기
 	//Target->AddCondition(EConditionBitsType::Stunned, 2.0f);
@@ -290,7 +321,7 @@ void APalSphere::ProcessCaptureFailed(ABaseMonster* Target)
 	// 스피어 파괴 애니메이션
 	// 스케일을 0으로 줄이면서 사라지기
 	FTimerHandle DestroyTimerHandle;
-	float DestroyTime = 0.3f;
+	float DestroyTime = 1.0f;
 	float ElapsedTime = 0.0f;
 	
 	GetWorld()->GetTimerManager().SetTimer(DestroyTimerHandle, [this, DestroyTime, ElapsedTime]() mutable
@@ -307,4 +338,21 @@ void APalSphere::ProcessCaptureFailed(ABaseMonster* Target)
 			SetActorScale3D(FVector(1.0f - Alpha));
 		}
 	}, 0.05f, true);
+}
+
+void APalSphere::SavePalState(ABaseMonster* Target)
+{
+	if (!Target) return;
+    
+	SavedPalState.OriginalLocation = Target->GetActorLocation();
+	SavedPalState.OriginalRotation = Target->GetActorRotation();
+}
+
+void APalSphere::RestorePalState(ABaseMonster* Target)
+{
+	if (!Target) return;
+    
+	// 위치와 회전 복원
+	Target->SetActorLocation(SavedPalState.OriginalLocation);
+	Target->SetActorRotation(SavedPalState.OriginalRotation);
 }

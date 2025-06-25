@@ -7,6 +7,7 @@
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "SonheimPlayer.generated.h"
 
+// 전방 선언 추가
 class ABaseMonster;
 class ASonheimPlayerState;
 class ULockOnComponent;
@@ -18,6 +19,7 @@ class UInputMappingContext;
 class UInputAction;
 class UPalManagementComponent;
 class UPalCaptureComponent;
+class UExperienceShareComponent;
 struct FInputActionValue;
 
 // 플레이어의 상태를 정의하는 열거형
@@ -94,6 +96,23 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Components")
 	UExperienceShareComponent* GetExperienceShareComponent() const { return ExperienceShareComponent; }
+	
+	// === UI 관련 함수 추가 ===
+	UFUNCTION(BlueprintPure, Category = "UI")
+	int32 GetCurrentPalSphereID() const;
+	
+	UFUNCTION(BlueprintPure, Category = "UI")
+	float GetHealthPercent() const;
+	
+	UFUNCTION(BlueprintPure, Category = "UI")
+	float GetStaminaPercent() const;
+	
+	// UI 상태 업데이트
+	void UpdateUIState(float DeltaTime);
+	
+	// 타겟 정보 업데이트
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void UpdateTargetInfo();
 	
 protected:
 	// Called when the game starts or when spawned
@@ -325,7 +344,10 @@ public:
 	// 팰 스피어 소지 확인
 	UFUNCTION(BlueprintPure, Category = "Combat")
 	bool IsHoldingPalSphere() const;
-
+	
+	// === 팰 스피어 장착/해제 알림 ===
+	void NotifyPalSphereEquipped(int32 SphereItemID);
+	void NotifyPalSphereUnequipped();
 
 private:
 	// === 컴포넌트 ===
@@ -441,6 +463,17 @@ private:
 	// 현재 장착된 무기 아이템 ID 추적
 	UPROPERTY(Replicated)
 	int32 CurrentWeaponItemID = 0;
+	
+	// 현재 장착된 팰 스피어 ID
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentPalSphereID)
+	int32 CurrentPalSphereID = 0;
+
+	UFUNCTION()
+	void OnRep_CurrentPalSphereID(int32 OldPalSphereID);
+	
+	// UI 업데이트 타이머
+	FTimerHandle UIUpdateTimer;
+	float UIUpdateInterval = 0.1f;
 
 public:
 	virtual bool CanAttack(AActor* TargetActor) override;

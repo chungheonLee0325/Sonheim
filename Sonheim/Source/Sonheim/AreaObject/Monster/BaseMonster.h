@@ -31,6 +31,9 @@ public:
 
 	UFUNCTION()
 	UBaseSkillRoulette* GetSkillRoulette() const;
+	
+	UFUNCTION()
+	bool CanBeCaptured() const;
 
 	UPROPERTY(EditAnywhere, Category = "UI")
 	UWidgetComponent* HPWidgetComponent;
