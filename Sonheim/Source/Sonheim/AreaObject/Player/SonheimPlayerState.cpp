@@ -7,11 +7,13 @@
 #include "Sonheim/Utilities/LogMacro.h"
 #include "Utility/InventoryComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Utility/PalInventoryComponent.h"
 
 ASonheimPlayerState::ASonheimPlayerState()
 {
 	m_InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
 	m_StatBonusComponent = CreateDefaultSubobject<UStatBonusComponent>(TEXT("StatBonus"));
+	m_PalInventoryComponent = CreateDefaultSubobject<UPalInventoryComponent>(TEXT("PalInventory"));
 	
 	// 컴포넌트 복제 설정
 	m_InventoryComponent->SetIsReplicated(true);
@@ -24,8 +26,8 @@ void ASonheimPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	
 	DOREPLIFETIME(ASonheimPlayerState, Level);
 	DOREPLIFETIME(ASonheimPlayerState, ReplicatedStats);
-	DOREPLIFETIME(ASonheimPlayerState, m_InventoryComponent);
-	DOREPLIFETIME(ASonheimPlayerState, m_StatBonusComponent);
+	// DOREPLIFETIME(ASonheimPlayerState, m_InventoryComponent);
+	// DOREPLIFETIME(ASonheimPlayerState, m_StatBonusComponent);
 }
 
 void ASonheimPlayerState::BeginPlay()
@@ -96,6 +98,7 @@ void ASonheimPlayerState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ASonheimPlayerState::InitPlayerState()
 {
 	m_Player = Cast<ASonheimPlayer>(GetPawn());
+	m_PalInventoryComponent->InitializeWithPlayer(m_Player);
 }
 
 float ASonheimPlayerState::GetStatValue(EAreaObjectStatType StatType) const

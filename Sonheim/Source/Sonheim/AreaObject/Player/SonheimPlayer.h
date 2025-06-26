@@ -82,6 +82,7 @@ public:
 	void SetPlayerState(EPlayerState NewState);
 	void SetPlayerNormalState() { SetPlayerState(EPlayerState::NORMAL); }
 	void SetComboState(bool bCanCombo, int SkillID);
+	USkeletalMeshComponent* GetPalSphereComponent();
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -187,34 +188,11 @@ public:
 	void PartnerSkill_Triggered();
 	void PartnerSkill_Released();
 	
-	UFUNCTION(Server, Reliable)
-	void Server_PartnerSkill_Pressed();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_PartnerSkill_Pressed();
-	UFUNCTION(Server, Reliable)
-	void Server_PartnerSkill_Triggered();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_PartnerSkill_Triggered();
-	UFUNCTION(Server, Reliable)
-	void Server_PartnerSkill_Released();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_PartnerSkill_Released();
-	
 	// 팔 소환 입력 처리
 	void SummonPal_Pressed();
 	
-	UFUNCTION(Server, Reliable)
-	void Server_SummonPal_Pressed();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_SummonPal_Pressed();
-	
 	// 팔 슬롯 전환 입력 처리
 	void SwitchPalSlot_Triggered(int Index);
-
-	UFUNCTION(Server, Reliable)
-	void Server_SwitchPalSlot_Triggered(int Index);
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_SwitchPalSlot_Triggered(int Index);
 	
 	// 메뉴 입력 처리
 	void Menu_Pressed();
@@ -223,19 +201,6 @@ public:
 	void ThrowPalSphere_Pressed();
 	void ThrowPalSphere_Triggered();
 	void ThrowPalSphere_Released();
-	
-	UFUNCTION(Server, Reliable)
-	void Server_ThrowPalSphere_Pressed();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_ThrowPalSphere_Pressed();
-	UFUNCTION(Server, Reliable)
-	void Server_ThrowPalSphere_Triggered();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_ThrowPalSphere_Triggered();
-	UFUNCTION(Server, Reliable)
-	void Server_ThrowPalSphere_Released();
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_ThrowPalSphere_Released();
 	
 	// 재시작 입력 처리
 	void Restart_Pressed();
@@ -299,6 +264,12 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_RegisterOwnPal(ABaseMonster* Pal);
 
+	UFUNCTION(Client, Reliable)
+	void Client_UpdatePalUI(int32 PalID, int32 Index, bool bIsAdd);
+
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateSelectedPalIndex(int32 NewIndex);
+
 	// Glider
 	UFUNCTION(BlueprintCallable, Category = "Movement|Glider")
 	void ActivateGlider();
@@ -322,6 +293,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Movement|Glider")
 	bool IsGliding() const { return bIsGliding; }
 
+	// Skill 로 이관 예정.. 타이밍 등 적용
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Montage, meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* SummonPalMontage;
 private:
 	// Weapon Setting
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
@@ -329,10 +303,6 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* PalSphereComponent;
-
-	// Skill 로 이관 예정.. 타이밍 등 적용
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Montage, meta = (AllowPrivateAccess = "true"))
-	UAnimMontage* SummonPalMontage;
 
 	// Camera Setting
 	/** Camera boom positioning the camera behind the character */
@@ -362,6 +332,7 @@ private:
 	ASonheimPlayerState* S_PlayerState;
 	virtual void OnRep_PlayerState() override;
 	virtual void OnRep_Controller() override;
+	void InitializePlayerComponents();
 
 	// 플레이어 상태 관리
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", meta = (AllowPrivateAccess = "true"))
@@ -416,8 +387,6 @@ private:
 	float m_RecoveryRate = 5.0f;
 	FTimerHandle RecoveryTimerHandle;
 	
-	bool bUsingPartnerSkill = false;
-
 	// 중복 제거를 위한 초기화 함수
 	void InitPlayer();
 	void BindDelegates();
@@ -478,5 +447,10 @@ private:
 	void UpdateGliding(float DeltaTime);
 
 	virtual void Landed(const FHitResult& Hit) override;
-	
+	ABaseMonster* GetSummonedPal() const;
+
+	UPROPERTY()
+	class UPalPartnerSkillComponent* PalPartnerSkillComponent;
+	UPROPERTY()
+	class UPalCaptureComponent* PalCaptureComponent;
 };

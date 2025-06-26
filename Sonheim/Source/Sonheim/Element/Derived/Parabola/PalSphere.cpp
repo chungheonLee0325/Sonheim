@@ -9,6 +9,7 @@
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/Utility/PalCaptureComponent.h"
 
 APalSphere::APalSphere()
 {
@@ -123,37 +124,17 @@ void APalSphere::OnComponentHit(UPrimitiveComponent* HitComponent, AActor* Other
 
 void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
 {
-	// ToDo - Legacy :: 보스 안잡히도록..
-	if (Target->m_AreaObjectID == 118)
-	{
-		Target->DeactivateMonster();
+	if (!Caster || !Target)
 		return;
-	}
-	
-	if (Target->PartnerOwner != nullptr)
-	{
-		FLog::Log("This Pal is a owned pal");
-	}
-	//AddActorWorldOffset(FVector(0, 0, 100));
-	
-	int randX = FMath::RandRange(-80,80);
-	int randY = FMath::RandRange(-80,80);
-	Root->AddImpulse(FVector(randX, randY, 700));
 
-	int randNum = FMath::RandRange(1, 100);
-	// 50 % 확률 포획
-	// 남은 체력 비례해서 확률 up 피 30% 이하 100 %
-	float hpRatio = Target->GetHP() / Target->GetMaxHP();
-	int captureRate = (1.0 - (hpRatio - 0.3f) * (0.5f / 0.7f)) * 100;
-	FLog::Log("Capture Rate: {}", captureRate);
-	FLog::Log("randNum : {}", randNum);
-	
-	if (randNum <= captureRate)
+	// PalCaptureComponent를 통해 포획 시도
+	if (UPalCaptureComponent* CaptureComp = Caster->FindComponentByClass<UPalCaptureComponent>())
 	{
-		Target->SetPartnerOwner(Caster);
+		CaptureComp->AttemptCapture(Target);
 	}
-	else
-	{
-		Target->DeactivateMonster();
-	}
+    
+	// 던진 구체에 물리 효과 추가
+	int randX = FMath::RandRange(-80, 80);
+	int randY = FMath::RandRange(-80, 80);
+	Root->AddImpulse(FVector(randX, randY, 700));
 }

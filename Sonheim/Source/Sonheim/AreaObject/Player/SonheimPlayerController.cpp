@@ -198,17 +198,22 @@ void ASonheimPlayerController::BeginPlay()
 void ASonheimPlayerController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
-	//if (IsLocalController())
+	ASonheimPlayer* player = Cast<ASonheimPlayer>(InPawn);
+	if (m_Player == nullptr) m_Player = player;
+	m_PlayerState = GetPlayerState<ASonheimPlayerState>();
+	if (m_PlayerState != nullptr)
 	{
-		//LOG_SCREEN("Player:: IsLocalControllerSuccess");
-		ASonheimPlayer* player = Cast<ASonheimPlayer>(InPawn);
-		if (m_Player == nullptr) m_Player = player;
-		if (m_PlayerState == nullptr)
-		{
-			m_PlayerState = Cast<ASonheimPlayerState>(m_Player->GetPlayerState());
-			m_PlayerState->InitPlayerState();
-		}
-		//InitializeHUD(player);
+		m_PlayerState->InitPlayerState();
+	}
+}
+
+void ASonheimPlayerController::InitializeWithPlayer(ASonheimPlayer* NewPlayer)
+{
+	if (m_Player == nullptr) m_Player = NewPlayer;
+	m_PlayerState = m_Player->GetSPlayerState();
+	if (m_PlayerState != nullptr)
+	{
+		m_PlayerState->InitPlayerState();
 	}
 }
 

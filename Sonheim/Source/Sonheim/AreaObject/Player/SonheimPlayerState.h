@@ -55,6 +55,8 @@ public:
 
 	void InitPlayerState();
 
+	UPROPERTY(BlueprintReadWrite, Category="Pal", Replicated)
+	class UPalInventoryComponent* m_PalInventoryComponent;
 protected:
 	// 캐릭터 스탯
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stats", Replicated)

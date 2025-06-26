@@ -35,6 +35,7 @@ public:
 	
 	UFUNCTION()
 	void SwitchSelectedPalIndex(int Index);
+	void ClearOwnedPals();
 
 protected:
 	UPROPERTY(meta = (BindWidget))

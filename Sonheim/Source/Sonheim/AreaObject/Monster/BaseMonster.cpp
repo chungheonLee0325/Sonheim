@@ -459,8 +459,7 @@ void ABaseMonster::OnRep_PartnerOwner()
 void ABaseMonster::SetPartnerOwner(ASonheimPlayer* NewOwner)
 {
 	PartnerOwner = NewOwner;
-	NewOwner->RegisterOwnPal(this);
-	IncreaseHP(10000);
+ 	IncreaseHP(10000);
 	StatusWidget->SetPartnerPalHPWidget();
 	DeactivateMonster();
 }

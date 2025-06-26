@@ -21,6 +21,9 @@
 #include "Sonheim/Utilities/LogMacro.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Utility/InventoryComponent.h"
+#include "Utility/PalCaptureComponent.h"
+#include "Utility/PalInventoryComponent.h"
+#include "Utility/PalPartnerSkillComponent.h"
 
 
 class UEnhancedInputLocalPlayerSubsystem;
@@ -119,6 +122,9 @@ ASonheimPlayer::ASonheimPlayer()
 	{
 		GliderMeshComponent->SetSkeletalMesh(GliderMeshFinder.Object);
 	}
+
+	PalCaptureComponent = CreateDefaultSubobject<UPalCaptureComponent>(TEXT("PalCapture"));
+	PalPartnerSkillComponent = CreateDefaultSubobject<UPalPartnerSkillComponent>(TEXT("PalPartnerSkill"));
 }
 
 // Called when the game starts or when spawned
@@ -139,6 +145,7 @@ void ASonheimPlayer::PossessedBy(AController* NewController)
 	S_PlayerController = Cast<ASonheimPlayerController>(NewController);
 	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
 
+	InitializePlayerComponents();
 	// 서버에서만 델리게이트 바인딩
 	if (HasAuthority())
 	{
@@ -516,53 +523,27 @@ void ASonheimPlayer::Tick(float DeltaTime)
 	{
 		UpdateGliding(DeltaTime);
 	}
-
-	// ToDo : 별도의 지시사항으로 Enable Disable
-	if (m_SummonedPal != nullptr)
-	{
-		TArray<AActor*> TargetArr;
-		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABaseMonster::StaticClass(), TargetArr);
-
-		// 플레이어 위치 가져오기
-		FVector PlayerLocation = GetActorLocation();
-
-		TArray<ABaseMonster*> IdleMonster;
-		for (auto FindTarget : TargetArr)
-		{
-			auto monster = Cast<ABaseMonster>(FindTarget);
-			if (monster != m_SelectedPal)
-			{
-				IdleMonster.Add(monster);
-			}
-		}
-
-		// 거리에 따라 정렬
-		IdleMonster.Sort([PlayerLocation](const ABaseMonster& A, const ABaseMonster& B)
-		{
-			float DistanceA = FVector::DistSquared(A.GetActorLocation(), PlayerLocation);
-			float DistanceB = FVector::DistSquared(B.GetActorLocation(), PlayerLocation);
-			return DistanceA < DistanceB;
-		});
-		if (IdleMonster.Num() > 0)
-		{
-			if (FVector::Dist(IdleMonster[0]->GetActorLocation(), PlayerLocation) < 800.f)
-			{
-				m_SelectedPal->SetAggroTarget(IdleMonster[0]);
-			}
-		}
-	}
 }
 
 void ASonheimPlayer::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
+
+	InitializePlayerComponents();
 }
 
 void ASonheimPlayer::OnRep_Controller()
 {
 	Super::OnRep_Controller();
 	S_PlayerController = Cast<ASonheimPlayerController>(GetController());
+	S_PlayerController->InitializeWithPlayer(this);
+}
+
+void ASonheimPlayer::InitializePlayerComponents()
+{
+	PalCaptureComponent->InitializeWithPlayerState(S_PlayerState);
+	PalPartnerSkillComponent->InitializeWithPlayerState(S_PlayerState);
 }
 
 void ASonheimPlayer::InitializeStateRestrictions()
@@ -634,6 +615,11 @@ void ASonheimPlayer::SetComboState(bool bCanCombo, int SkillID)
 {
 	CanCombo = bCanCombo;
 	NextComboSkillID = SkillID;
+}
+
+USkeletalMeshComponent* ASonheimPlayer::GetPalSphereComponent()
+{
+	return PalSphereComponent;
 }
 
 void ASonheimPlayer::SetPlayerState(EPlayerState NewState)
@@ -720,11 +706,12 @@ void ASonheimPlayer::LeftMouse_Pressed()
 
 void ASonheimPlayer::Server_LeftMouse_Pressed_Implementation()
 {
-	if (bUsingPartnerSkill)
+	if (PalPartnerSkillComponent && PalPartnerSkillComponent->IsUsingPartnerSkill())
 	{
-		m_SelectedPal->PartnerSkillTrigger(true);
+		PalPartnerSkillComponent->SetPartnerSkillTrigger(true);
 		return;
 	}
+	
 	MultiCast_LeftMouse_Pressed();
 }
 
@@ -737,7 +724,7 @@ void ASonheimPlayer::LeftMouse_Triggered()
 {
 	if (!CanPerformAction(CurrentPlayerState, "Action")) return;
 
-	if (bUsingPartnerSkill) return;
+	if (PalPartnerSkillComponent && PalPartnerSkillComponent->IsUsingPartnerSkill()) return;
 
 	Server_LeftMouse_Triggered();
 }
@@ -781,12 +768,12 @@ void ASonheimPlayer::LeftMouse_Released()
 
 void ASonheimPlayer::Server_LeftMouse_Released_Implementation()
 {
-	if (bUsingPartnerSkill)
+	if (PalPartnerSkillComponent && PalPartnerSkillComponent->IsUsingPartnerSkill())
 	{
-		m_SelectedPal->PartnerSkillTrigger(false);
+		PalPartnerSkillComponent->SetPartnerSkillTrigger(false);
 		return;
 	}
-
+	
 	MultiCast_LeftMouse_Released();
 }
 
@@ -980,161 +967,52 @@ void ASonheimPlayer::MultiCast_Reload_Pressed_Implementation()
 
 void ASonheimPlayer::PartnerSkill_Pressed()
 {
-	if (m_SelectedPal == nullptr || m_SummonedPal == nullptr)
+	if (PalPartnerSkillComponent)
 	{
-		FLog::Log("Partner Pal Is Not Exist");
-		return;
-	}
-
-	Server_PartnerSkill_Pressed();
-}
-
-void ASonheimPlayer::Server_PartnerSkill_Pressed_Implementation()
-{
-	//if (m_SelectedPal == nullptr || m_SummonedPal == nullptr) return;
-	if (m_SummonedPal == nullptr) return;
-
-	if (!bUsingPartnerSkill)
-	{
-		m_SummonedPal->PartnerSkillStart();
-		MultiCast_PartnerSkill_Pressed();
-	}
-	else
-	{
-		m_SummonedPal->PartnerSkillEnd();
-		MultiCast_PartnerSkill_Released();
+		PalPartnerSkillComponent->TogglePartnerSkill();
 	}
 }
 
-void ASonheimPlayer::MultiCast_PartnerSkill_Pressed_Implementation()
+// 파트너 스킬 트리거 처리
+void ASonheimPlayer::PartnerSkill_Triggered()
 {
-	//SetUsePartnerSkill(true);
+	// 파트너 스킬 사용 중이면 트리거 입력 처리
+	// if (PalPartnerSkillComponent && PalPartnerSkillComponent->IsUsingPartnerSkill())
+	// {
+	// 	PalPartnerSkillComponent->SetPartnerSkillTrigger(true);
+	// }
 }
 
 void ASonheimPlayer::PartnerSkill_Released()
 {
-	if (m_SelectedPal == nullptr)
+	if (PalPartnerSkillComponent)
 	{
-		FLog::Log("Partner Pall Is Not Exist");
-		return;
+		PalPartnerSkillComponent->TogglePartnerSkill();
 	}
-
-	Server_PartnerSkill_Released();
-}
-
-void ASonheimPlayer::Server_PartnerSkill_Released_Implementation()
-{
-	if (m_SelectedPal == nullptr) return;
-
-	MultiCast_PartnerSkill_Released();
-}
-
-void ASonheimPlayer::MultiCast_PartnerSkill_Released_Implementation()
-{
-	SetUsePartnerSkill(false);
+	// if (PalPartnerSkillComponent && PalPartnerSkillComponent->IsUsingPartnerSkill())
+	// {
+	// 	PalPartnerSkillComponent->SetPartnerSkillTrigger(false);
+	// }
 }
 
 void ASonheimPlayer::SummonPal_Pressed()
 {
-	UpdateSelectedPal();
-	if (m_SelectedPal == nullptr)
+	if (PalPartnerSkillComponent)
 	{
-		FLog::Log("Partner Pal Is Not Exist");
-		return;
+		PalPartnerSkillComponent->TogglePalSummon();
 	}
-
-	FLog::Log("SelectedPal Index : ", CurrentPalIndex);
-	Server_SummonPal_Pressed();
-}
-
-void ASonheimPlayer::Server_SummonPal_Pressed_Implementation()
-{
-	if (m_SelectedPal == nullptr) return;
-	// TODo: 스킬로 이관예정
-	{
-		FOnMontageEnded EndDelegate;
-		EndDelegate.BindLambda([this](UAnimMontage* Montage, bool bInterrupted)
-		{
-			PalSphereComponent->SetVisibility(false);
-			// 내 우측에 생성 + 근처에 대상 존재하면 상호작용 or 앞으로 전진
-			if (m_SelectedPal != m_SummonedPal)
-			{
-				if (m_SummonedPal != nullptr)
-				{
-					// ToDo : 고민해보자..
-					SetUsePartnerSkill(false);
-
-					m_SummonedPal->DeactivateMonster();
-				}
-				m_SelectedPal->ActivateMonster();
-				m_SummonedPal = m_SelectedPal;
-			}
-			else
-			{
-				// ToDo : 고민해보자..
-				SetUsePartnerSkill(false);
-
-				m_SummonedPal->DeactivateMonster();
-				m_SummonedPal = nullptr;
-			}
-		});
-		PalSphereComponent->SetVisibility(true);
-		PlayAnimMontage(SummonPalMontage);
-		S_PlayerAnimInstance->Montage_SetEndDelegate(EndDelegate, SummonPalMontage);
-	}
-	MultiCast_SummonPal_Pressed();
-}
-
-void ASonheimPlayer::MultiCast_SummonPal_Pressed_Implementation()
-{
-	if (HasAuthority()) return;
-
-	FOnMontageEnded EndDelegate;
-	EndDelegate.BindLambda([this](UAnimMontage* Montage, bool bInterrupted)
-	{
-		PalSphereComponent->SetVisibility(false);
-		if (m_SelectedPal != m_SummonedPal)
-		{
-			if (m_SummonedPal != nullptr)
-			{
-				SetUsePartnerSkill(false);
-			}
-			m_SummonedPal = m_SelectedPal;
-		}
-		else
-		{
-			SetUsePartnerSkill(false);
-			m_SummonedPal = nullptr;
-		}
-	});
-	PalSphereComponent->SetVisibility(true);
-	PlayAnimMontage(SummonPalMontage);
-	S_PlayerAnimInstance->Montage_SetEndDelegate(EndDelegate, SummonPalMontage);
 }
 
 void ASonheimPlayer::SwitchPalSlot_Triggered(int Index)
 {
-	Server_SwitchPalSlot_Triggered(Index);
+	if (S_PlayerState)
+	{
+		if (UPalInventoryComponent* PalInventory = S_PlayerState->FindComponentByClass<UPalInventoryComponent>())
+		{
+			PalInventory->ServerRPC_SwitchPalSlot(Index);
+		}
+	}
 }
-
-void ASonheimPlayer::Server_SwitchPalSlot_Triggered_Implementation(int Index)
-{
-	MultiCast_SwitchPalSlot_Triggered(Index);
-}
-
-void ASonheimPlayer::MultiCast_SwitchPalSlot_Triggered_Implementation(int Index)
-{
-	const int minIndex = 0;
-	const int maxIndex = FMath::Min(PalMaxIndex, m_OwnedPals.Num());
-	// divide by zero 방지
-	if (maxIndex == minIndex) return;
-
-	CurrentPalIndex = (CurrentPalIndex + Index) % maxIndex;
-	if (CurrentPalIndex < minIndex) CurrentPalIndex += maxIndex;
-	FLog::Log("CurrentPalIndex : ", CurrentPalIndex);
-	UpdateSelectedPal();
-}
-
 
 void ASonheimPlayer::Menu_Pressed()
 {
@@ -1153,16 +1031,17 @@ void ASonheimPlayer::Restart_Pressed()
 
 void ASonheimPlayer::SetUsePartnerSkill(bool UsePartnerSkill)
 {
-	this->bUsingPartnerSkill = UsePartnerSkill;
-
-	if (UsePartnerSkill)
-	{
-		S_PlayerAnimInstance->bUsingPartnerSkill = true;
-	}
-	else
-	{
-		S_PlayerAnimInstance->bUsingPartnerSkill = false;
-	}
+	PalPartnerSkillComponent->SetPartnerSkillState(UsePartnerSkill);
+	// this->bUsingPartnerSkill = UsePartnerSkill;
+	//
+	// if (UsePartnerSkill)
+	// {
+	// 	S_PlayerAnimInstance->bUsingPartnerSkill = true;
+	// }
+	// else
+	// {
+	// 	S_PlayerAnimInstance->bUsingPartnerSkill = false;
+	// }
 }
 
 bool ASonheimPlayer::CanAttack(AActor* TargetActor)
@@ -1235,18 +1114,10 @@ void ASonheimPlayer::RespawnAtCheckpoint()
 
 void ASonheimPlayer::ThrowPalSphere_Pressed()
 {
-	Server_ThrowPalSphere_Pressed();
-}
-
-void ASonheimPlayer::Server_ThrowPalSphere_Pressed_Implementation()
-{
-	MultiCast_ThrowPalSphere_Pressed();
-}
-
-void ASonheimPlayer::MultiCast_ThrowPalSphere_Pressed_Implementation()
-{
-	S_PlayerAnimInstance->bIsThrowPalSphere = true;
-	PalSphereComponent->SetVisibility(true);
+	if (PalCaptureComponent)
+	{
+		PalCaptureComponent->StartThrowPalSphere();
+	}
 }
 
 void ASonheimPlayer::ThrowPalSphere_Triggered()
@@ -1255,20 +1126,10 @@ void ASonheimPlayer::ThrowPalSphere_Triggered()
 
 void ASonheimPlayer::ThrowPalSphere_Released()
 {
-	Server_ThrowPalSphere_Released();
-}
-
-void ASonheimPlayer::Server_ThrowPalSphere_Released_Implementation()
-{
-	UBaseSkill* Skill = GetSkillByID(15);
-	CastSkill(Skill, this);
-	Multicast_ThrowPalSphere_Released();
-}
-
-void ASonheimPlayer::Multicast_ThrowPalSphere_Released_Implementation()
-{
-	PalSphereComponent->SetVisibility(false);
-	S_PlayerAnimInstance->bIsThrowPalSphere = false;
+	if (PalCaptureComponent)
+	{
+		PalCaptureComponent->ThrowPalSphere();
+	}
 }
 
 // 마우스 오른쪽 트리거 처리
@@ -1301,36 +1162,6 @@ void ASonheimPlayer::Server_Sprint_Triggered_Implementation()
 void ASonheimPlayer::MultiCast_Sprint_Triggered_Implementation()
 {
 	DecreaseStamina(0.5f);
-}
-
-// 파트너 스킬 트리거 처리
-void ASonheimPlayer::PartnerSkill_Triggered()
-{
-	if (m_SelectedPal == nullptr || m_SummonedPal == nullptr) return;
-
-	Server_PartnerSkill_Triggered();
-}
-
-void ASonheimPlayer::Server_PartnerSkill_Triggered_Implementation()
-{
-	if (m_SelectedPal == nullptr || m_SummonedPal == nullptr) return;
-
-	MultiCast_PartnerSkill_Triggered();
-}
-
-void ASonheimPlayer::MultiCast_PartnerSkill_Triggered_Implementation()
-{
-	// 필요한 경우 추가 동작 구현
-}
-
-void ASonheimPlayer::Server_ThrowPalSphere_Triggered_Implementation()
-{
-	MultiCast_ThrowPalSphere_Triggered();
-}
-
-void ASonheimPlayer::MultiCast_ThrowPalSphere_Triggered_Implementation()
-{
-	// 필요한 경우 추가 동작 구현
 }
 
 void ASonheimPlayer::ActivateGlider()
@@ -1464,5 +1295,43 @@ void ASonheimPlayer::Landed(const FHitResult& Hit)
 	if (bIsGliding)
 	{
 		DeactivateGlider();
+	}
+}
+
+ABaseMonster* ASonheimPlayer::GetSummonedPal() const
+{
+	if (PalPartnerSkillComponent)
+	{
+		return PalPartnerSkillComponent->GetSummonedPal();
+	}
+	return nullptr;
+}
+
+void ASonheimPlayer::Client_UpdatePalUI_Implementation(int32 PalID, int32 Index, bool bIsAdd)
+{
+	if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetController()))
+	{
+		if (UPlayerStatusWidget* StatusWidget = PC->GetPlayerStatusWidget())
+		{
+			if (bIsAdd)
+			{
+				StatusWidget->AddOwnedPal(PalID, Index);
+			}
+			else
+			{
+				//StatusWidget->RemoveOwnedPal(Index);
+			}
+		}
+	}
+}
+
+void ASonheimPlayer::Client_UpdateSelectedPalIndex_Implementation(int32 NewIndex)
+{
+	if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetController()))
+	{
+		if (UPlayerStatusWidget* StatusWidget = PC->GetPlayerStatusWidget())
+		{
+			StatusWidget->SwitchSelectedPalIndex(NewIndex);
+		}
 	}
 }

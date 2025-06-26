@@ -91,3 +91,12 @@ void UPlayerStatusWidget::SwitchSelectedPalIndex(int Index)
 		}
 	}
 }
+
+void UPlayerStatusWidget::ClearOwnedPals()
+{
+	for (auto slot : PalSlots)
+	{
+		slot.Value->SetBrushFromTexture(nullptr);
+		slot.Value->SetRenderOpacity(0.0f);
+	}
+}
