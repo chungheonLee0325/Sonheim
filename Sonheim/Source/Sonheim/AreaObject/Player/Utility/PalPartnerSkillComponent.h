@@ -85,6 +85,13 @@ private:
     // 파트너 스킬 사용 중 여부
     UPROPERTY(ReplicatedUsing = OnRep_UsingPartnerSkill)
     bool bUsingPartnerSkill = false;
+    
+    UPROPERTY()
+    ABaseMonster* PendingPal;
+    
+    bool bPendingDismiss = false;
+    
+    void ProcessPendingSummon();
 
     // Pal 찾기용 (디버그)
     void UpdateNearestEnemy();

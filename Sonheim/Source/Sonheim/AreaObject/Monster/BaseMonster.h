@@ -132,7 +132,7 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	virtual UBaseSkillRoulette* CreateSkillRoulette();
 
-	virtual void OnDie() override;
+	virtual void OnDie_Implementation() override;
 
 	virtual void InitializeHUD();
 

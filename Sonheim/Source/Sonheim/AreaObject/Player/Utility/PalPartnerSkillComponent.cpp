@@ -86,40 +86,21 @@ void UPalPartnerSkillComponent::Server_TogglePalSummon_Implementation()
 
     FLog::Log("Selected Pal Index: {}", PalInventory->GetCurrentPalIndex());
     
-    // 이미 소환된 Pal이면 해제
+    // 몽타주 재생 (소환/해제 실행 전에)
+    MultiCast_PlaySummonAnimation();
+    
+    // 이미 소환된 Pal이면 해제 예약
     if (SelectedPal == SummonedPal)
     {
-        // 파트너 스킬 사용 중이면 먼저 종료
-        if (bUsingPartnerSkill)
-        {
-            Server_TogglePartnerSkill();
-        }
-        
-        SummonedPal->DeactivateMonster();
-        SummonedPal = nullptr;
-        
-        OnPalDismissed.Broadcast();
+        bPendingDismiss = true;
+        PendingPal = nullptr;
     }
     else
     {
-        // 기존 Pal 해제
-        if (SummonedPal)
-        {
-            if (bUsingPartnerSkill)
-            {
-                Server_TogglePartnerSkill();
-            }
-            SummonedPal->DeactivateMonster();
-        }
-        
-        // 새로운 Pal 소환
-        SelectedPal->ActivateMonster();
-        SummonedPal = SelectedPal;
-        
-        OnPalSummoned.Broadcast(SummonedPal);
+        // 새로운 Pal 소환 예약
+        bPendingDismiss = false;
+        PendingPal = SelectedPal;
     }
-    
-    MultiCast_PlaySummonAnimation();
 }
 
 void UPalPartnerSkillComponent::MultiCast_PlaySummonAnimation_Implementation()
@@ -136,7 +117,7 @@ void UPalPartnerSkillComponent::MultiCast_PlaySummonAnimation_Implementation()
     // 애니메이션 재생
     OwnerPlayer->PlayAnimMontage(SummonPalMontage);
     
-    // 애니메이션 종료 시 PalSphere 숨김
+    // 애니메이션 종료 시 처리
     if (UAnimInstance* AnimInstance = OwnerPlayer->GetMesh()->GetAnimInstance())
     {
         FOnMontageEnded EndDelegate;
@@ -146,8 +127,49 @@ void UPalPartnerSkillComponent::MultiCast_PlaySummonAnimation_Implementation()
             {
                 OwnerPlayer->GetPalSphereComponent()->SetVisibility(false);
             }
+            
+            // 서버에서만 실제 소환/해제 처리
+            if (GetOwnerRole() == ROLE_Authority && !bInterrupted)
+            {
+                ProcessPendingSummon();
+            }
         });
         AnimInstance->Montage_SetEndDelegate(EndDelegate, SummonPalMontage);
+    }
+}
+
+void UPalPartnerSkillComponent::ProcessPendingSummon()
+{
+    if (bPendingDismiss)
+    {
+        // 해제 처리
+        if (SummonedPal)
+        {
+            if (bUsingPartnerSkill)
+            {
+                Server_TogglePartnerSkill();
+            }
+            SummonedPal->DeactivateMonster();
+            SummonedPal = nullptr;
+            OnPalDismissed.Broadcast();
+        }
+    }
+    else if (PendingPal)
+    {
+        // 소환 처리
+        if (SummonedPal)
+        {
+            if (bUsingPartnerSkill)
+            {
+                Server_TogglePartnerSkill();
+            }
+            SummonedPal->DeactivateMonster();
+        }
+        
+        PendingPal->ActivateMonster();
+        SummonedPal = PendingPal;
+        PendingPal = nullptr;
+        OnPalSummoned.Broadcast(SummonedPal);
     }
 }
 

@@ -269,9 +269,9 @@ ABaseResourceObject* ABaseMonster::GetResourceTarget() const
 	return m_ResourceTarget;
 }
 
-void ABaseMonster::OnDie()
+void ABaseMonster::OnDie_Implementation()
 {
-	Super::OnDie();
+	Super::OnDie_Implementation();
 	// 죽는 애니메이션 하고
 	IsDead = true;
 	ChangeFace(EFaceType::Dead);

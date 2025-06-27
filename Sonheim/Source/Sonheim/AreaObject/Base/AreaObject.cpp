@@ -355,7 +355,10 @@ void AAreaObject::StopAll()
 	m_RotateUtilComponent->StopRotation();
 	if (m_CurrentSkill != nullptr)
 	{
-		m_CurrentSkill->CancelCast();
+		if(HasAuthority())
+		{
+			m_CurrentSkill->CancelCast();
+		}
 		ClearCurrentSkill();
 	}
 }
