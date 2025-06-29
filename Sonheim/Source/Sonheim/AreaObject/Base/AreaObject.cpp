@@ -22,6 +22,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/Animation/Common/AnimInstance/BaseAnimInstance.h"
 #include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
+#include "Sonheim/UI/FloatingDamagePool.h"
 
 // Sets default values
 AAreaObject::AAreaObject()
@@ -738,55 +739,66 @@ void AAreaObject::MulticastDamageEffect_Implementation(float Damage, FVector Hit
                                                        bool bWeakPoint, float ElementDamageMultiplier,
                                                        const FAttackData& AttackData)
 {
-	// 클라이언트 및 서버 모두에서 실행되는 데미지 시각/청각 효과
+	// 로컬 플레이어만 처리 (각 클라이언트가 자신의 UI만 생성)
+    APlayerController* LocalPC = GetWorld()->GetFirstPlayerController();
+    if (!LocalPC || !LocalPC->IsLocalController()) return;
 
-	// Spawn floating damage
-	FTransform SpawnTransform(FRotator::ZeroRotator, HitLocation);
+    // 풀 매니저를 통해 데미지 표시 요청
+    if (AFloatingDamagePool* DamagePool = AFloatingDamagePool::GetInstance(GetWorld()))
+    {
+        FDamageNumberRequest Request;
+        Request.Damage = Damage;
+        Request.WorldLocation = HitLocation;
+        Request.DamageCauser = DamageCauser;
+        Request.DamagedActor = this;
+        
+        // 약점 타입 설정
+        Request.WeakPointType = bWeakPoint 
+            ? EFloatingOutLineDamageType::WeakPointDamage 
+            : EFloatingOutLineDamageType::Normal;
+        
+        // 속성 타입 설정
+        if (ElementDamageMultiplier > 1.0f)
+        {
+            Request.ElementAttributeType = EFloatingTextDamageType::EffectiveElementDamage;
+        }
+        else if (ElementDamageMultiplier < 1.0f)
+        {
+            Request.ElementAttributeType = EFloatingTextDamageType::InefficientElementDamage;
+        }
+        else
+        {
+            Request.ElementAttributeType = EFloatingTextDamageType::Normal;
+        }
+        
+        DamagePool->RequestDamageNumber(Request);
+    }
 
-	if (AFloatingDamageActor* DamageActor = GetWorld()->SpawnActor<AFloatingDamageActor>(
-		AFloatingDamageActor::StaticClass(), SpawnTransform))
-	{
-		// FloatingDamageType 계산
-		// 약점 계산
-		EFloatingOutLineDamageType weakPointDamageType = bWeakPoint
-			                                                 ? EFloatingOutLineDamageType::WeakPointDamage
-			                                                 : EFloatingOutLineDamageType::Normal;
-		EFloatingTextDamageType elementAttributeDamageType = EFloatingTextDamageType::Normal;
-		if (ElementDamageMultiplier > 1.0f)
-		{
-			elementAttributeDamageType = EFloatingTextDamageType::EffectiveElementDamage;
-		}
-		else if (ElementDamageMultiplier < 1.0f)
-		{
-			elementAttributeDamageType = EFloatingTextDamageType::InefficientElementDamage;
-		}
-		DamageActor->Initialize(Damage, weakPointDamageType, elementAttributeDamageType);
-	}
+    // === 사운드 및 VFX는 기존과 동일 ===
+    
+    // Spawn Hit SFX
+    if (dt_AreaObject->HitSoundID != 0)
+    {
+        PlayPositionalSound(dt_AreaObject->HitSoundID, HitLocation);
+    }
 
-	// Spawn Hit SFX
-	if (dt_AreaObject->HitSoundID != 0)
-	{
-		PlayPositionalSound(dt_AreaObject->HitSoundID, HitLocation);
-	}
+    // Spawn Hit SFX
+    if (AttackData.HitSFX != nullptr)
+    {
+        UGameplayStatics::PlaySoundAtLocation(GetWorld(), AttackData.HitSFX, HitLocation);
+    }
 
-	// Spawn Hit SFX
-	if (AttackData.HitSFX != nullptr)
-	{
-		UGameplayStatics::PlaySoundAtLocation(GetWorld(), AttackData.HitSFX, HitLocation);
-	}
-
-	// Spawn Hit SFX
-	if (AttackData.HitVFX_N != nullptr)
-	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), AttackData.HitVFX_N, HitLocation,
-		                                               FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
-	}
-	// Spawn Hit SFX
-	else if (AttackData.HitVFX_P != nullptr)
-	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), AttackData.HitVFX_P, HitLocation,
-		                                         FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
-	}
+    // Spawn Hit VFX
+    if (AttackData.HitVFX_N != nullptr)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), AttackData.HitVFX_N, HitLocation,
+                                                       FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
+    }
+    else if (AttackData.HitVFX_P != nullptr)
+    {
+        UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), AttackData.HitVFX_P, HitLocation,
+                                                 FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
+    }
 }
 
 void AAreaObject::OnRep_IsDead()

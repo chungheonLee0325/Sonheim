@@ -7,17 +7,18 @@
 UENUM(BlueprintType)
 enum class EFloatingOutLineDamageType : uint8
 {
-    Normal,
-    WeakPointDamage,
-    CriticalDamaged,
-};
-enum class EFloatingTextDamageType : uint8
-{
-    Normal,
-    InefficientElementDamage,
-    EffectiveElementDamage,
+    Normal         UMETA(DisplayName = "Normal"),
+    WeakPointDamage UMETA(DisplayName = "Weak Point"),
+    CriticalDamaged UMETA(DisplayName = "Critical"),
 };
 
+UENUM(BlueprintType)
+enum class EFloatingTextDamageType : uint8
+{
+    Normal                  UMETA(DisplayName = "Normal"),
+    InefficientElementDamage UMETA(DisplayName = "Inefficient Element"),
+    EffectiveElementDamage   UMETA(DisplayName = "Effective Element"),
+};
 
 UCLASS()
 class SONHEIM_API UFloatingDamageWidget : public UUserWidget
@@ -27,7 +28,7 @@ class SONHEIM_API UFloatingDamageWidget : public UUserWidget
 public:
     virtual bool Initialize() override;
 
-    void SetDamageInfo(float Damage, EFloatingOutLineDamageType WeakPointType,  EFloatingTextDamageType ElementAttributeType);
+    void SetDamageInfo(float Damage, EFloatingOutLineDamageType WeakPointType, EFloatingTextDamageType ElementAttributeType);
     void PlayFadeAnimation();
 
 protected:
@@ -37,7 +38,13 @@ protected:
     UPROPERTY(Transient, meta = (BindWidgetAnim))
     UWidgetAnimation* FadeOutAnimation;
 
+    // 색상 설정
     UPROPERTY(EditDefaultsOnly, Category = "Appearance")
     TMap<EFloatingOutLineDamageType, FLinearColor> DamageWeakPointColors;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Appearance")
     TMap<EFloatingTextDamageType, FLinearColor> DamageElementAttributeColors;
-}; 
+
+private:
+    void InitializeColorMaps();
+};
