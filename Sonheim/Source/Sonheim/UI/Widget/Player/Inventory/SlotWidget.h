@@ -47,6 +47,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
 	UTexture2D* IMG_Default;
 
+	UPROPERTY(VisibleAnywhere, Category = "Slot", meta = (BindWidget = "true"))
+	class UBorder* Border_MouseOver;
+
 	// 슬롯에 지정될 아이템의 수량
 	UPROPERTY(VisibleAnywhere, Category = "Slot", meta = (BindWidget = "true"))
 	TObjectPtr<class UTextBlock> TXT_Quantity;
@@ -88,19 +91,24 @@ public:
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemDropped, USlotWidget*, FromSlot, USlotWidget*, ToSlot);
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnItemDropped OnItemDropped;
-	
+
+	// 시각적 피드백 함수들
+	UFUNCTION(BlueprintCallable, Category = "Animation")
+	void PlayMouseEnterAnimation();
 private:
 	UPROPERTY()
 	UToolTipWidget* ToolTipInstance;
 	UPROPERTY()
 	USonheimGameInstance* m_GameInstance;
-
 protected:
 	bool IsEmpty() const;
     
 	// 빈 칸에 적용하기 위한 투명 텍스쳐
 	UPROPERTY(EditAnywhere, Category = "Slot")
 	TObjectPtr<class UTexture2D> DefaultTexture;
+    
+	UPROPERTY(EditAnywhere, Category = "Animation")
+	class UWidgetAnimation* ClickAnimation;
 };
 
 // 드래그 드롭 오퍼레이션 클래스

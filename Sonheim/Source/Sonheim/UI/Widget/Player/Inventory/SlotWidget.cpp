@@ -4,6 +4,7 @@
 #include "SlotWidget.h"
 #include "ToolTipWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
+#include "Components/Border.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
@@ -40,6 +41,12 @@ void USlotWidget::SetItemData(const FItemData* ItemData, int32 NewQuantity)
 	ItemID = ItemData->ItemID;
 	Quantity = NewQuantity;
 	//ToDo : Durability 등 묶어서 구조체로 관리해야할듯.. FInventoryItem 의 확장?
+
+	// 툴팁 위젯이 없으면 생성
+	if (!ToolTipInstance && ToolTipWidgetClass)
+	{
+		ToolTipInstance = CreateWidget<UToolTipWidget>(this, ToolTipWidgetClass);
+	}
 	
 	// ToolTip 초기화
 	if (ItemData != nullptr && ToolTipInstance != nullptr)
@@ -73,26 +80,8 @@ void USlotWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointer
 	// 슬롯이 비어있지 않고, 툴팁 클래스가 지정되어 있다면
 	if (!IsEmpty() && ToolTipWidgetClass)
 	{
-		// 툴팁 위젯 생성
-		if (!ToolTipInstance)
-		{
-			ToolTipInstance = CreateWidget<UToolTipWidget>(this, ToolTipWidgetClass);
-
-			// 아이템 데이터 전달 및 초기화 함수 호출
-			if (ToolTipInstance && GetWorld())
-			{
-				if (m_GameInstance)
-				{
-					const FItemData* ItemData = m_GameInstance->GetDataItem(ItemID);
-					if (ItemData)
-					{
-						// ToolTipWidget에 새로 추가할 InitToolTip 함수 사용
-						ToolTipInstance->InitToolTip(ItemData, Quantity);
-						SetToolTip(ToolTipInstance);
-					}
-				}
-			}
-		}
+		Border_MouseOver->SetVisibility(ESlateVisibility::Visible);
+		PlayMouseEnterAnimation();
 	}
 
 	// 하이라이트 효과
@@ -111,6 +100,8 @@ void USlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 	{
 		IMG_BG->SetColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 1.0f));
 	}
+		Border_MouseOver->SetVisibility(ESlateVisibility::Hidden);
+	
 }
 
 FReply USlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
@@ -185,4 +176,23 @@ bool USlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent
 	OnItemDropped.Broadcast(DragDropOp->DraggedSlotWidget, this);
 
 	return true;
+}
+
+void USlotWidget::PlayMouseEnterAnimation()
+{
+    if (ClickAnimation)
+    {
+        PlayAnimation(ClickAnimation);
+    }
+    else
+    {
+        // 기본 클릭 효과
+        SetRenderScale(FVector2D(0.95f, 0.95f));
+        
+        FTimerHandle TimerHandle;
+        GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
+        {
+            SetRenderScale(FVector2D(1.0f, 1.0f));
+        }, 0.1f, false);
+    }
 }

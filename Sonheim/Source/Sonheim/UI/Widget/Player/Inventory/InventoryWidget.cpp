@@ -177,7 +177,6 @@ void UInventoryWidget::OnSlotClicked(USlotWidget* SlotWidget, bool bIsRightClick
 
 void UInventoryWidget::OnSlotDragStarted(USlotWidget* SlotWidget)
 {
-	// 필요한 경우 드래그 시작 시 특별한 처리
 }
 
 void UInventoryWidget::OnSlotDropped(USlotWidget* FromSlot, USlotWidget* ToSlot)
@@ -274,7 +273,7 @@ void UInventoryWidget::HandleEquipmentSlotInteraction(USlotWidget* SlotWidget, b
 
 void UInventoryWidget::HandleInventorySlotInteraction(USlotWidget* SlotWidget, bool bIsRightClick)
 {
-	if (!InventoryComponent)
+	if (!InventoryComponent || !SlotWidget)
 		return;
 	
 	// 인벤토리 슬롯일 경우

@@ -271,26 +271,9 @@ float ASonheimPlayer::HandleDefenceDamageCalculation(float Damage)
 
 void ASonheimPlayer::Reward(int ItemID, int ItemValue)
 {
-	if (HasAuthority())
-	{
-		Server_Reward(ItemID, ItemValue);
-	}
-	else
-	{
-		// 클라이언트면 서버에 요청
-		Server_Reward(ItemID, ItemValue);
-	}
-}
-
-void ASonheimPlayer::Server_Reward_Implementation(int ItemID, int ItemValue)
-{
 	if (S_PlayerState && S_PlayerState->m_InventoryComponent)
 	{
 		S_PlayerState->m_InventoryComponent->AddItem(ItemID, ItemValue);
-        
-#if !UE_BUILD_SHIPPING
-		UE_LOG(LogTemp, Log, TEXT("Player rewarded: ItemID=%d, Value=%d"), ItemID, ItemValue);
-#endif
 	}
 }
 
@@ -502,9 +485,6 @@ void ASonheimPlayer::RefreshWeaponSkillToSkillInstanceMap()
 	}
 }
 
-void ASonheimPlayer::Server_WeaponSwitch_Triggered_Implementation(int Index)
-{
-}
 // Called every frame
 void ASonheimPlayer::Tick(float DeltaTime)
 {

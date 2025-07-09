@@ -217,9 +217,6 @@ public:
 	// 아이템 획득 - const 제거 및 서버 RPC 추가
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void Reward(int ItemID, int ItemValue);
-    
-	UFUNCTION(Server, Reliable)
-	void Server_Reward(int ItemID, int ItemValue);
 
 	// 장비 업데이트 
 	UFUNCTION()
@@ -240,9 +237,6 @@ public:
 
 	// 무기 전환 수정
 	void WeaponSwitch_Triggered(int Index);
-    
-	UFUNCTION(Server, Reliable)
-	void Server_WeaponSwitch_Triggered(int Index);
 	
 	// 같은 무기 중복 사용으로 인한 오류 방지.. 전부 최신화
 	void RefreshWeaponSkillToSkillInstanceMap();

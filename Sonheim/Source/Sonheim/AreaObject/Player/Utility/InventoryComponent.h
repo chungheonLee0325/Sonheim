@@ -191,7 +191,20 @@ private:
 	bool ValidateItemCount(int ItemCount) const;
 	bool ValidateItemOperation(int ItemID, int ItemCount) const;
 
+	// Client Prediction 설정
+	UPROPERTY(EditDefaultsOnly, Category = "Network")
+	bool bEnableClientPrediction = true;
+	
 private:
+	// 클라이언트 예측 메서드
+	void PerformClientPrediction_AddItem(int ItemID, int ItemCount);
+	void PerformClientPrediction_RemoveItem(int ItemID, int ItemCount);
+	void PerformClientPrediction_RemoveItemByIndex(int Index);
+	void PerformClientPrediction_EquipItem(int ItemID);
+	void PerformClientPrediction_UnEquipItem(EEquipmentSlotType SlotType);
+	void PerformClientPrediction_SwapItems(int32 FromIndex, int32 ToIndex);
+	void PerformClientPrediction_SwitchWeaponSlot(int Index);
+	
 	UPROPERTY()
 	USonheimGameInstance* m_GameInstance = nullptr;
 
