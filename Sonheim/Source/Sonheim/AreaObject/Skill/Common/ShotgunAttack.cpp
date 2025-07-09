@@ -55,7 +55,14 @@ void UShotgunAttack::Server_OnCastFire()
     if (ASonheimPlayer* Player = Cast<ASonheimPlayer>(m_Caster))
     {
         // 플레이어는 카메라 방향으로 발사
-        BaseDirection = Player->GetFollowCamera()->GetForwardVector();
+        if (Player->IsLockOn())
+        {
+            BaseDirection = Player->GetFollowCamera()->GetForwardVector();
+        }
+        else
+        {
+            BaseDirection = Player->GetWeaponMesh()->GetSocketRotation(FName("FireSocket")).Vector();
+        }
 
         Player->Multicast_PlayWeaponMontage(nullptr);
     }

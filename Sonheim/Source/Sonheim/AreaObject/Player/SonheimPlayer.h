@@ -79,6 +79,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int checkpoint = 0;
 
+	bool IsLockOn() const;
 	void SetPlayerState(EPlayerState NewState);
 	void SetPlayerNormalState() { SetPlayerState(EPlayerState::NORMAL); }
 	void SetComboState(bool bCanCombo, int SkillID);

@@ -608,6 +608,11 @@ USkeletalMeshComponent* ASonheimPlayer::GetPalSphereComponent()
 	return PalSphereComponent;
 }
 
+bool ASonheimPlayer::IsLockOn() const
+{
+	return S_PlayerAnimInstance->bIsLockOn;
+}
+
 void ASonheimPlayer::SetPlayerState(EPlayerState NewState)
 {
 	CurrentPlayerState = NewState;
