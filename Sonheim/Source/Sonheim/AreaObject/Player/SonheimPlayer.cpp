@@ -55,7 +55,7 @@ ASonheimPlayer::ASonheimPlayer()
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	WeaponComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
-	WeaponComponent->SetupAttachment(GetMesh(),TEXT("Weapon_R"));
+	WeaponComponent->SetupAttachment(GetMesh(),TEXT("viewWeaponR"));
 	WeaponComponent->ComponentTags.Add("WeaponMesh");
 
 	PalSphereComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("PalSphereMesh"));
@@ -313,10 +313,15 @@ void ASonheimPlayer::UpdateWeaponMesh(int ItemID)
 	if (ItemData && ItemData->EquipmentData.EquipmentMesh)
 	{
 		WeaponComponent->SetSkeletalMesh(ItemData->EquipmentData.EquipmentMesh);
+		if (ItemData->EquipmentData.EquipmentAnim)
+		{
+			WeaponComponent->SetAnimInstanceClass(ItemData->EquipmentData.EquipmentAnim->GetClass());
+		}
         
 		if (S_PlayerAnimInstance)
 		{
 			S_PlayerAnimInstance->bIsMelee = (ItemData->EquipmentData.WeaponType == EWeaponType::Melee);
+			S_PlayerAnimInstance->bIsShotgun = (ItemData->EquipmentData.WeaponType == EWeaponType::ShotGun);
 		}
 	}
 }
@@ -328,6 +333,7 @@ void ASonheimPlayer::ClearWeaponMesh()
 	if (S_PlayerAnimInstance)
 	{
 		S_PlayerAnimInstance->bIsMelee = false;
+		S_PlayerAnimInstance->bIsShotgun = false;
 	}
 }
 
@@ -1198,6 +1204,14 @@ void ASonheimPlayer::DeactivateGlider()
 		return;
 
 	Server_DeactivateGlider();
+}
+
+void ASonheimPlayer::Multicast_PlayWeaponMontage_Implementation(UAnimMontage* Montage)
+{
+	if (Montage)
+	{
+		WeaponComponent->GetAnimInstance()->Montage_Play(Montage);
+	}
 }
 
 void ASonheimPlayer::Server_DeactivateGlider_Implementation()

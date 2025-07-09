@@ -427,8 +427,20 @@ struct FAttackData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bUseCustomKnockBackDirection = false; // 커스텀 넉백 방향 사용 여부
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bUseCustomKnockbackDirection"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bUseCustomKnockBackDirection"))
 	FVector KnockBackDirection = FVector::ForwardVector; // 커스텀 넉백 방향
+
+	// Attack이 Fire했을때 VFX - NiagaraSystem
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UNiagaraSystem* FireVFX_N = nullptr;
+
+	// Attack이 Fire했을때 VFX2 - NiagaraSystem
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UNiagaraSystem* FireVFX2_N = nullptr;
+
+	// Attack이 FireFire했을때 SFX
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* FireSFX = nullptr;
 
 	// Attack이 Hit했을때 SFX
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

@@ -11,6 +11,7 @@ void UPlayerAnimInstance::GetLifetimeReplicatedProps(TArray<class FLifetimePrope
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UPlayerAnimInstance, bIsMelee);
+	DOREPLIFETIME(UPlayerAnimInstance, bIsShotgun);
 	DOREPLIFETIME(UPlayerAnimInstance, bIsLockOn);
 	DOREPLIFETIME(UPlayerAnimInstance, bUsingPartnerSkill);
 }

@@ -21,6 +21,8 @@ public:
 	float direction = 0;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Replicated,  Category=FSM)
 	bool bIsMelee = false;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Replicated,  Category=FSM)
+	bool bIsShotgun = false;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Replicated, Category=FSM)
 	bool bIsLockOn = false;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Replicated, Category=FSM)

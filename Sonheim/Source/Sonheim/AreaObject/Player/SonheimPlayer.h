@@ -287,6 +287,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Movement|Glider")
 	bool IsGliding() const { return bIsGliding; }
 
+	// 무기 메쉬 
+	USkeletalMeshComponent* GetWeaponMesh() const {return WeaponComponent;};
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayWeaponMontage(UAnimMontage* Montage);
+	
 	// Skill 로 이관 예정.. 타이밍 등 적용
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Montage, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* SummonPalMontage;
