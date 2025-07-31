@@ -17,6 +17,8 @@ class SONHEIM_API USonheimGameInstance : public UGameInstance
 	GENERATED_BODY()
 
 public:
+	static USonheimGameInstance* Get(class UWorld* World);
+	
 	FAreaObjectData* GetDataAreaObject(int AreaObjectID);
 	FSkillData* GetDataSkill(int SkillID);
 	FSkillBagData* GetDataSkillBag(int SkillBagID);

@@ -130,6 +130,11 @@ void USonheimGameInstance::Init()
 	}
 }
 
+USonheimGameInstance* USonheimGameInstance::Get(class UWorld* World)
+{
+	return Cast<USonheimGameInstance>(World->GetGameInstance());
+}
+
 FAreaObjectData* USonheimGameInstance::GetDataAreaObject(const int AreaObjectID)
 {
 	if (FAreaObjectData* data = dt_AreaObject.Find(AreaObjectID))
