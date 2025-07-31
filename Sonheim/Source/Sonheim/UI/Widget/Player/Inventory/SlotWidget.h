@@ -4,8 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
-#include "Sonheim/UI/Widget/CustomWidget.h"
 #include "Blueprint/DragDropOperation.h"
+#include "Blueprint/UserWidget.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "SlotWidget.generated.h"
 
@@ -16,7 +16,7 @@ class UDragDropSlotOperation;
  * 
  */
 UCLASS()
-class SONHEIM_API USlotWidget : public UCustomWidget
+class SONHEIM_API USlotWidget : public UUserWidget
 {
 	GENERATED_BODY()
 

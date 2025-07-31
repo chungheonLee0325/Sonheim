@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Sonheim/UI/Widget/CustomWidget.h"
+#include "Blueprint/UserWidget.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "ToolTipWidget.generated.h"
 
@@ -11,7 +11,7 @@
  * 
  */
 UCLASS()
-class SONHEIM_API UToolTipWidget : public UCustomWidget
+class SONHEIM_API UToolTipWidget : public UUserWidget
 {
 	GENERATED_BODY()
 	

@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
-#include "Sonheim/UI/Widget/CustomWidget.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "InventoryWidget.generated.h"
 
@@ -16,7 +15,7 @@ class UInventoryComponent;
  * 
  */
 UCLASS()
-class SONHEIM_API UInventoryWidget : public UCustomWidget
+class SONHEIM_API UInventoryWidget : public UUserWidget
 
 {
 	GENERATED_BODY()
