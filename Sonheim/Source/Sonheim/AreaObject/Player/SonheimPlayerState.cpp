@@ -45,7 +45,7 @@ void ASonheimPlayerState::BeginPlay()
 		BaseStat.Add(EAreaObjectStatType::Defense, 5.0f);
 		BaseStat.Add(EAreaObjectStatType::WorkSpeed, 300.0f);
 		BaseStat.Add(EAreaObjectStatType::RunSpeed, 600.0f);
-		BaseStat.Add(EAreaObjectStatType::JumpHeight, 420.0f);
+		BaseStat.Add(EAreaObjectStatType::JumpHeight, 700.0f);
 		BaseStat.Add(EAreaObjectStatType::Stamina, 100.0f);
 		BaseStat.Add(EAreaObjectStatType::MaxWeight, 100.0f);
 
