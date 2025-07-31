@@ -400,14 +400,7 @@ void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventory
 	// 현재 선택된 무기면 외형 업데이트
 	if (SelectedWeaponSlot == WeaponSlot)
 	{
-		if (ItemData)
-		{
-			UpdateWeaponMesh(Item.ItemID);
-		}
-		else
-		{
-			ClearWeaponMesh();
-		}
+		MultiCast_UpdateSelectedWeapon(SelectedWeaponSlot, Item.ItemID);
 	}
 }
 
