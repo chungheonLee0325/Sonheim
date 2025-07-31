@@ -4,6 +4,7 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/Utilities/SonheimUtility.h"
 
 void UPlayerStatusWidget::NativeConstruct()
 {
@@ -106,6 +107,5 @@ void UPlayerStatusWidget::OnItemAdded(int ItemID, int ItemCount)
 	FItemData* ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(ItemID);
 	if (ItemData && ItemCount != 0)
 	{
-		OnItemPopupDisplay(ItemData->ItemIcon, ItemData->ItemName, ItemCount);
-	}
+		OnItemPopupDisplay(ItemData->ItemIcon, ItemData->ItemName, ItemCount, USonheimUtility::GetRarityColor(ItemData->ItemRarity));	}
 }

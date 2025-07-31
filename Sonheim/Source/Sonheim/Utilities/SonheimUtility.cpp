@@ -44,6 +44,44 @@ float USonheimUtility::CalculateDamageMultiplier(EElementalAttribute DefenseAttr
 	return 1.0f;
 }
 
+FLinearColor USonheimUtility::GetRarityColor(EItemRarity Rarity, float Alpha)
+{
+	switch (Rarity)
+	{
+	case EItemRarity::Common:
+		return FLinearColor(0.8f, 0.8f, 0.8f, Alpha);  // 회색
+	case EItemRarity::Uncommon:
+		return FLinearColor(0.0f, 1.0f, 0.0f, Alpha);  // 녹색
+	case EItemRarity::Rare:
+		return FLinearColor(0.0f, 0.4f, 1.0f, Alpha);  // 파란색
+	case EItemRarity::Epic:
+		return FLinearColor(0.6f, 0.2f, 1.0f, Alpha);  // 보라색
+	case EItemRarity::Legendary:
+		return FLinearColor(1.0f, 0.7f, 0.0f, Alpha);  // 황금색
+	default:
+		return FLinearColor::White;
+	}
+}
+
+FText USonheimUtility::ConvertRarityText(EItemRarity Rarity)
+{
+	switch (Rarity)
+	{
+	case EItemRarity::Common:
+		return FText::FromString(TEXT("일반"));
+	case EItemRarity::Uncommon:
+		return FText::FromString(TEXT("고급"));
+	case EItemRarity::Rare:
+		return FText::FromString(TEXT("희귀"));
+	case EItemRarity::Epic:
+		return FText::FromString(TEXT("영웅"));
+	case EItemRarity::Legendary:
+		return FText::FromString(TEXT("전설"));
+	default:
+		return FText::FromString(TEXT("알 수 없음"));
+	}
+}
+
 bool USonheimUtility::CheckMoveEnable(const UObject* WorldContextObject, const class AAreaObject* Caster, const class AAreaObject* Target, const FVector& StartLoc, FVector& EndLoc)
 {
 	UWorld* World{GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull)};

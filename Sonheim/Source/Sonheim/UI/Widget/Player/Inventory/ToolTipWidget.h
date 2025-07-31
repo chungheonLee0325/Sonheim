@@ -25,6 +25,14 @@ protected:
 	// 아이템 아이콘
 	UPROPERTY(meta = (BindWidget))
 	class UImage* IMG_ItemIcon;
+
+	// 아이템 아이콘 배경색(레어리티 표시용)
+	UPROPERTY(meta = (BindWidget))
+	class UBorder* IMG_ItemIconBorder;
+
+	// 아이템 등급
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* TXT_ItemRarity;
 	
 	// 아이템 이름
 	UPROPERTY(meta = (BindWidget))
@@ -58,4 +66,10 @@ protected:
 	
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* TXT_StaminaBonus;
+		
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* TXT_RunSpeedBonus;
+		
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* TXT_JumpHeightBonus;
 };

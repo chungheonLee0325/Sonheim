@@ -521,6 +521,7 @@ void AAreaObject::Server_CastSkill_Implementation(int SkillID, AAreaObject* Targ
 
 void AAreaObject::MultiCast_CastSkill_Implementation(int SkillID, AAreaObject* Target)
 {
+	if (m_GameInstance == nullptr) return;
 	UBaseSkill* Skill = GetSkillByID(SkillID);
 	FSkillData* SkillData = m_GameInstance->GetDataSkill(SkillID);
 

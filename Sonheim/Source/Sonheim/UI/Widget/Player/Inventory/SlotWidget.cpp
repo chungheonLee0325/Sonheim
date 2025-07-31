@@ -9,6 +9,7 @@
 #include "Components/TextBlock.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
+#include "Sonheim/Utilities/SonheimUtility.h"
 
 void USlotWidget::NativeConstruct()
 {
@@ -35,6 +36,13 @@ void USlotWidget::SetItemData(const FItemData* ItemData, int32 NewQuantity)
 		TXT_Weight->SetText(FText::FromString(FString::Printf(TEXT("%.1f"), totalWeight)));
 		TXT_Weight->SetVisibility(ESlateVisibility::Visible);
 	}
+	// 등급에 따른 배경색 변경
+	if (IMG_BackGround)
+	{
+		IMG_BackGround->SetColorAndOpacity(USonheimUtility::GetRarityColor(ItemData->ItemRarity, 0.2f));
+		IMG_BackGround->SetVisibility(ESlateVisibility::Visible);
+	}
+	
 	IMG_Item->SetBrushFromTexture(ItemData->ItemIcon);
 	IMG_Item->SetVisibility(ESlateVisibility::Visible);
 
@@ -61,6 +69,7 @@ void USlotWidget::ClearSlot()
 	TXT_Quantity->SetVisibility(ESlateVisibility::Hidden);
 	TXT_Weight->SetVisibility(ESlateVisibility::Hidden);
 	IMG_Item->SetVisibility(ESlateVisibility::Hidden);
+	IMG_BackGround->SetVisibility(ESlateVisibility::Hidden);
 	ItemID = 0;
 	Quantity = 0;
 	
@@ -85,9 +94,9 @@ void USlotWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointer
 	}
 
 	// 하이라이트 효과
-	if (IMG_BG)
+	if (IMG_Border)
 	{
-		IMG_BG->SetColorAndOpacity(FLinearColor::Blue);
+		IMG_Border->SetColorAndOpacity(FLinearColor::Blue);
 	}
 }
 
@@ -96,9 +105,9 @@ void USlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 	Super::NativeOnMouseLeave(InMouseEvent);
 
 	// 하이라이트 효과 원복
-	if (IMG_BG)
+	if (IMG_Border)
 	{
-		IMG_BG->SetColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 1.0f));
+		IMG_Border->SetColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 1.0f));
 	}
 		Border_MouseOver->SetVisibility(ESlateVisibility::Hidden);
 	

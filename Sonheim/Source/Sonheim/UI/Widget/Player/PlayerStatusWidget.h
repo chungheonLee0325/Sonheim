@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "Sonheim/UI/Widget/BaseStatusWidget.h"
 #include "PlayerStatusWidget.generated.h"
 
@@ -41,7 +42,7 @@ public:
 	void OnItemAdded(int ItemID, int ItemCount);
 
 	UFUNCTION(BlueprintImplementableEvent)
-	void OnItemPopupDisplay(UTexture2D* ItemIcon,const FText& ItemName, int ItemCount);
+	void OnItemPopupDisplay(UTexture2D* ItemIcon,const FText& ItemName, int ItemCount, FLinearColor ItemRarityColor);
 
 protected:
 	UPROPERTY(meta = (BindWidget))

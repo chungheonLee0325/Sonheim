@@ -187,6 +187,12 @@ void ABaseItem::InitializeAsInteractableItem(int32 InItemID, int32 ItemValue, EI
 
 void ABaseItem::SetupComponents()
 {
+	// 메쉬 설정
+	if (dt_ItemData->ItemMesh)
+	{
+		ItemMesh->SetStaticMesh(dt_ItemData->ItemMesh);
+	}
+	
 	// 콜리전 설정
 	if (!bRequireInteraction)
 	{

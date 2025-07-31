@@ -603,6 +603,9 @@ struct FEquipmentData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
 	float RunSpeedBonus = 0.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
+	float JumpHeightBonus = 0.0f;
+
 	// 무기 타입 (무기인 경우)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon",
 		meta=(EditCondition="EquipKind == EEquipmentKindType::Weapon"))

@@ -39,10 +39,14 @@ public:
 	// 슬롯에 지정될 이미지
 	UPROPERTY(VisibleAnywhere, Category = "Slot", meta = (BindWidget = "true"))
 	TObjectPtr<class UImage> IMG_Item;
-	
+
 	// 슬롯에 지정될 배경
 	UPROPERTY(VisibleAnywhere, Category = "Slot", meta = (BindWidget = "true"))
-	TObjectPtr<class UImage> IMG_BG;
+	TObjectPtr<class UImage> IMG_BackGround;
+	
+	// 슬롯에 지정될 테두리
+	UPROPERTY(VisibleAnywhere, Category = "Slot", meta = (BindWidget = "true"))
+	TObjectPtr<class UImage> IMG_Border;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
 	UTexture2D* IMG_Default;
