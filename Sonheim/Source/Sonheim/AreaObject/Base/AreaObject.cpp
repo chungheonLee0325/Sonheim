@@ -23,6 +23,7 @@
 #include "Sonheim/Animation/Common/AnimInstance/BaseAnimInstance.h"
 #include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 #include "Sonheim/UI/FloatingDamagePool.h"
+#include "NiagaraComponent.h"
 
 // Sets default values
 AAreaObject::AAreaObject()
@@ -33,7 +34,7 @@ AAreaObject::AAreaObject()
 	// 액터 리플리케이션 활성화
 	bReplicates = true;
 	bNetUseOwnerRelevancy = true;
-	NetUpdateFrequency = 66.0f;
+	SetNetUpdateFrequency(66.0f);
 	NetPriority = 1.0f;
 
 	// Health Component 생성
@@ -326,6 +327,7 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
     if (FMath::IsNearlyZero(CurrentHP) && !bIsDead)
     {
         bIsDead = true;  // Replicated 변수
+    	OnRep_IsDead();
         OnDie();  // Multicast로 모두에게 전파
     }
 
@@ -806,7 +808,87 @@ void AAreaObject::OnRep_IsDead()
 	// 사망 상태 변경 시 필요한 클라이언트 처리
 	if (bIsDead)
 	{
-		// 콜리전 비활성화 등 로컬 처리만
-		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
+}
+
+void AAreaObject::Multicast_PlayNiagaraEffectAttached_Implementation(AActor* AttachTarget,
+	UNiagaraSystem* NiagaraEffect, FRotator Rotator, float Duration)
+{
+	if (!AttachTarget || !NiagaraEffect)
+	{	
+		return;
+	}
+
+	UNiagaraComponent* NiagaraComp = UNiagaraFunctionLibrary::SpawnSystemAttached(
+		NiagaraEffect,
+		AttachTarget->GetRootComponent(),
+		NAME_None,
+		FVector::ZeroVector,
+		Rotator,
+		EAttachLocation::KeepRelativeOffset,
+		true,
+		true, // Auto Destroy
+		ENCPoolMethod::AutoRelease,
+		true // Auto Activate
+	);
+
+	if (NiagaraComp && Duration > 0.f)
+	{
+		FTimerHandle TimerHandle;
+		// 타이머 람다에서 NiagaraComp를 안전하게 파괴
+		GetWorld()->GetTimerManager().SetTimer(TimerHandle, [NiagaraComp]() {
+			if (IsValid(NiagaraComp))
+			{
+				NiagaraComp->DestroyComponent();
+			}
+		}, Duration, false);
+	}
+}
+
+void AAreaObject::Multicast_PlayNiagaraEffectAtLocation_Implementation(FVector Location, UNiagaraSystem* NiagaraEffect,
+	 FRotator Rotator, float Duration)
+{
+	if (!NiagaraEffect)
+	{	
+		return;
+	}
+
+	UNiagaraComponent* NiagaraComp = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		GetWorld(),
+		NiagaraEffect,
+		Location,
+		Rotator
+	);
+
+	if (NiagaraComp && Duration > 0.f)
+	{
+		FTimerHandle TimerHandle;
+		// 타이머 람다에서 NiagaraComp를 안전하게 파괴
+		GetWorld()->GetTimerManager().SetTimer(TimerHandle, [NiagaraComp]() {
+			if (IsValid(NiagaraComp))
+			{
+				NiagaraComp->DestroyComponent();
+			}
+		}, Duration, false);
+	}
+}
+
+void AAreaObject::Multicast_PlaySoundAtLocation_Implementation(FVector Location, USoundBase* SoundEffect)
+{
+	if (!SoundEffect)
+	{	
+		return;
+	}
+
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), SoundEffect, Location);
+}
+
+void AAreaObject::Multicast_PlaySound_Implementation(USoundBase* SoundEffect)
+{
+	if (!SoundEffect)
+	{	
+		return;
+	}
+
+	UGameplayStatics::PlaySound2D(GetWorld(), SoundEffect);
 }

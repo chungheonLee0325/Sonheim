@@ -249,6 +249,16 @@ protected:
 	TObjectPtr<UBaseSkill> m_CurrentSkill;
 
 public:
+	// VFX / SFX Network Interface
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayNiagaraEffectAttached(AActor* AttachTarget, UNiagaraSystem* NiagaraEffect, FRotator Rotator = FRotator::ZeroRotator, float Duration = 0.f);
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayNiagaraEffectAtLocation(FVector Location, UNiagaraSystem* NiagaraEffect, FRotator Rotator = FRotator::ZeroRotator, float Duration = 0.f);
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlaySoundAtLocation(FVector Location, USoundBase* SoundEffect);
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlaySound(USoundBase* SoundEffect);
+	
 	// Sound Interface 
 	UFUNCTION(BlueprintCallable, Category = "Audio")
 	void PlayGlobalSound(int SoundID);
