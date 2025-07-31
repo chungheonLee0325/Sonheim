@@ -160,6 +160,12 @@ void UStatBonusComponent::ApplyItemStatBonuses(int ItemID, bool bApply)
 		{
 			AddStatBonus(EAreaObjectStatType::RunSpeed, ItemData->EquipmentData.RunSpeedBonus, EStatModifierType::Additive, ItemID);
 		}
+
+		// 점프 보너스 적용
+		if (ItemData->EquipmentData.JumpHeightBonus != 0)
+		{
+			AddStatBonus(EAreaObjectStatType::JumpHeight, ItemData->EquipmentData.JumpHeightBonus, EStatModifierType::Additive, ItemID);
+		}
 	}
 	else
 	{

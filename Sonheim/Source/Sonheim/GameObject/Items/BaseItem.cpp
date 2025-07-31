@@ -33,7 +33,7 @@ ABaseItem::ABaseItem()
 
 	// 임시 메시 설정
 	ConstructorHelpers::FObjectFinder<UStaticMesh> tempMesh(
-		TEXT("/Script/Engine.StaticMesh'/Game/_Resource/Item/Ore/Item_Ore.Item_Ore'"));
+		TEXT("/Script/Engine.StaticMesh'/Game/_Resource/SurvivalGameKitV2/Meshes/Static/SM_TreasureBags02.SM_TreasureBags02'"));
 	if (tempMesh.Succeeded())
 	{
 		ItemMesh->SetStaticMesh(tempMesh.Object);
@@ -42,6 +42,7 @@ ABaseItem::ABaseItem()
 	// 콜리전 스피어 (자동 획득 감지용)
 	CollectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollectionSphere"));
 	CollectionSphere->SetupAttachment(ItemMesh);
+	CollectionSphere->SetCollisionObjectType(ECC_Pawn);
 	CollectionSphere->SetSphereRadius(50);
 	CollectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	CollectionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
