@@ -170,7 +170,7 @@ bool UInventoryComponent::ValidateItemOperation(int ItemID, int ItemCount) const
 }
 
 // 인벤토리 함수들
-bool UInventoryComponent::AddItem(int ItemID, int ItemCount)
+bool UInventoryComponent::AddItem(int ItemID, int ItemCount, bool ItemAddedFlag)
 {
 	// 데이터 유효성 검증
 	if (!ValidateItemOperation(ItemID, ItemCount))
@@ -208,7 +208,12 @@ bool UInventoryComponent::AddItem(int ItemID, int ItemCount)
 
 			FInventoryItem NewItem(ItemID, ItemCount);
 			InventoryItems.Add(NewItem);
-			OnItemAdded.Broadcast(ItemID, ItemCount);
+
+			// 장비 해제같이 아이템이 해제되어 인벤으로 복구될경우, 델리게이트 호출 X, why? 아이템 획득 팝업 안뜨게하기
+			if (ItemAddedFlag)
+			{
+				OnItemAdded.Broadcast(ItemID, ItemCount);
+			}
 		}
 
 		BroadcastInventoryChanged();
@@ -231,7 +236,7 @@ bool UInventoryComponent::AddItem(int ItemID, int ItemCount)
 
 bool UInventoryComponent::AddItemByInventoryItem(const FInventoryItem& InventoryItem)
 {
-	return AddItem(InventoryItem.ItemID, InventoryItem.Count);
+	return AddItem(InventoryItem.ItemID, InventoryItem.Count, false);
 }
 
 bool UInventoryComponent::RemoveItem(int ItemID, int ItemCount)

@@ -105,7 +105,7 @@ public:
 
 	// 인벤토리 관련 함수들
 	UFUNCTION(BlueprintCallable, Category="Inventory")
-	bool AddItem(int ItemID, int ItemCount);
+	bool AddItem(int ItemID, int ItemCount, bool ItemAddedFlag = true);
 
 	bool AddItemByInventoryItem(const FInventoryItem& InventoryItem);
 
