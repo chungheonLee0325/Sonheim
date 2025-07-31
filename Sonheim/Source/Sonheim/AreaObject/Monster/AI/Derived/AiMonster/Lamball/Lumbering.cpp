@@ -89,10 +89,10 @@ void ULumbering::Exit()
 {
 	for (int i{}; i < HaveItemArr.Num(); ++i)
 	{
+		USphereComponent* SphereComponent = HaveItemArr[i]->GetCollectionSphere();
 		HaveItemArr[i]->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-		HaveItemArr[i]->CollectionSphere->SetCollisionEnabled(ECollisionEnabled::Type::QueryAndPhysics);
-		HaveItemArr[i]->CollectionSphere->SetSimulatePhysics(true);
-		HaveItemArr[i]->bStored = true;
+		SphereComponent->SetCollisionEnabled(ECollisionEnabled::Type::QueryAndPhysics);
+		SphereComponent->SetSimulatePhysics(true);
 	}
 	HaveItemArr.Empty();
 	
@@ -169,13 +169,13 @@ void ULumbering::Lumbering(float dt)
 			{
 				auto BaseItemTarget = Cast<ABaseItem>(FindItem);
 
-				if (BaseItemTarget->m_ItemID == m_Owner->GotResource && !BaseItemTarget->GetOwner() && !BaseItemTarget->
-					bStored)
+				if (BaseItemTarget->m_ItemID == m_Owner->GotResource && !BaseItemTarget->GetOwner())
 				{
+					USphereComponent* SphereComponent = BaseItemTarget->GetCollectionSphere();
 					if (i == 1)
 					{
-						BaseItemTarget->CollectionSphere->SetSimulatePhysics(false);
-						BaseItemTarget->CollectionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+						SphereComponent->SetSimulatePhysics(false);
+						SphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 						const USkeletalMeshSocket* WeaponSocket = m_Owner->GetMesh()->
 						                                                   GetSocketByName("ResourceSocket1");
 						WeaponSocket->AttachActor(BaseItemTarget, m_Owner->GetMesh());
@@ -187,8 +187,8 @@ void ULumbering::Lumbering(float dt)
 					}
 					if (i == 2)
 					{
-						BaseItemTarget->CollectionSphere->SetSimulatePhysics(false);
-						BaseItemTarget->CollectionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+						SphereComponent->SetSimulatePhysics(false);
+						SphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 						const USkeletalMeshSocket* WeaponSocket = m_Owner->GetMesh()->
 						                                                   GetSocketByName("ResourceSocket2");
 						WeaponSocket->AttachActor(BaseItemTarget, m_Owner->GetMesh());
@@ -197,8 +197,8 @@ void ULumbering::Lumbering(float dt)
 					}
 					if (i == 3)
 					{
-						BaseItemTarget->CollectionSphere->SetSimulatePhysics(false);
-						BaseItemTarget->CollectionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+						SphereComponent->SetSimulatePhysics(false);
+						SphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 						const USkeletalMeshSocket* WeaponSocket = m_Owner->GetMesh()->
 						                                                   GetSocketByName("ResourceSocket3");
 						WeaponSocket->AttachActor(BaseItemTarget, m_Owner->GetMesh());
@@ -287,9 +287,9 @@ void ULumbering::StoreLumber(float dt)
 		for (int i{}; i < HaveItemArr.Num(); ++i)
 		{
 			HaveItemArr[i]->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-			HaveItemArr[i]->CollectionSphere->SetCollisionEnabled(ECollisionEnabled::Type::QueryAndPhysics);
-			HaveItemArr[i]->CollectionSphere->SetSimulatePhysics(true);
-			HaveItemArr[i]->bStored = true;
+			USphereComponent* SphereComponent = HaveItemArr[i]->GetCollectionSphere();
+			SphereComponent->SetCollisionEnabled(ECollisionEnabled::Type::QueryAndPhysics);
+			SphereComponent->SetSimulatePhysics(true);
 		}
 		HaveItemArr.Empty();
 	}

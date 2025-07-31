@@ -5,8 +5,10 @@
 #include "CoreMinimal.h"
 #include "Sonheim/Animation/Player/PlayerAniminstance.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
+#include "Utility/InteractionComponent.h"
 #include "SonheimPlayer.generated.h"
 
+class UMonsterDetectionComponent;
 class ABaseMonster;
 class ASonheimPlayerState;
 class ULockOnComponent;
@@ -17,6 +19,7 @@ class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
+class ABaseItem;
 
 // 플레이어의 상태를 정의하는 열거형
 UENUM(BlueprintType)
@@ -288,6 +291,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Movement|Glider")
 	bool IsGliding() const { return bIsGliding; }
 
+
+	// 상호작용 키
+	void Interaction_Pressed() const;
+	
+	void Interaction_Released() const;
+	
 	// 무기 메쉬 
 	USkeletalMeshComponent* GetWeaponMesh() const {return WeaponComponent;};
 	
@@ -297,6 +306,9 @@ public:
 	// Skill 로 이관 예정.. 타이밍 등 적용
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Montage, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* SummonPalMontage;
+	
+	UFUNCTION(BlueprintPure, Category = "Interaction")
+	UInteractionComponent* GetInteractionComponent() const { return InteractionComponent; }
 private:
 	// Weapon Setting
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
@@ -400,6 +412,14 @@ private:
 	// 현재 장착된 무기 아이템 ID 추적
 	UPROPERTY(Replicated)
 	int32 CurrentWeaponItemID = 0;
+
+	// 상호작용 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction", meta = (AllowPrivateAccess = "true"))
+	class UInteractionComponent* InteractionComponent;
+
+	// 상호작용 대상 변경
+	UFUNCTION()
+	void OnInteractableChanged(AActor* NewInteractable);
 
 public:
 	void SetUsePartnerSkill(bool UsePartnerSkill);

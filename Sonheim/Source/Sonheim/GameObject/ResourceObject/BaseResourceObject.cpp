@@ -68,7 +68,16 @@ void ABaseResourceObject::Tick(float DeltaTime)
 
 void ABaseResourceObject::OnDestroy()
 {
+	if (!HasAuthority()) return;
+	
 	CanHarvest = false;
+
+	// 남은 자원 모두 드롭
+	if (dt_ResourceObject->PossibleDropItemID.Num() > 0)
+	{
+		// 파괴 시 추가 보너스 드롭
+		SpawnPartialResources(1);
+	}
 
 	if (dt_ResourceObject->DestroySoundID != 0)
 	{
@@ -79,8 +88,10 @@ void ABaseResourceObject::OnDestroy()
 }
 
 // 부분 자원 스폰 함수 (구간별 개별 처리)
-void ABaseResourceObject::SpawnPartialResources(int32 SegmentsLost)
+void ABaseResourceObject::SpawnPartialResources(int32 SegmentsLost) const
 {
+	if (!HasAuthority()) return;
+	
 	// 각 구간별로 개별적으로 처리
 	for (int32 SegmentIdx = 0; SegmentIdx < SegmentsLost; ++SegmentIdx)
 	{
@@ -92,14 +103,22 @@ void ABaseResourceObject::SpawnPartialResources(int32 SegmentsLost)
 		// 각 가능한 드롭 아이템에 대해 처리
 		for (const auto& DropInfoPair : dt_ResourceObject->PossibleDropItemID)
 		{
+			int32 ItemID = DropInfoPair.Key;
+			int32 DropChance = DropInfoPair.Value;
+			
 			// 드롭 확률에 따라 아이템 드롭 여부 결정
-			if (DropInfoPair.Value < FMath::RandRange(0, 100))
+			if (FMath::RandRange(1, 100) > DropChance)
 			{
-				return;
+				continue; // 이 아이템은 드롭하지 않음
 			}
 
-			FItemData* const DropInfo = m_GameInstance->GetDataItem(DropInfoPair.Key);
-
+			FItemData* ItemData = m_GameInstance->GetDataItem(ItemID);
+			if (!ItemData || !ItemData->ItemClass)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Invalid item data for ID: %d"), ItemID);
+				continue;
+			}
+			
 			// 단일 구간에 대한 드롭 수량 결정
 			// 아이템 스폰 위치 계산 (구간별 위치 + 랜덤 오프셋)
 			// 랜덤 오프셋 생성 (반경 내에서)
@@ -107,35 +126,21 @@ void ABaseResourceObject::SpawnPartialResources(int32 SegmentsLost)
 			FVector RandomOffset(
 				FMath::RandRange(-SpawnRadius, SpawnRadius),
 				FMath::RandRange(-SpawnRadius, SpawnRadius),
-				0.0f
+				50.0f + (10.0f * SegmentIdx) // 높이
 			);
 
-			// 스폰 위치 계산
 			FVector SpawnLocation = SegmentSpawnBaseLocation + RandomOffset;
-			SpawnLocation.Z += 50.0f + (10.0f * SegmentIdx); // 구간별로 약간 다른 높이
-
-			// 스폰 회전 (랜덤)
 			FRotator SpawnRotation(0.0f, FMath::RandRange(0.0f, 360.0f), 0.0f);
-			FTransform SpawnTransform(SpawnRotation, SpawnLocation);
+
+			// 아이템 스폰
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
 			if (ABaseItem* SpawnedItem = GetWorld()->SpawnActor<ABaseItem>(
-				DropInfo->ItemClass, SpawnTransform))
+				ItemData->ItemClass, SpawnLocation, SpawnRotation, SpawnParams))
 			{
-				// 아이템 초기화
-				//SpawnedItem->InitializeItem(DropInfo.ItemID, 1);
-
-				// 물리 시뮬레이션 활성화
-				if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(SpawnedItem->GetRootComponent()))
-				{
-					PrimComp->SetSimulatePhysics(true);
-					// 랜덤한 방향으로 약간 튀어오르게
-					FVector RandomImpulse(
-						FMath::RandRange(-50.0f, 50.0f),
-						FMath::RandRange(-50.0f, 50.0f),
-						FMath::RandRange(100.0f, 200.0f)
-					);
-					PrimComp->AddImpulse(RandomImpulse);
-				}
+				// 드롭된 아이템으로 초기화 (1초 후 획득 가능)
+				SpawnedItem->InitializeAsDroppedItem(ItemID, 1, 1.0f);
 			}
 		}
 	}
@@ -202,17 +207,7 @@ float ABaseResourceObject::TakeDamage(float Damage, const FDamageEvent& DamageEv
 	{
 		if (CanHarvest)
 		{
-			FVector SpawnPosition = hitResult.Location;
-			// Spawn Destroy SFX
-			if (dt_ResourceObject->DestroySoundID != 0)
-			{
-				m_GameMode->PlayPositionalSound(dt_ResourceObject->DestroySoundID, SpawnPosition);
-			}
-			// Spawn Harvest VFX
-			if (dt_ResourceObject->DestroyEffect != nullptr)
-			{
-				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), dt_ResourceObject->DestroyEffect, SpawnPosition);
-			}
+			MulticastDestroyEffect();
 			OnDestroy();
 		}
 	}
@@ -248,5 +243,19 @@ void ABaseResourceObject::MulticastDamageEffect_Implementation(float Damage, FVe
 	if (dt_ResourceObject->HarvestEffect != nullptr)
 	{
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), dt_ResourceObject->HarvestEffect, SpawnLocation);
+	}
+}
+
+void ABaseResourceObject::MulticastDestroyEffect_Implementation()
+{
+	// Spawn Destroy SFX
+	if (dt_ResourceObject->DestroySoundID != 0)
+	{
+		m_GameMode->PlayPositionalSound(dt_ResourceObject->DestroySoundID, GetActorLocation());
+	}
+	// Spawn Harvest VFX
+	if (dt_ResourceObject->DestroyEffect != nullptr)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), dt_ResourceObject->DestroyEffect, GetActorLocation());
 	}
 }

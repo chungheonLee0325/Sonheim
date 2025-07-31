@@ -557,6 +557,17 @@ enum class EItemCategory : uint8
 	Quest UMETA(DisplayName = "Quest"),
 };
 
+// 아이템 레어리티
+UENUM(BlueprintType)
+enum class EItemRarity : uint8
+{
+	Common		UMETA(DisplayName = "Common"),
+	Uncommon	UMETA(DisplayName = "Uncommon"),
+	Rare		UMETA(DisplayName = "Rare"),
+	Epic		UMETA(DisplayName = "Epic"),
+	Legendary	UMETA(DisplayName = "Legendary")
+};
+
 // EquipmentData 구조체 
 USTRUCT(BlueprintType)
 struct FEquipmentData : public FTableRowBase
@@ -640,10 +651,6 @@ struct FItemData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	int ItemID = 0;
 
-	// Item Type ... 아무래도 중복될듯 Category랑
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	//EItemType ItemType = EItemType::None;
-
 	// Looting Class
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	TSubclassOf<ABaseItem> ItemClass = nullptr;
@@ -662,7 +669,6 @@ struct FItemData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data",
 		meta=(EditCondition = "ItemCategory == EItemCategory::Equipment || ItemCategory == EItemCategory::Weapon"))
 	FEquipmentData EquipmentData;
-
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	bool bStackable = true;
@@ -682,56 +688,13 @@ struct FItemData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	UTexture2D* ItemIcon = nullptr;
 
-	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data",
-	// meta=(EditCondition="ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Equipment"))
-	// EEquipmentSlotType EquipSlot = EEquipmentSlotType::None;
-	//
-	// // 스탯 효과 (장비용)
-	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats",
-	// 	meta=(EditCondition=
-	// 		"ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Armor || ItemCategory == EItemCategory::Accessory"
-	// 	))
-	// float DamageBonus = 0.0f;
-	//
-	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats",
-	// 	meta=(EditCondition=
-	// 		"ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Armor || ItemCategory == EItemCategory::Accessory"
-	// 	))
-	// float DefenseBonus = 0.0f;
-	//
-	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats",
-	// 	meta=(EditCondition=
-	// 		"ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Armor || ItemCategory == EItemCategory::Accessory"
-	// 	))
-	// float HPBonus = 0.0f;
-	//
-	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats",
-	// 	meta=(EditCondition=
-	// 		"ItemCategory == EItemCategory::Weapon || ItemCategory == EItemCategory::Armor || ItemCategory == EItemCategory::Accessory"
-	// 	))
-	// float StaminaBonus = 0.0f;
-	//
-	// // 무기 타입 (무기인 경우)
-	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon",
-	// 	meta=(EditCondition="ItemCategory == EItemCategory::Weapon"))
-	// EWeaponType WeaponType = EWeaponType::None;
+	// 시각적 표현을 위한 메시
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Visual")
+	UStaticMesh* ItemMesh = nullptr;
 
-	// 스킬 IDs (무기 전용)
-	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon",
-	// 	meta=(EditCondition="ItemCategory == EItemCategory::Weapon"))
-	// TArray<int32> SkillIDs;
-
-	// 특수 능력 활성화 (예: 높은 점프 등)
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Special Abilities")
-	//TArray<ESpecialAbility> GrantedAbilities;
-
-	// 시각 효과
-	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
-	// TSoftObjectPtr<USkeletalMesh> EquipmentMesh;
-
-	// 장착 소켓 이름
-	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
-	// FName AttachSocketName = NAME_None;
+	// 아이템 레어리티
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Visual")
+	EItemRarity ItemRarity = EItemRarity::Common;
 };
 
 // 인벤토리 아이템 구조체 (UI 및 저장용)
@@ -764,7 +727,7 @@ struct FInventoryItem
 	}
 };
 
-// AreaObject 데이터 테이블용 구조체
+// 자원 오브젝트 데이터 테이블용 구조체
 USTRUCT(BlueprintType)
 struct FResourceObjectData : public FTableRowBase
 {

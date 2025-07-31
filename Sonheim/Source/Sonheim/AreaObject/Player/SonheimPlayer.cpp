@@ -17,9 +17,11 @@
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/AreaObject/Utility/GhostTrail.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameObject/Items/BaseItem.h"
 #include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 #include "Sonheim/Utilities/LogMacro.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
+#include "Utility/InteractionComponent.h"
 #include "Utility/InventoryComponent.h"
 #include "Utility/PalCaptureComponent.h"
 #include "Utility/PalInventoryComponent.h"
@@ -125,6 +127,7 @@ ASonheimPlayer::ASonheimPlayer()
 
 	PalCaptureComponent = CreateDefaultSubobject<UPalCaptureComponent>(TEXT("PalCapture"));
 	PalPartnerSkillComponent = CreateDefaultSubobject<UPalPartnerSkillComponent>(TEXT("PalPartnerSkill"));
+	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
 }
 
 // Called when the game starts or when spawned
@@ -136,6 +139,13 @@ void ASonheimPlayer::BeginPlay()
 	InitPlayer();
 	InitializeStateRestrictions();
 	SaveCheckpoint(GetActorLocation(), GetActorRotation());
+
+	// 상호작용 이벤트 바인딩
+	if (InteractionComponent && IsLocallyControlled())
+	{
+		// 가장 가까운 상호작용 가능 타겟 변경 시
+		InteractionComponent->OnInteractableChanged.AddDynamic(this, &ASonheimPlayer::OnInteractableChanged);
+	}
 }
 
 void ASonheimPlayer::PossessedBy(AController* NewController)
@@ -1333,4 +1343,18 @@ void ASonheimPlayer::Client_UpdateSelectedPalIndex_Implementation(int32 NewIndex
 			StatusWidget->SwitchSelectedPalIndex(NewIndex);
 		}
 	}
+}
+
+void ASonheimPlayer::OnInteractableChanged(AActor* NewInteractable)
+{
+}
+
+void ASonheimPlayer::Interaction_Pressed() const
+{
+	InteractionComponent->StartHoldInteraction();
+}
+
+void ASonheimPlayer::Interaction_Released() const
+{
+	InteractionComponent->StopHoldInteraction();
 }

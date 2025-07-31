@@ -142,6 +142,14 @@ ASonheimPlayerController::ASonheimPlayerController()
 		GliderAction = tempGliderAction.Object;
 	}
 
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempFAction(
+	TEXT(
+		"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_FInput.IA_FInput'"));
+	if (tempFAction.Succeeded())
+	{
+		FKeyAction = tempFAction.Object;
+	}
+
 	m_Player = nullptr;
 
 	// UI 클래스 설정
@@ -168,13 +176,6 @@ ASonheimPlayerController::ASonheimPlayerController()
 	{
 		PlayerStatWidgetClass = pStatWidgetClassFinder.Class;
 	}
-
-	//ConstructorHelpers::FClassFinder<UUserWidget> missionFailWidget(
-	//	TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrints/Widget/WB_KazanHasFallen.WB_KazanHasFallen_C'"));
-	//if (missionFailWidget.Succeeded())
-	//{
-	//	MissionFailClass = missionFailWidget.Class;
-	//}
 }
 
 void ASonheimPlayerController::BeginPlay()
@@ -361,6 +362,12 @@ void ASonheimPlayerController::SetupInputComponent()
 		                                   &ASonheimPlayerController::On_Glider_Pressed);
 		EnhancedInputComponent->BindAction(GliderAction, ETriggerEvent::Completed, this,
 		                                   &ASonheimPlayerController::On_Glider_Released);
+
+		// F (상호작용 키)
+		EnhancedInputComponent->BindAction(FKeyAction, ETriggerEvent::Started, this,
+								   &ASonheimPlayerController::On_FKey_Pressed);
+		EnhancedInputComponent->BindAction(FKeyAction, ETriggerEvent::Completed, this,
+								   &ASonheimPlayerController::On_FKey_Released);
 	}
 	else
 	{
@@ -602,6 +609,24 @@ void ASonheimPlayerController::On_Glider_Released(const FInputActionValue& Input
 	if (m_Player)
 	{
 		m_Player->DeactivateGlider();
+	}
+}
+
+void ASonheimPlayerController::On_FKey_Pressed(const FInputActionValue& InputActionValue)
+{
+	if (IsMenuActivate) return;
+	if (m_Player)
+	{
+		m_Player->Interaction_Pressed();
+	}
+}
+
+void ASonheimPlayerController::On_FKey_Released(const FInputActionValue& InputActionValue)
+{
+	if (IsMenuActivate) return;
+	if (m_Player)
+	{
+		m_Player->Interaction_Released();
 	}
 }
 
