@@ -95,29 +95,18 @@ void UShotgunAttack::Server_OnCastFire()
     // 발사 효과 재생
     if (m_SkillData->AttackData[0].FireSFX)
     {
-        UGameplayStatics::PlaySoundAtLocation(GetWorld(), m_SkillData->AttackData[0].FireSFX, StartLocation);
+        m_Caster->Multicast_PlaySoundAtLocation(StartLocation, m_SkillData->AttackData[0].FireSFX);
     }
     
     if (m_SkillData->AttackData[0].FireVFX_N)
     {
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            GetWorld(),
-            m_SkillData->AttackData[0].FireVFX_N,
-            StartLocation,
-            BaseDirection.Rotation(),
-            FVector(1.0f),
-            true,
-            true,
-            ENCPoolMethod::None,
-            true
-        );
+        m_Caster->Multicast_PlayNiagaraEffectAtLocation(StartLocation, m_SkillData->AttackData[0].FireVFX_N, BaseDirection.Rotation());
     }
 }
 
 void UShotgunAttack::Client_OnCastFire()
 {
     Super::Client_OnCastFire();
-    // 클라이언트 측 효과는 Server_OnCastFire에서 처리
 }
 
 void UShotgunAttack::FirePellet(const FVector& StartLocation, const FVector& Direction)
@@ -166,17 +155,8 @@ void UShotgunAttack::FirePellet(const FVector& StartLocation, const FVector& Dir
     if (m_SkillData->AttackData[0].FireVFX2_N)
     {
         FVector TrailEnd = bHit ? HitResult.Location : EndLocation;
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            GetWorld(),
-            m_SkillData->AttackData[0].FireVFX2_N,
-            StartLocation,
-            (TrailEnd - StartLocation).Rotation(),
-            FVector(1.0f),
-            true,
-            true,
-            ENCPoolMethod::None,
-            true
-        );
+        m_Caster->Multicast_PlayNiagaraEffectAtLocation(StartLocation, m_SkillData->AttackData[0].FireVFX2_N, (TrailEnd - StartLocation).Rotation());
+
     }
     
     // 디버그 그리기
