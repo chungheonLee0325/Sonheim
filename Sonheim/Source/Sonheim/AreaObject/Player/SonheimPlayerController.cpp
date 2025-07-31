@@ -143,8 +143,8 @@ ASonheimPlayerController::ASonheimPlayerController()
 	}
 
 	static ConstructorHelpers::FObjectFinder<UInputAction> tempFAction(
-	TEXT(
-		"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_FInput.IA_FInput'"));
+		TEXT(
+			"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_FInput.IA_FInput'"));
 	if (tempFAction.Succeeded())
 	{
 		FKeyAction = tempFAction.Object;
@@ -249,7 +249,7 @@ void ASonheimPlayerController::InitializeHUD_Implementation(ASonheimPlayer* NewP
 		if (m_Player->m_StaminaComponent)
 		{
 			m_Player->m_StaminaComponent->OnStaminaChanged.
-			          AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateStamina);
+					  AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateStamina);
 			// 초기값 설정
 			StatusWidget->UpdateStamina(m_Player->GetStamina(), 0.0f, m_Player->m_StaminaComponent->GetMaxStamina());
 		}
@@ -257,15 +257,13 @@ void ASonheimPlayerController::InitializeHUD_Implementation(ASonheimPlayer* NewP
 		{
 			m_Player->m_LevelComponent->OnLevelChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateLevel);
 			StatusWidget->UpdateLevel(m_Player->m_LevelComponent->GetCurrentLevel(),
-			                          m_Player->m_LevelComponent->GetCurrentLevel(), true);
+									  m_Player->m_LevelComponent->GetCurrentLevel(), true);
 			m_Player->m_LevelComponent->OnExperienceChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateExp);
 			StatusWidget->UpdateExp(m_Player->m_LevelComponent->GetCurrentExp(),
-			                        m_Player->m_LevelComponent->GetExpToNextLevel(), 0);
+									m_Player->m_LevelComponent->GetExpToNextLevel(), 0);
 		}
 		StatusWidget->SetEnableCrossHair(false);
 	}
-
-	//FailWidget = CreateWidget<UUserWidget>(this, MissionFailClass);
 }
 
 void ASonheimPlayerController::SetupInputComponent()
@@ -365,9 +363,9 @@ void ASonheimPlayerController::SetupInputComponent()
 
 		// F (상호작용 키)
 		EnhancedInputComponent->BindAction(FKeyAction, ETriggerEvent::Started, this,
-								   &ASonheimPlayerController::On_FKey_Pressed);
+		                                   &ASonheimPlayerController::On_FKey_Pressed);
 		EnhancedInputComponent->BindAction(FKeyAction, ETriggerEvent::Completed, this,
-								   &ASonheimPlayerController::On_FKey_Released);
+		                                   &ASonheimPlayerController::On_FKey_Released);
 	}
 	else
 	{

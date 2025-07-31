@@ -100,3 +100,12 @@ void UPlayerStatusWidget::ClearOwnedPals()
 		slot.Value->SetRenderOpacity(0.0f);
 	}
 }
+
+void UPlayerStatusWidget::OnItemAdded(int ItemID, int ItemCount)
+{
+	FItemData* ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(ItemID);
+	if (ItemData && ItemCount != 0)
+	{
+		OnItemPopupDisplay(ItemData->ItemIcon, ItemData->ItemName, ItemCount);
+	}
+}

@@ -37,6 +37,12 @@ public:
 	void SwitchSelectedPalIndex(int Index);
 	void ClearOwnedPals();
 
+	UFUNCTION()
+	void OnItemAdded(int ItemID, int ItemCount);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnItemPopupDisplay(UTexture2D* ItemIcon,const FText& ItemName, int ItemCount);
+
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* StaminaBar;

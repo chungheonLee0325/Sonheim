@@ -196,7 +196,7 @@ bool UInventoryComponent::AddItem(int ItemID, int ItemCount)
 			}
             
 			InventoryItems[ExistingItemIndex].Count = NewCount;
-			OnItemAdded.Broadcast(ItemID, InventoryItems[ExistingItemIndex].Count);
+			OnItemAdded.Broadcast(ItemID, ItemCount);
 		}
 		else
 		{

@@ -218,7 +218,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	ASonheimPlayerState* GetSPlayerState() const {return S_PlayerState;};
 
-	// 아이템 획득 - const 제거 및 서버 RPC 추가
+	// 아이템 획득 
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void Reward(int ItemID, int ItemValue);
 
@@ -345,7 +345,10 @@ private:
 	ASonheimPlayerState* S_PlayerState;
 	virtual void OnRep_PlayerState() override;
 	virtual void OnRep_Controller() override;
-	void InitializePlayerComponents();
+	void InitializeByPlayerState();
+
+	UFUNCTION(Client, Reliable)
+	void Client_OnItemAdded(int ItemID, int ItemCount);
 
 	// 플레이어 상태 관리
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", meta = (AllowPrivateAccess = "true"))

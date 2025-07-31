@@ -155,7 +155,10 @@ void ASonheimPlayer::PossessedBy(AController* NewController)
 	S_PlayerController = Cast<ASonheimPlayerController>(NewController);
 	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
 
-	InitializePlayerComponents();
+	if (S_PlayerController != nullptr && IsLocallyControlled()) 
+		S_PlayerController->InitializeHUD(this);
+	
+	InitializeByPlayerState();
 	// 서버에서만 델리게이트 바인딩
 	if (HasAuthority())
 	{
@@ -188,9 +191,6 @@ void ASonheimPlayer::InitPlayer()
     
 	if (S_PlayerController == nullptr) 
 		S_PlayerController = Cast<ASonheimPlayerController>(GetController());
-    
-	if (S_PlayerController != nullptr && IsLocallyControlled()) 
-		S_PlayerController->InitializeHUD(this);
 
 	// 기본 무기 스킬 맵 초기화
 	WeaponSkillMap.Add(EEquipmentSlotType::Weapon1, CommonAttack);
@@ -526,7 +526,10 @@ void ASonheimPlayer::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
 
-	InitializePlayerComponents();
+	if (S_PlayerController != nullptr && IsLocallyControlled()) 
+		S_PlayerController->InitializeHUD(this);
+
+	InitializeByPlayerState();
 }
 
 void ASonheimPlayer::OnRep_Controller()
@@ -536,10 +539,22 @@ void ASonheimPlayer::OnRep_Controller()
 	S_PlayerController->InitializeWithPlayer(this);
 }
 
-void ASonheimPlayer::InitializePlayerComponents()
+void ASonheimPlayer::InitializeByPlayerState()
 {
 	PalCaptureComponent->InitializeWithPlayerState(S_PlayerState);
 	PalPartnerSkillComponent->InitializeWithPlayerState(S_PlayerState);
+	
+	//if(S_PlayerState->m_InventoryComponent && IsLocallyControlled())
+	if(S_PlayerState->m_InventoryComponent && HasAuthority())
+	{
+		//S_PlayerState->m_InventoryComponent->OnItemAdded.AddDynamic(S_PlayerController->GetPlayerStatusWidget(), &UPlayerStatusWidget::OnItemAdded);
+		S_PlayerState->m_InventoryComponent->OnItemAdded.AddDynamic(this, &ASonheimPlayer::Client_OnItemAdded);
+	}
+}
+
+void ASonheimPlayer::Client_OnItemAdded_Implementation(int ItemID, int ItemCount)
+{
+	S_PlayerController->GetPlayerStatusWidget()->OnItemAdded(ItemID, ItemCount);	
 }
 
 void ASonheimPlayer::InitializeStateRestrictions()
