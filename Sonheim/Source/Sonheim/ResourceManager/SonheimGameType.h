@@ -95,6 +95,62 @@ enum class EWorkTrait : uint8
 	Gathering UMETA(DisplayName = "Gathering"),
 };
 
+// 상자 타입 정의
+UENUM(BlueprintType)
+enum class EContainerType : uint8
+{
+	None UMETA(DisplayName = "None"),
+	SmallBox UMETA(DisplayName = "Small Box"),
+	MediumBox UMETA(DisplayName = "Medium Box"),
+	LargeBox UMETA(DisplayName = "Large Box"),
+	Chest UMETA(DisplayName = "Chest"),
+	Safe UMETA(DisplayName = "Safe"),
+};
+
+// 상자 데이터 테이블용 구조체
+USTRUCT(BlueprintType)
+struct FContainerData : public FTableRowBase
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int ContainerID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	FText ContainerName = FText::FromString("Container");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	EContainerType ContainerType = EContainerType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int32 SlotCount = 20;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int32 GridColumns = 5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	int32 GridRows = 4;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	UStaticMesh* ContainerMesh = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	USoundBase* OpenSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	USoundBase* CloseSound = nullptr;
+
+	// 상호작용 설정
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	float InteractionDistance = 300.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	bool bRequireHoldToOpen = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data", meta = (EditCondition = "bRequireHoldToOpen"))
+	float HoldDuration = 1.0f;
+};
+
 // 스탯 유형 정의
 UENUM(BlueprintType)
 enum class EAreaObjectStatType : uint8
