@@ -62,7 +62,15 @@ void UContainerWidget::SetContainerComponent(UContainerComponent* InContainerCom
 		ContainerComponent->OnContainerInventoryChanged.AddDynamic(this, &UContainerWidget::UpdateContainerInventory);
 		
 		// 초기 데이터로 업데이트
-		UpdateContainerInventory(ContainerComponent->GetContainerInventory());
+		// Replicate 될 시간 타이머로 지연
+		FTimerHandle InitTimerHandle;
+		GetWorld()->GetTimerManager().SetTimer(InitTimerHandle, [this]()
+		{
+			if (ContainerComponent)
+			{
+				UpdateContainerInventory(ContainerComponent->GetContainerInventory());
+			}
+		}, 0.1f, false);
 		
 		// 그리드 크기 조정 (필요시)
 		int32 MaxSlots = ContainerComponent->GetMaxSlots();
