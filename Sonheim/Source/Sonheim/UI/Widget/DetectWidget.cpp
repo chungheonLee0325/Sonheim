@@ -14,11 +14,16 @@ void UDetectWidget::NativeConstruct()
 	}
 }
 
-void UDetectWidget::SetInteractionInfo(const FString& ItemName, const FString& KeyName)
+void UDetectWidget::SetInteractionInfo(const FString& ItemName, const FString& InteractName, const FString& KeyName)
 {
 	if (NameText)
 	{
 		NameText->SetText(FText::FromString(ItemName));
+	}
+
+	if (InteractText)
+	{
+		InteractText->SetText(FText::FromString(InteractName));
 	}
 	
 	if (KeyText)

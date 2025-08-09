@@ -2,6 +2,8 @@
 
 
 #include "SlotWidget.h"
+
+#include "InventoryWidget.h"
 #include "ToolTipWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/Border.h"
@@ -9,6 +11,7 @@
 #include "Components/TextBlock.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
+#include "Sonheim/UI/Widget/GameObject/ContainerWidget.h"
 #include "Sonheim/Utilities/SonheimUtility.h"
 
 void USlotWidget::NativeConstruct()
@@ -181,10 +184,31 @@ bool USlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent
 	if (DragDropOp->DraggedSlotWidget == this)
 		return false;
 
-	// 드롭 이벤트 발생
-	OnItemDropped.Broadcast(DragDropOp->DraggedSlotWidget, this);
+	// 부모 위젯 확인하여 크로스 드롭 처리
+	UInventoryWidget* MyInventoryWidget = GetTypedOuter<UInventoryWidget>();
+	UContainerWidget* MyContainerWidget = GetTypedOuter<UContainerWidget>();
+    
+	UInventoryWidget* FromInventoryWidget = DragDropOp->DraggedSlotWidget->GetTypedOuter<UInventoryWidget>();
+	UContainerWidget* FromContainerWidget = DragDropOp->DraggedSlotWidget->GetTypedOuter<UContainerWidget>();
 
-	return true;
+	// 플레이어 인벤토리 → 상자
+	if (FromInventoryWidget && MyContainerWidget)
+	{
+		MyContainerWidget->HandleExternalDrop(DragDropOp->DraggedSlotWidget, this->SlotIndex);
+		return true;
+	}
+	// 상자 → 플레이어 인벤토리
+	else if (FromContainerWidget && MyInventoryWidget)
+	{
+		MyInventoryWidget->HandleExternalDrop(DragDropOp->DraggedSlotWidget, this->SlotIndex);
+		return true;
+	}
+	// 같은 위젯 내에서의 드롭
+	else
+	{
+		OnItemDropped.Broadcast(DragDropOp->DraggedSlotWidget, this);
+		return true;
+	}
 }
 
 void USlotWidget::PlayMouseEnterAnimation()

@@ -202,6 +202,18 @@ private:
 	const float DoubleJumpTimeThreshold = 0.5f; // 더블 점프 인식 시간
 
 public:
-	// UFUNCTION(Server, Reliable)
-	// void ServerRPC_ChangeState(UBaseAiFSM* FSM, EAiStateType StateType);
+	// 상자 UI 관리
+	UFUNCTION(Client, Reliable)
+	void Client_OpenContainerUI(ABaseContainer* Container);
+	
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void CloseContainerUI();
+
+private:
+	// 상자 UI 위젯
+	UPROPERTY()
+	class UContainerInteractionWidget* ContainerInteractionWidget;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UContainerInteractionWidget> ContainerInteractionWidgetClass;
 };

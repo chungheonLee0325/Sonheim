@@ -128,6 +128,22 @@ void USonheimGameInstance::Init()
 			}
 		}
 	}
+
+	UDataTable* ContainerTable = LoadObject<UDataTable>(
+	nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_Container.dt_Container'"));
+	if (nullptr != ContainerTable)
+	{
+		TArray<FName> RowNames = ContainerTable->GetRowNames();
+
+		for (const FName& RowName : RowNames)
+		{
+			FContainerData* Row = ContainerTable->FindRow<FContainerData>(RowName, TEXT(""));
+			if (nullptr != Row)
+			{
+				dt_Container.Add(Row->ContainerID, *Row);
+			}
+		}
+	}
 }
 
 USonheimGameInstance* USonheimGameInstance::Get(class UWorld* World)
@@ -192,5 +208,14 @@ TMap<int32, FLevelData>* USonheimGameInstance::GetDataLevel()
 		return &dt_LevelData;
 	}
 
+	return nullptr;
+}
+
+FContainerData* USonheimGameInstance::GetDataContainer(int ContainerID)
+{
+	if (FContainerData* data = dt_Container.Find(ContainerID))
+	{
+		return data;
+	}
 	return nullptr;
 }

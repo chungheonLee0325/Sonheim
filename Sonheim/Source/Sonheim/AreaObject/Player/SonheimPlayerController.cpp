@@ -13,6 +13,7 @@
 #include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
 #include "Sonheim/AreaObject/Monster/AI/Base/BaseAiFSM.h"
+#include "Sonheim/UI/Widget/GameObject/ContainerInteractionWidget.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/InventoryWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/PlayerStatWidget.h"
@@ -175,6 +176,14 @@ ASonheimPlayerController::ASonheimPlayerController()
 	if (pStatWidgetClassFinder.Succeeded())
 	{
 		PlayerStatWidgetClass = pStatWidgetClassFinder.Class;
+	}
+
+	// 상자 UI 클래스 설정
+	static ConstructorHelpers::FClassFinder<UContainerInteractionWidget> ContainerWidgetFinder(
+		TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/GameObject/WB_ContainerInteraction.WB_ContainerInteraction_C'"));
+	if (ContainerWidgetFinder.Succeeded())
+	{
+		ContainerInteractionWidgetClass = ContainerWidgetFinder.Class;
 	}
 }
 
@@ -634,10 +643,41 @@ void ASonheimPlayerController::OnRep_PlayerState()
 	m_PlayerState = Cast<ASonheimPlayerState>(PlayerState);
 }
 
-// void ASonheimPlayerController::ServerRPC_ChangeState_Implementation(UBaseAiFSM* FSM, EAiStateType StateType)
-// {
-// 	if (FSM && FSM->GetOwner()->HasAuthority())
-// 	{
-// 		FSM->ChangeState(StateType);
-// 	}
-// }
+void ASonheimPlayerController::Client_OpenContainerUI_Implementation(ABaseContainer* Container)
+{
+	if (!Container || !ContainerInteractionWidgetClass)
+		return;
+	
+	// 기존 상자 UI가 열려있으면 닫기
+	if (ContainerInteractionWidget)
+	{
+		ContainerInteractionWidget->CloseContainer();
+		ContainerInteractionWidget = nullptr;
+	}
+	
+	// 새 상자 UI 생성
+	ContainerInteractionWidget = CreateWidget<UContainerInteractionWidget>(this, ContainerInteractionWidgetClass);
+	if (ContainerInteractionWidget)
+	{
+		ContainerInteractionWidget->AddToViewport(1); // 다른 UI보다 위에 표시
+		m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(ContainerInteractionWidget->GetPlayerInventoryWidget(),
+																	   &UInventoryWidget::UpdateInventoryFromData);
+		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(ContainerInteractionWidget->GetPlayerInventoryWidget(),
+																		   &UInventoryWidget::UpdateEquipmentFromData);
+		ContainerInteractionWidget->OpenContainer(Container);
+	}
+}
+
+void ASonheimPlayerController::CloseContainerUI()
+{
+	if (ContainerInteractionWidget)
+	{
+		ContainerInteractionWidget->CloseContainer();
+		m_PlayerState->m_InventoryComponent->OnInventoryChanged.RemoveDynamic(ContainerInteractionWidget->GetPlayerInventoryWidget(),
+																		&UInventoryWidget::UpdateInventoryFromData);
+		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(ContainerInteractionWidget->GetPlayerInventoryWidget(),
+																			  &UInventoryWidget::
+																			  UpdateEquipmentFromData);
+		ContainerInteractionWidget = nullptr;
+	}
+}

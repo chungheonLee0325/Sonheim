@@ -9,6 +9,8 @@
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
+#include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
+#include "Sonheim/UI/Widget/GameObject/ContainerWidget.h"
 
 void UInventoryWidget::NativePreConstruct()
 {
@@ -305,6 +307,27 @@ void UInventoryWidget::HandleInventorySlotInteraction(USlotWidget* SlotWidget, b
 		{
 			// 좌클릭 - 기본 선택 또는 특수 기능
 			// 예: 아이템 분할, 상세 정보 보기 등 (추가 구현 필요)
+		}
+	}
+}
+
+void UInventoryWidget::HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex)
+{
+	if (!FromSlot || !InventoryComponent || ToIndex < 0)
+		return;
+    
+	// 상자에서 가져온 아이템인지 확인
+	UContainerWidget* FromContainer = Cast<UContainerWidget>(FromSlot->GetTypedOuter<UContainerWidget>());
+	if (FromContainer && FromContainer->GetContainerComponent())
+	{
+		int32 ItemID = FromSlot->ItemID;
+		int32 Count = FromSlot->Quantity;
+        
+		// 상자에서 제거
+		if (FromContainer->GetContainerComponent()->RemoveItemByIndex(FromSlot->SlotIndex))
+		{
+			// 플레이어 인벤토리에 추가
+			InventoryComponent->AddItem(ItemID, Count);
 		}
 	}
 }

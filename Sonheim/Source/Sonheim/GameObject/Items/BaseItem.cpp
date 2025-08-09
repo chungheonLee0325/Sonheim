@@ -220,7 +220,7 @@ void ABaseItem::SetupComponents()
 			if (UDetectWidget* DetectWidget = Cast<UDetectWidget>(Widget))
 			{
 				FString ItemName = GetInteractionName_Implementation();
-				DetectWidget->SetInteractionInfo(ItemName, TEXT("F"));
+				DetectWidget->SetInteractionInfo(ItemName);
 			}
 		}
 		

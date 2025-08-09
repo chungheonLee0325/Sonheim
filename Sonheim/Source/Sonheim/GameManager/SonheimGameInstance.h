@@ -25,7 +25,8 @@ public:
 	FResourceObjectData* GetDataResourceObject(int ResourceObjectID);
 	FItemData* GetDataItem(int ItemID);
 	TMap<int32, FLevelData>* GetDataLevel();
-
+	FContainerData* GetDataContainer(int ContainerID);
+    
 	UPROPERTY()
 	TMap<int32, FAreaObjectData> dt_AreaObject;
 	UPROPERTY()
@@ -38,6 +39,8 @@ public:
 	TMap<int32, FItemData> dt_Item;
 	UPROPERTY()
 	TMap<int32, FLevelData> dt_LevelData;
+	UPROPERTY()
+	TMap<int32, FContainerData> dt_Container;
 
 	UPROPERTY(EditAnywhere)
 	TMap<int, USoundBase*> SoundDataMap;

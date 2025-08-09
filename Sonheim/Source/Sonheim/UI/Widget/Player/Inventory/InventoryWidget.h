@@ -88,6 +88,8 @@ public:
 	// 슬롯 드롭 이벤트 핸들러
 	UFUNCTION()
 	void OnSlotDropped(USlotWidget* FromSlot, USlotWidget* ToSlot);
+
+	void HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex);
 	
 private:
 	void InitializeSlotWidgetMap();
