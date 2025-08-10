@@ -692,6 +692,12 @@ EEquipmentSlotType UInventoryComponent::FindEmptySlotForType(EEquipmentKindType 
 void UInventoryComponent::BroadcastInventoryChanged()
 {
 	OnInventoryChanged.Broadcast(InventoryItems);
+
+	// 서버에서 값이 바뀐 경우 즉시 복제 전송
+	if (GetOwnerRole() == ROLE_Authority)
+	{
+		GetOwner()->ForceNetUpdate();
+	}
 }
 
 // 장착 슬롯 헬퍼 함수들
