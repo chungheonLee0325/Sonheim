@@ -48,6 +48,7 @@ void UContainerInteractionWidget::OpenContainer(ABaseContainer* Container)
 			if (ASonheimPlayerState* PlayerState = PC->GetPlayerState<ASonheimPlayerState>())
 			{
 				PlayerInventoryWidget->SetInventoryComponent(PlayerState->m_InventoryComponent);
+				PlayerInventoryWidget->SetContainerMode(true, Container, PC);
 			}
 		}
 	}
@@ -77,6 +78,7 @@ void UContainerInteractionWidget::CloseContainer()
 		if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
 		{
 			PC->Server_ContainerOperation(CurrentContainer, EContainerOperation::Close);
+			PlayerInventoryWidget->SetContainerMode(false);
 		}
 		CurrentContainer = nullptr;
 	}

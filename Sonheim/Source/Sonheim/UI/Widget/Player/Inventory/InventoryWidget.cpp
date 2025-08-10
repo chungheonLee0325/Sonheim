@@ -6,6 +6,7 @@
 #include "SlotWidget.h"
 #include "Components/UniformGridPanel.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
@@ -283,6 +284,24 @@ void UInventoryWidget::HandleInventorySlotInteraction(USlotWidget* SlotWidget, b
 	{
 		if (bIsRightClick)
 		{
+			// 상자 모드 체크
+			if (bIsContainerMode && CurrentOpenContainer)
+			{
+				// 상자로 아이템 전송
+				if (m_PlayerController)
+				{
+					m_PlayerController->Server_PlayerContainerTransfer(
+						CurrentOpenContainer,
+						false,  // Player to Container
+						SlotWidget->ItemID,
+						SlotWidget->Quantity,
+						SlotWidget->SlotIndex
+					);
+				}
+				// 상자로 보냈으므로 더 이상 처리하지 않음
+				return;
+			}
+			
 			// 우클릭으로 아이템 장착 시도
 			const FItemData* ItemData = m_GameInstance->GetDataItem(SlotWidget->ItemID);
 			if (ItemData && (ItemData->ItemCategory == EItemCategory::Equipment || 
@@ -330,4 +349,11 @@ void UInventoryWidget::HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex)
 			InventoryComponent->AddItem(ItemID, Count);
 		}
 	}
+}
+
+void UInventoryWidget::SetContainerMode(bool bEnabled, class ABaseContainer* Container, ASonheimPlayerController* PC)
+{
+	bIsContainerMode = bEnabled;
+	CurrentOpenContainer = Container;
+	m_PlayerController = PC;
 }

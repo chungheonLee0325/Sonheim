@@ -8,6 +8,7 @@
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "InventoryWidget.generated.h"
 
+class ASonheimPlayerController;
 class USlotWidget;
 class UUniformGridPanel;
 class UInventoryComponent;
@@ -90,6 +91,14 @@ public:
 	void OnSlotDropped(USlotWidget* FromSlot, USlotWidget* ToSlot);
 
 	void HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex);
+
+	// 상자 모드 설정
+	UFUNCTION(BlueprintCallable, Category = "Container")
+	void SetContainerMode(bool bEnabled, class ABaseContainer* Container = nullptr, ASonheimPlayerController* PC = nullptr);
+    
+	// 상자 모드 확인
+	UFUNCTION(BlueprintCallable, Category = "Container")
+	bool IsInContainerMode() const { return bIsContainerMode; }
 	
 private:
 	void InitializeSlotWidgetMap();
@@ -98,7 +107,16 @@ private:
 	USonheimGameInstance* m_GameInstance;
 
 	UPROPERTY()
+	ASonheimPlayerController* m_PlayerController;
+	
+	UPROPERTY()
 	TMap<EEquipmentSlotType, USlotWidget*> SlotWidgetMap;
+
+	UPROPERTY()
+	class ABaseContainer* CurrentOpenContainer;
+    
+	// 상자 모드 여부
+	bool bIsContainerMode = false;
 
 	// 슬롯 위젯에 이벤트 처리기 연결
 	void BindSlotEvents(USlotWidget* SlotWidget);
