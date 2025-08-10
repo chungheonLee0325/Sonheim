@@ -151,6 +151,28 @@ struct FContainerData : public FTableRowBase
 	float HoldDuration = 1.0f;
 };
 
+UENUM(BlueprintType)
+enum class EContainerOperation : uint8
+{
+	None UMETA(DisplayName = "None"),
+	// 상자 열기
+	Open UMETA(DisplayName = "Open"),
+	// 상자 닫기
+	Close UMETA(DisplayName = "Close"),
+	// 아이템 추가
+	AddItem UMETA(DisplayName = "AddItem"),
+	// 아이템 제거(Id와 수량)
+	RemoveItem UMETA(DisplayName = "RemoveItem"),
+	// 인덱스로 아이템 제거
+	RemoveItemByIndex UMETA(DisplayName = "RemoveItemByIndex"),
+	// 아이템 스왑
+	SwapItems UMETA(DisplayName = "SwapItems"),
+	// 상자 -> 플레이어
+	TransferToPlayer UMETA(DisplayName = "TransferToPlayer"),
+	// 플레이어 -> 상자
+	TransferFromPlayer UMETA(DisplayName = "TransferFromPlayer"),
+};
+
 // 스탯 유형 정의
 UENUM(BlueprintType)
 enum class EAreaObjectStatType : uint8

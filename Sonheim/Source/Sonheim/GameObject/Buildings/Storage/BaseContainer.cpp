@@ -144,37 +144,31 @@ float ABaseContainer::GetHoldDuration_Implementation() const
 
 void ABaseContainer::OpenContainer(ASonheimPlayer* Player)
 {
-	if (HasAuthority())
+	if (!HasAuthority())
 	{
-		Server_OpenContainer(Player);
+		UE_LOG(LogTemp, Warning, TEXT("OpenContainer should only be called on server"));
+		return;
 	}
-	else
-	{
-		// 클라이언트에서 서버로 요청
-		Server_OpenContainer(Player);
-	}
-}
-
-void ABaseContainer::CloseContainer()
-{
-	if (HasAuthority())
-	{
-		Server_CloseContainer();
-	}
-	else
-	{
-		Server_CloseContainer();
-	}
-}
-
-void ABaseContainer::Server_OpenContainer_Implementation(ASonheimPlayer* Player)
-{
+    
 	if (!Player || bIsOpen)
 		return;
-
+    
+	// 이미 다른 플레이어가 사용 중인지 확인
+	if (CurrentUser && CurrentUser != Player)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Container already in use by another player"));
+		return;
+	}
+    
 	bIsOpen = true;
 	CurrentUser = Player;
-	
+    
+	// 현재 아이템 상태 브로드캐스트
+	if (ContainerComponent)
+	{
+		//ContainerComponent->BroadcastInventoryChanged();
+	}
+    
 	// 클라이언트에서 UI 열기
 	if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(Player->GetController()))
 	{
@@ -182,23 +176,42 @@ void ABaseContainer::Server_OpenContainer_Implementation(ASonheimPlayer* Player)
 	}
 }
 
-void ABaseContainer::Server_CloseContainer_Implementation()
+void ABaseContainer::CloseContainer()
 {
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CloseContainer should only be called on server"));
+		return;
+	}
+    
 	if (!bIsOpen)
 		return;
-
+    
 	bIsOpen = false;
-	
+    
 	// 사용자에게 UI 닫기 알림
 	if (CurrentUser)
 	{
 		if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(CurrentUser->GetController()))
 		{
-			PC->CloseContainerUI();
+			PC->Client_CloseContainerUI();
 		}
 	}
-	
+    
 	CurrentUser = nullptr;
+}
+
+bool ABaseContainer::CanBeInteractedByPlayer(const ASonheimPlayer* Player) const
+{
+	if (bIsOpen)
+	{
+		return true;
+	}
+	else if (CurrentUser == Player)
+	{
+		return true;
+	}
+	return false;
 }
 
 void ABaseContainer::OnRep_IsOpen()

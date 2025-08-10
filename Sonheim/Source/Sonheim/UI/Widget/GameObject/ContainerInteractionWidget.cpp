@@ -37,9 +37,9 @@ void UContainerInteractionWidget::OpenContainer(ABaseContainer* Container)
 {
 	if (!Container || !Container->GetContainerComponent())
 		return;
-	
+    
 	CurrentContainer = Container;
-	
+    
 	// 플레이어 인벤토리 설정
 	if (PlayerInventoryWidget)
 	{
@@ -51,18 +51,20 @@ void UContainerInteractionWidget::OpenContainer(ABaseContainer* Container)
 			}
 		}
 	}
-	
+    
 	// 상자 인벤토리 설정
 	if (ContainerInventoryWidget)
 	{
 		ContainerInventoryWidget->SetContainerComponent(Container->GetContainerComponent());
+        
+		// ContainerWidget에 Container 참조 전달
+		ContainerInventoryWidget->SetOwningContainer(Container);
 	}
-	
+    
 	// 마우스 커서 표시
 	if (APlayerController* PC = GetOwningPlayer())
 	{
 		PC->SetShowMouseCursor(true);
-		PC->SetInputMode(FInputModeGameAndUI());
 	}
 }
 
@@ -71,18 +73,21 @@ void UContainerInteractionWidget::CloseContainer()
 	// 상자 닫기
 	if (CurrentContainer)
 	{
-		CurrentContainer->CloseContainer();
+		// 서버에 닫기 요청
+		if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
+		{
+			PC->Server_ContainerOperation(CurrentContainer, EContainerOperation::Close);
+		}
 		CurrentContainer = nullptr;
 	}
-	
+    
 	// UI 제거
 	RemoveFromParent();
-	
+    
 	// 마우스 커서 숨기기
 	if (APlayerController* PC = GetOwningPlayer())
 	{
 		PC->SetShowMouseCursor(false);
-		PC->SetInputMode(FInputModeGameOnly());
 	}
 }
 

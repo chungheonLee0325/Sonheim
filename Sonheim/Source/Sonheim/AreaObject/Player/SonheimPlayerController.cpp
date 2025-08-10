@@ -13,6 +13,8 @@
 #include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
 #include "Sonheim/AreaObject/Monster/AI/Base/BaseAiFSM.h"
+#include "Sonheim/GameObject/Buildings/Storage/BaseContainer.h"
+#include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
 #include "Sonheim/UI/Widget/GameObject/ContainerInteractionWidget.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/InventoryWidget.h"
@@ -180,7 +182,8 @@ ASonheimPlayerController::ASonheimPlayerController()
 
 	// 상자 UI 클래스 설정
 	static ConstructorHelpers::FClassFinder<UContainerInteractionWidget> ContainerWidgetFinder(
-		TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/GameObject/WB_ContainerInteraction.WB_ContainerInteraction_C'"));
+		TEXT(
+			"/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/GameObject/WB_ContainerInteraction.WB_ContainerInteraction_C'"));
 	if (ContainerWidgetFinder.Succeeded())
 	{
 		ContainerInteractionWidgetClass = ContainerWidgetFinder.Class;
@@ -258,7 +261,7 @@ void ASonheimPlayerController::InitializeHUD_Implementation(ASonheimPlayer* NewP
 		if (m_Player->m_StaminaComponent)
 		{
 			m_Player->m_StaminaComponent->OnStaminaChanged.
-					  AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateStamina);
+			          AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateStamina);
 			// 초기값 설정
 			StatusWidget->UpdateStamina(m_Player->GetStamina(), 0.0f, m_Player->m_StaminaComponent->GetMaxStamina());
 		}
@@ -266,10 +269,10 @@ void ASonheimPlayerController::InitializeHUD_Implementation(ASonheimPlayer* NewP
 		{
 			m_Player->m_LevelComponent->OnLevelChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateLevel);
 			StatusWidget->UpdateLevel(m_Player->m_LevelComponent->GetCurrentLevel(),
-									  m_Player->m_LevelComponent->GetCurrentLevel(), true);
+			                          m_Player->m_LevelComponent->GetCurrentLevel(), true);
 			m_Player->m_LevelComponent->OnExperienceChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateExp);
 			StatusWidget->UpdateExp(m_Player->m_LevelComponent->GetCurrentExp(),
-									m_Player->m_LevelComponent->GetExpToNextLevel(), 0);
+			                        m_Player->m_LevelComponent->GetExpToNextLevel(), 0);
 		}
 		StatusWidget->SetEnableCrossHair(false);
 	}
@@ -387,81 +390,81 @@ void ASonheimPlayerController::SetupInputComponent()
 
 void ASonheimPlayerController::OnMove(const FInputActionValue& Value)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->Move(Value.Get<FVector2D>());
 }
 
 void ASonheimPlayerController::OnLook(const FInputActionValue& Value)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->Look(Value.Get<FVector2D>());
 }
 
 void ASonheimPlayerController::On_Mouse_Left_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->LeftMouse_Pressed();
 }
 
 void ASonheimPlayerController::On_Mouse_Left_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->LeftMouse_Released();
 }
 
 void ASonheimPlayerController::On_Mouse_Left_Triggered(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->LeftMouse_Triggered();
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->RightMouse_Pressed();
 	GetPlayerStatusWidget()->SetEnableCrossHair(true);
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Triggered(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->RightMouse_Triggered();
 }
 
 void ASonheimPlayerController::On_Sprint_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->Sprint_Pressed();
 }
 
 void ASonheimPlayerController::On_Sprint_Triggered(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->Sprint_Triggered();
 }
 
 void ASonheimPlayerController::On_Sprint_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->Sprint_Released();
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->RightMouse_Released();
 	GetPlayerStatusWidget()->SetEnableCrossHair(false);
 }
 
 void ASonheimPlayerController::On_Dodge_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->Dodge_Pressed();
 }
 
 void ASonheimPlayerController::On_Jump_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 
 	float CurrentTime = GetWorld()->GetTimeSeconds();
 
@@ -490,13 +493,13 @@ void ASonheimPlayerController::On_Jump_Pressed(const FInputActionValue& InputAct
 
 void ASonheimPlayerController::On_Jump_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->Jump_Released();
 }
 
 void ASonheimPlayerController::On_Reload_Pressed(const FInputActionValue& Value)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->Reload_Pressed();
 }
 
@@ -540,7 +543,7 @@ void ASonheimPlayerController::On_SwitchPalSlot_Triggered(const FInputActionValu
 
 void ASonheimPlayerController::On_ThrowPalSphere_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	m_Player->RightMouse_Pressed();
 	GetPlayerStatusWidget()->SetEnableCrossHair(true);
 	m_Player->ThrowPalSphere_Pressed();
@@ -553,7 +556,7 @@ void ASonheimPlayerController::On_ThrowPalSphere_Triggered(const FInputActionVal
 
 void ASonheimPlayerController::On_ThrowPalSphere_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	GetPlayerStatusWidget()->SetEnableCrossHair(false);
 	m_Player->RightMouse_Released();
 	m_Player->ThrowPalSphere_Released();
@@ -561,7 +564,7 @@ void ASonheimPlayerController::On_ThrowPalSphere_Released(const FInputActionValu
 
 void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 {
-	//if (!IsLocalController()) return;
+	if (IsContainerActivate) return;
 	if (!IsMenuActivate)
 	{
 		IsMenuActivate = true;
@@ -603,7 +606,7 @@ void ASonheimPlayerController::On_Menu_Released(const FInputActionValue& Value)
 
 void ASonheimPlayerController::On_Glider_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	if (m_Player && !m_Player->GetCharacterMovement()->IsMovingOnGround())
 	{
 		m_Player->ActivateGlider();
@@ -612,7 +615,7 @@ void ASonheimPlayerController::On_Glider_Pressed(const FInputActionValue& InputA
 
 void ASonheimPlayerController::On_Glider_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	if (m_Player)
 	{
 		m_Player->DeactivateGlider();
@@ -621,7 +624,7 @@ void ASonheimPlayerController::On_Glider_Released(const FInputActionValue& Input
 
 void ASonheimPlayerController::On_FKey_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	if (m_Player)
 	{
 		m_Player->Interaction_Pressed();
@@ -630,7 +633,7 @@ void ASonheimPlayerController::On_FKey_Pressed(const FInputActionValue& InputAct
 
 void ASonheimPlayerController::On_FKey_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate) return;
+	if (IsMenuActivate||IsContainerActivate) return;
 	if (m_Player)
 	{
 		m_Player->Interaction_Released();
@@ -647,37 +650,268 @@ void ASonheimPlayerController::Client_OpenContainerUI_Implementation(ABaseContai
 {
 	if (!Container || !ContainerInteractionWidgetClass)
 		return;
-	
+
 	// 기존 상자 UI가 열려있으면 닫기
 	if (ContainerInteractionWidget)
 	{
 		ContainerInteractionWidget->CloseContainer();
 		ContainerInteractionWidget = nullptr;
 	}
-	
+
 	// 새 상자 UI 생성
 	ContainerInteractionWidget = CreateWidget<UContainerInteractionWidget>(this, ContainerInteractionWidgetClass);
 	if (ContainerInteractionWidget)
 	{
 		ContainerInteractionWidget->AddToViewport(1); // 다른 UI보다 위에 표시
-		m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(ContainerInteractionWidget->GetPlayerInventoryWidget(),
-																	   &UInventoryWidget::UpdateInventoryFromData);
-		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(ContainerInteractionWidget->GetPlayerInventoryWidget(),
-																		   &UInventoryWidget::UpdateEquipmentFromData);
+		m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(
+			ContainerInteractionWidget->GetPlayerInventoryWidget(),
+			&UInventoryWidget::UpdateInventoryFromData);
+		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(
+			ContainerInteractionWidget->GetPlayerInventoryWidget(),
+			&UInventoryWidget::UpdateEquipmentFromData);
 		ContainerInteractionWidget->OpenContainer(Container);
+		IsContainerActivate = true;
 	}
 }
 
-void ASonheimPlayerController::CloseContainerUI()
+void ASonheimPlayerController::Client_CloseContainerUI_Implementation()
 {
 	if (ContainerInteractionWidget)
 	{
 		ContainerInteractionWidget->CloseContainer();
-		m_PlayerState->m_InventoryComponent->OnInventoryChanged.RemoveDynamic(ContainerInteractionWidget->GetPlayerInventoryWidget(),
-																		&UInventoryWidget::UpdateInventoryFromData);
-		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(ContainerInteractionWidget->GetPlayerInventoryWidget(),
-																			  &UInventoryWidget::
-																			  UpdateEquipmentFromData);
+		m_PlayerState->m_InventoryComponent->OnInventoryChanged.RemoveDynamic(
+			ContainerInteractionWidget->GetPlayerInventoryWidget(),
+			&UInventoryWidget::UpdateInventoryFromData);
+		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(
+			ContainerInteractionWidget->GetPlayerInventoryWidget(),
+			&UInventoryWidget::
+			UpdateEquipmentFromData);
 		ContainerInteractionWidget = nullptr;
+		IsContainerActivate = false;
 	}
+}
+
+void ASonheimPlayerController::Server_ContainerOperation_Implementation(
+	ABaseContainer* Container,
+	EContainerOperation Operation,
+	int32 Param1,
+	int32 Param2)
+{
+	// 기본 검증
+	if (!Container || !ValidateContainerAccess(Container))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Container validation failed"));
+		return;
+	}
+
+	UContainerComponent* ContainerComp = Container->GetContainerComponent();
+	if (!ContainerComp)
+		return;
+
+	// Operation별 처리
+	switch (Operation)
+	{
+	case EContainerOperation::Open:
+		{
+			// 이미 다른 사람이 사용 중인지 확인
+			if (Container->Execute_CanInteract(Container))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Container already in use"));
+				return;
+			}
+			Container->Interact(m_Player);
+			break;
+		}
+
+	case EContainerOperation::Close:
+		{
+			// 현재 사용자가 맞는지 확인
+			if (!Container->CanBeInteractedByPlayer(m_Player))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Not the current user of container"));
+				return;
+			}
+			Container->CloseContainer();
+			break;
+		}
+
+	case EContainerOperation::AddItem:
+		{
+			// Param1: ItemID, Param2: Count
+			if (ValidateItemOperation(Param1, Param2))
+			{
+				ContainerComp->AddItem(Param1, Param2);
+			}
+			break;
+		}
+
+	case EContainerOperation::RemoveItem:
+		{
+			// Param1: ItemID, Param2: Count
+			if (ValidateItemOperation(Param1, Param2))
+			{
+				ContainerComp->RemoveItem(Param1, Param2);
+			}
+			break;
+		}
+
+	case EContainerOperation::RemoveItemByIndex:
+		{
+			// Param1: Index
+			if (Param1 >= 0 && Param1 < ContainerComp->GetMaxSlots())
+			{
+				ContainerComp->RemoveItemByIndex(Param1);
+			}
+			break;
+		}
+
+	case EContainerOperation::SwapItems:
+		{
+			// Param1: FromIndex, Param2: ToIndex
+			if (Param1 >= 0 && Param2 >= 0 &&
+				Param1 < ContainerComp->GetMaxSlots() &&
+				Param2 < ContainerComp->GetMaxSlots())
+			{
+				ContainerComp->SwapItems(Param1, Param2);
+			}
+			break;
+		}
+
+	default:
+		UE_LOG(LogTemp, Warning, TEXT("Unhandled container operation: %d"), (int32)Operation);
+		break;
+	}
+}
+
+void ASonheimPlayerController::Server_PlayerContainerTransfer_Implementation(
+	ABaseContainer* Container,
+	bool bFromContainerToPlayer,
+	int32 ItemID,
+	int32 Count,
+	int32 SlotIndex)
+{
+	// 검증
+	if (!Container || !ValidateContainerAccess(Container))
+		return;
+
+	if (!m_PlayerState || !m_PlayerState->m_InventoryComponent)
+		return;
+
+	if (!ValidateItemOperation(ItemID, Count))
+		return;
+
+	UContainerComponent* ContainerComp = Container->GetContainerComponent();
+	UInventoryComponent* PlayerInv = m_PlayerState->m_InventoryComponent;
+
+	if (!ContainerComp || !PlayerInv)
+		return;
+
+	if (bFromContainerToPlayer)
+	{
+		// 상자 -> 플레이어
+		bool bRemoved = false;
+
+		if (SlotIndex >= 0)
+		{
+			// 특정 슬롯에서 제거
+			bRemoved = ContainerComp->RemoveItemByIndex(SlotIndex);
+		}
+		else
+		{
+			// ItemID와 Count로 제거
+			bRemoved = ContainerComp->RemoveItem(ItemID, Count);
+		}
+
+		if (bRemoved)
+		{
+			PlayerInv->AddItem(ItemID, Count);
+
+			// 로그
+			UE_LOG(LogTemp, Log, TEXT("Transferred %d x%d from container to player"), ItemID, Count);
+		}
+	}
+	else
+	{
+		// 플레이어 -> 상자
+		bool bRemoved = false;
+
+		if (SlotIndex >= 0)
+		{
+			bRemoved = PlayerInv->RemoveItemByIndex(SlotIndex);
+		}
+		else
+		{
+			bRemoved = PlayerInv->RemoveItem(ItemID, Count);
+		}
+
+		if (bRemoved)
+		{
+			ContainerComp->AddItem(ItemID, Count);
+
+			// 로그
+			UE_LOG(LogTemp, Log, TEXT("Transferred %d x%d from player to container"), ItemID, Count);
+		}
+	}
+}
+
+bool ASonheimPlayerController::ValidateContainerAccess(ABaseContainer* Container) const
+{
+	if (!Container || !m_Player)
+		return false;
+
+	// 거리 검증
+	if (!ValidateDistance(Container))
+		return false;
+
+	// 상자가 사용 가능한지 확인
+	if (!Container->CanBeInteractedByPlayer(m_Player))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Container cannot be interacted with"));
+		return false;
+	}
+
+	return true;
+}
+
+bool ASonheimPlayerController::ValidateItemOperation(int32 ItemID, int32 Count) const
+{
+	// 아이템 ID 유효성
+	if (ItemID <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid ItemID: %d"), ItemID);
+		return false;
+	}
+
+	// 수량 유효성
+	if (Count <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid item count: %d"), Count);
+		return false;
+	}
+
+	// 최대 스택 크기 확인
+	const int32 MaxStackSize = 9999;
+	if (Count > MaxStackSize)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Item count exceeds max stack size: %d"), Count);
+		return false;
+	}
+
+	return true;
+}
+
+bool ASonheimPlayerController::ValidateDistance(AActor* Target, float MaxDistance) const
+{
+	if (!Target || !m_Player)
+		return false;
+
+	float Distance = FVector::Dist(m_Player->GetActorLocation(), Target->GetActorLocation());
+
+	if (Distance > MaxDistance)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Target too far: %.2f > %.2f"), Distance, MaxDistance);
+		return false;
+	}
+
+	return true;
 }

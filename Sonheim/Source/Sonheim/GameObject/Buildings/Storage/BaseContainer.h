@@ -19,6 +19,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Container")
 	void CloseContainer();
+	bool CanBeInteractedByPlayer(const ASonheimPlayer* Player) const;
 	
 protected:
 	virtual void BeginPlay() override;
@@ -62,12 +63,6 @@ protected:
 	// 상자 열기/닫기
 	UFUNCTION(BlueprintCallable, Category = "Container")
 	void OpenContainer(class ASonheimPlayer* Player);
-
-	UFUNCTION(Server, Reliable)
-	void Server_OpenContainer(class ASonheimPlayer* Player);
-
-	UFUNCTION(Server, Reliable)
-	void Server_CloseContainer();
 
 private:
 	UPROPERTY()

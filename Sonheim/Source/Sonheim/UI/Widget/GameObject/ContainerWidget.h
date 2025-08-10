@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Sonheim/GameObject/Buildings/Storage/BaseContainer.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "ContainerWidget.generated.h"
 
@@ -57,7 +58,7 @@ public:
 	// 인벤토리 업데이트
 	UFUNCTION()
 	void UpdateContainerInventory(const TArray<FInventoryItem>& Items);
-
+	
 	// 슬롯 이벤트 핸들러
 	UFUNCTION()
 	void OnSlotClicked(USlotWidget* SlotWidget, bool bIsRightClick);
@@ -73,10 +74,16 @@ public:
 
 	UContainerComponent* GetContainerComponent() const {return ContainerComponent;};
 
+	void SetOwningContainer(class ABaseContainer* Container) { OwningContainer = Container; }
+	
+	class ABaseContainer* GetOwningContainer() const { return OwningContainer; }
+
 private:
 	UPROPERTY()
 	class USonheimGameInstance* GameInstance;
-
+	UPROPERTY()
+	class ABaseContainer* OwningContainer;
+	
 	void CreateSlotGrid();
 	void BindSlotEvents(USlotWidget* SlotWidget);
 	void ClearAllSlots();

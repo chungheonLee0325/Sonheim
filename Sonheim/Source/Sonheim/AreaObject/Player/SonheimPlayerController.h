@@ -195,6 +195,7 @@ private:
 	UInputAction* FKeyAction;
 	
 	bool IsMenuActivate = false;
+	bool IsContainerActivate = false;
 
 	// 점프 횟수 추적을 위한 변수
 	float LastJumpTime = 0.0f;
@@ -205,9 +206,30 @@ public:
 	// 상자 UI 관리
 	UFUNCTION(Client, Reliable)
 	void Client_OpenContainerUI(ABaseContainer* Container);
-	
-	UFUNCTION(BlueprintCallable, Category = "UI")
-	void CloseContainerUI();
+
+	// 상자 UI 관리
+	UFUNCTION(Client, Reliable)
+	void Client_CloseContainerUI();
+
+	// ===== Container 중계 함수들 =====
+	// 기본 상자 작업
+	UFUNCTION(Server, Reliable)
+	void Server_ContainerOperation(
+		class ABaseContainer* Container, 
+		EContainerOperation Operation, 
+		int32 Param1 = 0, 
+		int32 Param2 = 0
+	);
+    
+	// 플레이어-컨테이너 간 전송
+	UFUNCTION(Server, Reliable)
+	void Server_PlayerContainerTransfer(
+		class ABaseContainer* Container,
+		bool bFromContainerToPlayer,
+		int32 ItemID,
+		int32 Count,
+		int32 SlotIndex = -1
+	);
 
 private:
 	// 상자 UI 위젯
@@ -216,4 +238,9 @@ private:
 	
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UContainerInteractionWidget> ContainerInteractionWidgetClass;
+
+	// 검증 헬퍼 함수들
+	bool ValidateContainerAccess(class ABaseContainer* Container) const;
+	bool ValidateItemOperation(int32 ItemID, int32 Count) const;
+	bool ValidateDistance(AActor* Target, float MaxDistance = 500.0f) const;
 };

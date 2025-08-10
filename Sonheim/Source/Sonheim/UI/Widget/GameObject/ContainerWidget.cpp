@@ -4,6 +4,7 @@
 #include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
@@ -154,30 +155,20 @@ void UContainerWidget::OnSlotClicked(USlotWidget* SlotWidget, bool bIsRightClick
 {
 	if (!SlotWidget || !ContainerComponent)
 		return;
-	
+    
 	// 우클릭: 아이템을 플레이어 인벤토리로 이동
 	if (bIsRightClick && SlotWidget->ItemID != 0)
 	{
-		// 플레이어 인벤토리 가져오기
-		if (APlayerController* PC = GetOwningPlayer())
+		if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
 		{
-			if (ASonheimPlayer* Player = Cast<ASonheimPlayer>(PC->GetPawn()))
-			{
-				if (ASonheimPlayerState* PlayerState = Player->GetSPlayerState())
-				{
-					if (UInventoryComponent* PlayerInventory = PlayerState->m_InventoryComponent)
-					{
-						// 상자에서 제거하고 플레이어 인벤토리에 추가
-						int32 ItemID = SlotWidget->ItemID;
-						int32 Count = SlotWidget->Quantity;
-						
-						if (ContainerComponent->RemoveItemByIndex(SlotWidget->SlotIndex))
-						{
-							PlayerInventory->AddItem(ItemID, Count);
-						}
-					}
-				}
-			}
+			// PlayerController의 중계 함수 사용
+			PC->Server_PlayerContainerTransfer(
+				GetOwningContainer(), 
+				true,
+				SlotWidget->ItemID,
+				SlotWidget->Quantity,
+				SlotWidget->SlotIndex
+			);
 		}
 	}
 }
@@ -191,37 +182,34 @@ void UContainerWidget::OnSlotDropped(USlotWidget* FromSlot, USlotWidget* ToSlot)
 {
 	if (!FromSlot || !ToSlot || !ContainerComponent)
 		return;
-	
-	// 컨테이너 내에서 아이템 위치 교환
-	ContainerComponent->SwapItems(FromSlot->SlotIndex, ToSlot->SlotIndex);
+    
+	if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
+	{
+		// 컨테이너 내에서 아이템 위치 교환
+		PC->Server_ContainerOperation(
+			GetOwningContainer(),
+			EContainerOperation::SwapItems,
+			FromSlot->SlotIndex,
+			ToSlot->SlotIndex
+		);
+	}
 }
 
 void UContainerWidget::HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex)
 {
 	if (!FromSlot || !ContainerComponent || ToIndex < 0)
 		return;
-	
-	// 플레이어 인벤토리에서 상자로 아이템 이동
-	if (APlayerController* PC = GetOwningPlayer())
+    
+	if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
 	{
-		if (ASonheimPlayer* Player = Cast<ASonheimPlayer>(PC->GetPawn()))
-		{
-			if (ASonheimPlayerState* PlayerState = Player->GetSPlayerState())
-			{
-				if (UInventoryComponent* PlayerInventory = PlayerState->m_InventoryComponent)
-				{
-					int32 ItemID = FromSlot->ItemID;
-					int32 Count = FromSlot->Quantity;
-					
-					// 플레이어 인벤토리에서 제거
-					if (PlayerInventory->RemoveItemByIndex(FromSlot->SlotIndex))
-					{
-						// 상자에 추가
-						ContainerComponent->AddItem(ItemID, Count);
-					}
-				}
-			}
-		}
+		// 플레이어 인벤토리에서 상자로 아이템 이동
+		PC->Server_PlayerContainerTransfer(
+			GetOwningContainer(),
+			false,                 // bFromContainerToPlayer (false = player to container)
+			FromSlot->ItemID,
+			FromSlot->Quantity,
+			FromSlot->SlotIndex
+		);
 	}
 }
 
