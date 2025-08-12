@@ -4,7 +4,7 @@
 
 **Unreal Engine 5.5 / C++** 기반. 팰월드(Palworld)에서 영감을 받은 **수집·전투·협동** 루프를
 처음부터 **완전한 멀티플레이어**로 설계했습니다. *데이터 테이블*로 몬스터/플레이어/상자/아이템/자원 등
-모든 오브젝트를 운용하여 **컴파일 없이 밸런스 패치**가 가능합니다.
+모든 오브젝트를 운용하여 **컴파일 없이 컨텐츠 추가/밸런스 패치**가 가능합니다.
 
 ---
 
@@ -17,7 +17,7 @@
 - **UI/UX 완비**: 인벤·장비·툴팁, 몬스터 HP/속성, 플로팅 데미지(풀링), 로비/방
 
 **Demo / Docs**
-- ▶ 데모 영상: [링크](https://youtu.be/39ZtBr59HDY)
+- ▶ 데모 영상: [링크](https://www.youtube.com/watch?v=TDRRWp6M_9E)
 - 📄 자세한 기술 문서: [Portfolio](https://possible-recess-c3b.notion.site/3D-1ff6058f0c2e8032b39fccd10bf7ca00?source=copy_link)
 
 
