@@ -81,7 +81,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Container")
 	int32 ContainerID = 0;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Container", ReplicatedUsing = OnRep_ContainerItems)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Container", ReplicatedUsing = OnRep_ContainerItems)
 	TArray<FInventoryItem> ContainerItems;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Container", Replicated)
