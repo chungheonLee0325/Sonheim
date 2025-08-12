@@ -105,10 +105,8 @@ sequenceDiagram
 ---
 
 ## 시스템 개요 (아키텍처)
-
 ```mermaid
 flowchart LR
-  %% === Gameplay Actors ===
   subgraph ACTORS["Gameplay Actors"]
     AO_BASE["AreaObject - Base"]
     P["Player - SonheimPlayer"]
@@ -119,19 +117,19 @@ flowchart LR
     EL["Projectile / Element"]
   end
 
-  %% === Input / Skills / AI ===
   subgraph INPUT["Input"]
     EIM["Enhanced Input"]
   end
+
   subgraph SKILLS["Skills"]
     SK["BaseSkill"]
     SR["Skill Roulette"]
   end
+
   subgraph AI["AI"]
     FSM["AI FSM"]
   end
 
-  %% === Core Components ===
   subgraph COMPS["Core Components"]
     HC["Health"]
     ST["Stamina"]
@@ -142,7 +140,6 @@ flowchart LR
     INTR["Interaction"]
   end
 
-  %% === UI Layer ===
   subgraph UI["UI Layer"]
     HUD["HUD"]
     INV_UI["Inventory UI"]
@@ -150,32 +147,26 @@ flowchart LR
     FD["Floating Damage"]
   end
 
-  %% === Data Layer ===
   subgraph DATA["Data Layer"]
     GI["GameInstance"]
     DT["DataTables"]
     TYPES["SonheimGameType (Enums / Structs)"]
   end
 
-  %% === Networking / Authority ===
   subgraph NET["Networking / Authority"]
     PC["PlayerController (RPC Relay)"]
     GM["GameMode"]
     GS["GameState"]
   end
 
-  %% Inheritance
   P -->|extends| AO_BASE
   M -->|extends| AO_BASE
-
-  %% AreaObject composition (common)
   AO_BASE --> HC
   AO_BASE --> ST
   AO_BASE --> CN
   AO_BASE --> LV
-  AO_BASE --> SK    %% AreaObject는 스킬을 사용
+  AO_BASE --> SK
 
-  %% Player specifics (입력/무기 기반 스킬)
   EIM --> P
   P --> SB
   P --> IV
@@ -184,21 +175,17 @@ flowchart LR
   P --> INV_UI
   P -->|equipped weapon| SK
 
-  %% Monster specifics (FSM + Roulette -> Skill)
   M --> FSM
   FSM --> SR
   SR --> SK
 
-  %% Items / Container / UI
   INTR -->|interact| BI
   INTR -->|interact| CH
   CH --> CH_UI
 
-  %% Skill output & feedback
   SK --> EL
   EL --> FD
 
-  %% Data access (런타임 조회)
   GI --> DT
   GI --> TYPES
   AO_BASE -.->|lookup| GI
@@ -208,15 +195,14 @@ flowchart LR
   CH -.->|read| DT
   BI -.->|read| DT
 
-  %% Networking flows (권한/동기화)
   INV_UI -->|drag/drop| PC
   CH_UI -->|drag/drop| PC
   INTR -->|interact RPC| PC
   PC -->|server RPC| GM
   PC -->|server RPC| CH
   GM --> GS
-```
 
+```
 ---
 
 ## 설치 & 실행
