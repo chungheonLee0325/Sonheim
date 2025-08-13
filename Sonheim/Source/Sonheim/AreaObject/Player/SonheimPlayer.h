@@ -239,7 +239,7 @@ public:
 	UFUNCTION()
 	void StatChanged(EAreaObjectStatType StatType, float StatValue);
 
-	// 무기 전환 수정
+	// 무기 전환
 	void WeaponSwitch_Triggered(int Index);
 	
 	// 같은 무기 중복 사용으로 인한 오류 방지.. 전부 최신화
@@ -309,6 +309,11 @@ public:
 	
 	UFUNCTION(BlueprintPure, Category = "Interaction")
 	UInteractionComponent* GetInteractionComponent() const { return InteractionComponent; }
+
+	UFUNCTION()
+	void SetWeaponMeshVisible() {Multicast_SetVisibleWeaponMesh(true);};
+	UFUNCTION()
+	void SetWeaponMeshInvisible() {Multicast_SetVisibleWeaponMesh(false);};
 private:
 	// Weapon Setting
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
@@ -411,6 +416,9 @@ private:
 	// 무기 메시 업데이트 헬퍼 함수
 	void UpdateWeaponMesh(int ItemID);
 	void ClearWeaponMesh();
+	// 무기 메시 가시성 설정 - 글라이더, 팰스피어 사용시 헬퍼함수
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetVisibleWeaponMesh(bool IsVisible);
 
 	// 현재 장착된 무기 아이템 ID 추적
 	UPROPERTY(Replicated)

@@ -80,6 +80,9 @@ void UPalCaptureComponent::Server_ThrowPalSphere_Implementation()
     UBaseSkill* Skill = OwnerPlayer->GetSkillByID(PalSphereSkillID);
     if (Skill)
     {
+        // 스킬 종료 후 무기메시 보이도록 델리게이트 바인드
+        Skill->OnSkillComplete.BindUObject(OwnerPlayer, &ASonheimPlayer::SetWeaponMeshVisible);
+        // 스킬 발사
         OwnerPlayer->CastSkill(Skill, OwnerPlayer);
     }
     
@@ -117,6 +120,12 @@ void UPalCaptureComponent::MultiCast_SetThrowingState_Implementation(bool bThrow
         if (OwnerPlayer->GetPalSphereComponent())
         {
             OwnerPlayer->GetPalSphereComponent()->SetVisibility(bThrowing);
+            
+            // 준비 자세만 처리 - 던지고 나서는 스킬 종료 이벤트에서 바인드되어 자동 처리(Server_ThrowPalSphere 메서드 내부)
+            if (bThrowing)
+            {
+                OwnerPlayer->GetWeaponMesh()->SetVisibility(!bThrowing);
+            }
         }
         
         // 조준 UI 표시/숨김 (로컬 플레이어만)

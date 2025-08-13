@@ -347,6 +347,11 @@ void ASonheimPlayer::ClearWeaponMesh()
 	}
 }
 
+void ASonheimPlayer::Multicast_SetVisibleWeaponMesh_Implementation(bool IsVisible)
+{
+	GetWeaponMesh()->SetVisibility(IsVisible);
+}
+
 void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventoryItem Item)
 {
 	// 무기 슬롯인지 확인
@@ -1197,6 +1202,8 @@ void ASonheimPlayer::MultiCast_ActivateGlider_Implementation()
 
 	// 글라이더 메시 표시
 	GliderMeshComponent->SetVisibility(true);
+	// 무기 메시 감추기
+	GetWeaponMesh()->SetVisibility(false);
 
 	// 애니메이션 재생
 	if (GliderOpenMontage)
@@ -1254,6 +1261,8 @@ void ASonheimPlayer::MultiCast_DeactivateGlider_Implementation()
 
 	// 애니메이션 이벤트로 메시를 숨기도록 설정하거나 여기서 타이머로 처리
 	GliderMeshComponent->SetVisibility(false);
+	// 무기 메시 활성화
+	GetWeaponMesh()->SetVisibility(true);
 
 	// 상태 초기화
 	SetPlayerState(EPlayerState::NORMAL);
