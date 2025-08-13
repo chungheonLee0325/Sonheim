@@ -69,6 +69,9 @@ protected:
 	UPROPERTY(Transient, meta = (BindWidgetAnim))
 	UWidgetAnimation* ZoomOutByLockOn;
 
+	UPROPERTY(meta = (BindWidgetAnim), Transient)
+	UWidgetAnimation* ExpTextCycle = nullptr;
+
 	UPROPERTY(meta = (BindWidget))
 	class UImage* PalSlot0;
 	UPROPERTY(meta = (BindWidget))

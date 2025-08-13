@@ -1,5 +1,6 @@
 #include "PlayerStatusWidget.h"
 
+#include "Animation/WidgetAnimation.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
@@ -38,11 +39,19 @@ void UPlayerStatusWidget::UpdateLevel(int32 OldLevel, int32 NewLevel, bool bLeve
 
 void UPlayerStatusWidget::UpdateExp(int32 CurrentExp, int32 MaxExp, int32 Delta)
 {
-	if (ExpBar && ExpText)
+	if (!ExpBar || !ExpText || !ExpTextCycle) return;
+
+	ExpBar->SetPercent(MaxExp > 0 ? float(CurrentExp) / float(MaxExp) : 0.f);
+	ExpText->SetText(FText::FromString(FString::Printf(TEXT("+%d"), Delta)));
+
+	// 초기화떄문에 애니메이션만 별도 처리
+	if (Delta != 0)
 	{
-		ExpBar->SetPercent((float)CurrentExp / MaxExp);
-		ExpText->SetText(FText::FromString(FString::Printf(TEXT("+%d"), Delta)));
+		// 연속 획득 대비 단순히 다시 재생 
+		StopAnimation(ExpTextCycle);
+		PlayAnimation(ExpTextCycle, 0.f, 1);
 	}
+		
 }
 
 void UPlayerStatusWidget::UpdateStamina(float CurrentStamina, float Delta, float MaxStamina)

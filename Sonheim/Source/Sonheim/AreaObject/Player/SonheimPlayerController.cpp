@@ -271,8 +271,7 @@ void ASonheimPlayerController::InitializeHUD_Implementation(ASonheimPlayer* NewP
 			StatusWidget->UpdateLevel(m_Player->m_LevelComponent->GetCurrentLevel(),
 			                          m_Player->m_LevelComponent->GetCurrentLevel(), true);
 			m_Player->m_LevelComponent->OnExperienceChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateExp);
-			StatusWidget->UpdateExp(m_Player->m_LevelComponent->GetCurrentExp(),
-			                        m_Player->m_LevelComponent->GetExpToNextLevel(), 0);
+			StatusWidget->UpdateExp(0,1, 0);
 		}
 		StatusWidget->SetEnableCrossHair(false);
 	}
