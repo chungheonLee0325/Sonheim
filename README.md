@@ -16,8 +16,16 @@
 - **풍부한 플레이어 액션**: 글라이더, 질주/회피, 무기 전환 시 스탯·스킬 즉시 동기화
 - **UI/UX 완비**: 인벤·장비·툴팁, 몬스터 HP/속성, 플로팅 데미지(풀링), 로비/방
 
-**Demo / Docs**
-- ▶ 데모 영상: [링크](https://www.youtube.com/watch?v=TDRRWp6M_9E)
+
+## **프로젝트 하이라이트**
+### 📌 결과물 요약
+프로젝트의 주요 결과물과 핵심 기능을 한눈에 볼 수 있는 영상입니다. \
+아래 이미지를 클릭하면 유튜브 영상을 시청할 수 있습니다.
+
+[![프로젝트 요약 GIF](Doc/Gifs/Project_Overview.gif)](https://www.youtube.com/watch?v=TDRRWp6M_9E)\
+[![데모 영상 보기](https://img.youtube.com/vi/TDRRWp6M_9E/hqdefault.jpg)](https://www.youtube.com/watch?v=xTtv8g3sCQ0)\
+
+
 - 📄 자세한 기술 문서: [Portfolio](https://possible-recess-c3b.notion.site/3D-1ff6058f0c2e8032b39fccd10bf7ca00?source=copy_link)
 
 
