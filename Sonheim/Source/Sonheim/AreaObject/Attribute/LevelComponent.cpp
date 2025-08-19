@@ -4,6 +4,8 @@
 #include "StatBonusComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
@@ -231,10 +233,26 @@ void ULevelComponent::HandleLevelUp()
 
 void ULevelComponent::ApplyLevelUpBonuses(int32 OldLevel, int32 NewLevel)
 {
-    if (!m_Owner)
-        return;
+    if (!m_Owner) return;
 
-    if (UStatBonusComponent* StatComp = m_Owner->FindComponentByClass<UStatBonusComponent>())
+    UStatBonusComponent* StatComp = nullptr;
+
+    // Owner가 플레이어인지 확인
+    if (ASonheimPlayer* Player = Cast<ASonheimPlayer>(m_Owner))
+    {
+        // 플레이어라면 PlayerState에서 StatBonusComponent를 찾음
+        if (ASonheimPlayerState* PS = Player->GetSPlayerState())
+        {
+            StatComp = PS->FindComponentByClass<UStatBonusComponent>();
+        }
+    }
+    else
+    {
+        // 플레이어가 아니라면 (몬스터 등) Owner 자신에게서 찾음
+        StatComp = m_Owner->FindComponentByClass<UStatBonusComponent>();
+    }
+
+    if (StatComp)
     {
         int32 LevelDiff = NewLevel - OldLevel;
         if (LevelDiff != 0)
