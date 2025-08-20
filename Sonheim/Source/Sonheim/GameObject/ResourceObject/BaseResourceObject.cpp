@@ -9,6 +9,7 @@
 #include "Sonheim/GameManager/SonheimGameMode.h"
 #include "Sonheim/GameObject/Items/BaseItem.h"
 #include "Sonheim/UI/FloatingDamageActor.h"
+#include "Sonheim/UI/FloatingDamagePool.h"
 #include "Sonheim/UI/Widget/FloatingDamageWidget.h"
 
 
@@ -224,14 +225,24 @@ void ABaseResourceObject::MulticastDamageEffect_Implementation(float Damage, FVe
 
 	FTransform SpawnTransform(FRotator::ZeroRotator, SpawnLocation);
 
-	if (AFloatingDamageActor* DamageActor = GetWorld()->SpawnActor<AFloatingDamageActor>(
-		AFloatingDamageActor::StaticClass(), SpawnTransform))
+	// 풀 매니저를 통해 데미지 표시 요청
+	if (AFloatingDamagePool* DamagePool = AFloatingDamagePool::GetInstance(GetWorld()))
 	{
-		// FloatingDamageType 계산
-		EFloatingOutLineDamageType damageType = DamageCoefficient > 1.0f
+		FDamageNumberRequest Request;
+		Request.Damage = Damage;
+		Request.WorldLocation = HitLocation;
+		Request.DamageCauser = DamageCauser;
+		Request.DamagedActor = this;
+        
+		// 약점 타입 설정
+		Request.WeakPointType = DamageCoefficient > 1.0f
 													? EFloatingOutLineDamageType::WeakPointDamage
 													: EFloatingOutLineDamageType::Normal;
-		DamageActor->Initialize(Damage, damageType);
+        
+		// 속성 타입 설정
+		Request.ElementAttributeType = EFloatingTextDamageType::Normal;
+		
+		DamagePool->RequestDamageNumber(Request);
 	}
 	
 	// Spawn Harvest SFX

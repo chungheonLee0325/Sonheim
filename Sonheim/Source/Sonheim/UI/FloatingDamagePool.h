@@ -66,19 +66,6 @@ private:
     UPROPERTY(EditDefaultsOnly, Category = "Visibility")
     float MaxVisibleDistance = 3000.0f;
 
-    // 데미지 그룹핑 설정
-    UPROPERTY(EditDefaultsOnly, Category = "Grouping")
-    float GroupingTimeWindow = 0.1f;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Grouping")
-    float GroupingDistance = 50.0f;
-
-    // 그룹핑을 위한 최근 요청 추적
-    TArray<FDamageNumberRequest> RecentRequests;
-    FTimerHandle GroupingTimerHandle;
-
-    void ProcessGroupedDamage();
-
     // 싱글톤 인스턴스
     static AFloatingDamagePool* Instance;
 

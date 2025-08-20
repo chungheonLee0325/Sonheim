@@ -34,9 +34,9 @@ public:
 protected:
     UPROPERTY(meta = (BindWidget))
     class UTextBlock* DamageText;
-
+    
     UPROPERTY(Transient, meta = (BindWidgetAnim))
-    UWidgetAnimation* FadeOutAnimation;
+    UWidgetAnimation* FadeAnimation;
 
     // 색상 설정
     UPROPERTY(EditDefaultsOnly, Category = "Appearance")

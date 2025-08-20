@@ -67,8 +67,8 @@ void UFloatingDamageWidget::SetDamageInfo(float Damage, EFloatingOutLineDamageTy
 
 void UFloatingDamageWidget::PlayFadeAnimation()
 {
-    if (FadeOutAnimation)
+    if (FadeAnimation)
     {
-        PlayAnimation(FadeOutAnimation);
+        PlayAnimation(FadeAnimation,0.0f, 1);
     }
 }
