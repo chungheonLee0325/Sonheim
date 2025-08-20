@@ -135,19 +135,9 @@ public:
 	void RightMouse_Pressed();
 	void RightMouse_Triggered();
 	void RightMouse_Released();
-	
+
 	UFUNCTION(Server, Reliable)
-	void Server_RightMouse_Pressed();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_RightMouse_Pressed();
-	UFUNCTION(Server, Reliable)
-	void Server_RightMouse_Triggered();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_RightMouse_Triggered();
-	UFUNCTION(Server, Reliable)
-	void Server_RightMouse_Released();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_RightMouse_Released();
+	void Server_SetLockOn(bool bNew);
 	
 	// 재장전 입력 처리
 	void Reload_Pressed();
@@ -171,17 +161,7 @@ public:
 	void Sprint_Released();
 	
 	UFUNCTION(Server, Reliable)
-	void Server_Sprint_Pressed();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_Sprint_Pressed();
-	UFUNCTION(Server, Reliable)
 	void Server_Sprint_Triggered();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_Sprint_Triggered();
-	UFUNCTION(Server, Reliable)
-	void Server_Sprint_Released();
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_Sprint_Released();
 	
 	// 점프 입력 처리
 	void Jump_Pressed();
@@ -232,9 +212,6 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int ItemID);
     
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int ItemID);
-
 	// 스탯 변경 - 서버 권한 추가
 	UFUNCTION()
 	void StatChanged(EAreaObjectStatType StatType, float StatValue);
@@ -252,7 +229,7 @@ public:
 	UPROPERTY()
 	TMap<EEquipmentSlotType, UBaseSkill*> WeaponSkillMap;
 
-	UPROPERTY()
+	UPROPERTY(Replicated) 
 	EEquipmentSlotType SelectedWeaponSlot = EEquipmentSlotType::Weapon1;
 
 	UFUNCTION(BlueprintCallable)
@@ -274,18 +251,6 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Movement|Glider")
 	void DeactivateGlider();
-	
-	UFUNCTION(Server, Reliable)
-	void Server_ActivateGlider();
-	
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_ActivateGlider();
-	
-	UFUNCTION(Server, Reliable)
-	void Server_DeactivateGlider();
-	
-	UFUNCTION(NetMulticast, Reliable)
-	void MultiCast_DeactivateGlider();
 	
 	// 글라이더 상태 확인
 	UFUNCTION(BlueprintPure, Category = "Movement|Glider")
@@ -310,10 +275,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Interaction")
 	UInteractionComponent* GetInteractionComponent() const { return InteractionComponent; }
 
+	void SetWeaponVisible(bool bNew, bool bLocalPreview = true);
+	
 	UFUNCTION()
-	void SetWeaponMeshVisible() {Multicast_SetVisibleWeaponMesh(true);};
+	void SetWeaponMeshVisible() { SetWeaponVisible(true); }
 	UFUNCTION()
-	void SetWeaponMeshInvisible() {Multicast_SetVisibleWeaponMesh(false);};
+	void SetWeaponMeshInvisible() { SetWeaponVisible(false); }
 private:
 	// Weapon Setting
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
@@ -416,12 +383,9 @@ private:
 	// 무기 메시 업데이트 헬퍼 함수
 	void UpdateWeaponMesh(int ItemID);
 	void ClearWeaponMesh();
-	// 무기 메시 가시성 설정 - 글라이더, 팰스피어 사용시 헬퍼함수
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_SetVisibleWeaponMesh(bool IsVisible);
 
 	// 현재 장착된 무기 아이템 ID 추적
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing=OnRep_SelectedWeapon)
 	int32 CurrentWeaponItemID = 0;
 
 	// 상호작용 컴포넌트
@@ -454,7 +418,7 @@ private:
 	ABaseMonster* m_SummonedPal = nullptr;
 
 	// Glider Variable
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement|Glider", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing=OnRep_IsGliding, VisibleAnywhere, BlueprintReadOnly, Category = "Movement|Glider", meta = (AllowPrivateAccess = "true"))
 	bool bIsGliding = false;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Glider")
@@ -485,4 +449,41 @@ private:
 	class UPalPartnerSkillComponent* PalPartnerSkillComponent;
 	UPROPERTY()
 	class UPalCaptureComponent* PalCaptureComponent;
+
+	// === Sprint ===
+	UPROPERTY(ReplicatedUsing=OnRep_IsSprinting)
+	bool bIsSprinting = false;
+
+	UFUNCTION()
+	void OnRep_IsSprinting();
+	void ApplySprinting(bool bNew);
+	UFUNCTION(Server, Reliable)
+	void Server_SetSprinting(bool bNew);
+
+	// === LockOn ===
+	UPROPERTY(ReplicatedUsing=OnRep_IsLockOn)
+	bool bIsLockOn = false;
+	UFUNCTION()
+	void OnRep_IsLockOn();
+
+
+	// === Weapon Select & Visibility ===
+	UFUNCTION()
+	void OnRep_SelectedWeapon();
+	
+	UPROPERTY(ReplicatedUsing=OnRep_WeaponVisible)
+	bool bWeaponVisible = true;
+	
+	UFUNCTION()
+	void OnRep_WeaponVisible();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_SetWeaponVisible(bool bNew);
+
+	// === Glider ===
+	UFUNCTION()
+	void OnRep_IsGliding();
+	void ApplyGliderState(bool bNew);
+	UFUNCTION(Server, Reliable)
+	void Server_SetGliding(bool bNew);
 };

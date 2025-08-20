@@ -151,13 +151,13 @@ void ASonheimPlayer::BeginPlay()
 void ASonheimPlayer::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-	
+
 	S_PlayerController = Cast<ASonheimPlayerController>(NewController);
 	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
 
-	if (S_PlayerController != nullptr && IsLocallyControlled()) 
+	if (S_PlayerController != nullptr && IsLocallyControlled())
 		S_PlayerController->InitializeHUD(this);
-	
+
 	InitializeByPlayerState();
 	// 서버에서만 델리게이트 바인딩
 	if (HasAuthority())
@@ -175,8 +175,13 @@ void ASonheimPlayer::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ASonheimPlayer::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	    
+
+	DOREPLIFETIME(ASonheimPlayer, bIsSprinting);
+	DOREPLIFETIME(ASonheimPlayer, bIsLockOn);
+	DOREPLIFETIME(ASonheimPlayer, bIsGliding);
+	DOREPLIFETIME(ASonheimPlayer, SelectedWeaponSlot);
 	DOREPLIFETIME(ASonheimPlayer, CurrentWeaponItemID);
+	DOREPLIFETIME(ASonheimPlayer, bWeaponVisible);
 }
 
 void ASonheimPlayer::InitPlayer()
@@ -186,10 +191,10 @@ void ASonheimPlayer::InitPlayer()
 
 	S_PlayerAnimInstance = Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance());
 
-	if (S_PlayerState == nullptr) 
+	if (S_PlayerState == nullptr)
 		S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
-    
-	if (S_PlayerController == nullptr) 
+
+	if (S_PlayerController == nullptr)
 		S_PlayerController = Cast<ASonheimPlayerController>(GetController());
 
 	// 기본 무기 스킬 맵 초기화
@@ -206,7 +211,7 @@ void ASonheimPlayer::BindDelegates()
 		// 기존 바인딩 제거
 		S_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
 		S_PlayerState->m_InventoryComponent->OnWeaponChanged.RemoveDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
-        
+
 		// 새로 바인딩
 		S_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
 		S_PlayerState->m_InventoryComponent->OnWeaponChanged.AddDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
@@ -297,28 +302,28 @@ void ASonheimPlayer::UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int Ite
 
 void ASonheimPlayer::Server_UpdateSelectedWeapon_Implementation(EEquipmentSlotType WeaponSlot, int ItemID)
 {
+	SelectedWeaponSlot = WeaponSlot;
 	CurrentWeaponItemID = ItemID;
-	MultiCast_UpdateSelectedWeapon(WeaponSlot, ItemID);
+	// 서버 자신 반영
+	OnRep_SelectedWeapon();
 }
 
-void ASonheimPlayer::MultiCast_UpdateSelectedWeapon_Implementation(EEquipmentSlotType WeaponSlot, int ItemID)
+void ASonheimPlayer::OnRep_SelectedWeapon()
 {
-	SelectedWeaponSlot = WeaponSlot;
-    
-	if (ItemID == 0)
+	if (CurrentWeaponItemID == 0)
 	{
 		ClearWeaponMesh();
 	}
 	else
 	{
-		UpdateWeaponMesh(ItemID);
+		UpdateWeaponMesh(CurrentWeaponItemID);
 	}
 }
 
 void ASonheimPlayer::UpdateWeaponMesh(int ItemID)
 {
 	if (!m_GameInstance) return;
-    
+
 	FItemData* ItemData = m_GameInstance->GetDataItem(ItemID);
 	if (ItemData && ItemData->EquipmentData.EquipmentMesh)
 	{
@@ -327,7 +332,7 @@ void ASonheimPlayer::UpdateWeaponMesh(int ItemID)
 		{
 			WeaponComponent->SetAnimInstanceClass(ItemData->EquipmentData.EquipmentAnim->GetClass());
 		}
-        
+
 		if (S_PlayerAnimInstance)
 		{
 			S_PlayerAnimInstance->bIsMelee = (ItemData->EquipmentData.WeaponType == EWeaponType::Melee);
@@ -339,7 +344,7 @@ void ASonheimPlayer::UpdateWeaponMesh(int ItemID)
 void ASonheimPlayer::ClearWeaponMesh()
 {
 	WeaponComponent->SetSkeletalMesh(nullptr);
-    
+
 	if (S_PlayerAnimInstance)
 	{
 		S_PlayerAnimInstance->bIsMelee = false;
@@ -347,9 +352,21 @@ void ASonheimPlayer::ClearWeaponMesh()
 	}
 }
 
-void ASonheimPlayer::Multicast_SetVisibleWeaponMesh_Implementation(bool IsVisible)
+void ASonheimPlayer::Server_SetWeaponVisible_Implementation(bool bNew)
 {
-	GetWeaponMesh()->SetVisibility(IsVisible);
+	if (bNew != bWeaponVisible)
+	{
+		bWeaponVisible = bNew;
+		OnRep_WeaponVisible();
+	}
+}
+
+void ASonheimPlayer::OnRep_WeaponVisible()
+{
+	if (USkeletalMeshComponent* Weapon = GetWeaponMesh())
+	{
+		Weapon->SetVisibility(bWeaponVisible);
+	}
 }
 
 void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventoryItem Item)
@@ -361,7 +378,7 @@ void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventory
 	// 아이템 데이터 가져오기
 	FItemData* ItemData = nullptr;
 	FSkillData* SkillData = nullptr;
-    
+
 	if (Item.ItemID > 0 && m_GameInstance)
 	{
 		ItemData = m_GameInstance->GetDataItem(Item.ItemID);
@@ -387,7 +404,7 @@ void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventory
 		// 무기 스킬 생성
 		UBaseSkill* NewWeaponSkill = NewObject<UBaseSkill>(this, SkillData->SkillClass);
 		NewWeaponSkill->InitSkill(SkillData);
-        
+
 		// 스킬 등록
 		WeaponSkillMap[WeaponSlot] = NewWeaponSkill;
 		m_SkillInstanceMap.Add(SkillData->SkillID, NewWeaponSkill);
@@ -400,12 +417,6 @@ void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventory
 		{
 			m_SkillInstanceMap.Add(CommonAttack->GetSkillID(), CommonAttack);
 		}
-	}
-
-	// 현재 선택된 무기면 외형 업데이트
-	if (SelectedWeaponSlot == WeaponSlot)
-	{
-		MultiCast_UpdateSelectedWeapon(SelectedWeaponSlot, Item.ItemID);
 	}
 }
 
@@ -423,22 +434,22 @@ void ASonheimPlayer::StatChanged(EAreaObjectStatType StatType, float StatValue)
 			m_HealthComponent->SetMaxHP(StatValue);
 		}
 		break;
-        
+
 	case EAreaObjectStatType::Attack:
 		m_Attack = StatValue;
 		break;
-        
+
 	case EAreaObjectStatType::Defense:
 		m_Defence = StatValue;
 		break;
-        
+
 	case EAreaObjectStatType::RunSpeed:
 		if (GetCharacterMovement())
 		{
 			GetCharacterMovement()->MaxWalkSpeed = StatValue;
 		}
 		break;
-        
+
 	case EAreaObjectStatType::JumpHeight:
 		if (GetCharacterMovement())
 		{
@@ -524,7 +535,7 @@ void ASonheimPlayer::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 	S_PlayerState = Cast<ASonheimPlayerState>(GetPlayerState());
 
-	if (S_PlayerController != nullptr && IsLocallyControlled()) 
+	if (S_PlayerController != nullptr && IsLocallyControlled())
 		S_PlayerController->InitializeHUD(this);
 
 	InitializeByPlayerState();
@@ -541,9 +552,9 @@ void ASonheimPlayer::InitializeByPlayerState()
 {
 	PalCaptureComponent->InitializeWithPlayerState(S_PlayerState);
 	PalPartnerSkillComponent->InitializeWithPlayerState(S_PlayerState);
-	
+
 	//if(S_PlayerState->m_InventoryComponent && IsLocallyControlled())
-	if(S_PlayerState->m_InventoryComponent && HasAuthority())
+	if (S_PlayerState->m_InventoryComponent && HasAuthority())
 	{
 		//S_PlayerState->m_InventoryComponent->OnItemAdded.AddDynamic(S_PlayerController->GetPlayerStatusWidget(), &UPlayerStatusWidget::OnItemAdded);
 		S_PlayerState->m_InventoryComponent->OnItemAdded.AddDynamic(this, &ASonheimPlayer::Client_OnItemAdded);
@@ -552,7 +563,7 @@ void ASonheimPlayer::InitializeByPlayerState()
 
 void ASonheimPlayer::Client_OnItemAdded_Implementation(int ItemID, int ItemCount)
 {
-	S_PlayerController->GetPlayerStatusWidget()->OnItemAdded(ItemID, ItemCount);	
+	S_PlayerController->GetPlayerStatusWidget()->OnItemAdded(ItemID, ItemCount);
 }
 
 void ASonheimPlayer::InitializeStateRestrictions()
@@ -650,7 +661,7 @@ void ASonheimPlayer::SetPlayerState(EPlayerState NewState)
 	//	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 
 	// 회전 제한 적용
-	GetCharacterMovement()->bOrientRotationToMovement = NewRestrictions.bCanRotate; 
+	GetCharacterMovement()->bOrientRotationToMovement = NewRestrictions.bCanRotate;
 }
 
 void ASonheimPlayer::Move(const FVector2D MovementVector)
@@ -725,7 +736,7 @@ void ASonheimPlayer::Server_LeftMouse_Pressed_Implementation()
 		PalPartnerSkillComponent->SetPartnerSkillTrigger(true);
 		return;
 	}
-	
+
 	MultiCast_LeftMouse_Pressed();
 }
 
@@ -787,7 +798,7 @@ void ASonheimPlayer::Server_LeftMouse_Released_Implementation()
 		PalPartnerSkillComponent->SetPartnerSkillTrigger(false);
 		return;
 	}
-	
+
 	MultiCast_LeftMouse_Released();
 }
 
@@ -804,9 +815,18 @@ void ASonheimPlayer::RightMouse_Pressed()
 		return;
 	}
 
-	Server_RightMouse_Pressed();
+	Server_SetLockOn(true);
 
-	// 로컬 플레이어만 수행하는 카메라 처리
+	// 록온 모드
+	if (S_PlayerController && S_PlayerController->GetPlayerStatusWidget())
+	{
+		S_PlayerController->GetPlayerStatusWidget()->SetEnableCrossHair(true);
+	}
+
+	// 카메라 회전
+	LookAtLocation(GetActorLocation() + GetFollowCamera()->GetForwardVector(), EPMRotationMode::Speed, 600);
+
+	// 로컬 플레이어만 수행하는 카메라 처리 (줌인)
 	TWeakObjectPtr<ASonheimPlayer> weakThis = this;
 	GetWorld()->GetTimerManager().SetTimer(LockOnCameraTimerHandle, [weakThis]
 	{
@@ -826,29 +846,9 @@ void ASonheimPlayer::RightMouse_Pressed()
 	}, 0.01f, true);
 }
 
-void ASonheimPlayer::Server_RightMouse_Pressed_Implementation()
-{
-	MultiCast_RightMouse_Pressed();
-}
-
-void ASonheimPlayer::MultiCast_RightMouse_Pressed_Implementation()
-{
-	// 카메라 회전
-	LookAtLocation(GetActorLocation() + GetFollowCamera()->GetForwardVector(), EPMRotationMode::Speed, 600);
-	// 록온 모드
-	bUseControllerRotationYaw = true;
-	GetCharacterMovement()->bOrientRotationToMovement = false;
-	S_PlayerAnimInstance->bIsLockOn = true;
-
-	if (S_PlayerController && S_PlayerController->GetPlayerStatusWidget())
-	{
-		S_PlayerController->GetPlayerStatusWidget()->SetEnableCrossHair(true);
-	}
-}
-
 void ASonheimPlayer::RightMouse_Released()
 {
-	Server_RightMouse_Released();
+	Server_SetLockOn(false);
 
 	// 로컬 플레이어만 수행하는 UI 처리
 	if (S_PlayerController && S_PlayerController->GetPlayerStatusWidget())
@@ -878,19 +878,21 @@ void ASonheimPlayer::RightMouse_Released()
 	}, 0.01f, true);
 }
 
-void ASonheimPlayer::Server_RightMouse_Released_Implementation()
+void ASonheimPlayer::OnRep_IsLockOn()
 {
-	MultiCast_RightMouse_Released();
+	// 회전/애님만 동기화
+	bUseControllerRotationYaw = bIsLockOn;
+	GetCharacterMovement()->bOrientRotationToMovement = !bIsLockOn;
+
+	if (S_PlayerAnimInstance)
+		S_PlayerAnimInstance->bIsLockOn = bIsLockOn;
 }
 
-void ASonheimPlayer::MultiCast_RightMouse_Released_Implementation()
+void ASonheimPlayer::Server_SetLockOn_Implementation(bool bNew)
 {
-	bUseControllerRotationYaw = false;
-	GetCharacterMovement()->bOrientRotationToMovement = true;
-	if (S_PlayerAnimInstance != nullptr)
-	{
-		S_PlayerAnimInstance->bIsLockOn = false;
-	}
+	bIsLockOn = bNew;
+	// 서버 자신도 반영
+	OnRep_IsLockOn();
 }
 
 void ASonheimPlayer::Jump_Pressed()
@@ -912,33 +914,32 @@ void ASonheimPlayer::Jump_Released()
 
 void ASonheimPlayer::Sprint_Pressed()
 {
-	Server_Sprint_Pressed();
-}
-
-void ASonheimPlayer::Server_Sprint_Pressed_Implementation()
-{
-	MultiCast_Sprint_Pressed();
-}
-
-void ASonheimPlayer::MultiCast_Sprint_Pressed_Implementation()
-{
-	float SprintSpeed = dt_AreaObject->WalkSpeed * SprintSpeedRatio;
-	GetCharacterMovement()->MaxWalkSpeed = SprintSpeed;
+	Server_SetSprinting(true);
+	if (IsLocallyControlled()) ApplySprinting(true); // 체감 반응성
 }
 
 void ASonheimPlayer::Sprint_Released()
 {
-	Server_Sprint_Released();
+	Server_SetSprinting(false);
+	if (IsLocallyControlled()) ApplySprinting(false);
 }
 
-void ASonheimPlayer::Server_Sprint_Released_Implementation()
+void ASonheimPlayer::ApplySprinting(bool bNew)
 {
-	MultiCast_Sprint_Released();
+	const float Base = dt_AreaObject ? dt_AreaObject->WalkSpeed : GetCharacterMovement()->MaxWalkSpeed;
+	const float NewSpeed = bNew ? Base * SprintSpeedRatio : Base;
+	GetCharacterMovement()->MaxWalkSpeed = NewSpeed;
 }
 
-void ASonheimPlayer::MultiCast_Sprint_Released_Implementation()
+void ASonheimPlayer::OnRep_IsSprinting()
 {
-	GetCharacterMovement()->MaxWalkSpeed = dt_AreaObject->WalkSpeed;
+	ApplySprinting(bIsSprinting);
+}
+
+void ASonheimPlayer::Server_SetSprinting_Implementation(bool bNew)
+{
+	bIsSprinting = bNew;
+	ApplySprinting(bIsSprinting);
 }
 
 void ASonheimPlayer::Dodge_Pressed()
@@ -1149,17 +1150,6 @@ void ASonheimPlayer::ThrowPalSphere_Released()
 // 마우스 오른쪽 트리거 처리
 void ASonheimPlayer::RightMouse_Triggered()
 {
-	Server_RightMouse_Triggered();
-}
-
-void ASonheimPlayer::Server_RightMouse_Triggered_Implementation()
-{
-	MultiCast_RightMouse_Triggered();
-}
-
-void ASonheimPlayer::MultiCast_RightMouse_Triggered_Implementation()
-{
-	// 필요한 경우 추가 동작 구현
 }
 
 // 스프린트 트리거 처리
@@ -1170,13 +1160,17 @@ void ASonheimPlayer::Sprint_Triggered()
 
 void ASonheimPlayer::Server_Sprint_Triggered_Implementation()
 {
-	MultiCast_Sprint_Triggered();
+	if (HasAuthority() && bIsSprinting)
+	{
+		// 최소 스태미너 보다 적을 경우 달리기 취소
+		if (DecreaseStamina(0.5f) < 5.0f)
+		{
+			bIsSprinting = false;
+			ApplySprinting(false);
+		}
+	}
 }
 
-void ASonheimPlayer::MultiCast_Sprint_Triggered_Implementation()
-{
-	DecreaseStamina(0.5f);
-}
 
 void ASonheimPlayer::ActivateGlider()
 {
@@ -1184,48 +1178,7 @@ void ASonheimPlayer::ActivateGlider()
 	if (bIsGliding || GetCharacterMovement()->IsMovingOnGround() || IsDie())
 		return;
 
-	Server_ActivateGlider();
-}
-
-void ASonheimPlayer::Server_ActivateGlider_Implementation()
-{
-	// 서버 측 검증
-	if (GetCharacterMovement()->IsMovingOnGround() || IsDie())
-		return;
-
-	MultiCast_ActivateGlider();
-}
-
-void ASonheimPlayer::MultiCast_ActivateGlider_Implementation()
-{
-	bIsGliding = true;
-
-	// 글라이더 메시 표시
-	GliderMeshComponent->SetVisibility(true);
-	// 무기 메시 감추기
-	GetWeaponMesh()->SetVisibility(false);
-
-	// 애니메이션 재생
-	if (GliderOpenMontage)
-	{
-		PlayAnimMontage(GliderOpenMontage);
-	}
-
-	// 상태 변경
-	SetPlayerState(EPlayerState::GLIDING);
-
-	// 무브먼트 컴포넌트 설정 변경
-	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-	MovementComp->SetMovementMode(MOVE_Falling);
-	MovementComp->GravityScale = 0.1f; // 중력 감소
-	MovementComp->AirControl = 1.0f; // 공중 제어 최대화
-	MovementComp->FallingLateralFriction = 2.0f; // 측면 마찰력 증가
-
-	// 애니메이션 설정
-	if (S_PlayerAnimInstance)
-	{
-		S_PlayerAnimInstance->bIsGliding = true;
-	}
+	Server_SetGliding(true);
 }
 
 void ASonheimPlayer::DeactivateGlider()
@@ -1233,7 +1186,7 @@ void ASonheimPlayer::DeactivateGlider()
 	if (!bIsGliding)
 		return;
 
-	Server_DeactivateGlider();
+	Server_SetGliding(false);
 }
 
 void ASonheimPlayer::Multicast_PlayWeaponMontage_Implementation(UAnimMontage* Montage)
@@ -1241,43 +1194,6 @@ void ASonheimPlayer::Multicast_PlayWeaponMontage_Implementation(UAnimMontage* Mo
 	if (Montage)
 	{
 		WeaponComponent->GetAnimInstance()->Montage_Play(Montage);
-	}
-}
-
-void ASonheimPlayer::Server_DeactivateGlider_Implementation()
-{
-	MultiCast_DeactivateGlider();
-}
-
-void ASonheimPlayer::MultiCast_DeactivateGlider_Implementation()
-{
-	bIsGliding = false;
-
-	// 글라이더 닫는 애니메이션 재생
-	if (GliderCloseMontage)
-	{
-		PlayAnimMontage(GliderCloseMontage);
-	}
-
-	// 애니메이션 이벤트로 메시를 숨기도록 설정하거나 여기서 타이머로 처리
-	GliderMeshComponent->SetVisibility(false);
-	// 무기 메시 활성화
-	GetWeaponMesh()->SetVisibility(true);
-
-	// 상태 초기화
-	SetPlayerState(EPlayerState::NORMAL);
-
-	// 무브먼트 컴포넌트 설정 복원
-	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-	MovementComp->SetMovementMode(MOVE_Falling);
-	MovementComp->GravityScale = 1.0f;
-	MovementComp->AirControl = 0.2f;
-	MovementComp->FallingLateralFriction = 0.0f;
-
-	// 애니메이션 설정
-	if (S_PlayerAnimInstance)
-	{
-		S_PlayerAnimInstance->bIsGliding = false;
 	}
 }
 
@@ -1322,6 +1238,92 @@ void ASonheimPlayer::Landed(const FHitResult& Hit)
 	{
 		DeactivateGlider();
 	}
+}
+
+void ASonheimPlayer::Server_SetGliding_Implementation(bool bNew)
+{
+	// 플레이어 상태 검증 - 글라이더 해제는 어느때나 가능함!
+	if (bNew && !CanPerformAction(CurrentPlayerState, "Action"))
+	{
+		return;
+	}
+	
+	// 서버 검증
+	if (bNew)
+	{
+		if (GetCharacterMovement()->IsMovingOnGround() || IsDie()) return;
+	}
+	bIsGliding = bNew;
+
+	ApplyGliderState(bIsGliding);
+}
+
+void ASonheimPlayer::ApplyGliderState(bool bNew)
+{
+	if (bNew)
+	{
+		if (GliderMeshComponent)
+		{
+			GliderMeshComponent->SetVisibility(true);
+		}
+
+		SetPlayerState(EPlayerState::GLIDING);
+	
+
+		// 무기 숨김
+		bWeaponVisible = false;
+		OnRep_WeaponVisible();
+
+		if (GliderOpenMontage)
+		{
+			PlayAnimMontage(GliderOpenMontage);
+		}
+
+		UCharacterMovementComponent* Move = GetCharacterMovement();
+		Move->SetMovementMode(MOVE_Falling);
+		Move->GravityScale = 0.1f;
+		Move->FallingLateralFriction = 2.0f;
+		Move->AirControl = 1.0f;
+		Move->Velocity = FVector(Move->Velocity.X, Move->Velocity.Y, -GliderFallSpeed);
+
+		if (S_PlayerAnimInstance)
+		{
+			S_PlayerAnimInstance->bIsGliding = true;
+		}
+	}
+	else
+	{
+		if (GliderCloseMontage)
+		{
+			PlayAnimMontage(GliderCloseMontage);
+		}
+
+		if (GliderMeshComponent)
+		{
+			GliderMeshComponent->SetVisibility(false);
+		}
+
+		SetPlayerState(EPlayerState::NORMAL);
+		
+		// 무기 보이기
+		bWeaponVisible = true;
+		OnRep_WeaponVisible();
+
+		UCharacterMovementComponent* Move = GetCharacterMovement();
+		Move->GravityScale = 1.0f;
+		Move->FallingLateralFriction = 0.0f;
+		Move->AirControl = 0.2f;
+
+		if (S_PlayerAnimInstance)
+		{
+			S_PlayerAnimInstance->bIsGliding = false;
+		}
+	}
+}
+
+void ASonheimPlayer::OnRep_IsGliding()
+{
+	ApplyGliderState(bIsGliding);
 }
 
 ABaseMonster* ASonheimPlayer::GetSummonedPal() const
@@ -1374,4 +1376,29 @@ void ASonheimPlayer::Interaction_Pressed() const
 void ASonheimPlayer::Interaction_Released() const
 {
 	InteractionComponent->StopHoldInteraction();
+}
+
+void ASonheimPlayer::SetWeaponVisible(bool bNew, bool bLocalPreview)
+{
+	// 1) 체감용 로컬 미리보기 (소유 클라만)
+	if (bLocalPreview && IsLocallyControlled())
+	{
+		if (USkeletalMeshComponent* weaponMesh = GetWeaponMesh())
+		{
+			weaponMesh->SetVisibility(bNew);
+		}
+	}
+
+	if (HasAuthority())
+	{
+		if (bWeaponVisible != bNew)
+		{
+			bWeaponVisible = bNew;
+			OnRep_WeaponVisible();
+		}
+	}
+	else
+	{
+		Server_SetWeaponVisible(bNew);
+	}
 }

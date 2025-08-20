@@ -85,13 +85,12 @@ private:
     
     UFUNCTION(Server, Reliable)
     void Server_CancelThrowPalSphere();
+    
+    void ApplyThrowingState(bool bThrowing);
 
     UFUNCTION(Server, Reliable)
     void Server_AttemptCapture(ABaseMonster* TargetPal);
 
     UFUNCTION(NetMulticast, Reliable)
     void MultiCast_OnCaptureResult(ABaseMonster* TargetPal, bool bSuccess);
-    
-    UFUNCTION(NetMulticast, Reliable)
-    void MultiCast_SetThrowingState(bool bThrowing);
 };
