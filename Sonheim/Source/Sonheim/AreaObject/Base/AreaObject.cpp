@@ -738,6 +738,20 @@ void AAreaObject::StopBGM()
 	m_GameMode->StopBGM();
 }
 
+float AAreaObject::GetCurrentSpeedRatio() const
+{
+	if (GetCharacterMovement())
+	{
+		const float MaxSpeed = GetCharacterMovement()->MaxWalkSpeed;
+		if (MaxSpeed > 0.f)
+		{
+			// 현재 속도를 최대 속도로 나누어 0~1 사이의 값으로 정규화
+			return GetVelocity().Size() / MaxSpeed;
+		}
+	}
+	return 0.0f;
+}
+
 void AAreaObject::MulticastDamageEffect_Implementation(float Damage, FVector HitLocation, AActor* DamageCauser,
                                                        bool bWeakPoint, float ElementDamageMultiplier,
                                                        const FAttackData& AttackData)

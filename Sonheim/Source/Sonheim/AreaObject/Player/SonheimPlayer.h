@@ -486,4 +486,10 @@ private:
 	void ApplyGliderState(bool bNew);
 	UFUNCTION(Server, Reliable)
 	void Server_SetGliding(bool bNew);
+
+	UPROPERTY(ReplicatedUsing=OnRep_CurrentWeaponType)
+	EWeaponType CurrentWeaponType = EWeaponType::None;
+
+	UFUNCTION()
+	void OnRep_CurrentWeaponType();
 };

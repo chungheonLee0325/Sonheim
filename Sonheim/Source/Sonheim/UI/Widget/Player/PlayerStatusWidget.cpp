@@ -4,12 +4,21 @@
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/Utilities/SonheimUtility.h"
 
 void UPlayerStatusWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		CachedPlayer = Cast<ASonheimPlayer>(PC->GetPawn());
+
+		NewPawnHandle = PC->GetOnNewPawnNotifier().AddUObject(
+			this, &UPlayerStatusWidget::HandleNewPawn);
+	}
 
 	PalSlots.Add(0, PalSlot0);
 	PalSlots.Add(1, PalSlot1);
@@ -27,6 +36,67 @@ void UPlayerStatusWidget::NativeConstruct()
 	{
 		bg.Value->SetVisibility(ESlateVisibility::Hidden);
 	}
+
+	if (CrossHair)
+	{
+		CrossHair->SetVisibility(ESlateVisibility::Visible);
+	}
+	if (ShotgunCrossHair)
+	{
+		ShotgunCrossHair->SetVisibility(ESlateVisibility::Hidden);
+	}
+}
+
+void UPlayerStatusWidget::NativeDestruct()
+{
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		if (NewPawnHandle.IsValid())
+		{
+			PC->GetOnNewPawnNotifier().Remove(NewPawnHandle);
+		}
+	}
+	Super::NativeDestruct();
+}
+
+void UPlayerStatusWidget::HandleNewPawn(APawn* NewPawn)
+{
+	CachedPlayer = Cast<ASonheimPlayer>(NewPawn);
+
+	CrosshairTargetScale = CrosshairScaleMin;
+	CrosshairCurrentScale = CrosshairScaleMin;
+}
+
+
+void UPlayerStatusWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+	
+	const bool bShotgunVisible = (ShotgunCrossHair && ShotgunCrossHair->GetVisibility() == ESlateVisibility::Visible);
+	UImage* ActiveCrosshair = bShotgunVisible ? ShotgunCrossHair : CrossHair;
+	if (!ActiveCrosshair) return;
+	
+	ASonheimPlayer* Player = GetPlayerFast();
+	if (!Player)
+	{
+		if (APlayerController* PC = GetOwningPlayer())
+		{
+			CachedPlayer = Cast<ASonheimPlayer>(PC->GetPawn());
+			Player = CachedPlayer.Get();
+		}
+	}
+	float SpeedRatio = 0.f;
+	if (Player)
+	{
+		SpeedRatio = Player->GetCurrentSpeedRatio();
+	}
+
+	const float t = FMath::Clamp(SpeedRatio, 0.f, 1.f);
+	CrosshairTargetScale = FMath::Lerp(CrosshairScaleMin, CrosshairScaleMax, t);
+
+	CrosshairCurrentScale = FMath::FInterpTo(CrosshairCurrentScale, CrosshairTargetScale, InDeltaTime,
+	                                         CrosshairInterpSpeed);
+	ActiveCrosshair->SetRenderScale(FVector2D(CrosshairCurrentScale, CrosshairCurrentScale));
 }
 
 void UPlayerStatusWidget::UpdateLevel(int32 OldLevel, int32 NewLevel, bool bLevelUp)
@@ -51,7 +121,6 @@ void UPlayerStatusWidget::UpdateExp(int32 CurrentExp, int32 MaxExp, int32 Delta)
 		StopAnimation(ExpTextCycle);
 		PlayAnimation(ExpTextCycle, 0.f, 1);
 	}
-		
 }
 
 void UPlayerStatusWidget::UpdateStamina(float CurrentStamina, float Delta, float MaxStamina)
@@ -69,9 +138,26 @@ void UPlayerStatusWidget::UpdateStamina(float CurrentStamina, float Delta, float
 
 void UPlayerStatusWidget::SetEnableCrossHair(bool IsActive)
 {
-	ESlateVisibility bShow = IsActive ? ESlateVisibility::Visible : ESlateVisibility::Hidden;
-	if (IsActive) PlayAnimation(ZoomInByLockOn);
-	CrossHair->SetVisibility(bShow);
+	if (IsActive)
+	{
+		CrossHair->SetRenderOpacity(1.f);
+		FSlateBrush Brush = ShotgunCrossHair->GetBrush();
+		Brush.OutlineSettings.Width = 3;
+		ShotgunCrossHair->SetBrush(Brush);
+		StopAnimation(ZoomInByLockOn);
+		StopAnimation(ZoomOutByLockOn);
+		PlayAnimation(ZoomInByLockOn);
+	}
+	else
+	{
+		CrossHair->SetRenderOpacity(0.f);
+		FSlateBrush Brush = ShotgunCrossHair->GetBrush();
+		Brush.OutlineSettings.Width = -1;
+		ShotgunCrossHair->SetBrush(Brush);
+		StopAnimation(ZoomInByLockOn);
+		StopAnimation(ZoomOutByLockOn);
+		PlayAnimation(ZoomOutByLockOn);
+	}
 }
 
 void UPlayerStatusWidget::AddOwnedPal(int MonsterID, int Index)
@@ -116,5 +202,32 @@ void UPlayerStatusWidget::OnItemAdded(int ItemID, int ItemCount)
 	FItemData* ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(ItemID);
 	if (ItemData && ItemCount != 0)
 	{
-		OnItemPopupDisplay(ItemData->ItemIcon, ItemData->ItemName, ItemCount, USonheimUtility::GetRarityColor(ItemData->ItemRarity));	}
+		OnItemPopupDisplay(ItemData->ItemIcon, ItemData->ItemName, ItemCount,
+		                   USonheimUtility::GetRarityColor(ItemData->ItemRarity));
+	}
+}
+
+void UPlayerStatusWidget::SetCrosshairType(EWeaponType WeaponType)
+{
+	const bool bIsShotgun = (WeaponType == EWeaponType::ShotGun);
+
+	if (CrossHair)
+	{
+		CrossHair->SetVisibility(bIsShotgun ? ESlateVisibility::Hidden : ESlateVisibility::Visible);
+	}
+	if (ShotgunCrossHair)
+	{
+		ShotgunCrossHair->SetVisibility(bIsShotgun ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+	}
+
+	// 타입 바뀌면 스케일 리셋
+	CrosshairTargetScale = CrosshairScaleMin;
+	CrosshairCurrentScale = CrosshairScaleMin;
+}
+
+void UPlayerStatusWidget::UpdateCrosshairScale(float ScaleRatio)
+{
+	const float t = FMath::Clamp(ScaleRatio, 0.f, 1.f);
+	const float mapped = FMath::Lerp(CrosshairScaleMin, CrosshairScaleMax, t);
+	CrosshairTargetScale = FMath::Clamp(mapped, CrosshairScaleMin, CrosshairScaleMax);
 }

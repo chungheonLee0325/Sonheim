@@ -272,4 +272,8 @@ public:
 	FAreaObjectData* dt_AreaObject;
 
 	float SprintSpeedRatio = 2.0f;
+
+	// 현재 이동 속도 비율을 반환 (0.0 ~ 1.0)
+	UFUNCTION(BlueprintPure, Category = "Movement")
+	float GetCurrentSpeedRatio() const;
 };

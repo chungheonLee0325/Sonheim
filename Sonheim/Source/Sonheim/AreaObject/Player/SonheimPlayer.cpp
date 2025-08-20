@@ -182,6 +182,7 @@ void ASonheimPlayer::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>&
 	DOREPLIFETIME(ASonheimPlayer, SelectedWeaponSlot);
 	DOREPLIFETIME(ASonheimPlayer, CurrentWeaponItemID);
 	DOREPLIFETIME(ASonheimPlayer, bWeaponVisible);
+	DOREPLIFETIME_CONDITION(ASonheimPlayer, CurrentWeaponType, COND_OwnerOnly);
 }
 
 void ASonheimPlayer::InitPlayer()
@@ -338,6 +339,9 @@ void ASonheimPlayer::UpdateWeaponMesh(int ItemID)
 			S_PlayerAnimInstance->bIsMelee = (ItemData->EquipmentData.WeaponType == EWeaponType::Melee);
 			S_PlayerAnimInstance->bIsShotgun = (ItemData->EquipmentData.WeaponType == EWeaponType::ShotGun);
 		}
+		
+		CurrentWeaponType = ItemData->EquipmentData.WeaponType;
+		OnRep_CurrentWeaponType();
 	}
 }
 
@@ -350,6 +354,9 @@ void ASonheimPlayer::ClearWeaponMesh()
 		S_PlayerAnimInstance->bIsMelee = false;
 		S_PlayerAnimInstance->bIsShotgun = false;
 	}
+
+	CurrentWeaponType = EWeaponType::None;
+	OnRep_CurrentWeaponType();
 }
 
 void ASonheimPlayer::Server_SetWeaponVisible_Implementation(bool bNew)
@@ -416,6 +423,17 @@ void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventory
 		if (CommonAttack)
 		{
 			m_SkillInstanceMap.Add(CommonAttack->GetSkillID(), CommonAttack);
+		}
+	}
+}
+
+void ASonheimPlayer::OnRep_CurrentWeaponType()
+{
+	if (IsLocallyControlled() && S_PlayerController)
+	{
+		if (UPlayerStatusWidget* StatusWidget = S_PlayerController->GetPlayerStatusWidget())
+		{
+			StatusWidget->SetCrosshairType(CurrentWeaponType);
 		}
 	}
 }
@@ -817,12 +835,6 @@ void ASonheimPlayer::RightMouse_Pressed()
 
 	Server_SetLockOn(true);
 
-	// 록온 모드
-	if (S_PlayerController && S_PlayerController->GetPlayerStatusWidget())
-	{
-		S_PlayerController->GetPlayerStatusWidget()->SetEnableCrossHair(true);
-	}
-
 	// 카메라 회전
 	LookAtLocation(GetActorLocation() + GetFollowCamera()->GetForwardVector(), EPMRotationMode::Speed, 600);
 
@@ -849,12 +861,6 @@ void ASonheimPlayer::RightMouse_Pressed()
 void ASonheimPlayer::RightMouse_Released()
 {
 	Server_SetLockOn(false);
-
-	// 로컬 플레이어만 수행하는 UI 처리
-	if (S_PlayerController && S_PlayerController->GetPlayerStatusWidget())
-	{
-		S_PlayerController->GetPlayerStatusWidget()->SetEnableCrossHair(false);
-	}
 
 	// 로컬 플레이어만 수행하는 카메라 처리
 	GetWorld()->GetTimerManager().ClearTimer(LockOnCameraTimerHandle);
@@ -1247,7 +1253,7 @@ void ASonheimPlayer::Server_SetGliding_Implementation(bool bNew)
 	{
 		return;
 	}
-	
+
 	// 서버 검증
 	if (bNew)
 	{
@@ -1268,7 +1274,7 @@ void ASonheimPlayer::ApplyGliderState(bool bNew)
 		}
 
 		SetPlayerState(EPlayerState::GLIDING);
-	
+
 
 		// 무기 숨김
 		bWeaponVisible = false;
@@ -1304,7 +1310,7 @@ void ASonheimPlayer::ApplyGliderState(bool bNew)
 		}
 
 		SetPlayerState(EPlayerState::NORMAL);
-		
+
 		// 무기 보이기
 		bWeaponVisible = true;
 		OnRep_WeaponVisible();

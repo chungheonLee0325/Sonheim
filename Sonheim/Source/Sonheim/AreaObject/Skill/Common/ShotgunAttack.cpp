@@ -234,7 +234,9 @@ float UShotgunAttack::CalculateDamageWithFalloff(float BaseDamage, float Distanc
 FVector UShotgunAttack::CalculatePelletDirection(const FVector& BaseDirection) const
 {
     // 원뿔 내에서 랜덤 방향 벡터 생성
-    return UKismetMathLibrary::RandomUnitVectorInConeInDegrees(BaseDirection, SpreadAngle);
+    // 이동속도를 반영하여 탄퍼짐 적용
+    float MovementRecoil = m_Caster->GetCurrentSpeedRatio();
+    return UKismetMathLibrary::RandomUnitVectorInConeInDegrees(BaseDirection, SpreadAngle * (MovementRecoil + 1.f));
 }
 
 FVector UShotgunAttack::GetFireStartLocation() const

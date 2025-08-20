@@ -17,6 +17,9 @@ class SONHEIM_API UPlayerStatusWidget : public UBaseStatusWidget
 
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
+
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 public:
 	UFUNCTION()
@@ -44,6 +47,14 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnItemPopupDisplay(UTexture2D* ItemIcon,const FText& ItemName, int ItemCount, FLinearColor ItemRarityColor);
 
+	// 무기 타입에 따라 크로스헤어 종류 변경
+	UFUNCTION(BlueprintCallable, Category = "Crosshair")
+	void SetCrosshairType(EWeaponType WeaponType);
+
+	// 이동 속도에 따라 크로스헤어 스케일 업데이트
+	UFUNCTION(BlueprintCallable, Category = "Crosshair")
+	void UpdateCrosshairScale(float ScaleRatio);
+	
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* StaminaBar;
@@ -62,6 +73,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	class UImage* CrossHair;
+
+	UPROPERTY(meta = (BindWidget))
+	class UImage* ShotgunCrossHair;
 
 	UPROPERTY(Transient, meta = (BindWidgetAnim))
 	UWidgetAnimation* ZoomInByLockOn;
@@ -93,11 +107,27 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	class UImage* SelectBG4;
 
+	UPROPERTY(EditAnywhere, Category="Crosshair|Scale")
+	float CrosshairScaleMin = 1.0f;
+	UPROPERTY(EditAnywhere, Category="Crosshair|Scale")
+	float CrosshairScaleMax = 1.5f;
+	UPROPERTY(EditAnywhere, Category="Crosshair|Scale")
+	float CrosshairInterpSpeed = 10.0f;
+
 private:
 	int Level = 0;
+
+	TWeakObjectPtr<class ASonheimPlayer> CachedPlayer;
+	FDelegateHandle NewPawnHandle;
+
+	void HandleNewPawn(class APawn* NewPawn);
+	FORCEINLINE class ASonheimPlayer* GetPlayerFast() const { return CachedPlayer.Get(); }
 
 	UPROPERTY()
 	TMap<int,UImage*> PalSlots;
 	UPROPERTY()
 	TMap<int,UImage*> SelectBGs;
+
+	float CrosshairTargetScale = 1.0f;
+	float CrosshairCurrentScale = 1.0f;
 };
