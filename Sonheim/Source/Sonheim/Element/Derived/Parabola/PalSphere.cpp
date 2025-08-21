@@ -124,7 +124,7 @@ void APalSphere::OnComponentHit(UPrimitiveComponent* HitComponent, AActor* Other
 
 void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
 {
-	if (!Caster || !Target)
+	if (!Caster || !Target || Target->IsDead)
 		return;
 
 	// PalCaptureComponent를 통해 포획 시도

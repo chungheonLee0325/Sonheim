@@ -159,7 +159,7 @@ void UPalCaptureComponent::ApplyThrowingState(bool bThrowing)
 
 void UPalCaptureComponent::AttemptCapture(ABaseMonster* TargetPal)
 {
-	if (!TargetPal || !OwnerPlayer || !TargetPal->IsDead)
+	if (!TargetPal || !OwnerPlayer)
 		return;
 
 	// 이미 소유된 Pal인지 확인
