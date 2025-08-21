@@ -42,6 +42,8 @@ public:
 	// 복제 속성 설정
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	UFUNCTION(BlueprintCallable, Category = "AreaObject")
+	FAreaObjectData GetAreaObjectData() const {return *dt_AreaObject; };
 protected:
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
