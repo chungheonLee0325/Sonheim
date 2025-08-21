@@ -101,7 +101,7 @@ void UInteractionComponent::PerformDetection()
 	// 2. 긴 거리 Single Trace로 몬스터 HP바 표시 (2000 유닛)
 	FVector MonsterTraceEnd = CameraLocation + (CameraForward * DetectionRange);
 	FHitResult MonsterHit;
-	
+
 	bool bHit = GetWorld()->LineTraceSingleByChannel(
 		MonsterHit,
 		CameraLocation,
@@ -131,13 +131,13 @@ void UInteractionComponent::PerformDetection()
 	if (OwnerPlayer->bShowDebug)
 	{
 		// 상호작용 범위 (파란색)
-		DrawDebugLine(GetWorld(), CameraLocation, InteractionTraceEnd, 
-			BestInteractable ? FColor::Blue : FColor::Cyan, false, DetectionInterval);
-		
+		DrawDebugLine(GetWorld(), CameraLocation, InteractionTraceEnd,
+		              BestInteractable ? FColor::Blue : FColor::Cyan, false, DetectionInterval);
+
 		// 몬스터 감지 범위 (빨간색/초록색)
-		DrawDebugLine(GetWorld(), InteractionTraceEnd, MonsterTraceEnd, 
-			bHit ? FColor::Red : FColor::Green, false, DetectionInterval);
-			
+		DrawDebugLine(GetWorld(), InteractionTraceEnd, MonsterTraceEnd,
+		              bHit ? FColor::Red : FColor::Green, false, DetectionInterval);
+
 		// 상호작용 가능 대상들 표시
 		for (const FHitResult& Hit : InteractionHits)
 		{
@@ -175,7 +175,7 @@ void UInteractionComponent::ShowMonsterHPBar(class ABaseMonster* Monster)
 	// 새 타이머 설정
 	FTimerHandle NewTimer;
 	FTimerDelegate TimerDel;
-	TimerDel.BindLambda([this, Monster]() 
+	TimerDel.BindLambda([this, Monster]()
 	{
 		if (IsValid(Monster))
 		{
@@ -186,7 +186,7 @@ void UInteractionComponent::ShowMonsterHPBar(class ABaseMonster* Monster)
 			DisplayedMonsters.Remove(Monster);
 		}
 	});
-	
+
 	GetWorld()->GetTimerManager().SetTimer(NewTimer, TimerDel, HPBarDisplayDuration, false);
 	DisplayedMonsters.Add(Monster, NewTimer);
 }
@@ -207,7 +207,8 @@ void UInteractionComponent::UpdateInteractable(AActor* NewTarget, float Distance
 	if (NewTarget != CurrentInteractable)
 	{
 		// 이전 대상 처리
-		if (CurrentInteractable && CurrentInteractable->GetClass()->ImplementsInterface(UInteractableInterface::StaticClass()))
+		if (CurrentInteractable && CurrentInteractable->GetClass()->ImplementsInterface(
+			UInteractableInterface::StaticClass()))
 		{
 			IInteractableInterface::Execute_OnDetected(CurrentInteractable, false);
 		}
@@ -216,7 +217,8 @@ void UInteractionComponent::UpdateInteractable(AActor* NewTarget, float Distance
 		CurrentInteractable = NewTarget;
 
 		// 새 대상 처리
-		if (CurrentInteractable && CurrentInteractable->GetClass()->ImplementsInterface(UInteractableInterface::StaticClass()))
+		if (CurrentInteractable && CurrentInteractable->GetClass()->ImplementsInterface(
+			UInteractableInterface::StaticClass()))
 		{
 			IInteractableInterface::Execute_OnDetected(CurrentInteractable, true);
 		}
@@ -233,14 +235,14 @@ void UInteractionComponent::ClearAllTimers()
 	{
 		GetWorld()->GetTimerManager().ClearTimer(DetectionTimerHandle);
 		GetWorld()->GetTimerManager().ClearTimer(HoldTimerHandle);
-		
+
 		// 모든 몬스터 HP바 타이머 정리
 		for (auto& Pair : DisplayedMonsters)
 		{
 			GetWorld()->GetTimerManager().ClearTimer(Pair.Value);
 		}
 	}
-	
+
 	DisplayedMonsters.Empty();
 }
 
@@ -252,13 +254,13 @@ void UInteractionComponent::TryInteract()
 		Server_TryInteract(CurrentInteractable);
 		return;
 	}
-	
+
 	if (!CurrentInteractable || !IInteractableInterface::Execute_CanInteract(CurrentInteractable))
 		return;
 
 	// 상호작용 실행
 	IInteractableInterface::Execute_Interact(CurrentInteractable, OwnerPlayer);
-	
+
 	// 아이템은 상호작용 후 사라질 수 있으므로 확인
 	if (!IsValid(CurrentInteractable))
 	{
@@ -269,7 +271,7 @@ void UInteractionComponent::TryInteract()
 void UInteractionComponent::Server_TryInteract_Implementation(AActor* Interactor)
 {
 	CurrentInteractable = Interactor;
-	
+
 	TryInteract();
 }
 
@@ -301,7 +303,7 @@ void UInteractionComponent::StartHoldInteraction()
 		}
 
 		HoldProgress = FMath::Min(HoldProgress + (0.01f / HoldDuration), 1.0f);
-		
+
 		// 진행률 업데이트 
 		if (ABaseItem* Item = Cast<ABaseItem>(CurrentInteractable))
 		{
@@ -331,4 +333,9 @@ void UInteractionComponent::StopHoldInteraction()
 			Item->UpdateHoldProgress(0.0f);
 		}
 	}
+}
+
+void UInteractionComponent::RequestDetectionUpdate()
+{
+	OnMonsterDetected.Broadcast(CurrentDetectedMonster);
 }

@@ -25,6 +25,7 @@ struct FCaptureUIInfo
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPalCaptured, ABaseMonster*, CapturedPal, bool, bSuccess);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnThrowPalSphere);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCaptureUIDataUpdated, const FCaptureUIInfo&, UIData);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnThrowingStateChanged, bool, bIsPreparing);
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class SONHEIM_API UPalCaptureComponent : public UActorComponent
@@ -67,6 +68,9 @@ public:
 
     UPROPERTY(BlueprintAssignable, Category = "UI")
     FOnCaptureUIDataUpdated OnCaptureUIDataUpdated;
+
+    UPROPERTY(BlueprintAssignable, Category = "State")
+    FOnThrowingStateChanged OnThrowingStateChanged;
     
     UPROPERTY(EditDefaultsOnly, Category = "Pal Capture")
     int32 PalSphereSkillID = 15;

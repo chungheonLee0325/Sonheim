@@ -427,6 +427,7 @@ void ASonheimPlayerController::On_Mouse_Right_Pressed(const FInputActionValue& I
 		m_Player->ThrowPalSphere_Canceled();
 		GetPlayerStatusWidget()->SetEnableCrossHair(false);
 		GetPlayerStatusWidget()->SetEnableKeyGuide(false, EUIKeyGuide::None);
+		m_Player->SetWeaponVisible(true,true);
 		m_Player->RightMouse_Released();
 		return;;
 	}

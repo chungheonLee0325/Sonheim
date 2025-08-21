@@ -70,6 +70,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Interaction")
 	AActor* GetCurrentInteractable() const { return CurrentInteractable; }
 
+	// 외부에서 감지 정보 갱신을 요청용 메서드
+	UFUNCTION(BlueprintCallable, Category = "Detection")
+	void RequestDetectionUpdate();
 private:
 	// 소유 플레이어
 	UPROPERTY()

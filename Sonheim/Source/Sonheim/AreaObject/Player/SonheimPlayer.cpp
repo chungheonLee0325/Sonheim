@@ -146,6 +146,11 @@ void ASonheimPlayer::BeginPlay()
 		// 가장 가까운 상호작용 가능 타겟 변경 시
 		InteractionComponent->OnInteractableChanged.AddDynamic(this, &ASonheimPlayer::OnInteractableChanged);
 	}
+
+	if (PalCaptureComponent && IsLocallyControlled())
+	{
+		PalCaptureComponent->OnThrowingStateChanged.AddDynamic(this, &ASonheimPlayer::HandlePalThrowingStateChanged);
+	}
 }
 
 void ASonheimPlayer::PossessedBy(AController* NewController)
@@ -1427,4 +1432,35 @@ void ASonheimPlayer::SetWeaponVisible(bool bNew, bool bLocalPreview)
 	{
 		Server_SetWeaponVisible(bNew);
 	}
+}
+
+void ASonheimPlayer::HandlePalThrowingStateChanged(bool bIsPreparing)
+{
+	if (InteractionComponent)
+	{
+		InteractionComponent->RequestDetectionUpdate();
+	}
+
+	// 로컬 플레이어의 UI만 변경
+	if (IsLocallyControlled())
+	{
+		ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetController());
+		if (PC)
+		{
+			UPlayerStatusWidget* StatusWidget = PC->GetPlayerStatusWidget();
+			if (StatusWidget)
+			{
+				if (bIsPreparing)
+				{
+					// PalSphere를 들었을 때는 무조건 일반 크로스헤어로 변경
+					StatusWidget->SetCrosshairType(EWeaponType::None); 
+				}
+				else
+				{
+					// PalSphere를 내렸을 때는 현재 장착한 무기 타입의 크로스헤어로 복원
+					StatusWidget->SetCrosshairType(CurrentWeaponType);
+				}
+			}
+		}
+	}	
 }

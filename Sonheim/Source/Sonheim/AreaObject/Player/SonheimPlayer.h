@@ -500,4 +500,7 @@ private:
 
 	UFUNCTION()
 	void OnRep_CurrentWeaponType();
+	
+	UFUNCTION()
+	void HandlePalThrowingStateChanged(bool bIsPreparing);
 };

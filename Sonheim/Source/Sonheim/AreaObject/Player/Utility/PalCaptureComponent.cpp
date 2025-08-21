@@ -142,6 +142,8 @@ void UPalCaptureComponent::ApplyThrowingState(bool bThrowing)
 		OwnerPlayer->SetWeaponVisible(!bThrowing);
 	}
 
+	OnThrowingStateChanged.Broadcast(bThrowing);
+	
 	// 조준 UI: 로컬 전용
 	if (OwnerPlayer->IsLocallyControlled())
 	{
