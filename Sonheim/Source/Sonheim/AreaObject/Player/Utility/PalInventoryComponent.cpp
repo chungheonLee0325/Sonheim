@@ -167,6 +167,9 @@ void UPalInventoryComponent::SwitchPalSlot(int32 Direction)
 
 void UPalInventoryComponent::ServerRPC_SwitchPalSlot_Implementation(int32 Direction)
 {
+	// 클라예측
+	ClientRPC_SwitchPalSlot(Direction);
+	
 	if (GetOwnerRole() != ROLE_Authority || OwnedPals.Num() == 0)
 	{
 		return;

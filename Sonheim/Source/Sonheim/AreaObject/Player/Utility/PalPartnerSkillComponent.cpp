@@ -108,6 +108,9 @@ void UPalPartnerSkillComponent::MultiCast_PlaySummonAnimation_Implementation()
     if (!OwnerPlayer || !SummonPalMontage)
         return;
 
+    // 무기 메시 숨기기
+    OwnerPlayer->SetWeaponVisible(false);
+
     // PalSphere 메시 표시
     if (OwnerPlayer->GetPalSphereComponent())
     {
@@ -126,6 +129,14 @@ void UPalPartnerSkillComponent::MultiCast_PlaySummonAnimation_Implementation()
             if (OwnerPlayer && OwnerPlayer->GetPalSphereComponent())
             {
                 OwnerPlayer->GetPalSphereComponent()->SetVisibility(false);
+            }
+
+            // 상황에 맞게 무기 복구
+            if (OwnerPlayer)
+            {
+                const bool bShouldShow =
+                    !bUsingPartnerSkill && !OwnerPlayer->IsGliding();
+                OwnerPlayer->SetWeaponVisible(bShouldShow);
             }
             
             // 서버에서만 실제 소환/해제 처리
@@ -238,6 +249,9 @@ void UPalPartnerSkillComponent::SetPartnerSkillState(bool bIsUsing)
         {
             OwnerPlayer->RightMouse_Released();
         }
+
+        const bool bShouldShow = !bIsUsing && !OwnerPlayer->IsGliding();
+        OwnerPlayer->SetWeaponVisible(bShouldShow);
     }
     
     OnPartnerSkillStateChanged.Broadcast(bIsUsing);
@@ -314,5 +328,13 @@ void UPalPartnerSkillComponent::OnRep_SummonedPal()
 
 void UPalPartnerSkillComponent::OnRep_UsingPartnerSkill()
 {
-    //MultiCast_SetPartnerSkillState(bUsingPartnerSkill);
+    if (!OwnerPlayer) return;
+
+    if (UPlayerAnimInstance* AnimInst = Cast<UPlayerAnimInstance>(OwnerPlayer->GetMesh()->GetAnimInstance()))
+    {
+        AnimInst->bUsingPartnerSkill = bUsingPartnerSkill;
+    }
+
+    const bool bShouldShow = !bUsingPartnerSkill && !OwnerPlayer->IsGliding();
+    OwnerPlayer->SetWeaponVisible(bShouldShow);
 }

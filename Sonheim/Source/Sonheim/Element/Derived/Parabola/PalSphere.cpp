@@ -100,7 +100,7 @@ void APalSphere::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor
                                 const FHitResult& SweepResult)
 {
 	ABaseMonster* pal = Cast<ABaseMonster>(OtherActor);
-	if (m_Caster == OtherActor || !bCanHit || pal == nullptr || !pal->CanAttack(m_Caster))
+	if (m_Caster == OtherActor || !bCanHit || pal == nullptr || !pal->CanAttack(m_Caster) || pal->IsDie())
 	{
 		return;
 	}
@@ -124,7 +124,7 @@ void APalSphere::OnComponentHit(UPrimitiveComponent* HitComponent, AActor* Other
 
 void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
 {
-	if (!Caster || !Target || Target->IsDead)
+	if (!Caster || !Target)
 		return;
 
 	// PalCaptureComponent를 통해 포획 시도
