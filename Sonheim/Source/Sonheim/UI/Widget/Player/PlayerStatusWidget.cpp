@@ -141,9 +141,8 @@ void UPlayerStatusWidget::SetEnableCrossHair(bool IsActive)
 	if (IsActive)
 	{
 		CrossHair->SetRenderOpacity(1.f);
-		FSlateBrush Brush = ShotgunCrossHair->GetBrush();
-		Brush.OutlineSettings.Width = 3;
-		ShotgunCrossHair->SetBrush(Brush);
+		ShotgunCrossHair->SetRenderOpacity(1.f);
+
 		StopAnimation(ZoomInByLockOn);
 		StopAnimation(ZoomOutByLockOn);
 		PlayAnimation(ZoomInByLockOn);
@@ -151,9 +150,8 @@ void UPlayerStatusWidget::SetEnableCrossHair(bool IsActive)
 	else
 	{
 		CrossHair->SetRenderOpacity(0.f);
-		FSlateBrush Brush = ShotgunCrossHair->GetBrush();
-		Brush.OutlineSettings.Width = -1;
-		ShotgunCrossHair->SetBrush(Brush);
+		ShotgunCrossHair->SetRenderOpacity(0.f);
+
 		StopAnimation(ZoomInByLockOn);
 		StopAnimation(ZoomOutByLockOn);
 		PlayAnimation(ZoomOutByLockOn);
