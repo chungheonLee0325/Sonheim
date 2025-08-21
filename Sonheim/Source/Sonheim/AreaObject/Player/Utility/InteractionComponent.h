@@ -7,6 +7,7 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractableChanged, AActor*, NewInteractable);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAutoPickupDetected, AActor*, AutoPickupItem);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMonsterDetected, ABaseMonster*, DetectedMonster);
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class SONHEIM_API UInteractionComponent : public UActorComponent
@@ -46,6 +47,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Interaction")
 	FOnInteractableChanged OnInteractableChanged;
 
+	// 몬스터 감지 델리게이트
+	UPROPERTY(BlueprintAssignable, Category = "Detection")
+	FOnMonsterDetected OnMonsterDetected;
+
 	// 상호작용 실행
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
 	void TryInteract();
@@ -74,6 +79,10 @@ private:
 	UPROPERTY()
 	AActor* CurrentInteractable = nullptr;
 
+	// 현재 감지된 몬스터
+	UPROPERTY()
+	ABaseMonster* CurrentDetectedMonster = nullptr;
+
 	// 타이머 핸들
 	FTimerHandle DetectionTimerHandle;
 	FTimerHandle HoldTimerHandle;
@@ -92,6 +101,9 @@ private:
 
 	// 상호작용 대상 업데이트
 	void UpdateInteractable(AActor* NewTarget, float Distance);
+
+	// 감지된 몬스터 업데이트
+	void UpdateDetectedMonster(ABaseMonster* NewMonster);
 
 	// 모든 타이머 정리
 	void ClearAllTimers();

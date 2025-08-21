@@ -9,8 +9,22 @@ class ABaseMonster;
 class ASonheimPlayer;
 class UPalInventoryComponent;
 
+// 포획 UI 정보 전달을 위한 구조체
+USTRUCT(BlueprintType)
+struct FCaptureUIInfo
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    ABaseMonster* TargetMonster = nullptr;
+
+    UPROPERTY(BlueprintReadOnly)
+    float CaptureRate = 0.0f;
+};
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPalCaptured, ABaseMonster*, CapturedPal, bool, bSuccess);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnThrowPalSphere);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCaptureUIDataUpdated, const FCaptureUIInfo&, UIData);
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class SONHEIM_API UPalCaptureComponent : public UActorComponent
@@ -51,6 +65,9 @@ public:
     UPROPERTY(BlueprintAssignable)
     FOnThrowPalSphere OnThrowPalSphere;
 
+    UPROPERTY(BlueprintAssignable, Category = "UI")
+    FOnCaptureUIDataUpdated OnCaptureUIDataUpdated;
+
     // 포획 관련 설정
     UPROPERTY(EditDefaultsOnly, Category = "Pal Capture")
     float BaseCaptureProbability = 0.5f;
@@ -67,6 +84,9 @@ protected:
     UFUNCTION()
     void OnRep_IsThrowingPalSphere();
 
+    UFUNCTION()
+    void OnMonsterDetected(ABaseMonster* DetectedMonster);
+    
 private:
     UPROPERTY()
     ASonheimPlayer* OwnerPlayer;

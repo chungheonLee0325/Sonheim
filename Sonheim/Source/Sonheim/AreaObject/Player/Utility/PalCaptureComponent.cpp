@@ -47,6 +47,16 @@ void UPalCaptureComponent::BeginPlay()
 		ASonheimPlayerState* PlayerState = Cast<ASonheimPlayerState>(OwnerPlayer->GetPlayerState());
 		PalInventory = PlayerState->FindComponentByClass<UPalInventoryComponent>();
 	}
+
+	// 로컬 플레이어일 경우에만 델리게이트 바인딩
+	if (OwnerPlayer->IsLocallyControlled())
+	{
+		UInteractionComponent* InteractionComp = OwnerPlayer->FindComponentByClass<UInteractionComponent>();
+		if (InteractionComp)
+		{
+			InteractionComp->OnMonsterDetected.AddDynamic(this, &UPalCaptureComponent::OnMonsterDetected);
+		}
+	}
 }
 
 void UPalCaptureComponent::StartThrowPalSphere()
@@ -69,6 +79,8 @@ void UPalCaptureComponent::ThrowPalSphere()
 		return;
 
 	Server_ThrowPalSphere();
+
+	OnMonsterDetected(nullptr);
 }
 
 void UPalCaptureComponent::Server_ThrowPalSphere_Implementation()
@@ -94,6 +106,8 @@ void UPalCaptureComponent::CancelThrowPalSphere()
 {
 	if (!bIsThrowingPalSphere)
 		return;
+
+	OnMonsterDetected(nullptr);
 
 	Server_CancelThrowPalSphere();
 }
@@ -235,4 +249,25 @@ void UPalCaptureComponent::OnRep_IsThrowingPalSphere()
 {
 	// 클라이언트에서 상태 동기화
 	ApplyThrowingState(bIsThrowingPalSphere);
+}
+
+void UPalCaptureComponent::OnMonsterDetected(ABaseMonster* DetectedMonster)
+{
+	FCaptureUIInfo UIData;
+    
+	// 팰스피어를 던지는 중이고, 몬스터가 감지되었다면
+	if (bIsThrowingPalSphere && DetectedMonster)
+	{
+		UIData.TargetMonster = DetectedMonster;
+		UIData.CaptureRate = CalculateCaptureRate(DetectedMonster);
+	}
+	else
+	{
+		// 그 외의 경우 (몬스터가 없거나, 팰스피어를 던지는 중이 아님) UI를 끄기 위해 nullptr로 데이터 전송
+		UIData.TargetMonster = nullptr;
+		UIData.CaptureRate = 0.0f;
+	}
+
+	// UI 갱신 델리게이트 호출
+	OnCaptureUIDataUpdated.Broadcast(UIData);
 }

@@ -5,6 +5,7 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/Utility/PalCaptureComponent.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/Utilities/SonheimUtility.h"
 
@@ -15,6 +16,15 @@ void UPlayerStatusWidget::NativeConstruct()
 	if (APlayerController* PC = GetOwningPlayer())
 	{
 		CachedPlayer = Cast<ASonheimPlayer>(PC->GetPawn());
+		if (CachedPlayer.IsValid())
+		{
+			UPalCaptureComponent* CaptureComp = CachedPlayer->FindComponentByClass<UPalCaptureComponent>();
+			if (CaptureComp)
+			{
+				// 델리게이트 바인딩
+				CaptureComp->OnCaptureUIDataUpdated.AddDynamic(this, &UPlayerStatusWidget::UpdateCaptureUI);
+			}
+		}
 
 		NewPawnHandle = PC->GetOnNewPawnNotifier().AddUObject(
 			this, &UPlayerStatusWidget::HandleNewPawn);
@@ -49,6 +59,15 @@ void UPlayerStatusWidget::NativeConstruct()
 
 void UPlayerStatusWidget::NativeDestruct()
 {
+	if (CachedPlayer.IsValid())
+	{
+		UPalCaptureComponent* CaptureComp = CachedPlayer->FindComponentByClass<UPalCaptureComponent>();
+		if (CaptureComp)
+		{
+			CaptureComp->OnCaptureUIDataUpdated.RemoveDynamic(this, &UPlayerStatusWidget::UpdateCaptureUI);
+		}
+	}
+	
 	if (APlayerController* PC = GetOwningPlayer())
 	{
 		if (NewPawnHandle.IsValid())
@@ -61,7 +80,27 @@ void UPlayerStatusWidget::NativeDestruct()
 
 void UPlayerStatusWidget::HandleNewPawn(APawn* NewPawn)
 {
+	// 이전 Pawn의 델리게이트 해제
+	if (CachedPlayer.IsValid())
+	{
+		UPalCaptureComponent* OldCaptureComp = CachedPlayer->FindComponentByClass<UPalCaptureComponent>();
+		if (OldCaptureComp)
+		{
+			OldCaptureComp->OnCaptureUIDataUpdated.RemoveDynamic(this, &UPlayerStatusWidget::UpdateCaptureUI);
+		}
+	}
+
 	CachedPlayer = Cast<ASonheimPlayer>(NewPawn);
+    
+	// 새 Pawn의 델리게이트 바인딩
+	if (CachedPlayer.IsValid())
+	{
+		UPalCaptureComponent* NewCaptureComp = CachedPlayer->FindComponentByClass<UPalCaptureComponent>();
+		if (NewCaptureComp)
+		{
+			NewCaptureComp->OnCaptureUIDataUpdated.AddDynamic(this, &UPlayerStatusWidget::UpdateCaptureUI);
+		}
+	}
 
 	CrosshairTargetScale = CrosshairScaleMin;
 	CrosshairCurrentScale = CrosshairScaleMin;

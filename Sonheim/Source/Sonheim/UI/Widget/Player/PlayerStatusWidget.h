@@ -47,6 +47,10 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnItemPopupDisplay(UTexture2D* ItemIcon,const FText& ItemName, int ItemCount, FLinearColor ItemRarityColor);
 
+	// 포획 UI를 업데이트하는 함수.
+	UFUNCTION(BlueprintImplementableEvent, Category = "Capture")
+	void UpdateCaptureUI(const FCaptureUIInfo& UIData);
+	
 	// 무기 타입에 따라 크로스헤어 종류 변경
 	UFUNCTION(BlueprintCallable, Category = "Crosshair")
 	void SetCrosshairType(EWeaponType WeaponType);

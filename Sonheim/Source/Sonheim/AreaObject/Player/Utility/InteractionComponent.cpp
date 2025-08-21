@@ -1,4 +1,6 @@
 #include "InteractionComponent.h"
+
+#include "PalCaptureComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/World.h"
@@ -108,6 +110,7 @@ void UInteractionComponent::PerformDetection()
 		QueryParams
 	);
 
+	ABaseMonster* DetectedMonster = nullptr;
 	if (bHit && MonsterHit.GetActor())
 	{
 		// 몬스터 체크
@@ -115,10 +118,14 @@ void UInteractionComponent::PerformDetection()
 		{
 			if (!Monster->IsDie() && !Monster->PartnerOwner)
 			{
+				DetectedMonster = Monster;
 				ShowMonsterHPBar(Monster);
 			}
 		}
 	}
+
+	// 감지된 몬스터 업데이트 및 델리게이트 호출
+	UpdateDetectedMonster(DetectedMonster);
 
 	// 디버그 드로잉
 	if (OwnerPlayer->bShowDebug)
@@ -139,6 +146,16 @@ void UInteractionComponent::PerformDetection()
 				DrawDebugSphere(GetWorld(), Hit.Location, 20.0f, 12, FColor::Yellow, false, DetectionInterval);
 			}
 		}
+	}
+}
+
+void UInteractionComponent::UpdateDetectedMonster(ABaseMonster* NewMonster)
+{
+	if (CurrentDetectedMonster != NewMonster)
+	{
+		CurrentDetectedMonster = NewMonster;
+		// 델리게이트 호출 (몬스터가 있든 없든(nullptr) 변경되면 항상 호출)
+		OnMonsterDetected.Broadcast(CurrentDetectedMonster);
 	}
 }
 
