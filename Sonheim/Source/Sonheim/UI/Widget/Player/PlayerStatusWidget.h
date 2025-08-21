@@ -10,6 +10,14 @@ class UProgressBar;
 class UTextBlock;
 class UImage;
 
+UENUM(BlueprintType)
+enum class EUIKeyGuide : uint8
+{
+	None UMETA(DisplayName = "None"), 
+	LButton UMETA(DisplayName = "LButton"),
+	RButton UMETA(DisplayName = "RButton"),
+};
+
 UCLASS()
 class SONHEIM_API UPlayerStatusWidget : public UBaseStatusWidget
 {
@@ -33,6 +41,9 @@ public:
 
 	UFUNCTION()
 	void SetEnableCrossHair(bool IsActive);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Key Guide")
+	void SetEnableKeyGuide(bool IsActive, EUIKeyGuide UIKeyGuide, const FString& ShowText = "");
 
 	UFUNCTION()
 	void AddOwnedPal(int MonsterID, int Index);

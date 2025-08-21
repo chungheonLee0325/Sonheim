@@ -426,7 +426,8 @@ void ASonheimPlayerController::On_Mouse_Right_Pressed(const FInputActionValue& I
 	{
 		m_Player->ThrowPalSphere_Canceled();
 		GetPlayerStatusWidget()->SetEnableCrossHair(false);
-		m_Player->AdjustCameraForLockOn(false);
+		GetPlayerStatusWidget()->SetEnableKeyGuide(false, EUIKeyGuide::None);
+		m_Player->RightMouse_Released();
 		return;;
 	}
 	
@@ -553,8 +554,9 @@ void ASonheimPlayerController::On_SwitchPalSlot_Triggered(const FInputActionValu
 void ASonheimPlayerController::On_ThrowPalSphere_Pressed(const FInputActionValue& InputActionValue)
 {
 	if (IsMenuActivate||IsContainerActivate) return;
-	m_Player->AdjustCameraForLockOn(true);
+	m_Player->RightMouse_Pressed();
 	GetPlayerStatusWidget()->SetEnableCrossHair(true);
+	GetPlayerStatusWidget()->SetEnableKeyGuide(true, EUIKeyGuide::RButton, "취소");
 	m_Player->ThrowPalSphere_Pressed();
 }
 
@@ -567,7 +569,8 @@ void ASonheimPlayerController::On_ThrowPalSphere_Released(const FInputActionValu
 {
 	if (IsMenuActivate||IsContainerActivate) return;
 	GetPlayerStatusWidget()->SetEnableCrossHair(false);
-	m_Player->AdjustCameraForLockOn(false);
+	GetPlayerStatusWidget()->SetEnableKeyGuide(false, EUIKeyGuide::None);
+	m_Player->RightMouse_Released();
 	m_Player->ThrowPalSphere_Released();
 }
 
