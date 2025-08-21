@@ -67,14 +67,7 @@ public:
 
     UPROPERTY(BlueprintAssignable, Category = "UI")
     FOnCaptureUIDataUpdated OnCaptureUIDataUpdated;
-
-    // 포획 관련 설정
-    UPROPERTY(EditDefaultsOnly, Category = "Pal Capture")
-    float BaseCaptureProbability = 0.5f;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Pal Capture")
-    float LowHealthThreshold = 0.3f;
-
+    
     UPROPERTY(EditDefaultsOnly, Category = "Pal Capture")
     int32 PalSphereSkillID = 15;
 

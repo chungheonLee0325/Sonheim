@@ -167,8 +167,9 @@ void UPalCaptureComponent::AttemptCapture(ABaseMonster* TargetPal)
 		return;
 	}
 
-	// 보스는 포획 불가 (임시)
-	if (TargetPal->m_AreaObjectID == 118)
+	// 보스는 포획 불가
+	const FAreaObjectData& Data = TargetPal->GetAreaObjectData();
+	if (!Data.bCapturable)
 	{
 		TargetPal->DeactivateMonster();
 		return;
@@ -179,24 +180,23 @@ void UPalCaptureComponent::AttemptCapture(ABaseMonster* TargetPal)
 
 float UPalCaptureComponent::CalculateCaptureRate(ABaseMonster* TargetPal) const
 {
-	if (!TargetPal)
-		return 0.0f;
+	if (!TargetPal) return 0.f;
 
-	float hpRatio = TargetPal->GetHP() / TargetPal->GetMaxHP();
+	const FAreaObjectData& Data = TargetPal->GetAreaObjectData(); // 종 데이터
+	if (!Data.bCapturable) return 0.f;
 
-	// HP가 낮을수록 포획 확률 증가
-	float captureRate = BaseCaptureProbability;
-	if (hpRatio <= LowHealthThreshold)
-	{
-		captureRate = 1.0f; // 100% 포획
-	}
-	else
-	{
-		// 선형 보간으로 포획 확률 계산
-		captureRate = (1.0f - (hpRatio - LowHealthThreshold) * (BaseCaptureProbability / (1.0f - LowHealthThreshold)));
-	}
+	const float hpRatio = TargetPal->GetHP() / TargetPal->GetMaxHP();
 
-	return FMath::Clamp(captureRate, BaseCaptureProbability, 1.0f);
+	// 선형 보간
+	float rate = (hpRatio <= Data.CaptureLowHPThreshold)
+		       ? 1.f
+		       : 1.f - (hpRatio - Data.CaptureLowHPThreshold) * ((1.f - Data.CaptureBase) / (1.f - Data.CaptureLowHPThreshold));
+
+	// 종 저항 적용
+	const float resist = FMath::Clamp(Data.CaptureResist, 0.f, 0.95f);
+	rate *= (1.f - resist);
+
+	return FMath::Clamp(rate, 0.f, 1.f);
 }
 
 void UPalCaptureComponent::Server_AttemptCapture_Implementation(ABaseMonster* TargetPal)
@@ -254,7 +254,7 @@ void UPalCaptureComponent::OnRep_IsThrowingPalSphere()
 void UPalCaptureComponent::OnMonsterDetected(ABaseMonster* DetectedMonster)
 {
 	FCaptureUIInfo UIData;
-    
+
 	// 팰스피어를 던지는 중이고, 몬스터가 감지되었다면
 	if (bIsThrowingPalSphere && DetectedMonster)
 	{

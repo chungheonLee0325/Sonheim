@@ -387,6 +387,22 @@ struct FAreaObjectData : public FTableRowBase
 	// ToDo : 고도화되면 Skill로 이관 예정  
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	int HitSoundID = 0;
+
+	// --- Capture ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Capture")
+	bool bCapturable = true;
+
+	// 종 고유 기본 포획률(0~1). 기본 베이스
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Capture", meta=(ClampMin="0.0", ClampMax="1.0"))
+	float CaptureBase = 0.5f;
+
+	// 이 비율 이하로 HP가 떨어지면 사실상 확정(=1.0에 수렴)으로 가는 임계
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Capture", meta=(ClampMin="0.0", ClampMax="1.0"))
+	float CaptureLowHPThreshold = 0.3f;
+
+	// 종 고유 저항(0~1). 0.2면 최종 확률 * (1-0.2)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Capture", meta=(ClampMin="0.0", ClampMax="0.95"))
+	float CaptureResist = 0.0f;
 };
 
 // LevelData 구조체
