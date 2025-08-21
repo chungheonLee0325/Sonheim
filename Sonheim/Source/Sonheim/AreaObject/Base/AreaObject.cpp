@@ -57,6 +57,11 @@ AAreaObject::AAreaObject()
 
 	//GetCapsuleComponent()->SetSimulatePhysics(true);
 	GetCapsuleComponent()->SetNotifyRigidBodyCollision(true);
+
+	// 서버가 렌더하지 않아도 본 업데이트/노티파이 진행
+	GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+	// 최적화 끄기(확인후 프레임 저하시 주석처리)
+	GetMesh()->bEnableUpdateRateOptimizations = false;
 }
 
 void AAreaObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
