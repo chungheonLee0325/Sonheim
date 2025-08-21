@@ -6,6 +6,7 @@
 #include "Sonheim/Animation/Player/PlayerAniminstance.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Utility/InteractionComponent.h"
+#include "Utility/PalCaptureComponent.h"
 #include "SonheimPlayer.generated.h"
 
 class UMonsterDetectionComponent;
@@ -135,6 +136,9 @@ public:
 	void RightMouse_Pressed();
 	void RightMouse_Triggered();
 	void RightMouse_Released();
+	
+	// 록온(우클릭 카메라 처리)
+	void AdjustCameraForLockOn(bool IsLockOn);
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetLockOn(bool bNew);
@@ -185,6 +189,7 @@ public:
 	void ThrowPalSphere_Pressed();
 	void ThrowPalSphere_Triggered();
 	void ThrowPalSphere_Released();
+	void ThrowPalSphere_Canceled();
 	
 	// 재시작 입력 처리
 	void Restart_Pressed();
@@ -403,6 +408,9 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void RestoreStair(int ItemID, int ItemCount);
+
+	UFUNCTION(BlueprintCallable)
+	bool IsThrowingPalSphere() {return PalCaptureComponent->IsThrowingPalSphere();};
 
 private:
 	void UpdateSelectedPal();

@@ -420,6 +420,16 @@ void ASonheimPlayerController::On_Mouse_Left_Triggered(const FInputActionValue& 
 void ASonheimPlayerController::On_Mouse_Right_Pressed(const FInputActionValue& InputActionValue)
 {
 	if (IsMenuActivate||IsContainerActivate) return;
+
+	// 팰스피어 던지는 중이면 캔슬하기
+	if (m_Player->IsThrowingPalSphere())
+	{
+		m_Player->ThrowPalSphere_Canceled();
+		GetPlayerStatusWidget()->SetEnableCrossHair(false);
+		m_Player->AdjustCameraForLockOn(false);
+		return;;
+	}
+	
 	m_Player->RightMouse_Pressed();
 	GetPlayerStatusWidget()->SetEnableCrossHair(true);
 }
@@ -543,7 +553,7 @@ void ASonheimPlayerController::On_SwitchPalSlot_Triggered(const FInputActionValu
 void ASonheimPlayerController::On_ThrowPalSphere_Pressed(const FInputActionValue& InputActionValue)
 {
 	if (IsMenuActivate||IsContainerActivate) return;
-	m_Player->RightMouse_Pressed();
+	m_Player->AdjustCameraForLockOn(true);
 	GetPlayerStatusWidget()->SetEnableCrossHair(true);
 	m_Player->ThrowPalSphere_Pressed();
 }
@@ -557,7 +567,7 @@ void ASonheimPlayerController::On_ThrowPalSphere_Released(const FInputActionValu
 {
 	if (IsMenuActivate||IsContainerActivate) return;
 	GetPlayerStatusWidget()->SetEnableCrossHair(false);
-	m_Player->RightMouse_Released();
+	m_Player->AdjustCameraForLockOn(false);
 	m_Player->ThrowPalSphere_Released();
 }
 

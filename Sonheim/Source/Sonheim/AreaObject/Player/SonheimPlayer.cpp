@@ -825,6 +825,57 @@ void ASonheimPlayer::MultiCast_LeftMouse_Released_Implementation()
 	// 멀티캐스트로 처리할 동작
 }
 
+void ASonheimPlayer::AdjustCameraForLockOn(bool IsLockOn)
+{
+	if (IsLockOn)
+	{
+		// 카메라 회전
+		LookAtLocation(GetActorLocation() + GetFollowCamera()->GetForwardVector(), EPMRotationMode::Speed, 600);
+
+		// 로컬 플레이어만 수행하는 카메라 처리 (줌인)
+		TWeakObjectPtr<ASonheimPlayer> weakThis = this;
+		GetWorld()->GetTimerManager().SetTimer(LockOnCameraTimerHandle, [weakThis]
+		{
+			ASonheimPlayer* strongThis = weakThis.Get();
+			if (strongThis != nullptr)
+			{
+				if (strongThis->CameraBoom->TargetArmLength == strongThis->RClickCameraBoomAramLength)
+				{
+					strongThis->GetWorld()->GetTimerManager().ClearTimer(strongThis->LockOnCameraTimerHandle);
+				}
+				float alpha = 0.f;
+				alpha = FMath::FInterpTo(strongThis->CameraBoom->TargetArmLength, strongThis->RClickCameraBoomAramLength,
+										 0.01f, 5.f);
+
+				strongThis->CameraBoom->TargetArmLength = alpha;
+			}
+		}, 0.01f, true);
+	}
+	else
+	{
+		// 로컬 플레이어만 수행하는 카메라 처리
+		GetWorld()->GetTimerManager().ClearTimer(LockOnCameraTimerHandle);
+
+		TWeakObjectPtr<ASonheimPlayer> weakThis = this;
+		GetWorld()->GetTimerManager().SetTimer(LockOnCameraTimerHandle, [weakThis]
+		{
+			ASonheimPlayer* strongThis = weakThis.Get();
+			if (strongThis != nullptr)
+			{
+				if (strongThis->CameraBoom->TargetArmLength == strongThis->NormalCameraBoomAramLength)
+				{
+					strongThis->GetWorld()->GetTimerManager().ClearTimer(strongThis->LockOnCameraTimerHandle);
+				}
+				float alpha = 0.f;
+				alpha = FMath::FInterpTo(strongThis->CameraBoom->TargetArmLength, strongThis->NormalCameraBoomAramLength,
+										 0.01f, 8.f);
+
+				strongThis->CameraBoom->TargetArmLength = alpha;
+			}
+		}, 0.01f, true);
+	}
+}
+
 // 마우스 오른쪽 클릭 처리
 void ASonheimPlayer::RightMouse_Pressed()
 {
@@ -835,53 +886,14 @@ void ASonheimPlayer::RightMouse_Pressed()
 
 	Server_SetLockOn(true);
 
-	// 카메라 회전
-	LookAtLocation(GetActorLocation() + GetFollowCamera()->GetForwardVector(), EPMRotationMode::Speed, 600);
-
-	// 로컬 플레이어만 수행하는 카메라 처리 (줌인)
-	TWeakObjectPtr<ASonheimPlayer> weakThis = this;
-	GetWorld()->GetTimerManager().SetTimer(LockOnCameraTimerHandle, [weakThis]
-	{
-		ASonheimPlayer* strongThis = weakThis.Get();
-		if (strongThis != nullptr)
-		{
-			if (strongThis->CameraBoom->TargetArmLength == strongThis->RClickCameraBoomAramLength)
-			{
-				strongThis->GetWorld()->GetTimerManager().ClearTimer(strongThis->LockOnCameraTimerHandle);
-			}
-			float alpha = 0.f;
-			alpha = FMath::FInterpTo(strongThis->CameraBoom->TargetArmLength, strongThis->RClickCameraBoomAramLength,
-			                         0.01f, 5.f);
-
-			strongThis->CameraBoom->TargetArmLength = alpha;
-		}
-	}, 0.01f, true);
+	AdjustCameraForLockOn(true);
 }
 
 void ASonheimPlayer::RightMouse_Released()
 {
 	Server_SetLockOn(false);
 
-	// 로컬 플레이어만 수행하는 카메라 처리
-	GetWorld()->GetTimerManager().ClearTimer(LockOnCameraTimerHandle);
-
-	TWeakObjectPtr<ASonheimPlayer> weakThis = this;
-	GetWorld()->GetTimerManager().SetTimer(LockOnCameraTimerHandle, [weakThis]
-	{
-		ASonheimPlayer* strongThis = weakThis.Get();
-		if (strongThis != nullptr)
-		{
-			if (strongThis->CameraBoom->TargetArmLength == strongThis->NormalCameraBoomAramLength)
-			{
-				strongThis->GetWorld()->GetTimerManager().ClearTimer(strongThis->LockOnCameraTimerHandle);
-			}
-			float alpha = 0.f;
-			alpha = FMath::FInterpTo(strongThis->CameraBoom->TargetArmLength, strongThis->NormalCameraBoomAramLength,
-			                         0.01f, 8.f);
-
-			strongThis->CameraBoom->TargetArmLength = alpha;
-		}
-	}, 0.01f, true);
+	AdjustCameraForLockOn(false);
 }
 
 void ASonheimPlayer::OnRep_IsLockOn()
@@ -1150,6 +1162,14 @@ void ASonheimPlayer::ThrowPalSphere_Released()
 	if (PalCaptureComponent)
 	{
 		PalCaptureComponent->ThrowPalSphere();
+	}
+}
+
+void ASonheimPlayer::ThrowPalSphere_Canceled()
+{
+	if (PalCaptureComponent)
+	{
+		PalCaptureComponent->CancelThrowPalSphere();
 	}
 }
 
