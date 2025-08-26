@@ -537,7 +537,11 @@ void AAreaObject::MultiCast_CastSkill_Implementation(int SkillID, AAreaObject* T
 
 void AAreaObject::ClearCurrentSkill()
 {
-	m_CurrentSkill = nullptr;
+	if (m_CurrentSkill != nullptr)
+	{
+		m_CurrentSkill->CancelCast();
+		m_CurrentSkill = nullptr;
+	}
 }
 
 void AAreaObject::ClearThisCurrentSkill(UBaseSkill* Skill)

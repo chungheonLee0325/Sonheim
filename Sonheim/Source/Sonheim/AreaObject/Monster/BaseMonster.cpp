@@ -461,7 +461,7 @@ void ABaseMonster::SetPartnerOwner(ASonheimPlayer* NewOwner)
 	PartnerOwner = NewOwner;
  	IncreaseHP(10000);
 	StatusWidget->SetPartnerPalHPWidget();
-	DeactivateMonster();
+	//DeactivateMonster();
 }
 
 void ABaseMonster::ActivateMonster()
@@ -498,6 +498,9 @@ void ABaseMonster::ActivateMonster()
 void ABaseMonster::DeactivateMonster()
 {
 	m_AiFSM->StopFSM();
+
+	// 활성화된 스킬 종료
+	ClearCurrentSkill();
 
 	// 숨김 처리(CanAttack 방지용)
 	AddCondition(EConditionBitsType::Hidden);

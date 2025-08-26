@@ -224,7 +224,7 @@ void UBaseSkill::Client_OnCastEnd()
 
 void UBaseSkill::CancelCast()
 {
-	if (m_Caster->HasAuthority())
+	if (m_Caster && m_Caster->HasAuthority())
 	{
 		Server_CancelCast();
 	}
