@@ -38,8 +38,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	class UMonsterStatusWidget* StatusWidget;
 
+	bool CanCapture() const;
+
 	UPROPERTY(EditAnywhere, Category = "UI")
-	float HeightHPUI = 160.0f;
+	float HeightHPUI = 100.0f;
 
 	UPROPERTY()
 	FTimerHandle OnDieHandle;
@@ -51,6 +53,7 @@ public:
 	void SetHPWidgetVisibility(bool IsVisible);
 	void SetHPWidgetVisibilityByDuration(float Duration);
 	FTimerHandle HPWidgetVisibleTimer;
+	
 
 protected:
 	// Combat System

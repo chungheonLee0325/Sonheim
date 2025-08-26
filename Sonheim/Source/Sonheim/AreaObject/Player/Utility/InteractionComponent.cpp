@@ -116,7 +116,7 @@ void UInteractionComponent::PerformDetection()
 		// 몬스터 체크
 		if (ABaseMonster* Monster = Cast<ABaseMonster>(MonsterHit.GetActor()))
 		{
-			if (!Monster->IsDie() && !Monster->PartnerOwner)
+			if (Monster->CanCapture())
 			{
 				DetectedMonster = Monster;
 				ShowMonsterHPBar(Monster);

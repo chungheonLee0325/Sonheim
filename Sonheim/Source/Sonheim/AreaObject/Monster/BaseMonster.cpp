@@ -92,6 +92,14 @@ UBaseSkillRoulette* ABaseMonster::GetSkillRoulette() const
 	return m_SkillRoulette;
 }
 
+bool ABaseMonster::CanCapture() const
+{
+	// 죽지않고, 주인없고, 숨김 처리 아닐때만 포획가능
+	if (!IsDie() && !PartnerOwner && !HasCondition(EConditionBitsType::Hidden))
+		return true;
+	return false;
+}
+
 float ABaseMonster::DecreaseHP(float Delta)
 {
 	MultiCastRPC_Show();
@@ -157,7 +165,6 @@ void ABaseMonster::BeginPlay()
 	// HP UI 위치, Visible Setting
 	if (dt_AreaObject->EnemyType != EEnemyType::Boss)
 	{
-		HeightHPUI = GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 10;
 		HPWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, HeightHPUI));
 		InitializeHUD();
 		//HPWidgetComponent->SetVisibility(false);
