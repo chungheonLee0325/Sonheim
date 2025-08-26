@@ -143,7 +143,7 @@ void UPalCaptureComponent::ApplyThrowingState(bool bThrowing)
 	}
 
 	OnThrowingStateChanged.Broadcast(bThrowing);
-	
+
 	// 조준 UI: 로컬 전용
 	if (OwnerPlayer->IsLocallyControlled())
 	{
@@ -162,20 +162,14 @@ void UPalCaptureComponent::AttemptCapture(ABaseMonster* TargetPal)
 	if (!TargetPal || !OwnerPlayer)
 		return;
 
-	// 이미 소유된 Pal인지 확인
-	if (TargetPal->PartnerOwner != nullptr)
-	{
-		FLog::Log("This Pal is already owned");
-		return;
-	}
-
 	// 보스는 포획 불가
 	const FAreaObjectData& Data = TargetPal->GetAreaObjectData();
 	if (!Data.bCapturable)
 	{
-		TargetPal->DeactivateMonster();
 		return;
 	}
+
+	TargetPal->DeactivateMonster();
 
 	Server_AttemptCapture(TargetPal);
 }
@@ -191,8 +185,9 @@ float UPalCaptureComponent::CalculateCaptureRate(ABaseMonster* TargetPal) const
 
 	// 선형 보간
 	float rate = (hpRatio <= Data.CaptureLowHPThreshold)
-		       ? 1.f
-		       : 1.f - (hpRatio - Data.CaptureLowHPThreshold) * ((1.f - Data.CaptureBase) / (1.f - Data.CaptureLowHPThreshold));
+		             ? 1.f
+		             : 1.f - (hpRatio - Data.CaptureLowHPThreshold) * ((1.f - Data.CaptureBase) / (1.f - Data.
+			             CaptureLowHPThreshold));
 
 	// 종 저항 적용
 	const float resist = FMath::Clamp(Data.CaptureResist, 0.f, 0.95f);
@@ -201,50 +196,87 @@ float UPalCaptureComponent::CalculateCaptureRate(ABaseMonster* TargetPal) const
 	return FMath::Clamp(rate, 0.f, 1.f);
 }
 
-void UPalCaptureComponent::Server_AttemptCapture_Implementation(ABaseMonster* TargetPal)
+void UPalCaptureComponent::Server_ApplyCaptureOutcome_Implementation(ABaseMonster* TargetPal, bool bSuccess)
 {
-	if (!TargetPal || !OwnerPlayer || !PalInventory)
-		return;
+	if (!TargetPal || !OwnerPlayer || !PalInventory) return;
 
-	// 포획 확률 계산
-	float captureRate = CalculateCaptureRate(TargetPal);
-	int32 capturePercent = FMath::RoundToInt(captureRate * 100.0f);
-	int32 randomValue = FMath::RandRange(1, 100);
-
-	FLog::Log("Capture Rate: {}%", capturePercent);
-	FLog::Log("Random Value: {}", randomValue);
-
-	bool bCaptureSuccess = randomValue <= capturePercent;
-
-	if (bCaptureSuccess)
+	if (bSuccess)
 	{
-		// PalInventory가 가득 찼는지 확인
-		if (PalInventory->GetOwnedPalCount() >= PalInventory->MaxPalCount)
+		if (PalInventory->GetOwnedPalCount() < PalInventory->MaxPalCount)
 		{
-			FLog::Log("Pal Inventory is full!");
-			bCaptureSuccess = false;
+			TargetPal->SetPartnerOwner(OwnerPlayer);
+			PalInventory->AddPal(TargetPal);
 		}
 		else
 		{
-			// 소유권 설정
-			TargetPal->SetPartnerOwner(OwnerPlayer);
-
-			// 인벤토리에 추가
-			PalInventory->AddPal(TargetPal);
+			// 연출 중에 팰 인벤이 가득 찼다면 실패로 처리
+			bSuccess = false;
 		}
 	}
-	else
-	{
-		// 포획 실패 시 활성화
-		TargetPal->DeactivateMonster();
-	}
 
-	MultiCast_OnCaptureResult(TargetPal, bCaptureSuccess);
+	if (!bSuccess)
+	{
+		// 실패면 여기서 활성화 복귀
+		TargetPal->ActivateMonster();
+		TargetPal->SetAggroTarget(OwnerPlayer);
+	}
 }
 
-void UPalCaptureComponent::MultiCast_OnCaptureResult_Implementation(ABaseMonster* TargetPal, bool bSuccess)
+void UPalCaptureComponent::Multicast_BeginCaptureReveal_Implementation(ABaseMonster* TargetPal,
+                                                                       const FPalCaptureRevealParams& Params)
 {
-	OnPalCaptured.Broadcast(TargetPal, bSuccess);
+	OnCaptureReveal.Broadcast(TargetPal, Params);
+}
+
+void UPalCaptureComponent::Server_AttemptCapture_Implementation(ABaseMonster* TargetPal)
+{
+	// 1) 판정만 한다 (인벤 추가/활성화는 나중에)
+	const float captureRate = CalculateCaptureRate(TargetPal);
+	const int32 capturePercent = FMath::RoundToInt(captureRate * 100.0f);
+	const int32 randomValue = FMath::RandRange(1, 100);
+	bool bCaptureSuccess = (randomValue <= capturePercent);
+
+	// 인벤 가득이면 강제 실패
+	if (bCaptureSuccess && PalInventory->GetOwnedPalCount() >= PalInventory->MaxPalCount)
+		bCaptureSuccess = false;
+
+	// 2) 연출 파라미터 계산(서버 기준 → 모두 동일)
+	const float Guess = captureRate;
+	int32 Segments = 4;
+	if (Guess >= Threshold_1Seg) Segments = 1;
+	else if (Guess >= Threshold_2Seg) Segments = 2;
+	else if (Guess >= Threshold_3Seg) Segments = 3;
+
+	const float SegmentTime = PerSegmentTime;
+
+	int32 FailStageOverride = -1;
+	if (!bCaptureSuccess)
+		FailStageOverride = PickFailStage(Guess, Segments);
+
+	FPalCaptureRevealParams Params;
+	Params.Guess = Guess;
+	Params.Segments = Segments;
+	Params.SegmentTime = SegmentTime;
+	Params.StartDelay = StartDelaySec;
+	Params.InterStageDelay = InterStageDelaySec;
+	Params.EndDelay = EndDelaySec;
+	Params.FailStageOverride = FailStageOverride;
+	Params.bSuccess = bCaptureSuccess;
+
+	// 3) 모두에게 연출 시작 알림
+	Multicast_BeginCaptureReveal(TargetPal, Params);
+
+	// 4) 연출이 "실제로" 진행될 시간 계산 → 타이머 후 최종 반영
+	const int32 K = bCaptureSuccess ? Segments : FMath::Max(0, FailStageOverride);
+	const float RevealTotal =
+		StartDelaySec + (K * SegmentTime) + (K > 0 ? (K - 1) * InterStageDelaySec : 0.f) + EndDelaySec;
+
+	FTimerHandle ApplyHandle;
+	GetWorld()->GetTimerManager().SetTimer(
+		ApplyHandle,
+		FTimerDelegate::CreateUObject(this, &UPalCaptureComponent::Server_ApplyCaptureOutcome, TargetPal,
+		                              bCaptureSuccess),
+		RevealTotal, false);
 }
 
 void UPalCaptureComponent::OnRep_IsThrowingPalSphere()
@@ -272,4 +304,15 @@ void UPalCaptureComponent::OnMonsterDetected(ABaseMonster* DetectedMonster)
 
 	// UI 갱신 델리게이트 호출
 	OnCaptureUIDataUpdated.Broadcast(UIData);
+}
+
+int32 UPalCaptureComponent::PickFailStage(float Guess, int32 Segments) const
+{
+	const float continueProb = FMath::Lerp(FailContinueProbMin, FailContinueProbMax, Guess);
+	int32 stage = 0;
+	while (stage < Segments - 1 && FMath::FRand() < continueProb)
+	{
+		++stage;
+	}
+	return stage;
 }

@@ -50,6 +50,7 @@ void UUBaseElementSkill::FireElement()
 
 	if (SpawnedElement)
 	{
+		SpawnedElement->SetOwner(m_Caster);
 		SpawnedElement->InitElement(m_Caster, m_Target, m_TargetPos, AttackData);
 	}
 	else
