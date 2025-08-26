@@ -78,6 +78,9 @@ void AFloatingDamageActor::Initialize(float Damage,
 
 		Widget->StopAllAnimations();
 		Widget->SetRenderOpacity(1.0f);
+
+		// 초기화 시점문제로 간헐적으로 유실 문제 방지
+		GetWorldTimerManager().SetTimerForNextTick([Widget](){ Widget->PlayFadeAnimation();});
 		Widget->PlayFadeAnimation();
 
 		// 크리티컬인 경우 초기 크기 증가
