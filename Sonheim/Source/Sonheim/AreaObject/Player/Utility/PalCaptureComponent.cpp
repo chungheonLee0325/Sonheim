@@ -157,7 +157,7 @@ void UPalCaptureComponent::ApplyThrowingState(bool bThrowing)
 	}
 }
 
-void UPalCaptureComponent::AttemptCapture(ABaseMonster* TargetPal)
+void UPalCaptureComponent::AttemptCapture(ABaseMonster* TargetPal, APalSphere* SourceSphere)
 {
 	if (!TargetPal || !OwnerPlayer)
 		return;
@@ -171,7 +171,7 @@ void UPalCaptureComponent::AttemptCapture(ABaseMonster* TargetPal)
 
 	TargetPal->DeactivateMonster();
 
-	Server_AttemptCapture(TargetPal);
+	Server_AttemptCapture(TargetPal, SourceSphere);
 }
 
 float UPalCaptureComponent::CalculateCaptureRate(ABaseMonster* TargetPal) const
@@ -222,13 +222,12 @@ void UPalCaptureComponent::Server_ApplyCaptureOutcome_Implementation(ABaseMonste
 	}
 }
 
-void UPalCaptureComponent::Multicast_BeginCaptureReveal_Implementation(ABaseMonster* TargetPal,
-                                                                       const FPalCaptureRevealParams& Params)
+void UPalCaptureComponent::Multicast_BeginCaptureReveal_Implementation(ABaseMonster* TargetPal, const FPalCaptureRevealParams& Params, APalSphere* SourceSphere)
 {
-	OnCaptureReveal.Broadcast(TargetPal, Params);
+	OnCaptureReveal.Broadcast(TargetPal, Params, SourceSphere);
 }
 
-void UPalCaptureComponent::Server_AttemptCapture_Implementation(ABaseMonster* TargetPal)
+void UPalCaptureComponent::Server_AttemptCapture_Implementation(ABaseMonster* TargetPal, APalSphere* SourceSphere)
 {
 	// 1) 판정만 한다 (인벤 추가/활성화는 나중에)
 	const float captureRate = CalculateCaptureRate(TargetPal);
@@ -264,7 +263,7 @@ void UPalCaptureComponent::Server_AttemptCapture_Implementation(ABaseMonster* Ta
 	Params.bSuccess = bCaptureSuccess;
 
 	// 3) 모두에게 연출 시작 알림
-	Multicast_BeginCaptureReveal(TargetPal, Params);
+	Multicast_BeginCaptureReveal(TargetPal, Params, SourceSphere);
 
 	// 4) 연출이 "실제로" 진행될 시간 계산 → 타이머 후 최종 반영
 	const int32 K = bCaptureSuccess ? Segments : FMath::Max(0, FailStageOverride);

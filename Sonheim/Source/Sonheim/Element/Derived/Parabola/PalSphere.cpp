@@ -37,6 +37,35 @@ void APalSphere::BeginPlay()
 	TryBindToCaptureComp();
 }
 
+void APalSphere::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	UnbindRevealDelegates();  
+	Super::EndPlay(EndPlayReason);
+}
+
+void APalSphere::BindRevealDelegates(UCaptureProgressWidget* W)
+{
+	if (!W) return;
+	
+	W->OnSegmentFilled.RemoveDynamic(this, &APalSphere::OnWidgetSegmentFilled);
+	W->OnRevealFinished.RemoveDynamic(this, &APalSphere::OnWidgetRevealFinished);
+
+	W->OnSegmentFilled.AddDynamic(this, &APalSphere::OnWidgetSegmentFilled);
+	W->OnRevealFinished.AddDynamic(this, &APalSphere::OnWidgetRevealFinished);
+
+	BoundRevealWidget = W;
+}
+
+void APalSphere::UnbindRevealDelegates()
+{
+	if (BoundRevealWidget.IsValid())
+	{
+		BoundRevealWidget->OnSegmentFilled.RemoveDynamic(this, &APalSphere::OnWidgetSegmentFilled);
+		BoundRevealWidget->OnRevealFinished.RemoveDynamic(this, &APalSphere::OnWidgetRevealFinished);
+		BoundRevealWidget.Reset();
+	}
+}
+
 void APalSphere::OnRep_Owner()
 {
 	Super::OnRep_Owner();
@@ -187,7 +216,7 @@ void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
 	// PalCaptureComponent를 통해 포획 시도
 	if (CaptureComp.Get())
 	{
-		CaptureComp->AttemptCapture(Target);
+		CaptureComp->AttemptCapture(Target, this);
 	}
 
 	// 던진 구체에 물리 효과 추가
@@ -197,8 +226,9 @@ void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
 }
 
 
-void APalSphere::HandleCaptureReveal(class ABaseMonster* Pal, const FPalCaptureRevealParams& Params)
+void APalSphere::HandleCaptureReveal(class ABaseMonster* Pal, const FPalCaptureRevealParams& Params, APalSphere* SourceSphere)
 {
+	if (SourceSphere != this) return;
 	if (!IsValid(Pal)) return;
 
 	// 서버가 내려준 파라미터로 그대로 재생
@@ -231,8 +261,8 @@ void APalSphere::StartCaptureProgressReveal(float Guess01, bool bSuccess, int32 
 	if (auto* UW = Cast<UCaptureProgressWidget>(CaptureWidget->GetWidget()))
 	{
 		// 세그먼트 끝마다 까닥/이펙트, 종료 시 End VFX
-		UW->OnSegmentFilled.AddDynamic(this, &APalSphere::OnWidgetSegmentFilled);
-		UW->OnRevealFinished.AddDynamic(this, &APalSphere::OnWidgetRevealFinished);
+		UnbindRevealDelegates();
+		BindRevealDelegates(UW);
 
 		UW->PlayCaptureProgressReveal(Guess01, bSuccess, Segments, SegmentTime,
 		                            InterDelay, StartDelay, FailStageOverride);
@@ -260,6 +290,8 @@ void APalSphere::OnWidgetRevealFinished(bool bSuccess)
 {
 	// 연출 종료: BP 이벤트 (닫힘 애니/VFX)
 	BP_OnCaptureRevealEnd(bSuccess);
+
+	UnbindRevealDelegates();
 }
 
 void APalSphere::NodOnce()

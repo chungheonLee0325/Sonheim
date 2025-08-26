@@ -7,6 +7,7 @@
 #include "Sonheim/AreaObject/Player/Utility/PalCaptureComponent.h"
 #include "PalSphere.generated.h"
 
+class UCaptureProgressWidget;
 class UWidgetComponent;
 class ABaseMonster;
 class ASonheimPlayer;
@@ -23,6 +24,7 @@ public:
 protected: 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	virtual void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 							UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
@@ -33,7 +35,7 @@ protected:
 	
 
 	UFUNCTION()
-	void HandleCaptureReveal(class ABaseMonster* Pal, const FPalCaptureRevealParams& Params);
+	void HandleCaptureReveal(class ABaseMonster* Pal, const FPalCaptureRevealParams& Params, APalSphere* SourceSphere);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	USkeletalMeshComponent* SkeletalMesh = nullptr;
@@ -71,6 +73,10 @@ private:
 
 	TWeakObjectPtr<class UPalCaptureComponent> CaptureComp;
 	TWeakObjectPtr<class ABaseMonster> LastHitPal;
+	TWeakObjectPtr<UCaptureProgressWidget> BoundRevealWidget;
+
+	void BindRevealDelegates(UCaptureProgressWidget* W);
+	void UnbindRevealDelegates();
 
 	// 헬퍼 함수
 	/** 진행 위젯 호출 편의 */

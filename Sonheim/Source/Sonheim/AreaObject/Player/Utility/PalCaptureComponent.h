@@ -4,6 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "PalCaptureComponent.generated.h"
 
+class APalSphere;
 class ASonheimPlayerState;
 class ABaseMonster;
 class ASonheimPlayer;
@@ -49,7 +50,7 @@ struct FPalCaptureRevealParams
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnThrowPalSphere);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCaptureUIDataUpdated, const FCaptureUIInfo&, UIData);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnThrowingStateChanged, bool, bIsPreparing);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCaptureReveal, ABaseMonster*, TargetPal, const FPalCaptureRevealParams&, Params);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCaptureReveal, ABaseMonster*, TargetPal, const FPalCaptureRevealParams&, Params, APalSphere*, SourceSphere);
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class SONHEIM_API UPalCaptureComponent : public UActorComponent
@@ -74,7 +75,7 @@ public:
 
     // 포획 시도 (PalSphere에서 호출)
     UFUNCTION(BlueprintCallable, Category = "Pal Capture")
-    void AttemptCapture(ABaseMonster* TargetPal);
+    void AttemptCapture(ABaseMonster* TargetPal, APalSphere* SourceSphere);
 
     // 포획 확률 계산
     UFUNCTION(BlueprintCallable, Category = "Pal Capture")
@@ -85,7 +86,7 @@ public:
 
     // 연출 파라미터 전송
     UFUNCTION(NetMulticast, Reliable)
-    void Multicast_BeginCaptureReveal(ABaseMonster* TargetPal, const FPalCaptureRevealParams& Params);
+    void Multicast_BeginCaptureReveal(ABaseMonster* TargetPal, const FPalCaptureRevealParams& Params, APalSphere* SourceSphere);
 
     // 연출 끝난 뒤 실제로 결과 반영(서버 전용)
     UFUNCTION(Server, Reliable)
@@ -165,5 +166,5 @@ private:
     void ApplyThrowingState(bool bThrowing);
 
     UFUNCTION(Server, Reliable)
-    void Server_AttemptCapture(ABaseMonster* TargetPal);
+    void Server_AttemptCapture(ABaseMonster* TargetPal, APalSphere* SourceSphere);
 };
