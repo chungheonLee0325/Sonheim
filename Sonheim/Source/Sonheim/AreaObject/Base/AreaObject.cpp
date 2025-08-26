@@ -765,10 +765,6 @@ void AAreaObject::MulticastDamageEffect_Implementation(float Damage, FVector Hit
                                                        bool bWeakPoint, float ElementDamageMultiplier,
                                                        const FAttackData& AttackData)
 {
-	// 로컬 플레이어만 처리 (각 클라이언트가 자신의 UI만 생성)
-    APlayerController* LocalPC = GetWorld()->GetFirstPlayerController();
-    if (!LocalPC || !LocalPC->IsLocalController()) return;
-
     // 풀 매니저를 통해 데미지 표시 요청
     if (AFloatingDamagePool* DamagePool = AFloatingDamagePool::GetInstance(GetWorld()))
     {

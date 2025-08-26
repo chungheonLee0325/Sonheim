@@ -78,9 +78,8 @@ void AElectricBall::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AAc
 	{
 		return;
 	}
-
 	
-	FHitResult Hit;
+	FHitResult Hit= SweepResult;
 	if (m_Caster)
 	{
 		m_Caster->CalcDamage(*m_AttackData, m_Caster, OtherActor, Hit);

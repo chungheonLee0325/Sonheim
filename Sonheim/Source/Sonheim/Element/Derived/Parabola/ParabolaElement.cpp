@@ -43,7 +43,7 @@ void AParabolaElement::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, 
 		return;
 	}
 	
-	FHitResult Hit;
+	FHitResult Hit = SweepResult;
 	if (m_Caster)
 	{
 		if (m_AttackData != nullptr)

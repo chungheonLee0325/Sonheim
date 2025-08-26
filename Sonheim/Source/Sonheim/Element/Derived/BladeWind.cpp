@@ -48,7 +48,8 @@ void ABladeWind::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor
 	}
 	//Super::OnBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);
 
-	FHitResult Hit;
+	FHitResult Hit= SweepResult;
+	
 	if (m_Caster)
 	{
 		m_Caster->CalcDamage(*m_AttackData, m_Caster, OtherActor, Hit);
