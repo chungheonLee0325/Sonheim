@@ -80,6 +80,15 @@ void USlotWidget::ClearSlot()
 	SetToolTip(nullptr);
 }
 
+void USlotWidget::SetCraftingMatMode(bool Enable)
+{
+	TXT_Quantity->SetVisibility(Enable ? ESlateVisibility::Hidden : ESlateVisibility::HitTestInvisible);
+	TXT_Weight->SetVisibility(Enable ? ESlateVisibility::Hidden : ESlateVisibility::HitTestInvisible);
+	IMG_BackGround->SetVisibility(Enable ? ESlateVisibility::Hidden : ESlateVisibility::HitTestInvisible);
+	IMG_Border->SetVisibility(Enable ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
+	bOnlyView = Enable;
+}
+
 bool USlotWidget::IsEmpty() const
 {
 	return ItemID == 0 || Quantity == 0;
@@ -89,6 +98,8 @@ void USlotWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointer
 {
 	Super::NativeOnMouseEnter(InGeometry, InMouseEvent);
 
+	if (bOnlyView) return;
+	
 	// 슬롯이 비어있지 않고, 툴팁 클래스가 지정되어 있다면
 	if (!IsEmpty() && ToolTipWidgetClass)
 	{
@@ -107,6 +118,8 @@ void USlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 {
 	Super::NativeOnMouseLeave(InMouseEvent);
 
+	if (bOnlyView) return;
+	
 	// 하이라이트 효과 원복
 	if (IMG_Border)
 	{
@@ -120,6 +133,8 @@ FReply USlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const F
 {
 	FReply Reply = Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 
+	if (bOnlyView) return Reply;
+	
 	if (IsEmpty())
 		return Reply;
 
@@ -148,6 +163,8 @@ void USlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPoint
 {
 	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 
+	if (bOnlyView) return;
+	
 	if (IsEmpty() || !bSupportsDragDrop)
 		return;
 
@@ -176,6 +193,9 @@ void USlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPoint
 bool USlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,
                                UDragDropOperation* InOperation)
 {
+
+	if (bOnlyView) return false;
+	
 	UDragDropSlotOperation* DragDropOp = Cast<UDragDropSlotOperation>(InOperation);
 	if (!DragDropOp || !DragDropOp->DraggedSlotWidget)
 		return false;
