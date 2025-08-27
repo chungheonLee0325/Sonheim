@@ -169,7 +169,7 @@ void ABaseItem::InitializeAsDroppedItem(int32 InItemID, int32 ItemValue, float D
 	Options.ItemCount = ItemValue;
 	Options.AutoPickupDelay = DropDelay;
 	Options.bApplyPhysicsOnDrop = true;
-	Options.DropForce = 300.0f;
+	Options.DropForce = 600.0f;
 	Options.LifeTime = 300.0f; // 5분 후 사라짐
 
 	InitializeItem(InItemID, Options);
@@ -259,11 +259,14 @@ void ABaseItem::Multicast_OnDropped_Implementation(FVector DropLocation, FVector
 		FTimerHandle PhysicsTimer;
 		GetWorld()->GetTimerManager().SetTimer(PhysicsTimer, [this]()
 		{
-			if (ItemMesh)
+			if (IsValid(this))
 			{
-				ItemMesh->SetSimulatePhysics(false);
-				// 물리 충돌은 유지 (땅바닥에 놓임)
-				ItemMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+				if (ItemMesh)
+				{
+					ItemMesh->SetSimulatePhysics(false);
+					// 물리 충돌은 유지 (땅바닥에 놓임)
+					ItemMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+				}
 			}
 		}, 2.0f, false);
 	}

@@ -62,6 +62,7 @@ protected:
 	FName FillColorParamName = TEXT("ProgressColor1");
 
 private:
+	UPROPERTY()
 	UMaterialInstanceDynamic* MID = nullptr;
 
 	// 시작 진행도(0~1)
