@@ -19,7 +19,7 @@ APalSphere::APalSphere()
 	// 월드 공간 UI
 	CaptureWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("CaptureWidget"));
 	CaptureWidget->SetupAttachment(RootComponent);
-	CaptureWidget->SetWidgetSpace(EWidgetSpace::World);
+	CaptureWidget->SetWidgetSpace(EWidgetSpace::Screen);
 	CaptureWidget->SetDrawAtDesiredSize(true);
 	CaptureWidget->SetVisibility(false);
 	CaptureWidget->SetPivot(FVector2D(0.5f, 0.5f));
