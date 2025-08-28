@@ -41,6 +41,8 @@ protected:
 private:
 	UPROPERTY()
 	ACraftingStation* Station = nullptr;
+	UPROPERTY()
+	class USonheimGameInstance* m_GameInstance = nullptr;
 
 	UPROPERTY(meta=(BindWidget))
 	class UImage* UnitProgress = nullptr; // 0~1

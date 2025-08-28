@@ -42,8 +42,6 @@ ACraftingStation::ACraftingStation()
 	QueueWidgetComp->SetupAttachment(RootComponent);
 	QueueWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);
 	QueueWidgetComp->SetDrawAtDesiredSize(true);
-	QueueWidgetComp->SetTwoSided(true);
-	QueueWidgetComp->SetVisibility(true);
 	QueueWidgetComp->SetDrawSize(FVector2D(200.f, 50.f));
 	QueueWidgetComp->SetRelativeLocation(FVector(0, 0.f, 260.f)); // Detect보다 살짝 위
 	QueueWidgetComp->SetInitialLayerZOrder(10); // Detect보다 높게
@@ -67,7 +65,7 @@ void ACraftingStation::BeginPlay()
 		if (UDetectWidget* DW = Cast<UDetectWidget>(DetectWidget->GetUserWidgetObject()))
 		{
 			DW->SetInteractionInfo(GetInteractionName_Implementation(), TEXT(""));
-			DetectWidget->SetVisibility(false);
+			DW->SetVisibility(ESlateVisibility::Hidden);
 		}
 	}
 	if (QueueWidgetClass)
@@ -76,10 +74,12 @@ void ACraftingStation::BeginPlay()
 	if (UUserWidget* W = QueueWidgetComp->GetUserWidgetObject())
 	{
 		if (UCraftingQueueWidget* QW = Cast<UCraftingQueueWidget>(W))
+		{
 			// 각 클라에서 자기 위젯에 Station 주입
 			QW->Initialise(this);
+			QW->SetVisibility(ESlateVisibility::Hidden);			
+		}
 	}
-	UpdateQueueWidgetVisible();
 }
 
 
@@ -89,6 +89,16 @@ void ACraftingStation::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
 	DOREPLIFETIME(ACraftingStation, SelectedRecipe);
 	DOREPLIFETIME(ACraftingStation, UIOwner);
+	DOREPLIFETIME(ACraftingStation, ActiveWork);
+	DOREPLIFETIME(ACraftingStation, bHasActiveWork);
+	DOREPLIFETIME(ACraftingStation, CompletedToCollect);
+}
+
+bool ACraftingStation::CanInteract_Implementation() const
+{
+	// 레시피 선택 UI 소유주(레시피 설정하고 있는 사람) 이 없을때만 상호 작용 가능
+	// UI로 체크하는 이유는 작업 돕기 기능 때문에 레시피 선택 작업이아닌 제작 작업할때는 같이 상호작용 할 수 있도록 레시피 UI로 체크
+	return UIOwner == nullptr;
 }
 
 
@@ -97,15 +107,31 @@ void ACraftingStation::OnDetected_Implementation(bool bDetected)
 	bIsDetected = bDetected;
 	if (DetectWidget)
 	{
-		DetectWidget->SetVisibility(bDetected);
 		if (UDetectWidget* DW = Cast<UDetectWidget>(DetectWidget->GetUserWidgetObject()))
 		{
 			if (bDetected)
 			{
 				UpdateDetectWidgetText();
 				DW->PlayShowAnimation();
+				DW->SetVisibility(ESlateVisibility::HitTestInvisible);
 			}
-			else { DW->PlayHideAnimation(); }
+			else
+			{
+				DW->PlayHideAnimation();
+				DW->SetVisibility(ESlateVisibility::Hidden);
+			}
+		}
+		if (QueueWidgetComp)
+		{
+			if (bDetected)
+			{
+				QueueWidgetComp->GetUserWidgetObject()->SetVisibility(ESlateVisibility::HitTestInvisible);
+				
+			}
+			else
+			{
+				QueueWidgetComp->GetUserWidgetObject()->SetVisibility(ESlateVisibility::Hidden);
+			}
 		}
 	}
 }
@@ -172,17 +198,14 @@ float ACraftingStation::ResolvePlayerWorkSpeed_Internal(ASonheimPlayer* Player) 
 	return DefaultWorkSpeed;
 }
 
-void ACraftingStation::UpdateQueueWidgetVisible()
-{
-	// ToDO : 수정
-	const bool bShow = true;
-	if (QueueWidgetComp)
-		QueueWidgetComp->SetVisibility(bShow);
-}
-
-
 void ACraftingStation::OnRep_ActiveWork()
 {
+	OnWorkChanged.Broadcast();
+}
+
+void ACraftingStation::OnRep_CompletedToCollect()
+{
+	OnCompletedChanged.Broadcast();
 	OnWorkChanged.Broadcast();
 }
 
@@ -214,7 +237,7 @@ void ACraftingStation::ServerStartWork_Implementation(ASonheimPlayer* Requestor,
 	bHasActiveWork = true;
 
 	ForceNetUpdate();
-	OnWorkChanged.Broadcast();
+	OnRep_ActiveWork();
 }
 
 void ACraftingStation::ServerAddWork_Implementation(float WorkDelta, class ASonheimPlayer* Worker)
@@ -235,8 +258,9 @@ void ACraftingStation::ServerAddWork_Implementation(float WorkDelta, class ASonh
 			ActiveWork.WorkAccumulated = 0.f;
 		}
 	}
-	ForceNetUpdate();
-	OnWorkChanged.Broadcast();
+	
+	//ForceNetUpdate();
+	OnRep_ActiveWork();
 }
 
 void ACraftingStation::ServerCollectAll_Implementation(ASonheimPlayer* Player)
@@ -247,9 +271,26 @@ void ACraftingStation::ServerCollectAll_Implementation(ASonheimPlayer* Player)
 	{
 		if (CompletedToCollect > 0) Inv->AddItem(ActiveWork.ResultItemID, CompletedToCollect);
 	}
+
+	// 수령한만큼 아이템 차감
+	ActiveWork.UnitsDone  = FMath::Max(0, ActiveWork.UnitsDone  - CompletedToCollect);
+	ActiveWork.UnitsTotal = FMath::Max(0, ActiveWork.UnitsTotal - CompletedToCollect);
+
 	CompletedToCollect = 0;
-	OnCompletedChanged.Broadcast();
+	
+	if (!bHasActiveWork)
+	{
+		// 아이템 수령후 남은 작업이 없으면 작업 초기화
+		ActiveWork.ResultItemID = 0;
+		ActiveWork.ResultPerUnit = 0;
+		ActiveWork.WorkPerUnit = 0;
+		ActiveWork.UnitsTotal = 0;
+		ActiveWork.UnitsDone = 0;
+		ActiveWork.WorkAccumulated = 0.f;
+	}
+	
 	ForceNetUpdate();
+	OnCompletedChanged.Broadcast();
 }
 
 void ACraftingStation::ServerCancelUnfinished_Implementation(class ASonheimPlayer* Requestor)
@@ -277,8 +318,8 @@ void ACraftingStation::ServerCancelUnfinished_Implementation(class ASonheimPlaye
 	bHasActiveWork = false;
 	ActiveWork.WorkAccumulated = 0.f;
 	ActiveWork.UnitsTotal = ActiveWork.UnitsDone; // 논리 일치
-	OnWorkChanged.Broadcast();
 	ForceNetUpdate();
+	OnRep_ActiveWork();
 }
 
 void ACraftingStation::ServerRequestOpenUI_Implementation(ASonheimPlayer* Player)
@@ -324,6 +365,14 @@ void ACraftingStation::UpdateDetectWidgetText()
 		const FString Action = bHasCompleted ? TEXT("획득") : TEXT("[길게 누르기] 작업");
 		DW->SetInteractionInfo(GetInteractionName_Implementation(), Action);
 	}
+}
+
+UDetectWidget* ACraftingStation::GetDetectWidget() const
+{
+	if (!DetectWidget) return nullptr;
+	if (UUserWidget* W = DetectWidget->GetUserWidgetObject())
+		return Cast<UDetectWidget>(W);
+	return nullptr;
 }
 
 const FCraftingRecipe* ACraftingStation::FindRecipe(FName Row) const

@@ -6,10 +6,18 @@
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
+#include "Components/WidgetComponent.h"
+#include "Sonheim/Utilities/LogMacro.h"
 
 void UCraftingQueueWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+}
+
+void UCraftingQueueWidget::Initialise(ACraftingStation* InStation)
+{
+	Station = InStation;
+	m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
 
 	if (UnitProgress)
 	{
@@ -19,32 +27,32 @@ void UCraftingQueueWidget::NativeConstruct()
 			UnitProgress->SetBrushFromMaterial(MID);
 		}
 	}
-}
-
-void UCraftingQueueWidget::Initialise(ACraftingStation* InStation)
-{
-	Station = InStation;
-	if (!Station) return;
 
 	if (Station)
 	{
-		Station->OnWorkChanged.AddLambda([this]() { Refresh(); });
-		Station->OnCompletedChanged.AddLambda([this]() { Refresh(); });
+		Station->OnWorkChanged.AddUObject(this, &UCraftingQueueWidget::Refresh);
+		Station->OnCompletedChanged.AddUObject(this, &UCraftingQueueWidget::Refresh);
 	}
 	Refresh();
 }
 
 void UCraftingQueueWidget::Refresh()
 {
-	if (!Station) return;
+	if (!Station)
+	{
+		LOG_SCREEN("No Station");
+		return;
+	}
+	
 
 	// ToDo : 이름/아이콘은 레시피가 바뀌었을 때만 다시 가져오기
 	if (Station->bHasActiveWork)
 	{
-		auto ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(Station->ActiveWork.ResultItemID);
+		auto ItemData = m_GameInstance->GetDataItem(Station->ActiveWork.ResultItemID);
 		if (ItemData)
 		{
 			if (ItemName) ItemName->SetText(ItemData->ItemName);
+			if (ItemIcon) ItemIcon->SetVisibility(ESlateVisibility::Visible);
 			if (ItemIcon) ItemIcon->SetBrushFromTexture(ItemData->ItemIcon);
 		}
 
@@ -61,8 +69,18 @@ void UCraftingQueueWidget::Refresh()
 	}
 	else
 	{
-		if (CountText) CountText->SetText(FText::FromString(TEXT("0 / 0")));
-		MID->SetScalarParameterValue("Progress", 0.f);
+		if (Station->CompletedToCollect > 0)
+		{
+			if (MID) MID->SetScalarParameterValue("Progress", 0.f);
+			if (CountText) CountText->SetText(FText::FromString(TEXT("0 / 0")));
+		}
+		else
+		{
+			if (ItemName) ItemName->SetText(FText::GetEmpty());
+			if (ItemIcon) ItemIcon->SetVisibility(ESlateVisibility::Hidden);
+			if (MID) MID->SetScalarParameterValue("Progress", 0.f);
+			if (CountText) CountText->SetText(FText::FromString(TEXT("할당된 작업이 없습니다.")));
+		}
 	}
 }
 
@@ -70,8 +88,8 @@ void UCraftingQueueWidget::NativeDestruct()
 {
 	if (Station)
 	{
-		Station->OnWorkChanged.Clear();
-		Station->OnCompletedChanged.Clear();
+		Station->OnWorkChanged.RemoveAll(this);
+		Station->OnCompletedChanged.RemoveAll(this);
 	}
 	Super::NativeDestruct();
 }

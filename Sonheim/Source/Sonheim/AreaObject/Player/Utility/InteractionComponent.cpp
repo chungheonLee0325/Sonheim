@@ -314,7 +314,7 @@ void UInteractionComponent::StartHoldInteraction()
 		if (HoldProgress >= 1.0f)
 		{
 			TryInteract();
-			StopHoldInteraction();
+			//StopHoldInteraction();
 		}
 	}, 0.01f, true);
 }

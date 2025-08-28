@@ -12,6 +12,9 @@ class UDataTable;
 class UInventoryComponent;
 class ASonheimPlayer;
 class ASonheimPlayerController;
+class UWidgetComponent;
+class UCraftingQueueWidget;
+class UDetectWidget;
 
 USTRUCT(BlueprintType)
 struct FCraftingRecipe : public FTableRowBase
@@ -83,7 +86,7 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// Interactable
-	virtual bool CanInteract_Implementation() const override { return true; }
+	virtual bool CanInteract_Implementation() const override;
 	virtual void OnDetected_Implementation(bool bDetected) override;
 	virtual void Interact_Implementation(ASonheimPlayer* Player) override;
 	virtual FString GetInteractionName_Implementation() const override;
@@ -93,22 +96,27 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetSelectedRecipe(FName Row) { SelectedRecipe = Row; }
 
-	// Server
+	// ==== Server ==== 
+	// 제작
 	UFUNCTION(Server, Reliable)
 	void ServerStartWork(ASonheimPlayer* Requestor, FName RecipeRow, int32 Units);
+	// 진행
 	UFUNCTION(Server, Reliable)
 	void ServerAddWork(float WorkDelta, class ASonheimPlayer* Worker);
+	// 취소
 	UFUNCTION(Server, Reliable)
 	void ServerCancelUnfinished(class ASonheimPlayer* Requestor);
+	// 수령
 	UFUNCTION(Server, Reliable)
 	void ServerCollectAll(class ASonheimPlayer* Requestor);
 
+	// UI
 	UFUNCTION(Server, Reliable)
 	void ServerRequestOpenUI(ASonheimPlayer* Player);
 	UFUNCTION(Server, Reliable)
 	void ServerReleaseUI(ASonheimPlayer* Player);
 
-	// Assist
+	// 작업 서버 틱 누적용
 	UFUNCTION(Server, Reliable)
 	void ServerStartAssist(ASonheimPlayer* Player);
 	UFUNCTION(Server, Reliable)
@@ -124,8 +132,12 @@ public:
 	// 활성화 작업
 	UPROPERTY(ReplicatedUsing=OnRep_ActiveWork)
 	FActiveCraftWork ActiveWork;
+	// 활성화된 작업이 있는지
 	UPROPERTY(Replicated)
 	bool bHasActiveWork = false;
+	// 완료/수령 대기 수량(해당 ResultItemID만 누적)
+	UPROPERTY(ReplicatedUsing=OnRep_CompletedToCollect)
+	int32 CompletedToCollect = 0;
 
 	// Events
 	FOnWorkChanged OnWorkChanged;
@@ -134,8 +146,12 @@ public:
 protected:
 	UFUNCTION()
 	void OnRep_ActiveWork();
+	UFUNCTION()
+	void OnRep_CompletedToCollect();
 
+	// === Detect Widget ===
 	void UpdateDetectWidgetText();
+	UDetectWidget* GetDetectWidget() const;
 
 	// 인벤토리로부터 제작 재료 소비
 	static bool TryConsumeMaterialsForOne(UInventoryComponent* Inv, const FCraftingRecipe& R);
@@ -145,9 +161,6 @@ protected:
 	const FCraftingRecipe* FindRecipe(FName Row) const;
 	// 플레이어 작업속도 가져오기
 	float ResolvePlayerWorkSpeed_Internal(ASonheimPlayer* Player) const;
-
-	// 큐/완료 상태에 따라 표시 토글
-	void UpdateQueueWidgetVisible();
 
 	// Components
 	UPROPERTY(VisibleAnywhere)
@@ -184,10 +197,6 @@ protected:
 	// State
 	UPROPERTY(Replicated, VisibleAnywhere, Category="Crafting|State")
 	FName SelectedRecipe;
-
-	// 완료/수령 대기 수량(해당 ResultItemID만 누적)
-	UPROPERTY(Replicated)
-	int32 CompletedToCollect = 0;
 
 	UPROPERTY(Replicated, VisibleAnywhere, Category="Crafting|State")
 	ASonheimPlayer* UIOwner = nullptr;
