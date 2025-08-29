@@ -203,14 +203,12 @@ private:
 	const float DoubleJumpTimeThreshold = 0.5f; // 더블 점프 인식 시간
 
 public:
-	// 상자 UI 관리
+	// === 상자 UI 관리 ===
 	UFUNCTION(Client, Reliable)
 	void Client_OpenContainerUI(ABaseContainer* Container);
-
-	// 상자 UI 관리
 	UFUNCTION(Client, Reliable)
 	void Client_CloseContainerUI();
-
+	
 	// ===== Container 중계 함수들 =====
 	// 기본 상자 작업
 	UFUNCTION(Server, Reliable)
@@ -231,13 +229,38 @@ public:
 		int32 SlotIndex = -1
 	);
 
+	// === Crafting UI 관리 ===
+	UFUNCTION(Client, Reliable)
+	void Client_OpenCraftingUI(class ACraftingStation* Station);
+	UFUNCTION(Client, Reliable)
+	void Client_CloseCraftingUI();
+
+	// ==== Crafting 중계 함수 ====
+	UFUNCTION(Server, Reliable)
+	void ServerStartWork(class ACraftingStation* Station, FName Row, int32 Quantity);
+	UFUNCTION(Server, Reliable)
+	void Server_Crafting_RequestCollectAll(class ACraftingStation* Station);
+	UFUNCTION(Server, Reliable)
+	void Server_Crafting_ReleaseUI(class ACraftingStation* Station);
+	UFUNCTION(Server, Reliable)
+	void Server_Crafting_AssistStart(class ACraftingStation* Station);
+	UFUNCTION(Server, Reliable)
+	void Server_Crafting_AssistStop(class ACraftingStation* Station);
+	UFUNCTION(Server, Reliable)
+	void Server_Crafting_CancelUnfinished(class ACraftingStation* Station);
+
 private:
 	// 상자 UI 위젯
 	UPROPERTY()
 	class UContainerInteractionWidget* ContainerInteractionWidget;
-	
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UContainerInteractionWidget> ContainerInteractionWidgetClass;
+
+	// Crafting UI
+	UPROPERTY()
+	class UCraftingWidget* CraftingWidget;
+	UPROPERTY(EditDefaultsOnly, Category="UI")
+	TSubclassOf<class UCraftingWidget> CraftingWidgetClass;
 
 	// 검증 헬퍼 함수들
 	bool ValidateContainerAccess(class ABaseContainer* Container) const;

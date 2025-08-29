@@ -5,22 +5,19 @@
 #include "InputMappingContext.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "OnlineSessionSettings.h"
 #include "SonheimPlayer.h"
 #include "SonheimPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Online/OnlineSessionNames.h"
 #include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
-#include "Sonheim/AreaObject/Monster/AI/Base/BaseAiFSM.h"
 #include "Sonheim/GameObject/Buildings/Storage/BaseContainer.h"
+#include "Sonheim/GameObject/Buildings/Crafting/CraftingStation.h"
 #include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
 #include "Sonheim/UI/Widget/GameObject/ContainerInteractionWidget.h"
+#include "Sonheim/UI/Widget/GameObject/Crafting/CraftingWidget.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/InventoryWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/PlayerStatWidget.h"
-#include "Sonheim/Utilities/LogMacro.h"
-#include "Sonheim/Utilities/SessionUtil.h"
 #include "Utility/InventoryComponent.h"
 
 ASonheimPlayerController::ASonheimPlayerController()
@@ -188,6 +185,10 @@ ASonheimPlayerController::ASonheimPlayerController()
 	{
 		ContainerInteractionWidgetClass = ContainerWidgetFinder.Class;
 	}
+	static ConstructorHelpers::FClassFinder<UUserWidget> WBPClass(
+		TEXT(
+			"/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/GameObject/WB_CraftingWidget.WB_CraftingWidget_C'"));
+	if (WBPClass.Succeeded()) CraftingWidgetClass = WBPClass.Class;
 }
 
 void ASonheimPlayerController::BeginPlay()
@@ -271,7 +272,7 @@ void ASonheimPlayerController::InitializeHUD_Implementation(ASonheimPlayer* NewP
 			StatusWidget->UpdateLevel(m_Player->m_LevelComponent->GetCurrentLevel(),
 			                          m_Player->m_LevelComponent->GetCurrentLevel(), true);
 			m_Player->m_LevelComponent->OnExperienceChanged.AddDynamic(StatusWidget, &UPlayerStatusWidget::UpdateExp);
-			StatusWidget->UpdateExp(0,1, 0);
+			StatusWidget->UpdateExp(0, 1, 0);
 		}
 		StatusWidget->SetEnableCrossHair(false);
 	}
@@ -389,37 +390,37 @@ void ASonheimPlayerController::SetupInputComponent()
 
 void ASonheimPlayerController::OnMove(const FInputActionValue& Value)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->Move(Value.Get<FVector2D>());
 }
 
 void ASonheimPlayerController::OnLook(const FInputActionValue& Value)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->Look(Value.Get<FVector2D>());
 }
 
 void ASonheimPlayerController::On_Mouse_Left_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->LeftMouse_Pressed();
 }
 
 void ASonheimPlayerController::On_Mouse_Left_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->LeftMouse_Released();
 }
 
 void ASonheimPlayerController::On_Mouse_Left_Triggered(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->LeftMouse_Triggered();
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 
 	// 팰스피어 던지는 중이면 캔슬하기
 	if (m_Player->IsThrowingPalSphere())
@@ -427,55 +428,55 @@ void ASonheimPlayerController::On_Mouse_Right_Pressed(const FInputActionValue& I
 		m_Player->ThrowPalSphere_Canceled();
 		GetPlayerStatusWidget()->SetEnableCrossHair(false);
 		GetPlayerStatusWidget()->SetEnableKeyGuide(false, EUIKeyGuide::None);
-		m_Player->SetWeaponVisible(true,true);
+		m_Player->SetWeaponVisible(true, true);
 		m_Player->RightMouse_Released();
 		return;;
 	}
-	
+
 	m_Player->RightMouse_Pressed();
 	GetPlayerStatusWidget()->SetEnableCrossHair(true);
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Triggered(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->RightMouse_Triggered();
 }
 
 void ASonheimPlayerController::On_Sprint_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->Sprint_Pressed();
 }
 
 void ASonheimPlayerController::On_Sprint_Triggered(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->Sprint_Triggered();
 }
 
 void ASonheimPlayerController::On_Sprint_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->Sprint_Released();
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->RightMouse_Released();
 	GetPlayerStatusWidget()->SetEnableCrossHair(false);
 }
 
 void ASonheimPlayerController::On_Dodge_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->Dodge_Pressed();
 }
 
 void ASonheimPlayerController::On_Jump_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 
 	float CurrentTime = GetWorld()->GetTimeSeconds();
 
@@ -504,13 +505,13 @@ void ASonheimPlayerController::On_Jump_Pressed(const FInputActionValue& InputAct
 
 void ASonheimPlayerController::On_Jump_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->Jump_Released();
 }
 
 void ASonheimPlayerController::On_Reload_Pressed(const FInputActionValue& Value)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->Reload_Pressed();
 }
 
@@ -554,7 +555,7 @@ void ASonheimPlayerController::On_SwitchPalSlot_Triggered(const FInputActionValu
 
 void ASonheimPlayerController::On_ThrowPalSphere_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->RightMouse_Pressed();
 	GetPlayerStatusWidget()->SetEnableCrossHair(true);
 	GetPlayerStatusWidget()->SetEnableKeyGuide(true, EUIKeyGuide::RButton, "취소");
@@ -568,7 +569,7 @@ void ASonheimPlayerController::On_ThrowPalSphere_Triggered(const FInputActionVal
 
 void ASonheimPlayerController::On_ThrowPalSphere_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	GetPlayerStatusWidget()->SetEnableCrossHair(false);
 	GetPlayerStatusWidget()->SetEnableKeyGuide(false, EUIKeyGuide::None);
 	m_Player->RightMouse_Released();
@@ -619,7 +620,7 @@ void ASonheimPlayerController::On_Menu_Released(const FInputActionValue& Value)
 
 void ASonheimPlayerController::On_Glider_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	if (m_Player && !m_Player->GetCharacterMovement()->IsMovingOnGround())
 	{
 		m_Player->ActivateGlider();
@@ -628,7 +629,7 @@ void ASonheimPlayerController::On_Glider_Pressed(const FInputActionValue& InputA
 
 void ASonheimPlayerController::On_Glider_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	if (m_Player)
 	{
 		m_Player->DeactivateGlider();
@@ -637,7 +638,7 @@ void ASonheimPlayerController::On_Glider_Released(const FInputActionValue& Input
 
 void ASonheimPlayerController::On_FKey_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	if (m_Player)
 	{
 		m_Player->Interaction_Pressed();
@@ -646,7 +647,7 @@ void ASonheimPlayerController::On_FKey_Pressed(const FInputActionValue& InputAct
 
 void ASonheimPlayerController::On_FKey_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate||IsContainerActivate) return;
+	if (IsMenuActivate || IsContainerActivate) return;
 	if (m_Player)
 	{
 		m_Player->Interaction_Released();
@@ -927,4 +928,80 @@ bool ASonheimPlayerController::ValidateDistance(AActor* Target, float MaxDistanc
 	}
 
 	return true;
+}
+
+void ASonheimPlayerController::Client_OpenCraftingUI_Implementation(ACraftingStation* Station)
+{
+	if (!IsLocalController() || !Station) return;
+	if (!CraftingWidget)
+	{
+		if (CraftingWidgetClass)
+		{
+			CraftingWidget = CreateWidget<UCraftingWidget>(this, CraftingWidgetClass);
+		}
+	}
+	if (CraftingWidget && !CraftingWidget->IsInViewport())
+	{
+		CraftingWidget->AddToViewport();
+		CraftingWidget->Initialise(Station);
+		bShowMouseCursor = true;
+		SetInputMode(FInputModeUIOnly());
+	}
+}
+
+void ASonheimPlayerController::Client_CloseCraftingUI_Implementation()
+{
+	if (!IsLocalController()) return;
+	if (CraftingWidget)
+	{
+		CraftingWidget->RemoveFromParent();
+		CraftingWidget = nullptr;
+	}
+	bShowMouseCursor = false;
+	SetInputMode(FInputModeGameOnly());
+}
+
+void ASonheimPlayerController::ServerStartWork_Implementation(
+	ACraftingStation* Station, FName Row, int32 Quantity)
+{
+	if (!Station) return;
+	ASonheimPlayer* P = m_Player ? m_Player : Cast<ASonheimPlayer>(GetPawn());
+	Station->ServerStartWork(P, Row, Quantity);
+}
+
+void ASonheimPlayerController::Server_Crafting_RequestCollectAll_Implementation(ACraftingStation* Station)
+{
+	if (!Station) return;
+	ASonheimPlayer* P = m_Player ? m_Player : Cast<ASonheimPlayer>(GetPawn());
+	Station->ServerCollectAll(P);
+}
+
+void ASonheimPlayerController::Server_Crafting_ReleaseUI_Implementation(ACraftingStation* Station)
+{
+	if (!Station) return;
+	ASonheimPlayer* P = m_Player ? m_Player : Cast<ASonheimPlayer>(GetPawn());
+	Station->ServerReleaseUI(P);
+}
+
+void ASonheimPlayerController::Server_Crafting_AssistStart_Implementation(ACraftingStation* Station)
+{
+	if (!Station) return;
+	ASonheimPlayer* P = m_Player ? m_Player : Cast<ASonheimPlayer>(GetPawn());
+	Station->ServerStartAssist(P);
+}
+
+void ASonheimPlayerController::Server_Crafting_AssistStop_Implementation(ACraftingStation* Station)
+{
+	if (!Station) return;
+	ASonheimPlayer* P = m_Player ? m_Player : Cast<ASonheimPlayer>(GetPawn());
+	Station->ServerStopAssist(P);
+}
+
+
+void ASonheimPlayerController::Server_Crafting_CancelUnfinished_Implementation(class ACraftingStation* Station)
+{
+	if (IsValid(Station))
+	{
+		Station->ServerCancelUnfinished(Cast<ASonheimPlayer>(GetPawn()));
+	}
 }

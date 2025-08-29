@@ -35,6 +35,9 @@ public:
 	void SetItemData(const FItemData* ItemData, int32 NewQuantity);
 	void ClearSlot();
 
+	UFUNCTION()
+	void SetCraftingMatMode(bool Enable);
+
 public:
 	// 슬롯에 지정될 이미지
 	UPROPERTY(VisibleAnywhere, Category = "Slot", meta = (BindWidget = "true"))
@@ -76,6 +79,10 @@ public:
 	// 툴팁 위젯 클래스
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slot")
 	TSubclassOf<UToolTipWidget> ToolTipWidgetClass;
+
+	// Only view 용도로 slot 사용할때
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slot")
+	bool bOnlyView = false;
 	
 	// 드래그 드롭 사용 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slot")

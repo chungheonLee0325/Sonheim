@@ -3,12 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "SonheimPlayerState.h"
 #include "Sonheim/Animation/Player/PlayerAniminstance.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Utility/InteractionComponent.h"
 #include "Utility/PalCaptureComponent.h"
 #include "SonheimPlayer.generated.h"
 
+class UInventoryComponent;
 class UMonsterDetectionComponent;
 class ABaseMonster;
 class ASonheimPlayerState;
@@ -202,6 +204,8 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	ASonheimPlayerState* GetSPlayerState() const {return S_PlayerState;};
+	UFUNCTION(BlueprintCallable)
+	UInventoryComponent* GetInventoryComponent() const {return S_PlayerState->m_InventoryComponent;};
 
 	// 아이템 획득 
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
