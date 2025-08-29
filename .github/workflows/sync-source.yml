@@ -1,0 +1,72 @@
+name: Sync Source to Source-only Mirror
+
+on:
+  push:
+    branches: [ main ]  # 기본 브랜치에 맞춰 수정
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (sparse)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          lfs: false
+          # Sonheim/ 아래의 코드·설정과 루트 Doc 만 선택
+          sparse-checkout: |
+            Sonheim/Source
+            Sonheim/Config
+            Sonheim/Plugins
+            Sonheim/Sonheim.uproject
+            Doc
+          sparse-checkout-cone-mode: false
+
+      - name: Prepare mirror workspace
+        run: |
+          set -e
+          mkdir -p out
+
+          # 1) 코드와 설정
+          [ -d Sonheim/Source ] && rsync -av --delete Sonheim/Source/ out/Source/ || true
+          [ -d Sonheim/Config ] && rsync -av --delete Sonheim/Config/ out/Config/ || true
+
+          # 2) Plugins/**/Source 만 선별 복사
+          if [ -d Sonheim/Plugins ]; then
+            rsync -av --delete \
+              --include='*/' \
+              --include='*/Source/***' \
+              --exclude='*' \
+              Sonheim/Plugins/ out/Plugins/
+          fi
+
+          # 3) uproject는 코드 문맥 파악에 유용 (컴파일은 의도 아님)
+          [ -f Sonheim/Sonheim.uproject ] && cp Sonheim/Sonheim.uproject out/Sonheim.uproject || true
+
+          # 4) 문서(루트 Doc -> 미러 Docs 로 정리)
+          [ -d Doc ] && rsync -av --delete Doc/ out/Docs/ || true
+
+          # 5) 최소 README
+          cat > out/README.md << 'EOF'
+# Sonheim.Source — source-only mirror
+
+This repository is an **automated mirror** of `owner/Sonheim` focused on code and docs.
+- Includes: `Source/`, `Config/`, `Plugins/*/Source`, `Sonheim.uproject`, `Docs/`
+- Excludes: heavy assets (`Content/`), build artifacts (`Binaries/`, `Intermediate/`)
+- **Source of truth** is the main Unreal project repo.
+
+> Synced by GitHub Actions on each push to `main` of the source repo.
+EOF
+
+      - name: Push to source-only repo
+        working-directory: out
+        run: |
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "chore(mirror): sync from $GITHUB_SHA"
+          git branch -M main
+          git remote add origin https://x-access-token:${{ secrets.SONHEIM_SOURCE_PAT }}@github.com/${{ secrets.SONHEIM_SOURCE_REPO }}.git
+          git push -f origin main
