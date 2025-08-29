@@ -45,7 +45,7 @@ jobs:
 
           cat > out/README.md << 'EOF'
 # Sonheim.Source — source-only mirror
-Automated mirror of the main Sonheim (Unreal) repo, focused on code and docs.
+#Automated mirror of the main Sonheim (Unreal) repo, focused on code and docs.
 Includes: Source/, Config/, Plugins/*/Source, Sonheim.uproject, Docs/
 Excludes: Content/, Binaries/, Intermediate/
 Source of truth: the main repository.
