@@ -29,9 +29,11 @@ jobs:
           set -euo pipefail
           mkdir -p out
 
+          # 1) 코드/설정 복사
           if [ -d "Sonheim/Source" ]; then rsync -av --delete "Sonheim/Source/" "out/Source/"; fi
           if [ -d "Sonheim/Config" ]; then rsync -av --delete "Sonheim/Config/" "out/Config/"; fi
 
+          # 2) Plugins/**/Source 만 선별
           if [ -d "Sonheim/Plugins" ]; then
             rsync -av --delete \
               --include='*/' \
@@ -40,27 +42,33 @@ jobs:
               "Sonheim/Plugins/" "out/Plugins/"
           fi
 
+          # 3) uproject 복사(참고용)
           if [ -f "Sonheim/Sonheim.uproject" ]; then cp "Sonheim/Sonheim.uproject" "out/Sonheim.uproject"; fi
+
+          # 4) 문서(있을 때만)
           if [ -d "Doc" ]; then rsync -av --delete "Doc/" "out/Docs/"; fi
 
-          cat > out/README.md << 'EOF'
-# Sonheim.Source — source-only mirror
-#Automated mirror of the main Sonheim (Unreal) repo, focused on code and docs.
-Includes: Source/, Config/, Plugins/*/Source, Sonheim.uproject, Docs/
-Excludes: Content/, Binaries/, Intermediate/
-Source of truth: the main repository.
-EOF
+          # 5) 최소 README (여기독 없이 안전하게)
+          printf '%s\n' \
+            'Sonheim.Source — source-only mirror' \
+            '' \
+            'Automated mirror of the main Sonheim (Unreal) repo, focused on code and docs.' \
+            '' \
+            'Includes: Source/, Config/, Plugins/*/Source, Sonheim.uproject, Docs/' \
+            'Excludes: Content/, Binaries/, Intermediate/' \
+            'Source of truth: the main repository.' \
+            > out/README.md
 
       - name: Push to source-only repo
         working-directory: out
         env:
           MIRROR_REPO: ${{ secrets.SONHEIM_SOURCE_REPO }}
-          MIRROR_PAT: ${{ secrets.SONHEIM_SOURCE_PAT }}
+          MIRROR_PAT:  ${{ secrets.SONHEIM_SOURCE_PAT }}
         shell: bash
         run: |
           set -euo pipefail
           git init
-          git config user.name "github-actions[bot]"
+          git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           git commit -m "chore(mirror): sync from $GITHUB_SHA"
