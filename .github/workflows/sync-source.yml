@@ -1,10 +1,20 @@
-name: Sync Source to Source-only Mirror
+name: Sync Source to Source-only Mirror (Sonheim)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+    paths:
+      - 'Sonheim/Source/**'
+      - 'Sonheim/Config/**'
+      - 'Sonheim/Plugins/**'
+      - 'Sonheim/Sonheim.uproject'
+      - 'Doc/**'
+      - 'README.md'
   workflow_dispatch:
+
+concurrency:
+  group: mirror-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   sync:
@@ -16,11 +26,12 @@ jobs:
           fetch-depth: 1
           lfs: false
           sparse-checkout: |
+            README.md
+            Doc
             Sonheim/Source
             Sonheim/Config
             Sonheim/Plugins
             Sonheim/Sonheim.uproject
-            Doc
           sparse-checkout-cone-mode: false
 
       - name: Prepare mirror workspace
@@ -29,35 +40,44 @@ jobs:
           set -euo pipefail
           mkdir -p out
 
-          # 1) 코드/설정 복사
-          if [ -d "Sonheim/Source" ]; then rsync -av --delete "Sonheim/Source/" "out/Source/"; fi
-          if [ -d "Sonheim/Config" ]; then rsync -av --delete "Sonheim/Config/" "out/Config/"; fi
+          # Code/Config
+          [ -d "Sonheim/Source" ] && rsync -av --delete "Sonheim/Source/" "out/Source/" || true
+          [ -d "Sonheim/Config" ] && rsync -av --delete "Sonheim/Config/" "out/Config/" || true
 
-          # 2) Plugins/**/Source 만 선별
+          # Plugins - only */Source
           if [ -d "Sonheim/Plugins" ]; then
-            rsync -av --delete \
-              --include='*/' \
-              --include='*/Source/***' \
-              --exclude='*' \
+            rsync -av --delete --include='*/' --include='*/Source/***' --exclude='*' \
               "Sonheim/Plugins/" "out/Plugins/"
           fi
 
-          # 3) uproject 복사(참고용)
-          if [ -f "Sonheim/Sonheim.uproject" ]; then cp "Sonheim/Sonheim.uproject" "out/Sonheim.uproject"; fi
+          # uproject
+          [ -f "Sonheim/Sonheim.uproject" ] && cp "Sonheim/Sonheim.uproject" "out/Sonheim.uproject" || true
 
-          # 4) 문서(있을 때만)
-          if [ -d "Doc" ]; then rsync -av --delete "Doc/" "out/Docs/"; fi
+          # Docs (keep folder name 'Doc' to preserve relative links from main README)
+          [ -d "Doc" ] && rsync -av --delete "Doc/" "out/Doc/" || true
 
-          # 5) 최소 README (여기독 없이 안전하게)
-          printf '%s\n' \
-            'Sonheim.Source — source-only mirror' \
-            '' \
-            'Automated mirror of the main Sonheim (Unreal) repo, focused on code and docs.' \
-            '' \
-            'Includes: Source/, Config/, Plugins/*/Source, Sonheim.uproject, Docs/' \
-            'Excludes: Content/, Binaries/, Intermediate/' \
-            'Source of truth: the main repository.' \
-            > out/README.md
+          # Mirror README header + link to main repo, then append full original README
+          {
+            echo "# Sonheim.Source — source-only mirror"
+            echo
+            echo "> 이 리포는 **소스 코드 전용 미러**입니다."
+            echo "> 전체 프로젝트(에셋 포함)와 **풀 README**는 원본 리포에서 확인하세요:"
+            echo "> 👉 [Sonheim (Main Repo)](https://github.com/${GITHUB_REPOSITORY%/*}/Sonheim)"
+            echo
+            echo "포함: \`Source/\`, \`Config/\`, \`Plugins/*/Source\`, \`Sonheim.uproject\`, \`Doc/\`"
+            echo "제외: \`Content/\`, \`Binaries/\`, \`Intermediate/\`"
+            echo
+            echo "---"
+            echo
+            echo "<details><summary><b>Full README (from main repo)</b></summary>"
+            echo
+          } > out/README.md
+
+          if [ -f "README.md" ]; then
+            cat "README.md" >> out/README.md
+          fi
+
+          echo -e "\n</details>\n" >> out/README.md
 
       - name: Push to source-only repo
         working-directory: out
@@ -67,6 +87,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          [ -n "${MIRROR_REPO:-}" ] || { echo "MIRROR_REPO empty"; exit 1; }
+          [ -n "${MIRROR_PAT:-}" ]  || { echo "MIRROR_PAT empty";  exit 1; }
           git init
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -74,4 +96,5 @@ jobs:
           git commit -m "chore(mirror): sync from $GITHUB_SHA"
           git branch -M main
           git remote add origin "https://x-access-token:${MIRROR_PAT}@github.com/${MIRROR_REPO}.git"
+          git ls-remote --heads origin >/dev/null
           git push -f origin main
