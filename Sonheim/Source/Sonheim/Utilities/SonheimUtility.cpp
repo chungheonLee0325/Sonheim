@@ -4,6 +4,30 @@
 #include "SonheimUtility.h"
 
 #include "Sonheim/AreaObject/Base/AreaObject.h"
+#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameObject/Items/BaseItem.h"
+
+static UWorld* GetAuthWorld(const UObject* WorldContextObject) {
+	UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull);
+	if (!World) return nullptr;
+	// 서버 권한에서만 드랍
+	if (!World->GetAuthGameMode()) return nullptr;
+	return World;
+}
+
+static FItemData* ResolveItemData(UWorld* World, int32 ItemID) {
+	if (!World) return nullptr;
+	if (auto* GI = Cast<USonheimGameInstance>(World->GetGameInstance())) {
+		return GI->GetDataItem(ItemID);
+	}
+	return nullptr;
+}
+
+static FVector Scatter(const FVector& Origin, float Radius) {
+	return Origin + FVector(FMath::FRandRange(-Radius, Radius),
+							FMath::FRandRange(-Radius, Radius),
+							30.f);
+}
 
 
 float USonheimUtility::CalculateDamageMultiplier(EElementalAttribute DefenseAttribute,
@@ -152,4 +176,61 @@ FText USonheimUtility::ConvertEscapedNewlinesToFText(const FText& InputText)
     
 	// 변환된 문자열을 다시 FText로 변환하여 반환
 	return FText::FromString(OriginalString);
+}
+
+bool USonheimUtility::SpawnItems(const UObject* WorldContextObject, int32 ItemID, int32 Count,
+								 const FVector& Origin, float ScatterRadius,
+								 const FItemSpawnOptions& Options)
+{
+	UWorld* World = GetAuthWorld(WorldContextObject);
+	if (!World || Count <= 0) return false;
+
+	const FItemData* ItemData = ResolveItemData(World, ItemID);
+	if (!ItemData || !ItemData->ItemClass) return false;
+
+	FActorSpawnParameters SP;
+	SP.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	bool bAnySpawned = false;
+
+	while (Count-- > 0)
+	{
+		const FVector SpawnAt = Scatter(Origin, ScatterRadius);
+		const FRotator Yaw(0.f, FMath::RandRange(0.f, 360.f), 0.f);
+
+		if (ABaseItem* Item = World->SpawnActor<ABaseItem>(ItemData->ItemClass, SpawnAt, Yaw, SP))
+		{
+			Item->InitializeItem(ItemID, Options);
+			bAnySpawned = true;
+		}
+	}
+
+	return bAnySpawned;
+}
+
+void USonheimUtility::SpawnFromDropTableWithOptions(const UObject* WorldContextObject,
+													const TMap<int32,int32>& DropChance,
+													const FVector& BaseLoc, int32 Segments,
+													float ScatterRadius,
+													const FItemSpawnOptions& Options)
+{
+	UWorld* World = GetAuthWorld(WorldContextObject);
+	if (!World || Segments <= 0 || DropChance.Num() == 0) return;
+
+	for (int32 s = 0; s < Segments; ++s)
+	{
+		const FVector SegmentBase = BaseLoc + FVector(0, 0, s * 2.f);
+
+		for (const auto& Pair : DropChance)
+		{
+			const int32 DropItemID = Pair.Key;
+			const int32 Chance     = Pair.Value; // 1~100
+
+			if (FMath::RandRange(1, 100) <= Chance)
+			{
+				// 세그먼트별로 1개 액터를 스폰(Options.ItemCount에 따라 그 액터가 들고 있는 개수 결정)
+				SpawnItems(WorldContextObject, DropItemID, 1, SegmentBase, ScatterRadius, Options);
+			}
+		}
+	}
 }

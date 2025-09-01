@@ -12,6 +12,7 @@
 #include "Sonheim/UI/FloatingDamageActor.h"
 #include "Sonheim/UI/FloatingDamagePool.h"
 #include "Sonheim/UI/Widget/FloatingDamageWidget.h"
+#include "Sonheim/Utilities/SonheimUtility.h"
 
 
 // Sets default values
@@ -93,59 +94,25 @@ void ABaseResourceObject::OnDestroy()
 void ABaseResourceObject::SpawnPartialResources(int32 SegmentsLost) const
 {
 	if (!HasAuthority()) return;
-	
-	// 각 구간별로 개별적으로 처리
-	for (int32 SegmentIdx = 0; SegmentIdx < SegmentsLost; ++SegmentIdx)
-	{
-		// 구간별 약간 다른 위치에서 스폰 (위치 분산)
-		FVector SegmentSpawnBaseLocation = GetActorLocation();
-		SegmentSpawnBaseLocation.X += FMath::RandRange(-50.0f, 50.0f) * SegmentIdx;
-		SegmentSpawnBaseLocation.Y += FMath::RandRange(-50.0f, 50.0f) * SegmentIdx;
 
-		// 각 가능한 드롭 아이템에 대해 처리
-		for (const auto& DropInfoPair : dt_ResourceObject->PossibleDropItemID)
-		{
-			int32 ItemID = DropInfoPair.Key;
-			int32 DropChance = DropInfoPair.Value;
-			
-			// 드롭 확률에 따라 아이템 드롭 여부 결정
-			if (FMath::RandRange(1, 100) > DropChance)
-			{
-				continue; // 이 아이템은 드롭하지 않음
-			}
+	FItemSpawnOptions Opt;
+	Opt.bRequireInteraction = false;
+	Opt.ItemCount = 1;
+	Opt.AutoPickupDelay = 1.0f;
+	Opt.bApplyPhysicsOnDrop = true;
+	Opt.DropForce = 600.f;
+	Opt.LifeTime = 300.f;
 
-			FItemData* ItemData = m_GameInstance->GetDataItem(ItemID);
-			if (!ItemData || !ItemData->ItemClass)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Invalid item data for ID: %d"), ItemID);
-				continue;
-			}
-			
-			// 단일 구간에 대한 드롭 수량 결정
-			// 아이템 스폰 위치 계산 (구간별 위치 + 랜덤 오프셋)
-			// 랜덤 오프셋 생성 (반경 내에서)
-			const float SpawnRadius = 100.0f;
-			FVector RandomOffset(
-				FMath::RandRange(-SpawnRadius, SpawnRadius),
-				FMath::RandRange(-SpawnRadius, SpawnRadius),
-				50.0f + (10.0f * SegmentIdx) // 높이
-			);
+	const TMap<int32, int32>& DropChance = dt_ResourceObject->PossibleDropItemID;
 
-			FVector SpawnLocation = SegmentSpawnBaseLocation + RandomOffset;
-			FRotator SpawnRotation(0.0f, FMath::RandRange(0.0f, 360.0f), 0.0f);
-
-			// 아이템 스폰
-			FActorSpawnParameters SpawnParams;
-			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-			if (ABaseItem* SpawnedItem = GetWorld()->SpawnActor<ABaseItem>(
-				ItemData->ItemClass, SpawnLocation, SpawnRotation, SpawnParams))
-			{
-				// 드롭된 아이템으로 초기화 (1초 후 획득 가능)
-				SpawnedItem->InitializeAsDroppedItem(ItemID, 1, 1.0f);
-			}
-		}
-	}
+	USonheimUtility::SpawnFromDropTableWithOptions(
+		this,
+		DropChance,
+		GetActorLocation(),
+		SegmentsLost,
+		100.f,
+		Opt
+	);
 }
 
 

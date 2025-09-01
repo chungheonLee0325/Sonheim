@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Sonheim/GameObject/Items/BaseItem.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "SonheimUtility.generated.h"
 
@@ -27,4 +28,27 @@ public:
 
 	// 개행 문자 처리를 위한 헬퍼 메서드
 	static FText ConvertEscapedNewlinesToFText(const FText& InputText);
+
+	/** 
+	 * 아이템 액터를 Count개 스폰. 1 actor = Options.ItemCount 개 아이템.
+	 * 산포는 Origin을 기준으로 ScatterRadius 안에서 무작위 배치.
+	 * 서버 권한에서만 수행.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Utility|Item", meta=(WorldContext="WorldContextObject"))
+	static bool SpawnItems(const UObject* WorldContextObject, int32 ItemID, int32 Count,
+	                       const FVector& Origin, float ScatterRadius,
+	                       const FItemSpawnOptions& Options);
+
+	/**
+	 * 확률 테이블 기반 드랍(세그먼트 수만큼 반복). 
+	 * 테이블 키: ItemID, 값: 드랍 확률(1~100).
+	 * 각 적중 시 SpawnItems(..., Count=1, ...) 호출.
+	 * 서버 권한에서만 수행.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Utility|Item", meta=(WorldContext="WorldContextObject"))
+	static void SpawnFromDropTableWithOptions(const UObject* WorldContextObject,
+	                                          const TMap<int32, int32>& DropChance,
+	                                          const FVector& BaseLoc, int32 Segments,
+	                                          float ScatterRadius,
+	                                          const FItemSpawnOptions& Options);
 };
