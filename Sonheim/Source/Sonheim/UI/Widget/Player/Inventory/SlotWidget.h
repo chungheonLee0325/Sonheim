@@ -106,11 +106,15 @@ public:
 	// 시각적 피드백 함수들
 	UFUNCTION(BlueprintCallable, Category = "Animation")
 	void PlayMouseEnterAnimation();
+
+	void SetHighlighted(bool bHighlighted);
 private:
 	UPROPERTY()
 	UToolTipWidget* ToolTipInstance;
 	UPROPERTY()
 	USonheimGameInstance* m_GameInstance;
+
+	bool IsHighlighted = false;
 protected:
 	bool IsEmpty() const;
     

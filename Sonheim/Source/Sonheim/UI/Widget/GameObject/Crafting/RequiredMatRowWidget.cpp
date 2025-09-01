@@ -33,6 +33,10 @@ void URequiredMatRowWidget::UpdateRow(USonheimGameInstance* GI, int32 MatID, int
 	if (CountText)
 	{
 		CountText->SetText(FText::FromString(FString::Printf(TEXT("%d / %d"), Have, Need)));
+		const bool ok = (Have >= Need);
+		CountText->SetColorAndOpacity(ok
+							   ? FLinearColor(FLinearColor::White)
+							   : FLinearColor(FLinearColor::Red));
 	}
 	if (CountBorder)
 	{

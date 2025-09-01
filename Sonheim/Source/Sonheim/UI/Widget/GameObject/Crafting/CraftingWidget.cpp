@@ -126,12 +126,6 @@ void UCraftingWidget::RefreshDetail()
 	if (!Station) return;
 	if (SelectedRow.IsNone()) return;
 
-	// if (ItemName) ItemName->SetText(FText::GetEmpty());
-	// if (ItemIcon) ItemIcon->SetVisibility(ESlateVisibility::Hidden);
-	// if (ItemResultQuantity) ItemResultQuantity->SetText(FText::GetEmpty());
-	// if (OwnedCountText) OwnedCountText->SetText(FText::GetEmpty());
-
-
 	const FCraftingRecipe* R = GetRecipe(SelectedRow);
 	if (!R) return;
 
@@ -169,7 +163,8 @@ void UCraftingWidget::RefreshCraftability()
 		}
 		slot->SetIsEnabled(true);
 		// ToDo : 시각적 처리 변경 예정
-		slot->SetRenderOpacity(bCraftable ? 1.0f : 0.4f);
+		slot->SetRenderOpacity(bCraftable ? 1.0f : 0.6f);
+		slot->SetColorAndOpacity(bCraftable ? FLinearColor::White : FLinearColor::Red);
 	}
 }
 
@@ -229,7 +224,7 @@ void UCraftingWidget::RebuildStaticForRecipe(const struct FCraftingRecipe* R)
 			// Need/Have는 동적에서 채우므로 여기서는 아이콘만 준비해도 됨
 			if (const FItemData* MD = GameInstance->GetDataItem(MatID))
 			{
-				// 아이콘만 고정 세팅용 API가 있으면 사용, 없으면 Need=0/Have=0으로 1회 초기 채움
+				// Need=0/Have=0으로 1회 초기 채움
 				RequiredRowPool[i]->UpdateRow(GameInstance, MatID, 0, 0);
 			}
 		}
@@ -290,12 +285,17 @@ void UCraftingWidget::OnQuantityChanged(float NewValue)
 
 void UCraftingWidget::OnRecipeSlotClicked(USlotWidget* ClickedSlot, bool bRightClick)
 {
+	
 	for (const auto& P : RecipeSlotMap)
 	{
 		if (P.Value == ClickedSlot)
 		{
 			SelectRow(P.Key);
-			break;
+			P.Value->SetHighlighted(true);
+		}
+		else
+		{
+			P.Value->SetHighlighted(false);
 		}
 	}
 }

@@ -45,7 +45,7 @@ void USlotWidget::SetItemData(const FItemData* ItemData, int32 NewQuantity)
 		IMG_BackGround->SetColorAndOpacity(USonheimUtility::GetRarityColor(ItemData->ItemRarity, 0.2f));
 		IMG_BackGround->SetVisibility(ESlateVisibility::Visible);
 	}
-	
+
 	IMG_Item->SetBrushFromTexture(ItemData->ItemIcon);
 	IMG_Item->SetVisibility(ESlateVisibility::Visible);
 
@@ -58,7 +58,7 @@ void USlotWidget::SetItemData(const FItemData* ItemData, int32 NewQuantity)
 	{
 		ToolTipInstance = CreateWidget<UToolTipWidget>(this, ToolTipWidgetClass);
 	}
-	
+
 	// ToolTip 초기화
 	if (ItemData != nullptr && ToolTipInstance != nullptr)
 	{
@@ -75,7 +75,7 @@ void USlotWidget::ClearSlot()
 	IMG_BackGround->SetVisibility(ESlateVisibility::Hidden);
 	ItemID = 0;
 	Quantity = 0;
-	
+
 	// ToolTip 초기화
 	SetToolTip(nullptr);
 }
@@ -98,8 +98,8 @@ void USlotWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointer
 {
 	Super::NativeOnMouseEnter(InGeometry, InMouseEvent);
 
-	if (bOnlyView) return;
-	
+	if (bOnlyView || IsHighlighted) return;
+
 	// 슬롯이 비어있지 않고, 툴팁 클래스가 지정되어 있다면
 	if (!IsEmpty() && ToolTipWidgetClass)
 	{
@@ -118,15 +118,17 @@ void USlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 {
 	Super::NativeOnMouseLeave(InMouseEvent);
 
-	if (bOnlyView) return;
-	
+	if (bOnlyView || IsHighlighted) return;
+
 	// 하이라이트 효과 원복
+	if (!IsEmpty() && ToolTipWidgetClass)
+	{
+		Border_MouseOver->SetVisibility(ESlateVisibility::Hidden);
+	}
 	if (IMG_Border)
 	{
 		IMG_Border->SetColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 1.0f));
 	}
-		Border_MouseOver->SetVisibility(ESlateVisibility::Hidden);
-	
 }
 
 FReply USlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
@@ -134,7 +136,7 @@ FReply USlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const F
 	FReply Reply = Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 
 	if (bOnlyView) return Reply;
-	
+
 	if (IsEmpty())
 		return Reply;
 
@@ -164,7 +166,7 @@ void USlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPoint
 	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 
 	if (bOnlyView) return;
-	
+
 	if (IsEmpty() || !bSupportsDragDrop)
 		return;
 
@@ -193,9 +195,8 @@ void USlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPoint
 bool USlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,
                                UDragDropOperation* InOperation)
 {
-
 	if (bOnlyView) return false;
-	
+
 	UDragDropSlotOperation* DragDropOp = Cast<UDragDropSlotOperation>(InOperation);
 	if (!DragDropOp || !DragDropOp->DraggedSlotWidget)
 		return false;
@@ -207,7 +208,7 @@ bool USlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent
 	// 부모 위젯 확인하여 크로스 드롭 처리
 	UInventoryWidget* MyInventoryWidget = GetTypedOuter<UInventoryWidget>();
 	UContainerWidget* MyContainerWidget = GetTypedOuter<UContainerWidget>();
-    
+
 	UInventoryWidget* FromInventoryWidget = DragDropOp->DraggedSlotWidget->GetTypedOuter<UInventoryWidget>();
 	UContainerWidget* FromContainerWidget = DragDropOp->DraggedSlotWidget->GetTypedOuter<UContainerWidget>();
 
@@ -233,19 +234,51 @@ bool USlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent
 
 void USlotWidget::PlayMouseEnterAnimation()
 {
-    if (ClickAnimation)
-    {
-        PlayAnimation(ClickAnimation);
-    }
-    else
-    {
-        // 기본 클릭 효과
-        SetRenderScale(FVector2D(0.95f, 0.95f));
-        
-        FTimerHandle TimerHandle;
-        GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
-        {
-            SetRenderScale(FVector2D(1.0f, 1.0f));
-        }, 0.1f, false);
-    }
+	if (ClickAnimation)
+	{
+		PlayAnimation(ClickAnimation);
+	}
+	else
+	{
+		// 기본 클릭 효과
+		SetRenderScale(FVector2D(0.95f, 0.95f));
+
+		FTimerHandle TimerHandle;
+		GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
+		{
+			SetRenderScale(FVector2D(1.0f, 1.0f));
+		}, 0.1f, false);
+	}
+}
+
+void USlotWidget::SetHighlighted(bool bHighlighted)
+{
+	if (bHighlighted)
+	{
+		if (!IsEmpty() && ToolTipWidgetClass)
+		{
+			Border_MouseOver->SetVisibility(ESlateVisibility::Visible);
+			Border_MouseOver->SetBrushColor(FLinearColor::Green);
+		}
+		if (IMG_Border)
+		{
+			IMG_Border->SetColorAndOpacity(FLinearColor::Green);
+		}
+
+		IsHighlighted = true;
+	}
+	else
+	{
+		if (!IsEmpty() && ToolTipWidgetClass)
+		{
+			Border_MouseOver->SetVisibility(ESlateVisibility::Hidden);
+			Border_MouseOver->SetBrushColor(FLinearColor(0.f,0.690939f,1.f,1.f));
+		}
+		if (IMG_Border)
+		{
+			IMG_Border->SetColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 1.0f));
+		}
+
+		IsHighlighted = false;
+	}
 }

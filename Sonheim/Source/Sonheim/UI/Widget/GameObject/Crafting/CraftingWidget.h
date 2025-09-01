@@ -126,4 +126,7 @@ private:
 
 	bool bCachedCanCraft = false;
 	int32 CachedMaxCraftable = 0;
+
+	FLinearColor CanCraftColor = FLinearColor::White;
+	FLinearColor CanNotCraftColor = FLinearColor::Red;
 };
