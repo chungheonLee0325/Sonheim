@@ -1399,14 +1399,14 @@ void ASonheimPlayer::OnInteractableChanged(AActor* NewInteractable)
 {
 }
 
-void ASonheimPlayer::Interaction_Pressed() const
+void ASonheimPlayer::Interaction_Pressed(EHoldPurpose Purpose) const
 {
-	InteractionComponent->StartHoldInteraction();
+	InteractionComponent->StartHoldInteraction(Purpose);
 }
 
-void ASonheimPlayer::Interaction_Released() const
+void ASonheimPlayer::Interaction_Released(EHoldPurpose Purpose) const
 {
-	InteractionComponent->StopHoldInteraction();
+	InteractionComponent->StopHoldInteraction(Purpose);
 }
 
 void ASonheimPlayer::SetWeaponVisible(bool bNew, bool bLocalPreview)

@@ -61,10 +61,10 @@ public:
 
 	// 홀드 상호작용
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
-	void StartHoldInteraction();
+	void StartHoldInteraction(EHoldPurpose Purpose);
 
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
-	void StopHoldInteraction();
+	void StopHoldInteraction(EHoldPurpose Purpose);
 
 	// 현재 상호작용 가능한 대상 가져오기
 	UFUNCTION(BlueprintPure, Category = "Interaction")

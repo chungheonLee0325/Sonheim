@@ -150,6 +150,14 @@ ASonheimPlayerController::ASonheimPlayerController()
 		FKeyAction = tempFAction.Object;
 	}
 
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempCAction(
+	TEXT(
+		"/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_CInput.IA_CInput'"));
+	if (tempFAction.Succeeded())
+	{
+		CKeyAction = tempCAction.Object;
+	}
+
 	m_Player = nullptr;
 
 	// UI 클래스 설정
@@ -378,6 +386,12 @@ void ASonheimPlayerController::SetupInputComponent()
 		                                   &ASonheimPlayerController::On_FKey_Pressed);
 		EnhancedInputComponent->BindAction(FKeyAction, ETriggerEvent::Completed, this,
 		                                   &ASonheimPlayerController::On_FKey_Released);
+
+		// C (캔슬 키)
+		EnhancedInputComponent->BindAction(CKeyAction, ETriggerEvent::Started, this,
+										   &ASonheimPlayerController::On_CKey_Pressed);
+		EnhancedInputComponent->BindAction(CKeyAction, ETriggerEvent::Completed, this,
+										   &ASonheimPlayerController::On_CKey_Released);
 	}
 	else
 	{
@@ -641,7 +655,7 @@ void ASonheimPlayerController::On_FKey_Pressed(const FInputActionValue& InputAct
 	if (IsMenuActivate || IsContainerActivate) return;
 	if (m_Player)
 	{
-		m_Player->Interaction_Pressed();
+		m_Player->Interaction_Pressed(EHoldPurpose::Interact);
 	}
 }
 
@@ -650,7 +664,25 @@ void ASonheimPlayerController::On_FKey_Released(const FInputActionValue& InputAc
 	if (IsMenuActivate || IsContainerActivate) return;
 	if (m_Player)
 	{
-		m_Player->Interaction_Released();
+		m_Player->Interaction_Released(EHoldPurpose::Interact);
+	}
+}
+
+void ASonheimPlayerController::On_CKey_Pressed(const FInputActionValue& InputActionValue)
+{
+	if (IsMenuActivate || IsContainerActivate) return;
+	if (m_Player)
+	{
+		m_Player->Interaction_Pressed(EHoldPurpose::Cancel);
+	}
+}
+
+void ASonheimPlayerController::On_CKey_Released(const FInputActionValue& InputActionValue)
+{
+	if (IsMenuActivate || IsContainerActivate) return;
+	if (m_Player)
+	{
+		m_Player->Interaction_Released(EHoldPurpose::Cancel);
 	}
 }
 

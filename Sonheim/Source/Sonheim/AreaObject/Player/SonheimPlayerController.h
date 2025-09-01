@@ -85,9 +85,13 @@ private:
 	void On_Glider_Pressed(const FInputActionValue& InputActionValue);
 	void On_Glider_Released(const FInputActionValue& InputActionValue);
 
-	/** Called for Glider input */
+	/** Called for FKey input */
 	void On_FKey_Pressed(const FInputActionValue& InputActionValue);
 	void On_FKey_Released(const FInputActionValue& InputActionValue);
+
+	/** Called for CKey input */
+	void On_CKey_Pressed(const FInputActionValue& InputActionValue);
+	void On_CKey_Released(const FInputActionValue& InputActionValue);
 	
 	// Owner
 	UPROPERTY(VisibleAnywhere)
@@ -193,6 +197,10 @@ private:
 	/** FKey Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* FKeyAction;
+
+	/** CKey Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* CKeyAction;
 	
 	bool IsMenuActivate = false;
 	bool IsContainerActivate = false;

@@ -267,9 +267,9 @@ public:
 
 
 	// 상호작용 키
-	void Interaction_Pressed() const;
+	void Interaction_Pressed(EHoldPurpose Purpose) const;
 	
-	void Interaction_Released() const;
+	void Interaction_Released(EHoldPurpose Purpose) const;
 	
 	// 무기 메쉬 
 	USkeletalMeshComponent* GetWeaponMesh() const {return WeaponComponent;};

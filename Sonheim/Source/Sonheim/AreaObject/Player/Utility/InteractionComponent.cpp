@@ -275,63 +275,68 @@ void UInteractionComponent::Server_TryInteract_Implementation(AActor* Interactor
 	TryInteract();
 }
 
-void UInteractionComponent::StartHoldInteraction()
+void UInteractionComponent::StartHoldInteraction(EHoldPurpose Purpose)
 {
-	if (!CurrentInteractable || !IInteractableInterface::Execute_CanInteract(CurrentInteractable))
+	if (!CurrentInteractable ||
+		!CurrentInteractable->GetClass()->ImplementsInterface(UInteractableInterface::StaticClass()))
 		return;
 
+	const bool bCanInteract = IInteractableInterface::Execute_CanInteract(CurrentInteractable);
+	const bool bIsCancel = (Purpose == EHoldPurpose::Cancel);
+	const bool bCanCancel = bIsCancel ? IInteractableInterface::Execute_CanHoldCancel(CurrentInteractable) : true;
+	if (!bCanInteract && !bIsCancel) return;
+	if (bIsCancel && !bCanCancel) return;
+
 	bIsHolding = true;
-	HoldProgress = 0.0f;
+	HoldProgress = 0.f;
 
-	// 홀드 필요 시간 가져오기
-	float HoldDuration = IInteractableInterface::Execute_GetHoldDuration(CurrentInteractable);
+	const float HoldDuration = bIsCancel
+		                           ? IInteractableInterface::Execute_GetCancelHoldDuration(CurrentInteractable)
+		                           : IInteractableInterface::Execute_GetHoldDuration(CurrentInteractable);
 
-	// 즉시 상호작용
-	if (HoldDuration <= 0.0f)
+	if (HoldDuration <= 0.f)
 	{
-		TryInteract();
+		// 즉시 실행
+		if (bIsCancel)
+			IInteractableInterface::Execute_ExecuteCancel(CurrentInteractable, OwnerPlayer);
+		else
+			TryInteract();
 		return;
 	}
 
-	// 홀드 타이머 시작
-	GetWorld()->GetTimerManager().SetTimer(HoldTimerHandle, [this, HoldDuration]()
+	GetWorld()->GetTimerManager().SetTimer(HoldTimerHandle, [this, HoldDuration, Purpose]()
 	{
 		if (!IsValid(CurrentInteractable))
 		{
-			StopHoldInteraction();
+			StopHoldInteraction(Purpose);
 			return;
 		}
 
 		HoldProgress = FMath::Min(HoldProgress + (0.01f / HoldDuration), 1.0f);
 
-		// 진행률 업데이트 
-		if (ABaseItem* Item = Cast<ABaseItem>(CurrentInteractable))
-		{
-			Item->UpdateHoldProgress(HoldProgress);
-		}
+		// 인터페이스로 진행률 브로드캐스트
+		IInteractableInterface::Execute_UpdateHoldProgressUI(CurrentInteractable, HoldProgress, Purpose);
 
-		// 완료
 		if (HoldProgress >= 1.0f)
 		{
-			TryInteract();
-			//StopHoldInteraction();
+			if (Purpose == EHoldPurpose::Cancel)
+				IInteractableInterface::Execute_ExecuteCancel(CurrentInteractable, OwnerPlayer);
+			else
+				TryInteract();
 		}
 	}, 0.01f, true);
 }
 
-void UInteractionComponent::StopHoldInteraction()
+void UInteractionComponent::StopHoldInteraction(EHoldPurpose Purpose)
 {
 	bIsHolding = false;
-	HoldProgress = 0.0f;
+	HoldProgress = 0.f;
 	GetWorld()->GetTimerManager().ClearTimer(HoldTimerHandle);
 
-	// 진행률 리셋
-	if (IsValid(CurrentInteractable))
+	if (IsValid(CurrentInteractable) &&
+		CurrentInteractable->GetClass()->ImplementsInterface(UInteractableInterface::StaticClass()))
 	{
-		if (ABaseItem* Item = Cast<ABaseItem>(CurrentInteractable))
-		{
-			Item->UpdateHoldProgress(0.0f);
-		}
+		IInteractableInterface::Execute_UpdateHoldProgressUI(CurrentInteractable, 0.f, Purpose);
 	}
 }
 
