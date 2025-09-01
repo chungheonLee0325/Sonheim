@@ -3,6 +3,7 @@
 
 #include "BaseResourceObject.h"
 
+#include "NiagaraFunctionLibrary.h"
 #include "Components/BoxComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
@@ -213,12 +214,13 @@ float ABaseResourceObject::TakeDamage(float Damage, const FDamageEvent& DamageEv
 		}
 	}
 
-	MulticastDamageEffect(ActualDamage, hitResult.Location, DamageCauser, damageCoefficient);
+	MulticastDamageEffect(ActualDamage, hitResult.Location, DamageCauser, damageCoefficient, attackData);
 
 	return ActualDamage;
 }
 
-void ABaseResourceObject::MulticastDamageEffect_Implementation(float Damage, FVector HitLocation, AActor* DamageCauser, float DamageCoefficient)
+void ABaseResourceObject::MulticastDamageEffect_Implementation(float Damage, FVector HitLocation, AActor* DamageCauser,
+                                                               float DamageCoefficient,const FAttackData& AttackData)
 {
 	// Spawn floating damage
 	FVector SpawnLocation = HitLocation;
@@ -233,18 +235,18 @@ void ABaseResourceObject::MulticastDamageEffect_Implementation(float Damage, FVe
 		Request.WorldLocation = HitLocation;
 		Request.DamageCauser = DamageCauser;
 		Request.DamagedActor = this;
-        
+
 		// 약점 타입 설정
 		Request.WeakPointType = DamageCoefficient > 1.0f
-													? EFloatingOutLineDamageType::WeakPointDamage
-													: EFloatingOutLineDamageType::Normal;
-        
+			                        ? EFloatingOutLineDamageType::WeakPointDamage
+			                        : EFloatingOutLineDamageType::Normal;
+
 		// 속성 타입 설정
 		Request.ElementAttributeType = EFloatingTextDamageType::Normal;
-		
+
 		DamagePool->RequestDamageNumber(Request);
 	}
-	
+
 	// Spawn Harvest SFX
 	if (dt_ResourceObject->HarvestSoundID != 0)
 	{
@@ -254,6 +256,24 @@ void ABaseResourceObject::MulticastDamageEffect_Implementation(float Damage, FVe
 	if (dt_ResourceObject->HarvestEffect != nullptr)
 	{
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), dt_ResourceObject->HarvestEffect, SpawnLocation);
+	}
+
+	// Spawn Hit SFX
+	if (AttackData.HitSFX != nullptr)
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), AttackData.HitSFX, HitLocation);
+	}
+
+	// Spawn Hit VFX
+	if (AttackData.HitVFX_N != nullptr)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), AttackData.HitVFX_N, HitLocation,
+													   FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
+	}
+	else if (AttackData.HitVFX_P != nullptr)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), AttackData.HitVFX_P, HitLocation,
+												 FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
 	}
 }
 
