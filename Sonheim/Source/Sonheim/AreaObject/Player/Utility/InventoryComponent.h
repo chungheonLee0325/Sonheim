@@ -53,7 +53,7 @@ public:
 
 	// 인벤토리 설정
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Inventory")
-	int32 MaxInventorySlots = 50;
+	int32 MaxInventorySlots = 42;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Inventory")
 	int32 MaxItemStackCount = 9999;
@@ -105,7 +105,7 @@ public:
 
 	// 인벤토리 관련 함수들
 	UFUNCTION(BlueprintCallable, Category="Inventory")
-	bool AddItem(int ItemID, int ItemCount, bool ItemAddedFlag = true);
+	bool AddItem(int ItemID, int ItemCount, bool IsDirectAcquisition = true);
 
 	bool AddItemByInventoryItem(const FInventoryItem& InventoryItem);
 
@@ -145,6 +145,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool SwapItems(int32 FromIndex, int32 ToIndex);
 
+	void DropItem_ServerOnly(int32 ItemID, int32 Count, bool bStackable);
+
 	FItemData* GetCurrentWeaponData();
 
 	// Blueprint 헬퍼 함수들
@@ -178,7 +180,8 @@ private:
 	FItemData* GetItemData(int ItemID) const;
 	void ApplyEquipmentStats(int ItemID, bool bEquipping);
 	int FindItemIndexInInventory(int ItemID) const;
-	EEquipmentSlotType FindEmptySlotForType(EEquipmentKindType ItemType);
+	// 장비 종류로 어느 슬롯에 들어갈수 있는지 반환
+	EEquipmentSlotType FindEquipSlotByEquipKindType(EEquipmentKindType ItemKindType) const;
 	void BroadcastInventoryChanged();
 	
 	// 장착 슬롯 헬퍼 함수들
@@ -194,6 +197,10 @@ private:
 	// Client Prediction 설정
 	UPROPERTY(EditDefaultsOnly, Category = "Network")
 	bool bEnableClientPrediction = true;
+
+	// 장비 아이템 자동 장착 설정
+	UPROPERTY(EditDefaultsOnly, Category="Inventory|Equip")
+	bool bAutoEquipOnPickup = true;
 	
 private:
 	// 클라이언트 예측 메서드

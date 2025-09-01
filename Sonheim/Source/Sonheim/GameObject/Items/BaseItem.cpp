@@ -181,7 +181,7 @@ void ABaseItem::InitializeItem(int32 InItemID, const FItemSpawnOptions& Options)
 void ABaseItem::SetupComponents()
 {
 	// 메쉬 설정
-	if (dt_ItemData->ItemMesh)
+	if (dt_ItemData && dt_ItemData->ItemMesh)
 	{
 		ItemMesh->SetStaticMesh(dt_ItemData->ItemMesh);
 	}

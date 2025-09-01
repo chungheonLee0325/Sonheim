@@ -8,6 +8,7 @@
 #include "Sonheim/Utilities/LogMacro.h"
 #include "Net/UnrealNetwork.h"
 #include "Engine/ActorChannel.h"
+#include "Sonheim/Utilities/SonheimUtility.h"
 
 UInventoryComponent::UInventoryComponent()
 {
@@ -169,8 +170,8 @@ bool UInventoryComponent::ValidateItemOperation(int ItemID, int ItemCount) const
 	return true;
 }
 
-// 인벤토리 함수들
-bool UInventoryComponent::AddItem(int ItemID, int ItemCount, bool ItemAddedFlag)
+// IsDirectAcquisition 은 직접 얻은 아이템(장비 해제로 인해 인벤으로 돌아온 아이템 x)
+bool UInventoryComponent::AddItem(int ItemID, int ItemCount, bool IsDirectAcquisition)
 {
 	// 데이터 유효성 검증
 	if (!ValidateItemOperation(ItemID, ItemCount))
@@ -184,51 +185,109 @@ bool UInventoryComponent::AddItem(int ItemID, int ItemCount, bool ItemAddedFlag)
 		if (!ItemData)
 			return false;
 
-		int ExistingItemIndex = FindItemIndexInInventory(ItemID);
+        const bool bStackable = ItemData->bStackable;
+        int32 Remaining = ItemCount;
+        int32 AddedToInventory = 0;
 
-		if (ExistingItemIndex != INDEX_NONE && ItemData->bStackable)
-		{
-			int NewCount = InventoryItems[ExistingItemIndex].Count + ItemCount;
-			if (NewCount > MaxItemStackCount)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Stack overflow prevented"));
-				return false;
-			}
-            
-			InventoryItems[ExistingItemIndex].Count = NewCount;
-			OnItemAdded.Broadcast(ItemID, ItemCount);
-		}
-		else
-		{
-			if (InventoryItems.Num() >= MaxInventorySlots)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Inventory full"));
-				return false;
-			}
+        // 1) 자동 장착 시도 (장비/무기 & 비스택, 직접 획득한 경우에만)
+        if (bAutoEquipOnPickup && !bStackable && IsDirectAcquisition)
+        {
+            const bool bEquipCategory =
+                (ItemData->ItemCategory == EItemCategory::Equipment) ||
+                (ItemData->ItemCategory == EItemCategory::Weapon);
 
-			FInventoryItem NewItem(ItemID, ItemCount);
-			InventoryItems.Add(NewItem);
+            if (bEquipCategory)
+            {
+                const EEquipmentSlotType TargetSlot =
+                    FindEquipSlotByEquipKindType(ItemData->EquipmentData.EquipKind);
 
-			// 장비 해제같이 아이템이 해제되어 인벤으로 복구될경우, 델리게이트 호출 X, why? 아이템 획득 팝업 안뜨게하기
-			if (ItemAddedFlag)
-			{
-				OnItemAdded.Broadcast(ItemID, ItemCount);
-			}
-		}
+                if (GetEquippedItem(TargetSlot).IsEmpty())
+                {
+                    if (InventoryItems.Num() < MaxInventorySlots)
+                    {
+                        // 임시로 1개 넣고, 바로 장착
+                        const int32 TempIndex = InventoryItems.Add(FInventoryItem(ItemID, 1));
+                        const bool bEquipped = EquipItemByIndex(TempIndex);
 
-		BroadcastInventoryChanged();
-		return true;
-	}
-	// 클라이언트에서 실행
+                        if (bEquipped)
+                        {
+                            Remaining -= 1;
+                            // 아이템 획득 후 바로 장착하므로 따로 브로드캐스트
+                        	OnItemAdded.Broadcast(ItemID, 1);
+                        }
+                        else
+                        {
+                            // 장착 실패 시 롤백
+                            InventoryItems.RemoveAt(TempIndex);
+                        }
+                    }
+                    else
+                    {
+                        // 임시 칸조차 못 만들면 바닥 드랍
+                        DropItem_ServerOnly(ItemID, 1, false);
+                        Remaining -= 1;
+                    }
+                }
+            }
+        }
+
+        // 2) (스택형) 기존 스택 채우기
+        if (bStackable)
+        {
+            for (FInventoryItem& It : InventoryItems)
+            {
+                if (Remaining <= 0) break;
+                if (It.ItemID != ItemID) continue;
+
+                const int32 Space = MaxItemStackCount - It.Count;
+                if (Space <= 0) continue;
+
+                const int32 Add = FMath::Min(Space, Remaining);
+                It.Count += Add;
+                Remaining -= Add;
+                AddedToInventory += Add;
+            }
+        }
+
+        // 3) 새 슬롯 채우기 (스택형=새 스택, 비스택형=슬롯당 1)
+        while (Remaining > 0 && InventoryItems.Num() < MaxInventorySlots)
+        {
+            if (bStackable)
+            {
+                const int32 Add = FMath::Min(MaxItemStackCount, Remaining);
+                InventoryItems.Add(FInventoryItem(ItemID, Add));
+                Remaining -= Add;
+                AddedToInventory += Add;
+            }
+            else
+            {
+                InventoryItems.Add(FInventoryItem(ItemID, 1));
+                Remaining -= 1;
+                AddedToInventory += 1;
+            }
+        }
+
+        // 4) 잔여 오버플로우는 바닥 드랍(인터랙션 Hold)
+        if (Remaining > 0)
+        {
+            DropItem_ServerOnly(ItemID, Remaining, bStackable);
+        }
+
+        // 이벤트
+        if (IsDirectAcquisition && AddedToInventory > 0)
+        {
+            OnItemAdded.Broadcast(ItemID, AddedToInventory);
+        }
+        BroadcastInventoryChanged();
+        return true;
+    }
 	else
 	{
-		// 1. 먼저 예측 수행 (즉시 UI 업데이트)
+		// 클라 예측 수행
 		if (bEnableClientPrediction)
 		{
 			PerformClientPrediction_AddItem(ItemID, ItemCount);
 		}
-        
-		// 2. 서버에 요청
 		ServerAddItem(ItemID, ItemCount);
 		return true;
 	}
@@ -244,40 +303,65 @@ bool UInventoryComponent::RemoveItem(int ItemID, int ItemCount)
 	if (!ValidateItemOperation(ItemID, ItemCount))
 		return false;
 
-	// 서버에서 실행
-	if (GetOwnerRole() == ROLE_Authority)
+	if (GetOwnerRole() != ROLE_Authority)
 	{
-		int ItemIndex = FindItemIndexInInventory(ItemID);
-		if (ItemIndex == INDEX_NONE)
-			return false;
-
-		FInventoryItem& Item = InventoryItems[ItemIndex];
-		if (Item.Count < ItemCount)
-			return false;
-
-		Item.Count -= ItemCount;
-		if (Item.Count <= 0)
-		{
-			InventoryItems.RemoveAt(ItemIndex);
-		}
-
-		OnItemRemoved.Broadcast(ItemID, Item.Count);
-		BroadcastInventoryChanged();
-		return true;
-	}
-	// 클라이언트에서 실행
-	else
-	{
-		// 1. 예측
 		if (bEnableClientPrediction)
-		{
 			PerformClientPrediction_RemoveItem(ItemID, ItemCount);
-		}
-        
-		// 2. 서버 요청
 		ServerRemoveItem(ItemID, ItemCount);
 		return true;
 	}
+
+	FItemData* ItemData = GetItemData(ItemID);
+	if (!ItemData) return false;
+	const bool bStackable = ItemData->bStackable;
+
+	int Available = 0;
+	for (const FInventoryItem& It : InventoryItems)
+	{
+		if (It.ItemID == ItemID)
+			Available += bStackable ? It.Count : FMath::Max(1, It.Count);
+	}
+	if (Available < ItemCount) return false;
+
+	int Remaining = ItemCount;
+	for (int i = 0; i < InventoryItems.Num() && Remaining > 0;)
+	{
+		FInventoryItem& It = InventoryItems[i];
+		if (It.ItemID != ItemID)
+		{
+			++i;
+			continue;
+		}
+
+		if (bStackable)
+		{
+			const int Use = FMath::Min(It.Count, Remaining);
+			It.Count -= Use;
+			Remaining -= Use;
+			if (It.Count <= 0)
+			{
+				InventoryItems.RemoveAt(i);
+				continue;
+			}
+			++i;
+		}
+		else
+		{
+			const int Use = FMath::Min(FMath::Max(1, It.Count), Remaining);
+			Remaining -= Use;
+			if (It.Count - Use <= 0)
+			{
+				InventoryItems.RemoveAt(i);
+				continue;
+			}
+			It.Count -= Use;
+			++i;
+		}
+	}
+
+	OnItemRemoved.Broadcast(ItemID, ItemCount);
+	BroadcastInventoryChanged();
+	return true;
 }
 
 bool UInventoryComponent::RemoveItemByIndex(int Index)
@@ -323,7 +407,7 @@ bool UInventoryComponent::EquipItem(int ItemID)
 		if (!ItemData)
 			return false;
 
-		EEquipmentSlotType EquipSlotType = FindEmptySlotForType(ItemData->EquipmentData.EquipKind);
+		EEquipmentSlotType EquipSlotType = FindEquipSlotByEquipKindType(ItemData->EquipmentData.EquipKind);
 		if (EquipSlotType == EEquipmentSlotType::None)
 			return false;
 
@@ -603,6 +687,46 @@ bool UInventoryComponent::SwapItems(int32 FromIndex, int32 ToIndex)
 	}
 }
 
+void UInventoryComponent::DropItem_ServerOnly(int32 ItemID, int32 Count, bool bStackable)
+{
+ 	if (!ensure(GetOwnerRole() == ROLE_Authority) || Count <= 0) return;
+
+	// 드랍 위치: 플레이어 앞(없으면 Owner 위치)
+	FVector DropAt = FVector::ZeroVector;
+	AActor* OwnerActor = Cast<AActor>(GetOwner());
+
+
+	if (m_PlayerState)
+	{
+		if (m_PlayerState->GetSonheimPlayer())
+		{
+			DropAt = m_PlayerState->GetSonheimPlayer()->GetActorLocation()
+				+ m_PlayerState->GetSonheimPlayer()->GetActorForwardVector() * 300.f
+				+ FVector(0, 0, 100.f);
+		}
+	}
+	else if (OwnerActor)
+	{
+		DropAt = OwnerActor->GetActorLocation() + FVector(0, 0, 40.f);
+	}
+
+	// 홀드 인터랙션 필요로 드랍
+	FItemSpawnOptions Opt;
+
+	if (bStackable)
+	{
+		// 스택형: 한 액터에 Count 전부 담아 스폰
+		Opt = MakeInteractable(Count, EItemInteractionType::Hold, 0.4f);
+		USonheimUtility::SpawnItems(this, ItemID, 1, DropAt, 50.f, Opt);
+	}
+	else
+	{
+		// 비스택형: 개별 액터로 여러 개 스폰
+		Opt = MakeInteractable(1, EItemInteractionType::Hold, 0.4f);
+		USonheimUtility::SpawnItems(this, ItemID, Count, DropAt, 50.f, Opt);
+	}
+}
+
 FItemData* UInventoryComponent::GetCurrentWeaponData()
 {
 	FInventoryItem CurrentWeapon = GetEquippedItem(CurrentWeaponSlot);
@@ -672,9 +796,9 @@ int UInventoryComponent::FindItemIndexInInventory(int ItemID) const
 	return INDEX_NONE;
 }
 
-EEquipmentSlotType UInventoryComponent::FindEmptySlotForType(EEquipmentKindType ItemType)
+EEquipmentSlotType UInventoryComponent::FindEquipSlotByEquipKindType(EEquipmentKindType ItemKindType) const
 {
-	switch (ItemType)
+	switch (ItemKindType)
 	{
 	case EEquipmentKindType::Head:
 		return EEquipmentSlotType::Head;
@@ -810,7 +934,7 @@ void UInventoryComponent::PerformClientPrediction_EquipItem(int ItemID)
     if (!ItemData)
         return;
         
-    EEquipmentSlotType SlotType = FindEmptySlotForType(ItemData->EquipmentData.EquipKind);
+    EEquipmentSlotType SlotType = FindEquipSlotByEquipKindType(ItemData->EquipmentData.EquipKind);
     if (SlotType == EEquipmentSlotType::None)
         return;
         
