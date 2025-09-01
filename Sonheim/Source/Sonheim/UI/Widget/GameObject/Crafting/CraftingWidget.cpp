@@ -55,15 +55,9 @@ void UCraftingWidget::NativeDestruct()
 	// UI 닫힐 때 서버에 UI 락 해제
 	if (Station)
 	{
-		if (APlayerController* PC = GetOwningPlayer())
+		if (ASonheimPlayerController* SPC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
 		{
-			if (ASonheimPlayer* Player = Cast<ASonheimPlayer>(PC->GetPawn()))
-			{
-				if (ASonheimPlayerController* SPC = Cast<ASonheimPlayerController>(PC))
-				{
-					SPC->Server_Crafting_ReleaseUI(Station);
-				}
-			}
+			SPC->Server_Crafting_ReleaseUI(Station);
 		}
 	}
 	if (InventoryComp)

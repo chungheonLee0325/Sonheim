@@ -92,6 +92,10 @@ public:
 	virtual FString GetInteractionName_Implementation() const override;
 	virtual EInteractableType GetInteractableType_Implementation() const override { return EInteractableType::Object; }
 	virtual float GetHoldDuration_Implementation() const override { return HoldToCraftDuration; }
+	virtual void UpdateHoldProgressUI_Implementation(float Progress, EHoldPurpose Purpose) override;
+	virtual bool CanHoldCancel_Implementation() const override { return bHasActiveWork; }
+	virtual void ExecuteCancel_Implementation(ASonheimPlayer* Player) override;
+	virtual float GetCancelHoldDuration_Implementation() const override { return 0.8f; }
 
 	UFUNCTION(BlueprintCallable)
 	void SetSelectedRecipe(FName Row) { SelectedRecipe = Row; }

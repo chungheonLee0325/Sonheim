@@ -77,7 +77,7 @@ void ACraftingStation::BeginPlay()
 		{
 			// 각 클라에서 자기 위젯에 Station 주입
 			QW->Initialise(this);
-			QW->SetVisibility(ESlateVisibility::Hidden);			
+			QW->SetVisibility(ESlateVisibility::Hidden);
 		}
 	}
 }
@@ -111,12 +111,16 @@ void ACraftingStation::OnDetected_Implementation(bool bDetected)
 		{
 			if (bDetected)
 			{
+				DW->UpdateHoldProgressByPurpose(0.f, EHoldPurpose::Interact);
 				UpdateDetectWidgetText();
 				DW->PlayShowAnimation();
 				DW->SetVisibility(ESlateVisibility::HitTestInvisible);
 			}
 			else
 			{
+				DW->UpdateInteractProgress(0.f);
+				DW->UpdateCancelHoldProgress(0.f);
+				DW->SetCancelVisible(false);
 				DW->PlayHideAnimation();
 				DW->SetVisibility(ESlateVisibility::Hidden);
 			}
@@ -126,7 +130,6 @@ void ACraftingStation::OnDetected_Implementation(bool bDetected)
 			if (bDetected)
 			{
 				QueueWidgetComp->GetUserWidgetObject()->SetVisibility(ESlateVisibility::HitTestInvisible);
-				
 			}
 			else
 			{
@@ -141,6 +144,30 @@ FString ACraftingStation::GetInteractionName_Implementation() const
 	if (CompletedToCollect > 0) return TEXT("취득");
 	if (bHasActiveWork) return TEXT("[길게 누르기] 작업");
 	return TEXT("레시피 선택");
+}
+
+void ACraftingStation::UpdateHoldProgressUI_Implementation(float Progress, EHoldPurpose Purpose)
+{
+	if (UDetectWidget* DW = GetDetectWidget())
+	{
+		DW->UpdateHoldProgressByPurpose(Progress, Purpose);
+	}
+}
+
+void ACraftingStation::ExecuteCancel_Implementation(ASonheimPlayer* Player)
+{
+	if (!Player) return;
+
+	if (HasAuthority())
+	{
+		ServerCancelUnfinished(Player);
+		return;
+	}
+
+	if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(Player->GetController()))
+	{
+		PC->Server_Crafting_CancelUnfinished(this);
+	}
 }
 
 void ACraftingStation::Interact_Implementation(ASonheimPlayer* Player)
@@ -258,7 +285,7 @@ void ACraftingStation::ServerAddWork_Implementation(float WorkDelta, class ASonh
 			ActiveWork.WorkAccumulated = 0.f;
 		}
 	}
-	
+
 	//ForceNetUpdate();
 	OnRep_ActiveWork();
 }
@@ -273,11 +300,11 @@ void ACraftingStation::ServerCollectAll_Implementation(ASonheimPlayer* Player)
 	}
 
 	// 수령한만큼 아이템 차감
-	ActiveWork.UnitsDone  = FMath::Max(0, ActiveWork.UnitsDone  - CompletedToCollect);
+	ActiveWork.UnitsDone = FMath::Max(0, ActiveWork.UnitsDone - CompletedToCollect);
 	ActiveWork.UnitsTotal = FMath::Max(0, ActiveWork.UnitsTotal - CompletedToCollect);
 
 	CompletedToCollect = 0;
-	
+
 	if (!bHasActiveWork)
 	{
 		// 아이템 수령후 남은 작업이 없으면 작업 초기화
@@ -288,7 +315,7 @@ void ACraftingStation::ServerCollectAll_Implementation(ASonheimPlayer* Player)
 		ActiveWork.UnitsDone = 0;
 		ActiveWork.WorkAccumulated = 0.f;
 	}
-	
+
 	ForceNetUpdate();
 	OnCompletedChanged.Broadcast();
 }
@@ -309,7 +336,7 @@ void ACraftingStation::ServerCancelUnfinished_Implementation(class ASonheimPlaye
 				const int32 RefundCount = P.Value * RemainUnits;
 				if (UInventoryComponent* Inv = Requestor->GetInventoryComponent())
 				{
-					if (CompletedToCollect > 0) Inv->AddItem(MatID, RefundCount);
+					if (RefundCount > 0) Inv->AddItem(MatID, RefundCount);
 				}
 			}
 		}
@@ -364,6 +391,14 @@ void ACraftingStation::UpdateDetectWidgetText()
 		const bool bHasCompleted = CompletedToCollect > 0;
 		const FString Action = bHasCompleted ? TEXT("획득") : TEXT("[길게 누르기] 작업");
 		DW->SetInteractionInfo(GetInteractionName_Implementation(), Action);
+
+		const bool bCancel = CanHoldCancel_Implementation();
+		DW->SetCancelVisible(bCancel);
+		if (bCancel)
+		{
+			DW->SetCancelInfo(FText::FromString(TEXT("[길게 누르기] 취소")), FText::FromString(TEXT("C")));
+			DW->UpdateCancelHoldProgress(0.f);
+		}
 	}
 }
 
