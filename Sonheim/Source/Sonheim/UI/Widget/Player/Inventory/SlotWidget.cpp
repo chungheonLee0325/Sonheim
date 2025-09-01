@@ -100,14 +100,14 @@ void USlotWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointer
 
 	if (bOnlyView || IsHighlighted) return;
 
-	// 슬롯이 비어있지 않고, 툴팁 클래스가 지정되어 있다면
+	// 슬롯이 비어있지 않으면, 슬롯 테두리 효과 부여(슬롯 테두리 하늘색)
 	if (!IsEmpty() && ToolTipWidgetClass)
 	{
 		Border_MouseOver->SetVisibility(ESlateVisibility::Visible);
 		PlayMouseEnterAnimation();
 	}
 
-	// 하이라이트 효과
+	// 슬롯이 비어있더라도 해당 슬롯에 마우스가 올라간 피드백으로 슬롯 색 변화 (슬롯 배경색 파란색으로)
 	if (IMG_Border)
 	{
 		IMG_Border->SetColorAndOpacity(FLinearColor::Blue);
@@ -120,11 +120,12 @@ void USlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 
 	if (bOnlyView || IsHighlighted) return;
 
-	// 하이라이트 효과 원복
-	if (!IsEmpty() && ToolTipWidgetClass)
+	// 슬롯이 빈것과 관계없이, 슬롯 테두리 효과 초기화(장비 해제나 아이템 장착시 슬롯이 빌수도 있음)
+	if (ToolTipWidgetClass)
 	{
 		Border_MouseOver->SetVisibility(ESlateVisibility::Hidden);
 	}
+	// 슬롯이 빈것과 관계없이, 해당 슬롯 배경색 초기화
 	if (IMG_Border)
 	{
 		IMG_Border->SetColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 1.0f));
