@@ -1,15 +1,14 @@
 ﻿// BaseItem.cpp
 #include "BaseItem.h"
+
+#include "NiagaraSystem.h"
+#include "NiagaraComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "Components/CapsuleComponent.h"
-#include "GameFramework/Character.h"
-#include "GameFramework/ProjectileMovementComponent.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
-#include "Sonheim/Utilities/LogMacro.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
@@ -32,7 +31,7 @@ ABaseItem::ABaseItem()
 	ItemMesh->SetSimulatePhysics(false); // 기본적으로 비활성, 드롭 시 활성화
 
 	// 임시 메시 설정
-	ConstructorHelpers::FObjectFinder<UStaticMesh> tempMesh(
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> tempMesh(
 		TEXT("/Script/Engine.StaticMesh'/Game/_Resource/SurvivalGameKitV2/Meshes/Static/SM_TreasureBags02.SM_TreasureBags02'"));
 	if (tempMesh.Succeeded())
 	{
@@ -62,11 +61,47 @@ ABaseItem::ABaseItem()
 	DetectWidgetComponent->SetupAttachment(ItemMesh);
 	DetectWidgetComponent->SetRelativeLocation(FVector(0, 0, 0));
 
-	ConstructorHelpers::FClassFinder<UUserWidget> detectWidgetClass(
+	static ConstructorHelpers::FClassFinder<UUserWidget> detectWidgetClass(
 		TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/WBP_Detect.WBP_Detect_C'"));
 	if (detectWidgetClass.Succeeded())
 	{
 		DetectWidgetClass = detectWidgetClass.Class;
+	}
+
+	RarityVFXComp = CreateDefaultSubobject<UNiagaraComponent>(TEXT("RarityVFXComp"));
+	RarityVFXComp->SetupAttachment(ItemMesh);
+	RarityVFXComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	RarityVFXComp->SetAutoActivate(false);
+
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> collectionEffect_common(
+		TEXT("NiagaraSystem'/Game/_Resource/FX/ItemDropFx/Fx/NS_Common_Item.NS_Common_Item'"));
+	if (collectionEffect_common.Succeeded())
+	{
+		RarityVFXMap.Add(EItemRarity::Common, collectionEffect_common.Object);
+	}
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> collectionEffect_uncommon(
+		TEXT("NiagaraSystem'/Game/_Resource/FX/ItemDropFx/Fx/NS_Uncommon_Item.NS_Uncommon_Item'"));
+	if (collectionEffect_uncommon.Succeeded())
+	{
+		RarityVFXMap.Add(EItemRarity::Uncommon, collectionEffect_uncommon.Object);
+	}
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> collectionEffect_rare(
+		TEXT("NiagaraSystem'/Game/_Resource/FX/ItemDropFx/Fx/NS_Rare_System.NS_Rare_System'"));
+	if (collectionEffect_rare.Succeeded())
+	{
+		RarityVFXMap.Add(EItemRarity::Rare, collectionEffect_rare.Object);
+	}
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> collectionEffect_epic(
+		TEXT("NiagaraSystem'/Game/_Resource/FX/ItemDropFx/Fx/NS_Epic_System.NS_Epic_System'"));
+	if (collectionEffect_epic.Succeeded())
+	{
+		RarityVFXMap.Add(EItemRarity::Epic, collectionEffect_epic.Object);
+	}
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> collectionEffect_legendary(
+		TEXT("NiagaraSystem'/Game/_Resource/FX/ItemDropFx/Fx/NS_Legendary_System.NS_Legendary_System'"));
+	if (collectionEffect_legendary.Succeeded())
+	{
+		RarityVFXMap.Add(EItemRarity::Legendary, collectionEffect_legendary.Object);
 	}
 }
 
@@ -120,6 +155,13 @@ void ABaseItem::InitializeItem(int32 InItemID, const FItemSpawnOptions& Options)
 	if (m_GameInstance)
 	{
 		dt_ItemData = m_GameInstance->GetDataItem(m_ItemID);
+
+		if (dt_ItemData && RarityVFXComp)
+		{
+			auto vfx = RarityVFXMap.FindRef(dt_ItemData->ItemRarity);
+			RarityVFXComp->SetAsset(vfx);
+			RarityVFXComp->Activate(true);
+		}
 	}
 
 	SetupComponents();

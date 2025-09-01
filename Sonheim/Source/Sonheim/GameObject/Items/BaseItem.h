@@ -7,6 +7,7 @@
 #include "Sonheim/GameObject/InteractableInterface.h"
 #include "BaseItem.generated.h"
 
+class UNiagaraComponent;
 class USphereComponent;
 
 // 아이템 상호작용 타입
@@ -173,6 +174,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Collection")
 	UParticleSystem* CollectionEffect;
 
+	UPROPERTY(EditAnywhere, Category = "Collection")
+	UNiagaraComponent* RarityVFXComp;
+
 	// 하이라이트
 	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
 	UMaterialInterface* HighlightMaterial;
@@ -190,6 +194,9 @@ protected:
 								bool bFromSweep,
 								const FHitResult& SweepResult);
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX")
+	TMap<EItemRarity, UNiagaraSystem*> RarityVFXMap;
+	
 private:
 	UPROPERTY(Replicated)
 	bool m_IsCollected = false;
