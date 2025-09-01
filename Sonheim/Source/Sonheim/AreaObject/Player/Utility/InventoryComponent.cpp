@@ -476,11 +476,39 @@ bool UInventoryComponent::HasItem(int ItemID, int RequiredCount) const
 
 int UInventoryComponent::GetItemCount(int ItemID) const
 {
-	int ItemIndex = FindItemIndexInInventory(ItemID);
-	if (ItemIndex == INDEX_NONE)
+	if (!IsValidItemID(ItemID))
+	{
 		return 0;
+	}
 
-	return InventoryItems[ItemIndex].Count;
+	int Total = 0;
+
+	// 아이템 정의(스택 가능 여부) 가져오기
+	const FItemData* ItemData = GetItemData(ItemID);
+	const bool bStackable = ItemData ? ItemData->bStackable : true;
+
+	// 1) 인벤토리 전 칸 합산
+	for (const FInventoryItem& It : InventoryItems)
+	{
+		if (It.ItemID == ItemID)
+		{
+			// 비스택형은 슬롯 개수를 세는 것이 원칙이지만,
+			// Count가 0/1 이외로 들어온 케이스도 방어적으로 처리
+			Total += bStackable ? It.Count : FMath::Max(1, It.Count);
+		}
+	}
+
+	// 2) 장비 슬롯(착용 중)도 포함해서 합산
+	for (const FEquippedSlot& Slot : EquippedSlots)
+	{
+		const FInventoryItem& Equipped = Slot.Item;
+		if (Equipped.ItemID == ItemID)
+		{
+			Total += bStackable ? Equipped.Count : 1;
+		}
+	}
+
+	return Total;
 }
 
 TArray<FInventoryItem> UInventoryComponent::GetInventory() const
