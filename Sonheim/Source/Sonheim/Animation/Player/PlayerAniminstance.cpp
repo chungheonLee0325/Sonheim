@@ -14,6 +14,7 @@ void UPlayerAnimInstance::GetLifetimeReplicatedProps(TArray<class FLifetimePrope
 	DOREPLIFETIME(UPlayerAnimInstance, bIsShotgun);
 	DOREPLIFETIME(UPlayerAnimInstance, bIsLockOn);
 	DOREPLIFETIME(UPlayerAnimInstance, bUsingPartnerSkill);
+	DOREPLIFETIME(UPlayerAnimInstance, bIsDead);
 }
 
 void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)

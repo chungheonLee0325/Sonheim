@@ -55,7 +55,7 @@ public:
 
 	void InitPlayerState();
 
-	UPROPERTY(BlueprintReadWrite, Category="Pal", Replicated)
+	UPROPERTY(BlueprintReadWrite, Category="Pal")
 	class UPalInventoryComponent* m_PalInventoryComponent;
 protected:
 	// 캐릭터 스탯
@@ -78,10 +78,10 @@ protected:
 	TMap<EAreaObjectStatType, float> ModifiedStat;
 
 public:
-	UPROPERTY(BlueprintReadWrite, Category="Inventory", Replicated)
+	UPROPERTY(BlueprintReadWrite, Category="Inventory")
 	UInventoryComponent* m_InventoryComponent;
 
-	UPROPERTY(BlueprintReadWrite, Category="Stats", Replicated)
+	UPROPERTY(BlueprintReadWrite, Category="Stats")
 	UStatBonusComponent* m_StatBonusComponent;
 
 	// 스탯 업데이트 함수 - 서버 권한

@@ -26,8 +26,6 @@ void ASonheimPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	
 	DOREPLIFETIME(ASonheimPlayerState, Level);
 	DOREPLIFETIME(ASonheimPlayerState, ReplicatedStats);
-	// DOREPLIFETIME(ASonheimPlayerState, m_InventoryComponent);
-	// DOREPLIFETIME(ASonheimPlayerState, m_StatBonusComponent);
 }
 
 void ASonheimPlayerState::BeginPlay()
