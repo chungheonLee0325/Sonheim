@@ -143,16 +143,32 @@ void ABaseItem::InitializeItem(int32 InItemID, const FItemSpawnOptions& Options)
 		CollectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	}
 
-	// 물리 적용
+	SetReplicates(true);
+	SetReplicateMovement(true);
+	SetNetDormancy(DORM_Awake);  // 처음엔 깨어있는 상태
+
+	ItemMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	ItemMesh->SetSimulatePhysics(true);
+	ItemMesh->SetEnableGravity(true);
+	ItemMesh->SetNotifyRigidBodyCollision(true); // 필요 시 Hit 이벤트
+
+	// 초기 튕김용 물리 값 (상태 기반 최적화로만 조절)
+	ItemMesh->BodyInstance.bUseCCD = true;      // 빠르게 튈 때만 안전하게
+	ItemMesh->SetLinearDamping(0.05f);
+	ItemMesh->SetAngularDamping(0.05f);
+
+	// 랜덤 임펄스(드랍 연출)
 	if (Options.bApplyPhysicsOnDrop)
 	{
 		FVector RandomDirection = FMath::VRand();
 		RandomDirection.Z = FMath::Abs(RandomDirection.Z); // 위쪽으로만
 		FVector DropImpulse = RandomDirection * Options.DropForce;
-
-		// 멀티캐스트로 모든 클라이언트에 물리 적용
-		Multicast_OnDropped(GetActorLocation(), DropImpulse);
+		ItemMesh->AddImpulse(DropImpulse);
 	}
+
+	// 수면/각성 이벤트 구독 
+	ItemMesh->OnComponentSleep.AddDynamic(this, &ABaseItem::OnMeshSleep);
+	ItemMesh->OnComponentWake .AddDynamic(this, &ABaseItem::OnMeshWake);
 
 	// 수명 설정
 	if (Options.LifeTime > 0.0f)
@@ -160,30 +176,6 @@ void ABaseItem::InitializeItem(int32 InItemID, const FItemSpawnOptions& Options)
 		GetWorld()->GetTimerManager().SetTimer(LifeTimeTimerHandle,
 		                                       this, &ABaseItem::OnLifeTimeExpired, Options.LifeTime, false);
 	}
-}
-
-void ABaseItem::InitializeAsDroppedItem(int32 InItemID, int32 ItemValue, float DropDelay)
-{
-	FItemSpawnOptions Options;
-	Options.bRequireInteraction = false;
-	Options.ItemCount = ItemValue;
-	Options.AutoPickupDelay = DropDelay;
-	Options.bApplyPhysicsOnDrop = true;
-	Options.DropForce = 600.0f;
-	Options.LifeTime = 300.0f; // 5분 후 사라짐
-
-	InitializeItem(InItemID, Options);
-}
-
-void ABaseItem::InitializeAsInteractableItem(int32 InItemID, int32 ItemValue, EItemInteractionType Type)
-{
-	FItemSpawnOptions Options;
-	Options.bRequireInteraction = true;
-	Options.InteractionType = Type;
-	Options.ItemCount = ItemValue;
-	Options.HoldDuration = (Type == EItemInteractionType::Hold) ? 2.0f : 0.0f;
-
-	InitializeItem(InItemID, Options);
 }
 
 void ABaseItem::SetupComponents()
@@ -246,29 +238,36 @@ void ABaseItem::OnLifeTimeExpired()
 	}
 }
 
-void ABaseItem::Multicast_OnDropped_Implementation(FVector DropLocation, FVector DropImpulse)
+void ABaseItem::OnMeshSleep(UPrimitiveComponent* Comp, FName)
 {
-	// 물리 시뮬레이션 활성화 (ItemMesh가 담당)
-	if (ItemMesh)
-	{
-		ItemMesh->SetSimulatePhysics(true);
-		ItemMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		ItemMesh->AddImpulse(DropImpulse);
+	if (!HasAuthority()) return;
 
-		// 일정 시간 후 물리 비활성화
-		FTimerHandle PhysicsTimer;
-		GetWorld()->GetTimerManager().SetTimer(PhysicsTimer, [this]()
-		{
-			if (IsValid(this))
-			{
-				if (ItemMesh)
-				{
-					ItemMesh->SetSimulatePhysics(false);
-					// 물리 충돌은 유지 (땅바닥에 놓임)
-					ItemMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-				}
-			}
-		}, 2.0f, false);
+	// 잠들면 네트워크 도먼시로 전환 → 네트워크 부하 0에 수렴
+	SetNetDormancy(DORM_DormantAll);
+
+	// 안정화 이후 무거운 옵션만 완화
+	if (auto* Mesh = Cast<UPrimitiveComponent>(Comp))
+	{
+		Mesh->BodyInstance.bUseCCD = false; 
+		Mesh->SetLinearDamping(0.2f);
+		Mesh->SetAngularDamping(0.4f);
+	}
+}
+
+void ABaseItem::OnMeshWake(UPrimitiveComponent* Comp, FName)
+{
+	if (!HasAuthority()) return;
+
+	// 다시 움직이기 시작 → 즉시 네트워크 갱신 재개
+	FlushNetDormancy();
+	SetNetDormancy(DORM_Awake);
+
+	if (auto* Mesh = Cast<UPrimitiveComponent>(Comp))
+	{
+		// 초기 튕김 수준까진 아니어도 CCD 재가동
+		Mesh->BodyInstance.bUseCCD = true;
+		Mesh->SetLinearDamping(0.05f);
+		Mesh->SetAngularDamping(0.05f);
 	}
 }
 

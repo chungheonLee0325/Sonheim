@@ -49,12 +49,35 @@ struct FItemSpawnOptions
 
 	// 드롭 시 튕기는 힘
 	UPROPERTY(BlueprintReadWrite)
-	float DropForce = 300.0f;
+	float DropForce = 600.0f;
 
 	// 수명 (0이면 무한)
 	UPROPERTY(BlueprintReadWrite)
 	float LifeTime = 0.0f;
 };
+
+inline FItemSpawnOptions MakeDropped(int32 Count, float Delay = 0.0f, float Life=300.f, bool bPhysics=true, float Force=600.f)
+{
+	FItemSpawnOptions O;
+	O.bRequireInteraction = false;
+	O.ItemCount = Count;
+	O.AutoPickupDelay = Delay;
+	O.LifeTime = Life;
+	O.bApplyPhysicsOnDrop = bPhysics;
+	O.DropForce = Force;
+	return O;
+}
+
+inline FItemSpawnOptions MakeInteractable(int32 Count, EItemInteractionType Type, float HoldSec = 0.0f, float Life=0.f)
+{
+	FItemSpawnOptions O;
+	O.bRequireInteraction = true;
+	O.InteractionType = Type;
+	O.HoldDuration = (Type == EItemInteractionType::Hold) ? FMath::Max(0.f, HoldSec) : 0.0f;
+	O.ItemCount = Count;
+	O.LifeTime = Life; // 필요 시 제한시간 주기
+	return O;
+}
 
 UCLASS()
 class SONHEIM_API ABaseItem : public AActor, public IInteractableInterface
@@ -64,16 +87,9 @@ class SONHEIM_API ABaseItem : public AActor, public IInteractableInterface
 public:
 	ABaseItem();
 
-protected:
 	// 초기화 메서드들
 	UFUNCTION(BlueprintCallable, Category = "Item")
 	void InitializeItem(int32 InItemID, const FItemSpawnOptions& Options);
-public:
-	UFUNCTION(BlueprintCallable, Category = "Item")
-	void InitializeAsDroppedItem(int32 InItemID, int32 ItemValue, float DropDelay = 1.0f);
-
-	UFUNCTION(BlueprintCallable, Category = "Item")
-	void InitializeAsInteractableItem(int32 InItemID, int32 ItemValue, EItemInteractionType Type = EItemInteractionType::Instant);
 
 	UFUNCTION(BlueprintCallable, Category = "Item")
 	void SetItemValue(int32 ItemValue) { m_ItemValue = ItemValue; }
@@ -94,9 +110,6 @@ public:
 	// 네트워크 함수들
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_OnCollected();
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnDropped(FVector DropLocation, FVector DropImpulse);
 
 	// Getter
 	bool CanBeCollectedBy(ASonheimPlayer* Player);
@@ -132,6 +145,12 @@ protected:
 	// 수명 종료
 	UFUNCTION()
 	void OnLifeTimeExpired();
+
+	UFUNCTION()
+	void OnMeshSleep(UPrimitiveComponent* SleepingComponent, FName BoneName);
+
+	UFUNCTION()
+	void OnMeshWake(UPrimitiveComponent* WakingComponent, FName BoneName);
 
 	// 컴포넌트
 	UPROPERTY(EditAnywhere, Category = "Collection")
