@@ -3,6 +3,7 @@
 
 #include "InventoryWidget.h"
 
+#include "ConfirmWidget.h"
 #include "SlotWidget.h"
 #include "Components/UniformGridPanel.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
@@ -69,6 +70,18 @@ void UInventoryWidget::NativeConstruct()
 			Pair.Value->EquipmentSlotType = Pair.Key;
 			BindSlotEvents(Pair.Value);
 		}
+	}
+
+	// Trash/Discard 존 바인딩
+	if (DropZone)
+	{
+		DropZone->BindOwner(this);
+		DropZone->SetDiscardMode(false);
+	}
+	if (DiscardZone)
+	{
+		DiscardZone->BindOwner(this);
+		DiscardZone->SetDiscardMode(true);
 	}
 }
 
@@ -351,9 +364,48 @@ void UInventoryWidget::HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex)
 	}
 }
 
+void UInventoryWidget::HandleTrashDrop(USlotWidget* FromSlot, bool bDiscardMode)
+{
+	if (!FromSlot || !InventoryComponent) return;
+
+	// 팝업 생성
+	if (!ConfirmClass) return;
+	UConfirmWidget* W = CreateWidget<UConfirmWidget>(this, ConfirmClass);
+	if (!W) return;
+
+	PendingFromSlot = FromSlot;
+	PendingDiscardMode = bDiscardMode;
+
+	// 수량 선택 필요(스택형)는 팝업에서 판단하도록 MaxCount=슬롯 수량 전달
+	W->Setup(FromSlot->ItemID, FromSlot->Quantity, bDiscardMode);
+	W->OnConfirm.AddDynamic(this, &UInventoryWidget::OnConfirmTrashAction);
+	W->AddToViewport();
+}
+
 void UInventoryWidget::SetContainerMode(bool bEnabled, class ABaseContainer* Container, ASonheimPlayerController* PC)
 {
 	bIsContainerMode = bEnabled;
 	CurrentOpenContainer = Container;
 	m_PlayerController = PC;
+}
+
+void UInventoryWidget::OnConfirmTrashAction(int32 Count, bool bDiscardMode)
+{
+	if (!InventoryComponent || !PendingFromSlot.IsValid()) return;
+
+	const int32 Index = PendingFromSlot.Get()->SlotIndex;
+	const int32 UseCount = FMath::Max(1, Count);
+
+	if (bDiscardMode)
+	{
+		// 폐기(삭제)
+		InventoryComponent->ServerDiscardItemByIndex(Index, UseCount);
+	}
+	else
+	{
+		// 버리기(바닥 드롭)
+		InventoryComponent->ServerDropItemByIndex(Index, UseCount);
+	}
+
+	PendingFromSlot.Reset();
 }

@@ -103,6 +103,12 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
 	void ServerSwapItems(int32 FromIndex, int32 ToIndex);
 
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
+	void ServerDropItemByIndex(int32 Index, int32 Count);
+
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
+	void ServerDiscardItemByIndex(int32 Index, int32 Count);
+
 	// 인벤토리 관련 함수들
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool AddItem(int ItemID, int ItemCount, bool IsDirectAcquisition = true);
@@ -145,6 +151,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool SwapItems(int32 FromIndex, int32 ToIndex);
 
+	// Item ID로 조회
 	void DropItem_ServerOnly(int32 ItemID, int32 Count, bool bStackable);
 
 	FItemData* GetCurrentWeaponData();
@@ -193,6 +200,11 @@ private:
 	// 데이터 유효성 검증
 	bool ValidateItemCount(int ItemCount) const;
 	bool ValidateItemOperation(int ItemID, int ItemCount) const;
+	
+	// 인벤토리 슬롯 인덱스로 조회 인벤 차감 + 월드에 드랍
+	bool DropItemByIndex(int32 Index, int32 Count);
+	// 인벤토리 슬롯 인덱스로 조회 인벤 차감(삭제)
+	bool DiscardItemByIndex(int32 Index, int32 Count);
 
 	// Client Prediction 설정
 	UPROPERTY(EditDefaultsOnly, Category = "Network")

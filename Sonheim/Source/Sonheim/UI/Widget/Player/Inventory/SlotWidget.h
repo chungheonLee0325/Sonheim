@@ -27,6 +27,7 @@ class SONHEIM_API USlotWidget : public UUserWidget
 	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+	virtual void NativeOnDragCancelled(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	
 public:
 	// 슬롯 초기화 함수
@@ -108,6 +109,9 @@ public:
 	void PlayMouseEnterAnimation();
 
 	void SetHighlighted(bool bHighlighted);
+
+	UFUNCTION()
+	void HandleDragOperationEnded(UDragDropOperation* Operation);
 private:
 	UPROPERTY()
 	UToolTipWidget* ToolTipInstance;

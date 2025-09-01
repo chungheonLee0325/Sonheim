@@ -189,6 +189,12 @@ void USlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPoint
 
 	OutOperation = DragDropOp;
 
+	// 하이라이트 표시
+	SetHighlighted(true);
+	// 하이라이트 해제 델리게이트 바인드
+	DragDropOp->OnDrop.AddDynamic(this, &USlotWidget::HandleDragOperationEnded);
+	DragDropOp->OnDragCancelled.AddDynamic(this, &USlotWidget::HandleDragOperationEnded);
+
 	// 드래그 시작 이벤트 발생
 	OnItemDragStarted.Broadcast(this);
 }
@@ -231,6 +237,13 @@ bool USlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent
 		OnItemDropped.Broadcast(DragDropOp->DraggedSlotWidget, this);
 		return true;
 	}
+}
+
+void USlotWidget::NativeOnDragCancelled(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
+{
+	Super::NativeOnDragCancelled(InDragDropEvent, InOperation);
+
+	SetHighlighted(false);
 }
 
 void USlotWidget::PlayMouseEnterAnimation()
@@ -281,5 +294,20 @@ void USlotWidget::SetHighlighted(bool bHighlighted)
 		}
 
 		IsHighlighted = false;
+	}
+}
+
+void USlotWidget::HandleDragOperationEnded(UDragDropOperation* Operation)
+{
+	// 소스 기준으로 확실히 끄기
+	SetHighlighted(false);
+
+	// 혹시 Operation 안에 소스 포인터를 넣어뒀다면 그쪽도 안전하게
+	if (auto* Op = Cast<UDragDropSlotOperation>(Operation))
+	{
+		if (Op->DraggedSlotWidget)
+		{
+			Op->DraggedSlotWidget->SetHighlighted(false);
+		}
 	}
 }

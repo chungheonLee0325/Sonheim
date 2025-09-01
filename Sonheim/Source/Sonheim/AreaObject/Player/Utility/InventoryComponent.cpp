@@ -170,6 +170,16 @@ bool UInventoryComponent::ValidateItemOperation(int ItemID, int ItemCount) const
 	return true;
 }
 
+void UInventoryComponent::ServerDropItemByIndex_Implementation(int32 Index, int32 Count)
+{
+	DropItemByIndex(Index, Count);
+}
+
+void UInventoryComponent::ServerDiscardItemByIndex_Implementation(int32 Index, int32 Count)
+{
+	DiscardItemByIndex(Index, Count);
+}
+
 // IsDirectAcquisition 은 직접 얻은 아이템(장비 해제로 인해 인벤으로 돌아온 아이템 x)
 bool UInventoryComponent::AddItem(int ItemID, int ItemCount, bool IsDirectAcquisition)
 {
@@ -701,8 +711,8 @@ void UInventoryComponent::DropItem_ServerOnly(int32 ItemID, int32 Count, bool bS
 		if (m_PlayerState->GetSonheimPlayer())
 		{
 			DropAt = m_PlayerState->GetSonheimPlayer()->GetActorLocation()
-				+ m_PlayerState->GetSonheimPlayer()->GetActorForwardVector() * 300.f
-				+ FVector(0, 0, 100.f);
+				+ m_PlayerState->GetSonheimPlayer()->GetActorForwardVector() * 150.f
+				+ FVector(0, 0, 50.f);
 		}
 	}
 	else if (OwnerActor)
@@ -725,6 +735,51 @@ void UInventoryComponent::DropItem_ServerOnly(int32 ItemID, int32 Count, bool bS
 		Opt = MakeInteractable(1, EItemInteractionType::Hold, 0.4f);
 		USonheimUtility::SpawnItems(this, ItemID, Count, DropAt, 50.f, Opt);
 	}
+}
+
+bool UInventoryComponent::DropItemByIndex(int32 Index, int32 Count)
+{
+	if (Index < 0 || Index >= InventoryItems.Num() || Count <= 0) return false;
+
+	FInventoryItem& It = InventoryItems[Index];
+	FItemData* Data = GetItemData(It.ItemID);
+	if (!Data) return false;
+
+	const bool bStack = Data->bStackable;
+	const int32 Use = bStack ? FMath::Min(It.Count, Count) : 1;
+
+	// 차감
+	It.Count -= Use;
+	const int32 ItemID = It.ItemID;
+	if (It.Count <= 0) InventoryItems.RemoveAt(Index);
+
+	// 월드 드랍
+	DropItem_ServerOnly(ItemID, Use, bStack);
+
+	OnItemRemoved.Broadcast(ItemID, Use);
+	BroadcastInventoryChanged();
+	return true;
+}
+
+bool UInventoryComponent::DiscardItemByIndex(int32 Index, int32 Count)
+{
+	if (Index < 0 || Index >= InventoryItems.Num() || Count <= 0) return false;
+
+	FInventoryItem& It = InventoryItems[Index];
+	FItemData* Data = GetItemData(It.ItemID);
+	if (!Data) return false;
+
+	const bool bStack = Data->bStackable;
+	const int32 Use = bStack ? FMath::Min(It.Count, Count) : 1;
+
+	It.Count -= Use;
+	const int32 ItemID = It.ItemID;
+	if (It.Count <= 0) InventoryItems.RemoveAt(Index);
+
+	// 스폰 없음(완전 삭제)
+	OnItemRemoved.Broadcast(ItemID, Use);
+	BroadcastInventoryChanged();
+	return true;
 }
 
 FItemData* UInventoryComponent::GetCurrentWeaponData()

@@ -3,11 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "TrashDropZone.h"
 #include "Blueprint/UserWidget.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "InventoryWidget.generated.h"
 
+class UConfirmWidget;
 class ASonheimPlayerController;
 class USlotWidget;
 class UUniformGridPanel;
@@ -20,23 +22,23 @@ class SONHEIM_API UInventoryWidget : public UUserWidget
 
 {
 	GENERATED_BODY()
-	
+
 protected:
 	virtual void NativePreConstruct() override;
 	virtual void NativeConstruct() override;
-    
+
 	UPROPERTY(meta = (BindWidget))
 	UUniformGridPanel* SlotGrid;
-    
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grid Settings")
 	int32 GridColumns = 6;
-    
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grid Settings")
 	int32 GridRows = 7;
-    
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grid Settings")
 	TSubclassOf<USlotWidget> SlotWidgetClass;
-    
+
 	UPROPERTY()
 	TArray<USlotWidget*> SlotWidgets;
 
@@ -64,6 +66,16 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	USlotWidget* SphereModuleSlot;
 
+	// 버리기 슬롯
+	UPROPERTY(meta=(BindWidget))
+	class UTrashDropZone* DropZone;
+	// 폐기 슬롯
+	UPROPERTY(meta=(BindWidget))
+	class UTrashDropZone* DiscardZone;
+
+	UPROPERTY(EditAnywhere, Category="Confirm")
+	TSubclassOf<UConfirmWidget> ConfirmClass;
+
 	// 인벤토리 컴포넌트 참조
 	UPROPERTY(BlueprintReadWrite)
 	UInventoryComponent* InventoryComponent;
@@ -73,60 +85,72 @@ public:
 	void UpdateInventoryFromData(const TArray<FInventoryItem>& InventoryData);
 	UFUNCTION()
 	void UpdateEquipmentFromData(EEquipmentSlotType EquipSlot, FInventoryItem InventoryItem);
-	
+
 	// 인벤토리 컴포넌트 설정
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void SetInventoryComponent(UInventoryComponent* InInventoryComponent);
-	
+
 	// 슬롯 클릭 이벤트 핸들러
 	UFUNCTION()
 	void OnSlotClicked(USlotWidget* SlotWidget, bool bIsRightClick);
-	
+
 	// 슬롯 드래그 시작 이벤트 핸들러
 	UFUNCTION()
 	void OnSlotDragStarted(USlotWidget* SlotWidget);
-	
+
 	// 슬롯 드롭 이벤트 핸들러
 	UFUNCTION()
 	void OnSlotDropped(USlotWidget* FromSlot, USlotWidget* ToSlot);
 
 	void HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex);
 
+	UFUNCTION()
+	void HandleTrashDrop(USlotWidget* FromSlot, bool bDiscardMode);
+
 	// 상자 모드 설정
 	UFUNCTION(BlueprintCallable, Category = "Container")
-	void SetContainerMode(bool bEnabled, class ABaseContainer* Container = nullptr, ASonheimPlayerController* PC = nullptr);
-    
+	void SetContainerMode(bool bEnabled, class ABaseContainer* Container = nullptr,
+	                      ASonheimPlayerController* PC = nullptr);
+
 	// 상자 모드 확인
 	UFUNCTION(BlueprintCallable, Category = "Container")
 	bool IsInContainerMode() const { return bIsContainerMode; }
-	
+
 private:
 	void InitializeSlotWidgetMap();
-	
+
 	UPROPERTY()
 	USonheimGameInstance* m_GameInstance;
 
 	UPROPERTY()
 	ASonheimPlayerController* m_PlayerController;
-	
+
 	UPROPERTY()
 	TMap<EEquipmentSlotType, USlotWidget*> SlotWidgetMap;
 
 	UPROPERTY()
 	class ABaseContainer* CurrentOpenContainer;
-    
+
 	// 상자 모드 여부
 	bool bIsContainerMode = false;
 
 	// 슬롯 위젯에 이벤트 처리기 연결
 	void BindSlotEvents(USlotWidget* SlotWidget);
-	
+
 	// 인벤토리 슬롯 아이템 교환
 	void SwapInventoryItems(int32 FromIndex, int32 ToIndex);
-	
+
 	// 장비 슬롯 아이템 처리
 	void HandleEquipmentSlotInteraction(USlotWidget* SlotWidget, bool bIsRightClick);
-	
+
 	// 인벤토리 슬롯 아이템 처리
 	void HandleInventorySlotInteraction(USlotWidget* SlotWidget, bool bIsRightClick);
+
+	UPROPERTY()
+	TWeakObjectPtr<USlotWidget> PendingFromSlot;
+	UPROPERTY()
+	bool PendingDiscardMode = false;
+
+	UFUNCTION()
+	void OnConfirmTrashAction(int32 Count, bool bDiscardMode);
 };
