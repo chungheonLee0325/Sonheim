@@ -115,10 +115,12 @@ void ABaseContainer::OnDetected_Implementation(bool bDetected)
 			if (bDetected)
 			{
 				DetectWidget->PlayShowAnimation();
+				DetectWidget->UpdateInteractProgress(0.f);
 			}
 			else
 			{
 				DetectWidget->PlayHideAnimation();
+				DetectWidget->UpdateInteractProgress(0.f);
 			}
 		}
 	}
@@ -140,6 +142,18 @@ FString ABaseContainer::GetInteractionName_Implementation() const
 float ABaseContainer::GetHoldDuration_Implementation() const
 {
 	return ContainerData && ContainerData->bRequireHoldToOpen ? ContainerData->HoldDuration : 0.0f;
+}
+
+void ABaseContainer::UpdateHoldProgressUI_Implementation(float Progress, EHoldPurpose Purpose)
+{
+	if (DetectWidgetClass && DetectWidgetComponent)
+	{
+		DetectWidgetComponent->SetWidgetClass(DetectWidgetClass);
+		if (UDetectWidget* DW = Cast<UDetectWidget>(DetectWidgetComponent->GetUserWidgetObject()))
+		{
+			DW->UpdateHoldProgressByPurpose(Progress, Purpose);
+		}
+	}
 }
 
 void ABaseContainer::OpenContainer(ASonheimPlayer* Player)

@@ -339,16 +339,21 @@ FString ABaseItem::GetInteractionName_Implementation() const
 	return dt_ItemData ? dt_ItemData->ItemName.ToString() : FString("아이템");
 }
 
-void ABaseItem::UpdateHoldProgress(float Progress)
+void ABaseItem::UpdateHoldProgressUI_Implementation(float Progress, EHoldPurpose Purpose)
 {
-	// 클라이언트 측 UI 업데이트
 	if (DetectWidgetComponent)
 	{
-		if (UDetectWidget* DetectWidget = Cast<UDetectWidget>(DetectWidgetComponent->GetUserWidgetObject()))
+		if (auto* DW = Cast<UDetectWidget>(DetectWidgetComponent->GetUserWidgetObject()))
 		{
-			DetectWidget->UpdateHoldProgress(Progress);
+			// 아이템은 취소 모드 없음
+			DW->UpdateInteractProgress(Progress);
 		}
 	}
+}
+
+bool ABaseItem::CanHoldCancel_Implementation() const
+{
+	return false;
 }
 
 void ABaseItem::Multicast_OnCollected_Implementation()

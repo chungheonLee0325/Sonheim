@@ -77,10 +77,6 @@ public:
 	FOnContainerItemRemoved OnContainerItemRemoved;
 
 protected:
-	// 컨테이너 데이터
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Container")
-	int32 ContainerID = 0;
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Container", ReplicatedUsing = OnRep_ContainerItems)
 	TArray<FInventoryItem> ContainerItems;
 

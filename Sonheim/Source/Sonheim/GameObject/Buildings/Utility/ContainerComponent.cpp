@@ -27,11 +27,9 @@ void UContainerComponent::BeginPlay()
 
 void UContainerComponent::InitializeContainer(int32 InContainerID)
 {
-	ContainerID = InContainerID;
-	
 	if (GameInstance)
 	{
-		ContainerData = GameInstance->GetDataContainer(ContainerID);
+		ContainerData = GameInstance->GetDataContainer(InContainerID);
 		if (ContainerData)
 		{
 		    MaxSlots = ContainerData->SlotCount;

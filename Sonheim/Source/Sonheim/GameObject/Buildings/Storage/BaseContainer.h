@@ -15,12 +15,12 @@ class SONHEIM_API ABaseContainer : public AActor, public IInteractableInterface
 public:
 	ABaseContainer();
 
-	UContainerComponent* GetContainerComponent() const {return ContainerComponent;};
+	UContainerComponent* GetContainerComponent() const { return ContainerComponent; };
 
 	UFUNCTION(BlueprintCallable, Category = "Container")
 	void CloseContainer();
 	bool CanBeInteractedByPlayer(const ASonheimPlayer* Player) const;
-	
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -32,6 +32,8 @@ protected:
 	virtual FString GetInteractionName_Implementation() const override;
 	virtual EInteractableType GetInteractableType_Implementation() const override { return EInteractableType::Object; }
 	virtual float GetHoldDuration_Implementation() const override;
+	virtual void UpdateHoldProgressUI_Implementation(float Progress, EHoldPurpose Purpose) override;
+	virtual bool CanHoldCancel_Implementation() const override { return false; };
 
 	// 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Container")

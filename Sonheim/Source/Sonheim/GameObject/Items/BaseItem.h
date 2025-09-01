@@ -104,9 +104,8 @@ public:
 	virtual FString GetInteractionName_Implementation() const override;
 	virtual EInteractableType GetInteractableType_Implementation() const override { return EInteractableType::Item; }
 	virtual float GetHoldDuration_Implementation() const override { return InteractionType == EItemInteractionType::Hold ? HoldDuration : 0.0f; }
-
-	// 상호작용 처리 함수들
-	void UpdateHoldProgress(float Progress);
+	virtual void UpdateHoldProgressUI_Implementation(float Progress, EHoldPurpose Purpose) override;
+	virtual bool CanHoldCancel_Implementation() const override;
 
 	// 네트워크 함수들
 	UFUNCTION(NetMulticast, Reliable)
