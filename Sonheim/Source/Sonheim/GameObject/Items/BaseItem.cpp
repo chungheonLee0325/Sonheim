@@ -72,6 +72,8 @@ ABaseItem::ABaseItem()
 	RarityVFXComp->SetupAttachment(ItemMesh);
 	RarityVFXComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	RarityVFXComp->SetAutoActivate(false);
+	RarityVFXComp->SetUsingAbsoluteRotation(true);
+	RarityVFXComp->SetUsingAbsoluteScale(true);
 
 	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> collectionEffect_common(
 		TEXT("NiagaraSystem'/Game/_Resource/FX/ItemDropFx/Fx/NS_Common_Item.NS_Common_Item'"));
