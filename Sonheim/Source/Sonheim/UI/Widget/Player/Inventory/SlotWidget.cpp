@@ -171,6 +171,8 @@ void USlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPoint
 	if (IsEmpty() || !bSupportsDragDrop)
 		return;
 
+	IsDragging = true;
+
 	// 드래그 드롭 오퍼레이션 생성
 	UDragDropSlotOperation* DragDropOp = NewObject<UDragDropSlotOperation>();
 	DragDropOp->DraggedSlotWidget = this;
@@ -212,6 +214,9 @@ bool USlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent
 	if (DragDropOp->DraggedSlotWidget == this)
 		return false;
 
+	this->SetHighlighted(false);
+	DragDropOp->DraggedSlotWidget->SetHighlighted(false);
+
 	// 부모 위젯 확인하여 크로스 드롭 처리
 	UInventoryWidget* MyInventoryWidget = GetTypedOuter<UInventoryWidget>();
 	UContainerWidget* MyContainerWidget = GetTypedOuter<UContainerWidget>();
@@ -246,6 +251,21 @@ void USlotWidget::NativeOnDragCancelled(const FDragDropEvent& InDragDropEvent, U
 	SetHighlighted(false);
 }
 
+void USlotWidget::NativeOnDragEnter(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,
+                                    UDragDropOperation* InOperation)
+{
+	Super::NativeOnDragEnter(InGeometry, InDragDropEvent, InOperation);
+
+	if (!IsDragging) SetHighlighted(true);
+}
+
+void USlotWidget::NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
+{
+	Super::NativeOnDragLeave(InDragDropEvent, InOperation);
+
+	if (!IsDragging) SetHighlighted(false);
+}
+
 void USlotWidget::PlayMouseEnterAnimation()
 {
 	if (ClickAnimation)
@@ -271,12 +291,7 @@ void USlotWidget::SetHighlighted(bool bHighlighted)
 	{
 		if (!IsEmpty() && ToolTipWidgetClass)
 		{
-			Border_MouseOver->SetVisibility(ESlateVisibility::Visible);
-			Border_MouseOver->SetBrushColor(FLinearColor::Green);
-		}
-		if (IMG_Border)
-		{
-			IMG_Border->SetColorAndOpacity(FLinearColor::Green);
+			Border_Highlight->SetVisibility(ESlateVisibility::Visible);
 		}
 
 		IsHighlighted = true;
@@ -285,12 +300,7 @@ void USlotWidget::SetHighlighted(bool bHighlighted)
 	{
 		if (!IsEmpty() && ToolTipWidgetClass)
 		{
-			Border_MouseOver->SetVisibility(ESlateVisibility::Hidden);
-			Border_MouseOver->SetBrushColor(FLinearColor(0.f,0.690939f,1.f,1.f));
-		}
-		if (IMG_Border)
-		{
-			IMG_Border->SetColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 1.0f));
+			Border_Highlight->SetVisibility(ESlateVisibility::Hidden);
 		}
 
 		IsHighlighted = false;
@@ -299,6 +309,8 @@ void USlotWidget::SetHighlighted(bool bHighlighted)
 
 void USlotWidget::HandleDragOperationEnded(UDragDropOperation* Operation)
 {
+	IsDragging = false;
+
 	// 소스 기준으로 확실히 끄기
 	SetHighlighted(false);
 

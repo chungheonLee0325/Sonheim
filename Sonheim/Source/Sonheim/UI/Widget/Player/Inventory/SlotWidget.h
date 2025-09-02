@@ -28,6 +28,8 @@ class SONHEIM_API USlotWidget : public UUserWidget
 	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	virtual void NativeOnDragCancelled(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+	virtual void NativeOnDragEnter(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+	virtual void NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	
 public:
 	// 슬롯 초기화 함수
@@ -57,6 +59,9 @@ public:
 
 	UPROPERTY(VisibleAnywhere, Category = "Slot", meta = (BindWidget = "true"))
 	class UBorder* Border_MouseOver;
+
+	UPROPERTY(VisibleAnywhere, Category = "Slot", meta = (BindWidget = "true"))
+	class UBorder* Border_Highlight;
 
 	// 슬롯에 지정될 아이템의 수량
 	UPROPERTY(VisibleAnywhere, Category = "Slot", meta = (BindWidget = "true"))
@@ -119,6 +124,7 @@ private:
 	USonheimGameInstance* m_GameInstance;
 
 	bool IsHighlighted = false;
+	bool IsDragging = false;
 protected:
 	bool IsEmpty() const;
     
