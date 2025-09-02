@@ -870,7 +870,7 @@ void ASonheimPlayerController::Server_PlayerContainerTransfer_Implementation(
 
 		if (bRemoved)
 		{
-			PlayerInv->AddItem(ItemID, Count);
+			PlayerInv->AddItem(ItemID, Count, false);
 
 			// 로그
 			UE_LOG(LogTemp, Log, TEXT("Transferred %d x%d from container to player"), ItemID, Count);

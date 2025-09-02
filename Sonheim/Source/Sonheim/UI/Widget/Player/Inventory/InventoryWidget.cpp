@@ -359,7 +359,7 @@ void UInventoryWidget::HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex)
 		if (FromContainer->GetContainerComponent()->RemoveItemByIndex(FromSlot->SlotIndex))
 		{
 			// 플레이어 인벤토리에 추가
-			InventoryComponent->AddItem(ItemID, Count);
+			InventoryComponent->AddItem(ItemID, Count, false);
 		}
 	}
 }
