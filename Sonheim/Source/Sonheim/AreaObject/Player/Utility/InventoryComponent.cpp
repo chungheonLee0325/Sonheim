@@ -548,9 +548,9 @@ bool UInventoryComponent::UnEquipItem(EEquipmentSlotType SlotType)
 		}
 
 		// 스탯 제거
+		FItemData* ItemData = GetItemData(ItemID);
 		if (m_PlayerState && m_PlayerState->m_StatBonusComponent)
 		{
-			FItemData* ItemData = GetItemData(ItemID);
 			if (ItemData && ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon)
 			{
 				m_PlayerState->m_StatBonusComponent->RegisterEquippedItem(SlotType, ItemID, false);
@@ -564,6 +564,12 @@ bool UInventoryComponent::UnEquipItem(EEquipmentSlotType SlotType)
 		RemoveEquippedSlot(SlotType);
 		AddItemByInventoryItem(ItemToReturn);
 		OnEquipmentChanged.Broadcast(SlotType, FInventoryItem());
+
+		// 무기 정보 최신화
+		if (ItemData && ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon)
+		{
+			OnWeaponChanged.Broadcast(SlotType, 0);
+		}
 
 		return true;
 	}
