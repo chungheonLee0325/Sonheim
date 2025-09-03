@@ -268,14 +268,14 @@ bool USlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent
 	if (FromInventoryWidget && MyContainerWidget)
 	{
 		// 컨테이너 위젯의 헬퍼로 위임(스왑/이동 모두 처리)
-		MyContainerWidget->HandleExternalDrop(DragDropOp->DraggedSlotWidget, this->SlotIndex);
+		MyContainerWidget->HandleExternalDrop(DragDropOp->DraggedSlotWidget, this);
 		return true;
 	}
 	// 상자 → 플레이어 인벤토리/장비
 	else if (FromContainerWidget && MyInventoryWidget)
 	{
 		// 인벤토리 위젯의 헬퍼로 위임(스왑/장비장착/이동 모두 처리)
-		MyInventoryWidget->HandleExternalDrop(DragDropOp->DraggedSlotWidget, this->SlotIndex);
+		MyInventoryWidget->HandleExternalDrop(DragDropOp->DraggedSlotWidget, this);
 		return true;
 	}
 	// 같은 위젯 내에서의 드롭
@@ -560,7 +560,8 @@ bool USlotWidget::IsDropValidFrom(USlotWidget* FromSlot) const
 		case EEquipmentSlotType::Body: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Body;
 		case EEquipmentSlotType::Shield: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Shield;
 		case EEquipmentSlotType::Glider: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Glider;
-		case EEquipmentSlotType::SphereModule: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::SphereModule;
+		case EEquipmentSlotType::SphereModule: return ItemData->EquipmentData.EquipKind ==
+				EEquipmentKindType::SphereModule;
 		case EEquipmentSlotType::Accessory1:
 		case EEquipmentSlotType::Accessory2: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Accessory;
 		case EEquipmentSlotType::Weapon1:

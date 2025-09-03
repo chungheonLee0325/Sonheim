@@ -828,25 +828,47 @@ void ASonheimPlayerController::Server_ContainerOperation_Implementation(
 			break;
 		}
 	case EContainerOperation::TransferToPlayer:
-		{
-			// Param1: ContainerSlotIndex, Param2: EquipSlot(>=0) or -1 (inventory)
-			if (!m_PlayerState || !m_PlayerState->m_InventoryComponent) break;
-			UInventoryComponent* PlayerInv = m_PlayerState->m_InventoryComponent;
-			TArray<FInventoryItem> Items = ContainerComp->GetContainerInventory();
-			if (Param1 >= 0 && Param1 < Items.Num())
-			{
-				FInventoryItem It = Items[Param1];
-				if (ContainerComp->RemoveItemByIndex(Param1))
-				{
-					PlayerInv->AddItem(It.ItemID, It.Count, false);
-					if (Param2 >= 0)
-					{
-						PlayerInv->EquipItemToSlotByItemID(It.ItemID, static_cast<EEquipmentSlotType>(Param2));
-					}
-				}
-			}
-			break;
-		}
+            {
+                // Param1: ContainerSlotIndex, Param2: EquipSlot(>=0) or -1 (inventory)
+                if (!m_PlayerState || !m_PlayerState->m_InventoryComponent) break;
+                UInventoryComponent* PlayerInv = m_PlayerState->m_InventoryComponent;
+                TArray<FInventoryItem> Items = ContainerComp->GetContainerInventory();
+                if (Param1 >= 0 && Param1 < Items.Num())
+                {
+                    FInventoryItem It = Items[Param1];
+                    if (Param2 >= 0)
+                    {
+	                    // 장비칸 드롭: 인벤 경유 없이 바로 장비
+	                    if (ContainerComp->RemoveItemByIndex(Param1))
+	                    {
+		                    FInventoryItem Replaced;
+		                    const EEquipmentSlotType EquipSlot = static_cast<EEquipmentSlotType>(Param2);
+		                    const bool bEquipped = PlayerInv->EquipItemDirect(It.ItemID, EquipSlot, Replaced);
+		                    if (!bEquipped)
+		                    {
+			                    // 장착 실패 → 상자로 롤백
+			                    ContainerComp->AddItem(It.ItemID, It.Count);
+		                    }
+		                    else if (Replaced.ItemID > 0)
+		                    {
+			                    // 기존 장비가 있으면 제거했던 위치에 삽입(스왑)
+			                    const int32 InsertAt = FMath::Clamp(
+				                    Param1, 0, ContainerComp->GetContainerInventory().Num());
+			                    ContainerComp->InsertItemAtIndex(InsertAt, Replaced);
+		                    }
+	                    }
+                    }
+                    else
+                    {
+	                    // 인벤토리로 옮기기
+	                    if (ContainerComp->RemoveItemByIndex(Param1))
+	                    {
+		                    PlayerInv->AddItem(It.ItemID, It.Count, false);
+	                    }
+                    }
+                }
+                break;
+            }
 	case EContainerOperation::TransferFromPlayer:
 		{
 			// Param1: PlayerInvIndex(>=0) or -(1+EquipSlot) for equipment, Param2: Count(optional)
@@ -860,7 +882,12 @@ void ASonheimPlayerController::Server_ContainerOperation_Implementation(
 					FInventoryItem PlayerItem = PlayerItems[Param1];
 					if (PlayerInv->RemoveItemByIndex(Param1))
 					{
-						ContainerComp->AddItem(PlayerItem.ItemID, PlayerItem.Count);
+						// 지정 위치로 삽입 시도(허용 범위로 클램프)
+						const int32 CurCount = ContainerComp->GetContainerInventory().Num();
+						const int32 MaxSlots = ContainerComp->GetMaxSlots();
+						int32 InsertAt = FMath::Clamp(Param2, 0, FMath::Max(0, MaxSlots - 1));
+						InsertAt = FMath::Clamp(InsertAt, 0, CurCount);
+						ContainerComp->InsertItemAtIndex(InsertAt, PlayerItem);
 					}
 				}
 			}
@@ -871,61 +898,60 @@ void ASonheimPlayerController::Server_ContainerOperation_Implementation(
 				if (EquipItem.ItemID > 0 && PlayerInv->UnEquipItem(Slot))
 				{
 					PlayerInv->RemoveItem(EquipItem.ItemID, EquipItem.Count);
-					ContainerComp->AddItem(EquipItem.ItemID, EquipItem.Count);
+					const int32 CurCount = ContainerComp->GetContainerInventory().Num();
+					const int32 MaxSlots = ContainerComp->GetMaxSlots();
+					int32 InsertAt = FMath::Clamp(Param2, 0, FMath::Max(0, MaxSlots - 1));
+					InsertAt = FMath::Clamp(InsertAt, 0, CurCount);
+					ContainerComp->InsertItemAtIndex(InsertAt, EquipItem);
 				}
 			}
 			break;
 		}
-    case EContainerOperation::SwapWithPlayer:
-        {
-            // Param1: ContainerSlotIndex
-            // Param2: PlayerInventoryIndex (>=0) or -(1+EquipSlot) for equipment
-            if (!m_PlayerState || !m_PlayerState->m_InventoryComponent) break;
-            UInventoryComponent* PlayerInv = m_PlayerState->m_InventoryComponent;
-            TArray<FInventoryItem> ContainerItems = ContainerComp->GetContainerInventory();
-            if (Param1 < 0 || Param1 >= ContainerItems.Num()) break;
+	case EContainerOperation::SwapWithPlayer:
+		{
+			// Param1: ContainerSlotIndex
+			// Param2: PlayerInventoryIndex (>=0) or -(1+EquipSlot) for equipment
+			if (!m_PlayerState || !m_PlayerState->m_InventoryComponent) break;
+			UInventoryComponent* PlayerInv = m_PlayerState->m_InventoryComponent;
+			TArray<FInventoryItem> ContainerItems = ContainerComp->GetContainerInventory();
+			if (Param1 < 0 || Param1 >= ContainerItems.Num()) break;
 
-            const FInventoryItem ContainerItem = ContainerItems[Param1];
+			const FInventoryItem ContainerItem = ContainerItems[Param1];
 
-            if (Param2 >= 0)
-            {
-                // 컨테이너 ↔ 플레이어 인벤토리 스왑
-                TArray<FInventoryItem> PlayerItems = PlayerInv->GetInventory();
-                if (Param2 >= 0 && Param2 < PlayerItems.Num())
-                {
-                    const FInventoryItem PlayerItem = PlayerItems[Param2];
-                    ContainerComp->RemoveItemByIndex(Param1);
-                    PlayerInv->RemoveItemByIndex(Param2);
-                    PlayerInv->AddItem(ContainerItem.ItemID, ContainerItem.Count, false);
-                    ContainerComp->AddItem(PlayerItem.ItemID, PlayerItem.Count);
-                }
-            }
-            else
-            {
-                // 컨테이너 ↔ 플레이어 장비 슬롯 스왑
-                const EEquipmentSlotType EquipSlot = static_cast<EEquipmentSlotType>(-Param2 - 1);
-                const FInventoryItem OldEquip = PlayerInv->GetEquippedItem(EquipSlot);
+			if (Param2 >= 0)
+			{
+				// 컨테이너 ↔ 플레이어 인벤토리 스왑 (정확 위치 교체)
+				TArray<FInventoryItem> PlayerItems = PlayerInv->GetInventory();
+				if (Param2 >= 0 && Param2 < PlayerItems.Num())
+				{
+					const FInventoryItem PlayerItem = PlayerItems[Param2];
+					// 컨테이너 슬롯에는 플레이어 아이템을 '교체' 배치
+					ContainerComp->SetItemAtIndex(Param1, PlayerItem);
+					// 플레이어 인벤토리 슬롯에는 컨테이너 아이템을 '교체' 배치
+					PlayerInv->SetInventoryItemAtIndex(Param2, ContainerItem);
+				}
+			}
+			else
+			{
+				// 컨테이너 ↔ 플레이어 장비 슬롯 스왑(인벤 경유 없이 직접 장착)
+				const EEquipmentSlotType EquipSlot = static_cast<EEquipmentSlotType>(-Param2 - 1);
+				if (ContainerComp->RemoveItemByIndex(Param1))
+				{
+					FInventoryItem Replaced;
+					const bool bEquipped = PlayerInv->EquipItemDirect(ContainerItem.ItemID, EquipSlot, Replaced);
+					if (!bEquipped)
+					{
+						// 실패 시 컨테이너 복구
+						ContainerComp->AddItem(ContainerItem.ItemID, ContainerItem.Count);
+						break;
+					}
 
-                // 컨테이너 아이템 꺼내서 인벤토리에 넣고, 해당 장비 슬롯으로 장착 시도
-                if (ContainerComp->RemoveItemByIndex(Param1))
-                {
-                    PlayerInv->AddItem(ContainerItem.ItemID, ContainerItem.Count, false);
-                    const bool bEquipped = PlayerInv->EquipItemToSlotByItemID(ContainerItem.ItemID, EquipSlot);
-                    if (!bEquipped)
-                    {
-                        // 장착 실패 시 롤백: 컨테이너에 다시 넣고 종료
-                        // 인벤토리에서 방금 추가한 아이템 제거
-                        PlayerInv->RemoveItem(ContainerItem.ItemID, ContainerItem.Count);
-                        ContainerComp->AddItem(ContainerItem.ItemID, ContainerItem.Count);
-                        break;
-                    }
-
-                    // 기존 장비가 있었다면 컨테이너에 넣기 위해 인벤토리에서 제거
-                    if (OldEquip.ItemID > 0)
-                    {
-                        PlayerInv->RemoveItem(OldEquip.ItemID, OldEquip.Count);
-                        ContainerComp->AddItem(OldEquip.ItemID, OldEquip.Count);
-                    }
+					if (Replaced.ItemID > 0)
+					{
+						// 제거했던 위치에 그대로 삽입
+						const int32 InsertAt = FMath::Clamp(Param1, 0, ContainerComp->GetContainerInventory().Num());
+						ContainerComp->InsertItemAtIndex(InsertAt, Replaced);
+					}
                 }
             }
             break;

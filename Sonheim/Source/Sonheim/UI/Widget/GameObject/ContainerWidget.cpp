@@ -196,30 +196,31 @@ void UContainerWidget::OnSlotDropped(USlotWidget* FromSlot, USlotWidget* ToSlot)
 	}
 }
 
-void UContainerWidget::HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex)
+void UContainerWidget::HandleExternalDrop(USlotWidget* FromSlot, USlotWidget* ToSlot)
 {
-	if (!FromSlot || !ContainerComponent || ToIndex < 0)
-		return;
+    if (!FromSlot || !ContainerComponent || !ToSlot)
+        return;
 
-	if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
-	{
-		// 플레이어 쪽 인덱스/장비 슬롯 인코딩 준비
-		const bool bFromEquip = (FromSlot->EquipmentSlotType != EEquipmentSlotType::None);
-		const int32 PlayerParam = bFromEquip
-			? -(1 + static_cast<int32>(FromSlot->EquipmentSlotType))
-			: FromSlot->SlotIndex;
+    if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
+    {
+        // 플레이어 쪽 인덱스/장비 슬롯 인코딩 준비
+        const bool bFromEquip = (FromSlot->EquipmentSlotType != EEquipmentSlotType::None);
+        const int32 PlayerParam = bFromEquip
+            ? -(1 + static_cast<int32>(FromSlot->EquipmentSlotType))
+            : FromSlot->SlotIndex;
 
-		if (SlotWidgets.IsValidIndex(ToIndex) && SlotWidgets[ToIndex] && SlotWidgets[ToIndex]->ItemID != 0)
-		{
-			// 컨테이너칸 ↔ 플레이어(인벤/장비) 스왑
-			PC->Server_ContainerOperation(GetOwningContainer(), EContainerOperation::SwapWithPlayer, ToIndex, PlayerParam);
-		}
-		else
-		{
-			// 플레이어(인벤/장비) → 컨테이너 이동
-			PC->Server_ContainerOperation(GetOwningContainer(), EContainerOperation::TransferFromPlayer, PlayerParam, 0);
-		}
-	}
+        if (ToSlot->ItemID != 0)
+        {
+            // 컨테이너칸 ↔ 플레이어(인벤/장비) 스왑
+            PC->Server_ContainerOperation(GetOwningContainer(), EContainerOperation::SwapWithPlayer, ToSlot->SlotIndex, PlayerParam);
+        }
+        else
+        {
+            // 플레이어(인벤/장비) → 컨테이너 이동
+            // Param2: 목적 컨테이너 슬롯 인덱스 전달(선호 위치)
+            PC->Server_ContainerOperation(GetOwningContainer(), EContainerOperation::TransferFromPlayer, PlayerParam, ToSlot->SlotIndex);
+        }
+    }
 }
 
 void UContainerWidget::BindSlotEvents(USlotWidget* SlotWidget)

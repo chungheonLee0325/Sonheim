@@ -152,8 +152,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	int GetItemCount(int ItemID) const;
 
-	UFUNCTION(BlueprintCallable, Category="Inventory")
-	TArray<FInventoryItem> GetInventory() const;
+    UFUNCTION(BlueprintCallable, Category="Inventory")
+    TArray<FInventoryItem> GetInventory() const;
+
+    // 서버에서 인벤토리 특정 인덱스의 아이템을 교체 배치
+    bool SetInventoryItemAtIndex(int32 Index, const FInventoryItem& NewItem);
+
+	// 외부(상자 등)에서 바로 장착: 인벤토리를 거치지 않고 해당 슬롯에 장착
+	// OutReplaced: 기존 장착 아이템(있으면 반환, 없으면 ItemID=0)
+	bool EquipItemDirect(int32 ItemID, EEquipmentSlotType SlotType, FInventoryItem& OutReplaced);
 
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	TMap<EEquipmentSlotType, FInventoryItem> GetEquippedItems() const;

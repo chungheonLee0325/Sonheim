@@ -102,7 +102,7 @@ public:
 	UFUNCTION()
 	void OnSlotDropped(USlotWidget* FromSlot, USlotWidget* ToSlot);
 
-	void HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex);
+	void HandleExternalDrop(USlotWidget* FromSlot, USlotWidget* ToSlot);
 
 	UFUNCTION()
 	void HandleTrashDrop(USlotWidget* FromSlot, bool bDiscardMode);

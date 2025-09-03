@@ -70,7 +70,7 @@ public:
 	void OnSlotDropped(USlotWidget* FromSlot, USlotWidget* ToSlot);
 
 	// 외부에서 드롭 받기 위한 퍼블릭 함수
-	void HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex);
+    void HandleExternalDrop(USlotWidget* FromSlot, USlotWidget* ToSlot);
 
 	UContainerComponent* GetContainerComponent() const {return ContainerComponent;};
 

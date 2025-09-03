@@ -226,3 +226,37 @@ void UContainerComponent::BroadcastInventoryChanged()
 {
 	OnContainerInventoryChanged.Broadcast(ContainerItems);
 }
+
+bool UContainerComponent::SetItemAtIndex(int32 Index, const FInventoryItem& Item)
+{
+	if (GetOwnerRole() != ROLE_Authority)
+	{
+		// 서버 전용
+		return false;
+	}
+	if (Index < 0 || Index >= ContainerItems.Num())
+		return false;
+
+	ContainerItems[Index] = Item;
+	BroadcastInventoryChanged();
+	return true;
+}
+
+bool UContainerComponent::InsertItemAtIndex(int32 Index, const FInventoryItem& Item)
+{
+	if (GetOwnerRole() != ROLE_Authority)
+	{
+		// 서버 전용
+		return false;
+	}
+	if (ContainerItems.Num() >= MaxSlots)
+		return false;
+
+	// 허용 범위 [0..Num]
+	if (Index < 0) Index = 0;
+	if (Index > ContainerItems.Num()) Index = ContainerItems.Num();
+
+	ContainerItems.Insert(Item, Index);
+	BroadcastInventoryChanged();
+	return true;
+}

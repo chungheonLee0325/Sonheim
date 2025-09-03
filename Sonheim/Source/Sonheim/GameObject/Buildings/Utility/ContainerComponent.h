@@ -44,6 +44,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Container")
 	int32 GetMaxSlots() const { return MaxSlots; }
 
+	// 정확한 위치 배치를 위한 유틸 (서버 전용 사용 권장)
+	// 비어있지 않은 유효 인덱스에 아이템을 교체 배치
+	bool SetItemAtIndex(int32 Index, const FInventoryItem& Item);
+	// 현재 아이템 배열에 지정 위치로 삽입(우측으로 시프트). Index는 [0..Num] 범위만 허용
+	bool InsertItemAtIndex(int32 Index, const FInventoryItem& Item);
+
 	UFUNCTION(BlueprintCallable, Category = "Container")
 	bool HasItem(int32 ItemID, int32 RequiredCount = 1) const;
 
