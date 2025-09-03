@@ -219,9 +219,14 @@ void UInventoryWidget::OnSlotDropped(USlotWidget* FromSlot, USlotWidget* ToSlot)
     else if (FromSlot->EquipmentSlotType != EEquipmentSlotType::None && 
              ToSlot->EquipmentSlotType == EEquipmentSlotType::None)
     {
-        // 장비 해제 시도
-        if (InventoryComponent)
+        // 대상 인벤토리 칸이 비어있지 않다면 스왑 처리: 해당 인벤 아이템을 장비 슬롯으로 장착
+        if (ToSlot->ItemID != 0)
         {
+            InventoryComponent->EquipItemToSlotByIndex(ToSlot->SlotIndex, FromSlot->EquipmentSlotType);
+        }
+        else
+        {
+            // 비었으면 단순 해제
             InventoryComponent->UnEquipItem(FromSlot->EquipmentSlotType);
         }
     }
@@ -342,8 +347,8 @@ void UInventoryWidget::HandleInventorySlotInteraction(USlotWidget* SlotWidget, b
 
 void UInventoryWidget::HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex)
 {
-	if (!FromSlot || !InventoryComponent || ToIndex < 0)
-		return;
+    if (!FromSlot || !InventoryComponent || ToIndex < 0)
+        return;
     
     // 상자에서 가져온 아이템인지 확인
     UContainerWidget* FromContainer = Cast<UContainerWidget>(FromSlot->GetTypedOuter<UContainerWidget>());
@@ -351,15 +356,42 @@ void UInventoryWidget::HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex)
     {
         if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
         {
-            if (SlotWidgets.IsValidIndex(ToIndex) && SlotWidgets[ToIndex] && SlotWidgets[ToIndex]->ItemID != 0)
+            USlotWidget* ToSlot = (SlotWidgets.IsValidIndex(ToIndex) ? SlotWidgets[ToIndex] : nullptr);
+            if (!ToSlot)
+                return;
+
+            // 장비 슬롯으로 드롭
+            if (ToSlot->EquipmentSlotType != EEquipmentSlotType::None)
             {
-                // 상자칸 ↔ 인벤칸 스왑
-                PC->Server_ContainerOperation(FromContainer->GetOwningContainer(), EContainerOperation::SwapWithPlayer, FromSlot->SlotIndex, ToIndex);
+                if (ToSlot->ItemID != 0)
+                {
+                    // 상자칸 ↔ 장비칸 스왑 (장비 슬롯은 음수 인코딩)
+                    const int32 EncodedEquip = -(1 + static_cast<int32>(ToSlot->EquipmentSlotType));
+                    PC->Server_ContainerOperation(FromContainer->GetOwningContainer(), EContainerOperation::SwapWithPlayer,
+                                                  FromSlot->SlotIndex, EncodedEquip);
+                }
+                else
+                {
+                    // 상자 → 장비 슬롯 직접 장착
+                    PC->Server_ContainerOperation(FromContainer->GetOwningContainer(), EContainerOperation::TransferToPlayer,
+                                                  FromSlot->SlotIndex, static_cast<int32>(ToSlot->EquipmentSlotType));
+                }
             }
             else
             {
-                // 상자 → 인벤토리 이동
-                PC->Server_ContainerOperation(FromContainer->GetOwningContainer(), EContainerOperation::TransferToPlayer, FromSlot->SlotIndex, -1);
+                // 인벤토리 슬롯으로 드롭
+                if (ToSlot->ItemID != 0)
+                {
+                    // 상자칸 ↔ 인벤칸 스왑
+                    PC->Server_ContainerOperation(FromContainer->GetOwningContainer(), EContainerOperation::SwapWithPlayer,
+                                                  FromSlot->SlotIndex, ToIndex);
+                }
+                else
+                {
+                    // 상자 → 인벤토리 이동
+                    PC->Server_ContainerOperation(FromContainer->GetOwningContainer(), EContainerOperation::TransferToPlayer,
+                                                  FromSlot->SlotIndex, -1);
+                }
             }
         }
     }

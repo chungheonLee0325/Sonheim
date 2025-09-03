@@ -201,29 +201,25 @@ void UContainerWidget::HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex)
 	if (!FromSlot || !ContainerComponent || ToIndex < 0)
 		return;
 
-if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
-{
-	if (SlotWidgets.IsValidIndex(ToIndex) && SlotWidgets[ToIndex] && SlotWidgets[ToIndex]->ItemID != 0)
+	if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
 	{
-		// 컨테이너칸 ↔ 인벤칸 스왑
-		PC->Server_ContainerOperation(GetOwningContainer(), EContainerOperation::SwapWithPlayer, ToIndex,
-		                              FromSlot->SlotIndex);
-	}
-	else
-	{
-		// 인벤 → 컨테이너 이동(장비는 음수 인덱스로 전달)
-		if (FromSlot->EquipmentSlotType != EEquipmentSlotType::None)
+		// 플레이어 쪽 인덱스/장비 슬롯 인코딩 준비
+		const bool bFromEquip = (FromSlot->EquipmentSlotType != EEquipmentSlotType::None);
+		const int32 PlayerParam = bFromEquip
+			? -(1 + static_cast<int32>(FromSlot->EquipmentSlotType))
+			: FromSlot->SlotIndex;
+
+		if (SlotWidgets.IsValidIndex(ToIndex) && SlotWidgets[ToIndex] && SlotWidgets[ToIndex]->ItemID != 0)
 		{
-			int32 Encoded = -(1 + static_cast<int32>(FromSlot->EquipmentSlotType));
-			PC->Server_ContainerOperation(GetOwningContainer(), EContainerOperation::TransferFromPlayer, Encoded, 0);
+			// 컨테이너칸 ↔ 플레이어(인벤/장비) 스왑
+			PC->Server_ContainerOperation(GetOwningContainer(), EContainerOperation::SwapWithPlayer, ToIndex, PlayerParam);
 		}
 		else
 		{
-			PC->Server_ContainerOperation(GetOwningContainer(), EContainerOperation::TransferFromPlayer,
-			                              FromSlot->SlotIndex, 0);
+			// 플레이어(인벤/장비) → 컨테이너 이동
+			PC->Server_ContainerOperation(GetOwningContainer(), EContainerOperation::TransferFromPlayer, PlayerParam, 0);
 		}
 	}
-}
 }
 
 void UContainerWidget::BindSlotEvents(USlotWidget* SlotWidget)

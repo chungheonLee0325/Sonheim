@@ -876,24 +876,60 @@ void ASonheimPlayerController::Server_ContainerOperation_Implementation(
 			}
 			break;
 		}
-	case EContainerOperation::SwapWithPlayer:
-		{
-			// Param1: ContainerSlotIndex, Param2: PlayerInventoryIndex
-			if (!m_PlayerState || !m_PlayerState->m_InventoryComponent) break;
-			UInventoryComponent* PlayerInv = m_PlayerState->m_InventoryComponent;
-			TArray<FInventoryItem> ContainerItems = ContainerComp->GetContainerInventory();
-			TArray<FInventoryItem> PlayerItems = PlayerInv->GetInventory();
-			if (Param1 >= 0 && Param1 < ContainerItems.Num() && Param2 >= 0 && Param2 < PlayerItems.Num())
-			{
-				FInventoryItem ContainerItem = ContainerItems[Param1];
-				FInventoryItem PlayerItem = PlayerItems[Param2];
-				ContainerComp->RemoveItemByIndex(Param1);
-				PlayerInv->RemoveItemByIndex(Param2);
-				PlayerInv->AddItem(ContainerItem.ItemID, ContainerItem.Count, false);
-				ContainerComp->AddItem(PlayerItem.ItemID, PlayerItem.Count);
-			}
-			break;
-		}
+    case EContainerOperation::SwapWithPlayer:
+        {
+            // Param1: ContainerSlotIndex
+            // Param2: PlayerInventoryIndex (>=0) or -(1+EquipSlot) for equipment
+            if (!m_PlayerState || !m_PlayerState->m_InventoryComponent) break;
+            UInventoryComponent* PlayerInv = m_PlayerState->m_InventoryComponent;
+            TArray<FInventoryItem> ContainerItems = ContainerComp->GetContainerInventory();
+            if (Param1 < 0 || Param1 >= ContainerItems.Num()) break;
+
+            const FInventoryItem ContainerItem = ContainerItems[Param1];
+
+            if (Param2 >= 0)
+            {
+                // 컨테이너 ↔ 플레이어 인벤토리 스왑
+                TArray<FInventoryItem> PlayerItems = PlayerInv->GetInventory();
+                if (Param2 >= 0 && Param2 < PlayerItems.Num())
+                {
+                    const FInventoryItem PlayerItem = PlayerItems[Param2];
+                    ContainerComp->RemoveItemByIndex(Param1);
+                    PlayerInv->RemoveItemByIndex(Param2);
+                    PlayerInv->AddItem(ContainerItem.ItemID, ContainerItem.Count, false);
+                    ContainerComp->AddItem(PlayerItem.ItemID, PlayerItem.Count);
+                }
+            }
+            else
+            {
+                // 컨테이너 ↔ 플레이어 장비 슬롯 스왑
+                const EEquipmentSlotType EquipSlot = static_cast<EEquipmentSlotType>(-Param2 - 1);
+                const FInventoryItem OldEquip = PlayerInv->GetEquippedItem(EquipSlot);
+
+                // 컨테이너 아이템 꺼내서 인벤토리에 넣고, 해당 장비 슬롯으로 장착 시도
+                if (ContainerComp->RemoveItemByIndex(Param1))
+                {
+                    PlayerInv->AddItem(ContainerItem.ItemID, ContainerItem.Count, false);
+                    const bool bEquipped = PlayerInv->EquipItemToSlotByItemID(ContainerItem.ItemID, EquipSlot);
+                    if (!bEquipped)
+                    {
+                        // 장착 실패 시 롤백: 컨테이너에 다시 넣고 종료
+                        // 인벤토리에서 방금 추가한 아이템 제거
+                        PlayerInv->RemoveItem(ContainerItem.ItemID, ContainerItem.Count);
+                        ContainerComp->AddItem(ContainerItem.ItemID, ContainerItem.Count);
+                        break;
+                    }
+
+                    // 기존 장비가 있었다면 컨테이너에 넣기 위해 인벤토리에서 제거
+                    if (OldEquip.ItemID > 0)
+                    {
+                        PlayerInv->RemoveItem(OldEquip.ItemID, OldEquip.Count);
+                        ContainerComp->AddItem(OldEquip.ItemID, OldEquip.Count);
+                    }
+                }
+            }
+            break;
+        }
 
 	default:
 		UE_LOG(LogTemp, Warning, TEXT("Unhandled container operation: %d"), (int32)Operation);

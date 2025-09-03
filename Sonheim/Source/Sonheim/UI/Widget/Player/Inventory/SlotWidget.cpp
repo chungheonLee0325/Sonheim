@@ -267,61 +267,15 @@ bool USlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent
 	// 플레이어 인벤토리/장비 → 상자
 	if (FromInventoryWidget && MyContainerWidget)
 	{
-		if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
-		{
-			if (MyContainerWidget->GetOwningContainer())
-			{
-				if (DragDropOp->DraggedSlotWidget->EquipmentSlotType != EEquipmentSlotType::None)
-				{
-					// 장비 → 상자: 음수 인코딩 파라미터로 슬롯 지정
-					int32 Encoded = -(1 + static_cast<int32>(DragDropOp->DraggedSlotWidget->EquipmentSlotType));
-					PC->Server_ContainerOperation(MyContainerWidget->GetOwningContainer(),
-					                              EContainerOperation::TransferFromPlayer, Encoded, 0);
-				}
-				else
-				{
-					// 인벤토리 → 상자
-					PC->Server_ContainerOperation(MyContainerWidget->GetOwningContainer(),
-					                              EContainerOperation::TransferFromPlayer,
-					                              DragDropOp->DraggedSlotWidget->SlotIndex, 0);
-				}
-			}
-		}
+		// 컨테이너 위젯의 헬퍼로 위임(스왑/이동 모두 처리)
+		MyContainerWidget->HandleExternalDrop(DragDropOp->DraggedSlotWidget, this->SlotIndex);
 		return true;
 	}
 	// 상자 → 플레이어 인벤토리/장비
 	else if (FromContainerWidget && MyInventoryWidget)
 	{
-		if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
-		{
-			if (FromContainerWidget->GetOwningContainer())
-			{
-				if (this->EquipmentSlotType != EEquipmentSlotType::None)
-				{
-					// 상자 → 장비 슬롯 직접 장착
-					PC->Server_ContainerOperation(FromContainerWidget->GetOwningContainer(),
-					                              EContainerOperation::TransferToPlayer,
-					                              DragDropOp->DraggedSlotWidget->SlotIndex,
-					                              static_cast<int32>(this->EquipmentSlotType));
-				}
-				else
-				{
-					// 상자 → 인벤토리(스왑 지원)
-					if (this->ItemID != 0)
-					{
-						PC->Server_ContainerOperation(FromContainerWidget->GetOwningContainer(),
-						                              EContainerOperation::SwapWithPlayer,
-						                              DragDropOp->DraggedSlotWidget->SlotIndex, this->SlotIndex);
-					}
-					else
-					{
-						PC->Server_ContainerOperation(FromContainerWidget->GetOwningContainer(),
-						                              EContainerOperation::TransferToPlayer,
-						                              DragDropOp->DraggedSlotWidget->SlotIndex, -1);
-					}
-				}
-			}
-		}
+		// 인벤토리 위젯의 헬퍼로 위임(스왑/장비장착/이동 모두 처리)
+		MyInventoryWidget->HandleExternalDrop(DragDropOp->DraggedSlotWidget, this->SlotIndex);
 		return true;
 	}
 	// 같은 위젯 내에서의 드롭
@@ -587,6 +541,38 @@ bool USlotWidget::IsDropValidFrom(USlotWidget* FromSlot) const
 
 	// 컨테이너 -> 플레이어 인벤토리: 허용(서버 검증)
 	if (FromCont && ToInv)
+	{
+		return true;
+	}
+
+	// 컨테이너 -> 장비 슬롯: 아이템-슬롯 적합성 검사
+	if (FromCont && ToEquip)
+	{
+		if (!m_GameInstance) return false;
+		const FItemData* ItemData = m_GameInstance->GetDataItem(FromSlot->ItemID);
+		if (!ItemData) return false;
+		if (!(ItemData->ItemCategory == EItemCategory::Equipment || ItemData->ItemCategory == EItemCategory::Weapon))
+			return false;
+
+		switch (EquipmentSlotType)
+		{
+		case EEquipmentSlotType::Head: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Head;
+		case EEquipmentSlotType::Body: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Body;
+		case EEquipmentSlotType::Shield: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Shield;
+		case EEquipmentSlotType::Glider: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Glider;
+		case EEquipmentSlotType::SphereModule: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::SphereModule;
+		case EEquipmentSlotType::Accessory1:
+		case EEquipmentSlotType::Accessory2: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Accessory;
+		case EEquipmentSlotType::Weapon1:
+		case EEquipmentSlotType::Weapon2:
+		case EEquipmentSlotType::Weapon3:
+		case EEquipmentSlotType::Weapon4: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon;
+		default: return false;
+		}
+	}
+
+	// 장비 -> 컨테이너: 허용(서버가 용량/스왑 판단)
+	if (FromEquip && ToCont)
 	{
 		return true;
 	}
