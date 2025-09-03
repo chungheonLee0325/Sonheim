@@ -156,9 +156,9 @@ void UCraftingWidget::RefreshCraftability()
 			}
 		}
 		slot->SetIsEnabled(true);
-		// ToDo : 시각적 처리 변경 예정
-		slot->SetRenderOpacity(bCraftable ? 1.0f : 0.6f);
-		slot->SetColorAndOpacity(bCraftable ? FLinearColor::White : FLinearColor::Red);
+
+		slot->SetRenderOpacity(bCraftable ? 1.0f : 0.7f);
+		slot->IMG_Item->SetColorAndOpacity(bCraftable ? FLinearColor::White : FLinearColor::Red);
 	}
 }
 
