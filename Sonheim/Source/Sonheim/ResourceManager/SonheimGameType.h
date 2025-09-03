@@ -167,6 +167,8 @@ enum class EContainerOperation : uint8
 	RemoveItemByIndex UMETA(DisplayName = "RemoveItemByIndex"),
 	// 아이템 스왑
 	SwapItems UMETA(DisplayName = "SwapItems"),
+	// 컨테이너 슬롯 ↔ 플레이어 인벤 슬롯 스왑
+	SwapWithPlayer UMETA(DisplayName = "SwapWithPlayer"),
 	// 상자 -> 플레이어
 	TransferToPlayer UMETA(DisplayName = "TransferToPlayer"),
 	// 플레이어 -> 상자

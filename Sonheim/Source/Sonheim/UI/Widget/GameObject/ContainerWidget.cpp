@@ -5,6 +5,7 @@
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
@@ -199,18 +200,30 @@ void UContainerWidget::HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex)
 {
 	if (!FromSlot || !ContainerComponent || ToIndex < 0)
 		return;
-    
-	if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
+
+if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
+{
+	if (SlotWidgets.IsValidIndex(ToIndex) && SlotWidgets[ToIndex] && SlotWidgets[ToIndex]->ItemID != 0)
 	{
-		// 플레이어 인벤토리에서 상자로 아이템 이동
-		PC->Server_PlayerContainerTransfer(
-			GetOwningContainer(),
-			false,                 // bFromContainerToPlayer (false = player to container)
-			FromSlot->ItemID,
-			FromSlot->Quantity,
-			FromSlot->SlotIndex
-		);
+		// 컨테이너칸 ↔ 인벤칸 스왑
+		PC->Server_ContainerOperation(GetOwningContainer(), EContainerOperation::SwapWithPlayer, ToIndex,
+		                              FromSlot->SlotIndex);
 	}
+	else
+	{
+		// 인벤 → 컨테이너 이동(장비는 음수 인덱스로 전달)
+		if (FromSlot->EquipmentSlotType != EEquipmentSlotType::None)
+		{
+			int32 Encoded = -(1 + static_cast<int32>(FromSlot->EquipmentSlotType));
+			PC->Server_ContainerOperation(GetOwningContainer(), EContainerOperation::TransferFromPlayer, Encoded, 0);
+		}
+		else
+		{
+			PC->Server_ContainerOperation(GetOwningContainer(), EContainerOperation::TransferFromPlayer,
+			                              FromSlot->SlotIndex, 0);
+		}
+	}
+}
 }
 
 void UContainerWidget::BindSlotEvents(USlotWidget* SlotWidget)

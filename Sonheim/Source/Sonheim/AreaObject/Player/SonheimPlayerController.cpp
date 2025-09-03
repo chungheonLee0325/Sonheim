@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "SonheimPlayerController.h"
@@ -436,19 +436,24 @@ void ASonheimPlayerController::On_Mouse_Right_Pressed(const FInputActionValue& I
 {
 	if (IsMenuActivate || IsContainerActivate) return;
 
+	auto PSW = GetPlayerStatusWidget();
+	
 	// 팰스피어 던지는 중이면 캔슬하기
 	if (m_Player->IsThrowingPalSphere())
 	{
 		m_Player->ThrowPalSphere_Canceled();
-		GetPlayerStatusWidget()->SetEnableCrossHair(false);
-		GetPlayerStatusWidget()->SetEnableKeyGuide(false, EUIKeyGuide::None);
+		if (PSW)
+		{
+			PSW->SetEnableCrossHair(false);
+			PSW->SetEnableKeyGuide(false, EUIKeyGuide::None);
+		}
 		m_Player->SetWeaponVisible(true, true);
 		m_Player->RightMouse_Released();
 		return;;
 	}
 
 	m_Player->RightMouse_Pressed();
-	GetPlayerStatusWidget()->SetEnableCrossHair(true);
+	if (PSW) PSW->SetEnableCrossHair(true);
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Triggered(const FInputActionValue& InputActionValue)
@@ -479,7 +484,7 @@ void ASonheimPlayerController::On_Mouse_Right_Released(const FInputActionValue& 
 {
 	if (IsMenuActivate || IsContainerActivate) return;
 	m_Player->RightMouse_Released();
-	GetPlayerStatusWidget()->SetEnableCrossHair(false);
+	if (GetPlayerStatusWidget()) GetPlayerStatusWidget()->SetEnableCrossHair(false);
 }
 
 void ASonheimPlayerController::On_Dodge_Pressed(const FInputActionValue& InputActionValue)
@@ -819,6 +824,73 @@ void ASonheimPlayerController::Server_ContainerOperation_Implementation(
 				Param2 < ContainerComp->GetMaxSlots())
 			{
 				ContainerComp->SwapItems(Param1, Param2);
+			}
+			break;
+		}
+	case EContainerOperation::TransferToPlayer:
+		{
+			// Param1: ContainerSlotIndex, Param2: EquipSlot(>=0) or -1 (inventory)
+			if (!m_PlayerState || !m_PlayerState->m_InventoryComponent) break;
+			UInventoryComponent* PlayerInv = m_PlayerState->m_InventoryComponent;
+			TArray<FInventoryItem> Items = ContainerComp->GetContainerInventory();
+			if (Param1 >= 0 && Param1 < Items.Num())
+			{
+				FInventoryItem It = Items[Param1];
+				if (ContainerComp->RemoveItemByIndex(Param1))
+				{
+					PlayerInv->AddItem(It.ItemID, It.Count, false);
+					if (Param2 >= 0)
+					{
+						PlayerInv->EquipItemToSlotByItemID(It.ItemID, static_cast<EEquipmentSlotType>(Param2));
+					}
+				}
+			}
+			break;
+		}
+	case EContainerOperation::TransferFromPlayer:
+		{
+			// Param1: PlayerInvIndex(>=0) or -(1+EquipSlot) for equipment, Param2: Count(optional)
+			if (!m_PlayerState || !m_PlayerState->m_InventoryComponent) break;
+			UInventoryComponent* PlayerInv = m_PlayerState->m_InventoryComponent;
+			if (Param1 >= 0)
+			{
+				TArray<FInventoryItem> PlayerItems = PlayerInv->GetInventory();
+				if (Param1 < PlayerItems.Num())
+				{
+					FInventoryItem PlayerItem = PlayerItems[Param1];
+					if (PlayerInv->RemoveItemByIndex(Param1))
+					{
+						ContainerComp->AddItem(PlayerItem.ItemID, PlayerItem.Count);
+					}
+				}
+			}
+			else
+			{
+				EEquipmentSlotType Slot = static_cast<EEquipmentSlotType>(-Param1 - 1);
+				FInventoryItem EquipItem = PlayerInv->GetEquippedItem(Slot);
+				if (EquipItem.ItemID > 0 && PlayerInv->UnEquipItem(Slot))
+				{
+					PlayerInv->RemoveItem(EquipItem.ItemID, EquipItem.Count);
+					ContainerComp->AddItem(EquipItem.ItemID, EquipItem.Count);
+				}
+			}
+			break;
+		}
+	case EContainerOperation::SwapWithPlayer:
+		{
+			// Param1: ContainerSlotIndex, Param2: PlayerInventoryIndex
+			if (!m_PlayerState || !m_PlayerState->m_InventoryComponent) break;
+			UInventoryComponent* PlayerInv = m_PlayerState->m_InventoryComponent;
+			TArray<FInventoryItem> ContainerItems = ContainerComp->GetContainerInventory();
+			TArray<FInventoryItem> PlayerItems = PlayerInv->GetInventory();
+			if (Param1 >= 0 && Param1 < ContainerItems.Num() && Param2 >= 0 && Param2 < PlayerItems.Num())
+			{
+				FInventoryItem ContainerItem = ContainerItems[Param1];
+				FInventoryItem PlayerItem = PlayerItems[Param2];
+				ContainerComp->RemoveItemByIndex(Param1);
+				PlayerInv->RemoveItemByIndex(Param2);
+				PlayerInv->AddItem(ContainerItem.ItemID, ContainerItem.Count, false);
+				ContainerComp->AddItem(PlayerItem.ItemID, PlayerItem.Count);
 			}
 			break;
 		}

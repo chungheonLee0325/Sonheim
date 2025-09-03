@@ -25,12 +25,15 @@ class SONHEIM_API USlotWidget : public UUserWidget
 	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
-	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent,
+	                                  UDragDropOperation*& OutOperation) override;
+	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,
+	                          UDragDropOperation* InOperation) override;
 	virtual void NativeOnDragCancelled(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
-	virtual void NativeOnDragEnter(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+	virtual void NativeOnDragEnter(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,
+	                               UDragDropOperation* InOperation) override;
 	virtual void NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
-	
+
 public:
 	// 슬롯 초기화 함수
 	void Init(int Index);
@@ -42,6 +45,9 @@ public:
 	void SetCraftingMatMode(bool Enable);
 
 public:
+	UPROPERTY(VisibleAnywhere, Category = "Slot", meta = (BindWidget = "true"))
+	TObjectPtr<class USizeBox> SB_Root;
+
 	// 슬롯에 지정될 이미지
 	UPROPERTY(VisibleAnywhere, Category = "Slot", meta = (BindWidget = "true"))
 	TObjectPtr<class UImage> IMG_Item;
@@ -49,7 +55,7 @@ public:
 	// 슬롯에 지정될 배경
 	UPROPERTY(VisibleAnywhere, Category = "Slot", meta = (BindWidget = "true"))
 	TObjectPtr<class UImage> IMG_BackGround;
-	
+
 	// 슬롯에 지정될 테두리
 	UPROPERTY(VisibleAnywhere, Category = "Slot", meta = (BindWidget = "true"))
 	TObjectPtr<class UImage> IMG_Border;
@@ -81,7 +87,7 @@ public:
 	// 슬롯 타입 - 인벤토리인지 장비창인지 구분
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slot")
 	EEquipmentSlotType EquipmentSlotType = EEquipmentSlotType::None;
-	
+
 	// 툴팁 위젯 클래스
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slot")
 	TSubclassOf<UToolTipWidget> ToolTipWidgetClass;
@@ -89,23 +95,26 @@ public:
 	// Only view 용도로 slot 사용할때
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slot")
 	bool bOnlyView = false;
-	
+
 	// 드래그 드롭 사용 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slot")
 	bool bSupportsDragDrop = true;
-	
+
 	// 아이템 클릭 이벤트
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemClicked, USlotWidget*, SlotWidget, bool, bIsRightClick);
+
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnItemClicked OnItemClicked;
-	
+
 	// 아이템 드래그 시작 이벤트
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnItemDragStarted, USlotWidget*, SlotWidget);
+
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnItemDragStarted OnItemDragStarted;
-	
+
 	// 아이템 드롭 이벤트
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemDropped, USlotWidget*, FromSlot, USlotWidget*, ToSlot);
+
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnItemDropped OnItemDropped;
 
@@ -113,27 +122,42 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Animation")
 	void PlayMouseEnterAnimation();
 
-	void SetHighlighted(bool bHighlighted);
+	void SetHighlighted(bool bEnable, bool bValid = true) const;
 
 	UFUNCTION()
 	void HandleDragOperationEnded(UDragDropOperation* Operation);
+
 private:
 	UPROPERTY()
 	UToolTipWidget* ToolTipInstance;
 	UPROPERTY()
 	USonheimGameInstance* m_GameInstance;
 
-	bool IsHighlighted = false;
 	bool IsDragging = false;
+
 protected:
 	bool IsEmpty() const;
-    
+
+	// 드롭 가능 여부 판단
+	bool IsDropValidFrom(class USlotWidget* FromSlot) const;
+
+	// 드래그 오퍼레이션 비주얼 색상 변경
+	void SetDragOperationVisual(class UDragDropOperation* InOperation, const FLinearColor& Tint) const;
+
 	// 빈 칸에 적용하기 위한 투명 텍스쳐
 	UPROPERTY(EditAnywhere, Category = "Slot")
 	TObjectPtr<class UTexture2D> DefaultTexture;
-    
+
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	class UWidgetAnimation* ClickAnimation;
+
+	// 하이라이트 색상
+	UPROPERTY(EditAnywhere, Category = "Appearance")
+	FLinearColor NormalColor = FLinearColor(1.f, 1.f, 1.f, 1.f);
+	UPROPERTY(EditAnywhere, Category = "Appearance")
+	FLinearColor ValidColor = FLinearColor(0.1f, 0.8f, 0.2f, 1.0f);
+	UPROPERTY(EditAnywhere, Category = "Appearance")
+	FLinearColor InvalidColor = FLinearColor(0.9f, 0.15f, 0.15f, 1.0f);
 };
 
 // 드래그 드롭 오퍼레이션 클래스
@@ -141,7 +165,7 @@ UCLASS()
 class SONHEIM_API UDragDropSlotOperation : public UDragDropOperation
 {
 	GENERATED_BODY()
-	
+
 public:
 	UPROPERTY()
 	USlotWidget* DraggedSlotWidget;

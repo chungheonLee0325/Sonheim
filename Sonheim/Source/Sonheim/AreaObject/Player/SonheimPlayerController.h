@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -236,6 +236,7 @@ public:
 		int32 Count,
 		int32 SlotIndex = -1
 	);
+
 
 	// === Crafting UI 관리 ===
 	UFUNCTION(Client, Reliable)

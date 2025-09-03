@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -97,11 +97,23 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
 	void ServerUnEquipItem(EEquipmentSlotType SlotType);
 
+
+	// 지정 장비 슬롯으로 아이템 장착 (ItemID 기반)
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
+	void ServerEquipItemToSlotByItemID(int32 ItemID, EEquipmentSlotType SlotType);
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
 	void ServerSwitchWeaponSlot(int Index);
 
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
 	void ServerSwapItems(int32 FromIndex, int32 ToIndex);
+
+	// 지정 슬롯으로 장비 장착(인벤토리 인덱스 기준)
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
+	void ServerEquipItemToSlotByIndex(int32 InventoryIndex, EEquipmentSlotType SlotType);
+
+	// 장비 슬롯 간 스왑
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
+	void ServerSwapEquippedItems(EEquipmentSlotType SlotA, EEquipmentSlotType SlotB);
 
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
 	void ServerDropItemByIndex(int32 Index, int32 Count);
@@ -130,6 +142,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool UnEquipItem(EEquipmentSlotType SlotType);
 
+
+	// 지정 장비 슬롯으로 아이템 장착 (ItemID 기반)
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool EquipItemToSlotByItemID(int32 ItemID, EEquipmentSlotType SlotType);
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool HasItem(int ItemID, int RequiredCount = 1) const;
 
@@ -150,6 +166,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool SwapItems(int32 FromIndex, int32 ToIndex);
+
+	// 지정 슬롯으로 장비 장착(인벤토리 인덱스 기준)
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool EquipItemToSlotByIndex(int32 InventoryIndex, EEquipmentSlotType SlotType);
+
+	// 장비 슬롯 간 스왑
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool SwapEquippedItems(EEquipmentSlotType SlotA, EEquipmentSlotType SlotB);
 
 	// Item ID로 조회
 	void DropItem_ServerOnly(int32 ItemID, int32 Count, bool bStackable);

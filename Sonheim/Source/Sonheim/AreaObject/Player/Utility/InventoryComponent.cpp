@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "InventoryComponent.h"
 #include "Sonheim/AreaObject/Attribute/StatBonusComponent.h"
@@ -119,18 +119,29 @@ void UInventoryComponent::ServerRemoveItem_Implementation(int ItemID, int ItemCo
 
 void UInventoryComponent::ServerRemoveItemByIndex_Implementation(int Index)
 {
-	RemoveItemByIndex(Index);
+    RemoveItemByIndex(Index);
 }
 
 void UInventoryComponent::ServerEquipItem_Implementation(int ItemID)
 {
-	EquipItem(ItemID);
+    EquipItem(ItemID);
+}
+
+void UInventoryComponent::ServerEquipItemToSlotByIndex_Implementation(int32 InventoryIndex, EEquipmentSlotType SlotType)
+{
+    EquipItemToSlotByIndex(InventoryIndex, SlotType);
 }
 
 void UInventoryComponent::ServerEquipItemByIndex_Implementation(int32 InventoryIndex)
 {
 	EquipItemByIndex(InventoryIndex);
 }
+
+void UInventoryComponent::ServerEquipItemToSlotByItemID_Implementation(int32 ItemID, EEquipmentSlotType SlotType)
+{
+	EquipItemToSlotByItemID(ItemID, SlotType);
+}
+
 
 void UInventoryComponent::ServerUnEquipItem_Implementation(EEquipmentSlotType SlotType)
 {
@@ -144,7 +155,12 @@ void UInventoryComponent::ServerSwitchWeaponSlot_Implementation(int Index)
 
 void UInventoryComponent::ServerSwapItems_Implementation(int32 FromIndex, int32 ToIndex)
 {
-	SwapItems(FromIndex, ToIndex);
+    SwapItems(FromIndex, ToIndex);
+}
+
+void UInventoryComponent::ServerSwapEquippedItems_Implementation(EEquipmentSlotType SlotA, EEquipmentSlotType SlotB)
+{
+    SwapEquippedItems(SlotA, SlotB);
 }
 
 // 데이터 유효성 검증 함수들
@@ -474,6 +490,14 @@ bool UInventoryComponent::EquipItem(int ItemID)
 		ServerEquipItem(ItemID);
 		return true;
 	}
+}
+
+bool UInventoryComponent::EquipItemToSlotByItemID(int32 ItemID, EEquipmentSlotType SlotType)
+{
+	if (ItemID <= 0 || SlotType == EEquipmentSlotType::None) return false;
+	int32 Index = FindItemIndexInInventory(ItemID);
+	if (Index == INDEX_NONE) return false;
+	return EquipItemToSlotByIndex(Index, SlotType);
 }
 
 bool UInventoryComponent::EquipItemByIndex(int32 InventoryIndex)
@@ -1101,5 +1125,165 @@ void UInventoryComponent::PerformClientPrediction_SwitchWeaponSlot(int Index)
     {
         // UI만 업데이트 (실제 CurrentWeaponSlot은 변경하지 않음)
         OnWeaponChanged.Broadcast(newWeaponSlot, GetEquippedItem(newWeaponSlot).ItemID);
+    }
+}
+
+// 지정한 장비 슬롯으로 인벤토리 아이템 장착(스왑 지원)
+bool UInventoryComponent::EquipItemToSlotByIndex(int32 InventoryIndex, EEquipmentSlotType SlotType)
+{
+    if (InventoryIndex < 0 || InventoryIndex >= InventoryItems.Num() || SlotType == EEquipmentSlotType::None)
+        return false;
+
+    if (GetOwnerRole() == ROLE_Authority)
+    {
+        const int ItemID = InventoryItems[InventoryIndex].ItemID;
+        FItemData* ItemData = GetItemData(ItemID);
+        if (!ItemData)
+            return false;
+
+        auto Accepts = [SlotType](EEquipmentKindType Kind)
+        {
+            switch (SlotType)
+            {
+            case EEquipmentSlotType::Head: return Kind == EEquipmentKindType::Head;
+            case EEquipmentSlotType::Body: return Kind == EEquipmentKindType::Body;
+            case EEquipmentSlotType::Shield: return Kind == EEquipmentKindType::Shield;
+            case EEquipmentSlotType::Glider: return Kind == EEquipmentKindType::Glider;
+            case EEquipmentSlotType::SphereModule: return Kind == EEquipmentKindType::SphereModule;
+            case EEquipmentSlotType::Accessory1:
+            case EEquipmentSlotType::Accessory2: return Kind == EEquipmentKindType::Accessory;
+            case EEquipmentSlotType::Weapon1:
+            case EEquipmentSlotType::Weapon2:
+            case EEquipmentSlotType::Weapon3:
+            case EEquipmentSlotType::Weapon4: return Kind == EEquipmentKindType::Weapon;
+            default: return false;
+            }
+        };
+
+        if (!(ItemData->ItemCategory == EItemCategory::Equipment || ItemData->ItemCategory == EItemCategory::Weapon))
+            return false;
+        if (!Accepts(ItemData->EquipmentData.EquipKind))
+            return false;
+
+        // 기존 장비가 있으면 우선 해제(인벤토리 끝으로 들어감)
+        FInventoryItem* Existing = GetEquippedSlotItem(SlotType);
+        int32 ReturnedIndex = INDEX_NONE;
+        if (Existing && Existing->ItemID != 0)
+        {
+            const int Before = InventoryItems.Num();
+            UnEquipItem(SlotType);
+            ReturnedIndex = InventoryItems.Num() - 1; // 마지막으로 들어옴
+        }
+
+        // 슬롯에 장착
+        FInventoryItem Item = InventoryItems[InventoryIndex];
+        Item.bIsEquipped = true;
+        SetEquippedSlot(SlotType, Item);
+
+        // 스탯 적용
+        if (m_PlayerState && m_PlayerState->m_StatBonusComponent)
+        {
+            if (ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon)
+            {
+                m_PlayerState->m_StatBonusComponent->RegisterEquippedItem(SlotType, ItemID, true);
+            }
+            else
+            {
+                ApplyEquipmentStats(ItemID, true);
+            }
+        }
+
+        RemoveItemByIndex(InventoryIndex);
+        OnEquipmentChanged.Broadcast(SlotType, Item);
+        if (ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon)
+        {
+            OnWeaponChanged.Broadcast(SlotType, ItemID);
+        }
+        BroadcastInventoryChanged();
+
+        // 기존 장비를 원래 인벤토리 인덱스로 스왑 이동
+        if (ReturnedIndex != INDEX_NONE && InventoryItems.Num() > 0)
+        {
+            const int32 LastIndex = InventoryItems.Num() - 1;
+            if (InventoryItems.IsValidIndex(InventoryIndex) && InventoryItems.IsValidIndex(LastIndex))
+            {
+                InventoryItems.Swap(InventoryIndex, LastIndex);
+                BroadcastInventoryChanged();
+            }
+        }
+
+        return true;
+    }
+    else
+    {
+        // 클라이언트: 서버에 위임 (간단화)
+        ServerEquipItemToSlotByIndex(InventoryIndex, SlotType);
+        return true;
+    }
+}
+
+// 장비 슬롯 간 스왑
+bool UInventoryComponent::SwapEquippedItems(EEquipmentSlotType SlotA, EEquipmentSlotType SlotB)
+{
+    if (SlotA == EEquipmentSlotType::None || SlotB == EEquipmentSlotType::None || SlotA == SlotB)
+        return false;
+
+    if (GetOwnerRole() == ROLE_Authority)
+    {
+        const int32 IndexA = FindEquippedSlotIndex(SlotA);
+        const int32 IndexB = FindEquippedSlotIndex(SlotB);
+        if (IndexA == INDEX_NONE || IndexB == INDEX_NONE)
+            return false;
+
+        FInventoryItem ItemA = EquippedSlots[IndexA].Item;
+        FInventoryItem ItemB = EquippedSlots[IndexB].Item;
+
+        auto IsWeaponItem = [this](const FInventoryItem& It) -> bool
+        {
+            if (It.ItemID <= 0) return false;
+            if (FItemData* D = GetItemData(It.ItemID))
+            {
+                return D->EquipmentData.EquipKind == EEquipmentKindType::Weapon;
+            }
+            return false;
+        };
+
+        // 스탯 제거(무기 한정)
+        if (m_PlayerState && m_PlayerState->m_StatBonusComponent)
+        {
+            if (IsWeaponItem(ItemA)) m_PlayerState->m_StatBonusComponent->RegisterEquippedItem(SlotA, ItemA.ItemID, false);
+            if (IsWeaponItem(ItemB)) m_PlayerState->m_StatBonusComponent->RegisterEquippedItem(SlotB, ItemB.ItemID, false);
+        }
+
+        // 스왑
+        Swap(EquippedSlots[IndexA].Item, EquippedSlots[IndexB].Item);
+
+        // 스탯 재등록(무기 한정)
+        if (m_PlayerState && m_PlayerState->m_StatBonusComponent)
+        {
+            const FInventoryItem& NewA = EquippedSlots[IndexA].Item;
+            const FInventoryItem& NewB = EquippedSlots[IndexB].Item;
+            if (IsWeaponItem(NewA)) m_PlayerState->m_StatBonusComponent->RegisterEquippedItem(SlotA, NewA.ItemID, true);
+            if (IsWeaponItem(NewB)) m_PlayerState->m_StatBonusComponent->RegisterEquippedItem(SlotB, NewB.ItemID, true);
+        }
+
+        OnEquipmentChanged.Broadcast(SlotA, EquippedSlots[IndexA].Item);
+        OnEquipmentChanged.Broadcast(SlotB, EquippedSlots[IndexB].Item);
+
+        if (CurrentWeaponSlot == SlotA)
+        {
+            OnWeaponChanged.Broadcast(SlotA, EquippedSlots[IndexA].Item.ItemID);
+        }
+        if (CurrentWeaponSlot == SlotB)
+        {
+            OnWeaponChanged.Broadcast(SlotB, EquippedSlots[IndexB].Item.ItemID);
+        }
+
+        return true;
+    }
+    else
+    {
+        ServerSwapEquippedItems(SlotA, SlotB);
+        return true;
     }
 }

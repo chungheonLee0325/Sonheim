@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "InventoryWidget.h"
@@ -14,6 +14,7 @@
 #include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
 #include "Sonheim/UI/Widget/GameObject/ContainerWidget.h"
 
+#include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 void UInventoryWidget::NativePreConstruct()
 {
 	Super::NativePreConstruct();
@@ -197,59 +198,55 @@ void UInventoryWidget::OnSlotDragStarted(USlotWidget* SlotWidget)
 
 void UInventoryWidget::OnSlotDropped(USlotWidget* FromSlot, USlotWidget* ToSlot)
 {
-	if (!FromSlot || !ToSlot || !InventoryComponent)
-		return;
-	
-	// 인벤토리 슬롯 간의 드래그 드롭
-	if (FromSlot->EquipmentSlotType == EEquipmentSlotType::None && 
-		ToSlot->EquipmentSlotType == EEquipmentSlotType::None)
-	{
-		// 인벤토리 내에서 아이템 위치 교환
-		SwapInventoryItems(FromSlot->SlotIndex, ToSlot->SlotIndex);
-	}
-	// 인벤토리에서 장비 슬롯으로 드래그 드롭
-	else if (FromSlot->EquipmentSlotType == EEquipmentSlotType::None && 
-			 ToSlot->EquipmentSlotType != EEquipmentSlotType::None)
-	{
-		// 장비 장착 시도
-		if (InventoryComponent)
-		{
-			InventoryComponent->EquipItemByIndex(FromSlot->SlotIndex);
-		}
-	}
-	// 장비 슬롯에서 인벤토리로 드래그 드롭
-	else if (FromSlot->EquipmentSlotType != EEquipmentSlotType::None && 
-			 ToSlot->EquipmentSlotType == EEquipmentSlotType::None)
-	{
-		// 장비 해제 시도
-		if (InventoryComponent)
-		{
-			InventoryComponent->UnEquipItem(FromSlot->EquipmentSlotType);
-		}
-	}
-	// 장비 슬롯 간의 드래그 드롭 (무시하거나 필요한 경우 특별 처리)
-	else if (FromSlot->EquipmentSlotType != EEquipmentSlotType::None && 
-			 ToSlot->EquipmentSlotType != EEquipmentSlotType::None)
-	{
-		return;
-		// constexpr int WeaponSlotStartIndex = static_cast<int>(EEquipmentSlotType::Weapon1);
-		// constexpr int WeaponSlotEndIndex = static_cast<int>(EEquipmentSlotType::Weapon4);
-		//
-		// const int FromIndex = static_cast<int>(FromSlot->SlotIndex);
-		// const int ToIndex = static_cast<int>(ToSlot->SlotIndex);
-		//
-		// // 무기 슬롯 범위 확인 함수
-		// auto IsValidWeaponSlot = [](int Index) -> bool
-		// {
-		// 	return Index >= WeaponSlotStartIndex && Index <= WeaponSlotEndIndex;
-		// };
-		//
-		// // 범위 확인 후 아이템 교체
-		// if (IsValidWeaponSlot(FromIndex) && IsValidWeaponSlot(ToIndex))
-		// {
-		// 	// ToDo : 무기 위치 변경 메서드
-		// }
-	}
+    if (!FromSlot || !ToSlot || !InventoryComponent)
+        return;
+    
+    // 인벤토리 슬롯 간의 드래그 드롭
+    if (FromSlot->EquipmentSlotType == EEquipmentSlotType::None && 
+        ToSlot->EquipmentSlotType == EEquipmentSlotType::None)
+    {
+        // 인벤토리 내에서 아이템 위치 교환
+        SwapInventoryItems(FromSlot->SlotIndex, ToSlot->SlotIndex);
+    }
+    // 인벤토리에서 장비 슬롯으로 드래그 드롭
+    else if (FromSlot->EquipmentSlotType == EEquipmentSlotType::None && 
+             ToSlot->EquipmentSlotType != EEquipmentSlotType::None)
+    {
+        // 타겟 장비 슬롯으로 지정 장착(스왑 포함)
+        InventoryComponent->EquipItemToSlotByIndex(FromSlot->SlotIndex, ToSlot->EquipmentSlotType);
+    }
+    // 장비 슬롯에서 인벤토리로 드래그 드롭
+    else if (FromSlot->EquipmentSlotType != EEquipmentSlotType::None && 
+             ToSlot->EquipmentSlotType == EEquipmentSlotType::None)
+    {
+        // 장비 해제 시도
+        if (InventoryComponent)
+        {
+            InventoryComponent->UnEquipItem(FromSlot->EquipmentSlotType);
+        }
+    }
+    // 장비 슬롯 간의 드래그 드롭 (무시하거나 필요한 경우 특별 처리)
+    else if (FromSlot->EquipmentSlotType != EEquipmentSlotType::None && 
+             ToSlot->EquipmentSlotType != EEquipmentSlotType::None)
+    {
+        // 같은 계열(무기끼리/악세끼리)만 스왑 허용
+        auto IsWeaponSlot = [](EEquipmentSlotType T)
+        {
+            return T == EEquipmentSlotType::Weapon1 || T == EEquipmentSlotType::Weapon2 ||
+                   T == EEquipmentSlotType::Weapon3 || T == EEquipmentSlotType::Weapon4;
+        };
+        auto IsAccessorySlot = [](EEquipmentSlotType T)
+        {
+            return T == EEquipmentSlotType::Accessory1 || T == EEquipmentSlotType::Accessory2;
+        };
+
+        const bool bBothWeapon = IsWeaponSlot(FromSlot->EquipmentSlotType) && IsWeaponSlot(ToSlot->EquipmentSlotType);
+        const bool bBothAccessory = IsAccessorySlot(FromSlot->EquipmentSlotType) && IsAccessorySlot(ToSlot->EquipmentSlotType);
+        if (bBothWeapon || bBothAccessory)
+        {
+            InventoryComponent->SwapEquippedItems(FromSlot->EquipmentSlotType, ToSlot->EquipmentSlotType);
+        }
+    }
 }
 
 void UInventoryWidget::BindSlotEvents(USlotWidget* SlotWidget)
@@ -348,20 +345,24 @@ void UInventoryWidget::HandleExternalDrop(USlotWidget* FromSlot, int32 ToIndex)
 	if (!FromSlot || !InventoryComponent || ToIndex < 0)
 		return;
     
-	// 상자에서 가져온 아이템인지 확인
-	UContainerWidget* FromContainer = Cast<UContainerWidget>(FromSlot->GetTypedOuter<UContainerWidget>());
-	if (FromContainer && FromContainer->GetContainerComponent())
-	{
-		int32 ItemID = FromSlot->ItemID;
-		int32 Count = FromSlot->Quantity;
-        
-		// 상자에서 제거
-		if (FromContainer->GetContainerComponent()->RemoveItemByIndex(FromSlot->SlotIndex))
-		{
-			// 플레이어 인벤토리에 추가
-			InventoryComponent->AddItem(ItemID, Count, false);
-		}
-	}
+    // 상자에서 가져온 아이템인지 확인
+    UContainerWidget* FromContainer = Cast<UContainerWidget>(FromSlot->GetTypedOuter<UContainerWidget>());
+    if (FromContainer && FromContainer->GetContainerComponent())
+    {
+        if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
+        {
+            if (SlotWidgets.IsValidIndex(ToIndex) && SlotWidgets[ToIndex] && SlotWidgets[ToIndex]->ItemID != 0)
+            {
+                // 상자칸 ↔ 인벤칸 스왑
+                PC->Server_ContainerOperation(FromContainer->GetOwningContainer(), EContainerOperation::SwapWithPlayer, FromSlot->SlotIndex, ToIndex);
+            }
+            else
+            {
+                // 상자 → 인벤토리 이동
+                PC->Server_ContainerOperation(FromContainer->GetOwningContainer(), EContainerOperation::TransferToPlayer, FromSlot->SlotIndex, -1);
+            }
+        }
+    }
 }
 
 void UInventoryWidget::HandleTrashDrop(USlotWidget* FromSlot, bool bDiscardMode)
