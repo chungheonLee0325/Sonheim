@@ -536,6 +536,9 @@ void ASonheimPlayerController::On_Reload_Pressed(const FInputActionValue& Value)
 
 void ASonheimPlayerController::On_WeaponSwitch_Triggered(const FInputActionValue& Value)
 {
+	// 스킬 사용중엔 무기 전환 금지
+	if (m_Player->GetCurrentSkill()) return;
+	
 	const int32 SwitchData = FMath::Sign(Value.Get<float>());
 	if (SwitchData != 0)
 	{
