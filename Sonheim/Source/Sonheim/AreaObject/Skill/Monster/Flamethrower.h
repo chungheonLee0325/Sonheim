@@ -14,14 +14,13 @@ class SONHEIM_API UFlamethrower : public UBaseSkill
 {
 	GENERATED_BODY()
 
-	
 public:
 	UFlamethrower();
-	
-	virtual void OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void OnCastTick(float DeltaTime) override;
 
-	virtual void OnCastFire() override;
+	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual void Tick(float DeltaTime) override;
+
+	virtual void Fire() override;
 
 	void FireFlame();
 
