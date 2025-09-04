@@ -5,8 +5,6 @@
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
 #include "GameFramework/Actor.h"
-#include "Particles/ParticleSystem.h"
-#include "NiagaraSystem.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "BaseSkill.generated.h"
 
@@ -40,7 +38,7 @@ public:
 	UBaseSkill();
 	// 스킬 초기화 - 데이터 초기화
 	virtual void InitSkill(FSkillData* SkillData);
-	
+
 	// 스킬 완료 델리게이트 -> 상태머신에서 사용(다음 상태 전이용)
 	DECLARE_DELEGATE(FOnSkillComplete)
 	FOnSkillComplete OnSkillComplete;
@@ -51,32 +49,21 @@ public:
 	FTimerHandle CoolTimeTimerHandle;
 
 	virtual bool CanCast(class AAreaObject* Caster, const AAreaObject* Target) const;
-	//UFUNCTION(NetMulticast,Reliable)
-	virtual void OnCastStart(class AAreaObject* Caster, AAreaObject* Target);
-	virtual void Server_OnCastStart(class AAreaObject* Caster, AAreaObject* Target);
-	virtual void Client_OnCastStart(class AAreaObject* Caster, AAreaObject* Target);
-	virtual void OnCastTick(float DeltaTime);
-	virtual void Server_OnCastTick(float DeltaTime);
-	virtual void Client_OnCastTick(float DeltaTime);
-	// 몽타주 종료나 Notify로 호출되는 Skill 시전 종료 메서드
-	virtual void OnCastEnd();
-	virtual void Server_OnCastEnd();
-	virtual void Client_OnCastEnd();
-	// 외부에서 호출을 이용한 스킬 cancel
-	virtual void CancelCast();
-	virtual void Server_CancelCast();
-	virtual void Client_CancelCast();
-	
-	// Notify를 이용한 Cast Fire(투사체, 장판 등)
-	UFUNCTION(BlueprintCallable)
-	virtual void OnCastFire();
-	virtual void Server_OnCastFire();
-	virtual void Client_OnCastFire();
+	// 서버 전용: 스킬 활성화(스태미나 소모/상태 전환/초기화)
+	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target);
+	// 서버 전용: 스킬 틱(필요한 스킬만 오버라이드)
+	virtual void Tick(float DeltaTime);
+	// 서버 전용: 스킬 완료(몽타주 종료/Notify 시 호출)
+	virtual void Complete();
+	// 서버 전용: 스킬 취소(중단 처리)
+	virtual void Cancel();
 
-	UFUNCTION()
-	void OnMontageEnded(UAnimMontage* Montage, bool bInterrupted);
-	UFUNCTION()
-	void OnMontageBlendOut(UAnimMontage* Montage, bool bInterrupted);
+	// 서버 전용: 투사체/판정 스폰 등 실제 효과 발동(Notify로 타이밍 수신)
+	UFUNCTION(BlueprintCallable)
+	virtual void Fire();
+
+	// 코스메틱: 몽타주 끝/블렌드아웃을 감지해 Complete/Cancel 트리거 연결(서버도 바인딩됨)
+	void BindMontageDelegates(class UAnimInstance* AnimInstance, class UAnimMontage* Montage);
 
 	// Getters
 	// 현재 진행 페이즈 반환
@@ -110,7 +97,9 @@ protected:
 	UFUNCTION()
 	void AdjustCoolTime();
 
-	UPROPERTY()
+	// === Replicated State ===
+	// 스킬 현재 페이즈 (서버 권한에서만 변경, 클라에 복제)
+	UPROPERTY(ReplicatedUsing=OnRep_SkillState)
 	ESkillPhase m_CurrentPhase;
 
 	// Caster
@@ -120,8 +109,9 @@ protected:
 	// Target
 	UPROPERTY()
 	AAreaObject* m_Target;
-	
-	UPROPERTY()
+
+	// 서버에서 갱신되는 타겟 위치(코스메틱/검증용). 클라에 복제
+	UPROPERTY(Replicated)
 	FVector m_TargetPos;
 
 	UPROPERTY()
@@ -129,15 +119,34 @@ protected:
 
 	FSkillData* m_SkillData;
 
+	// 다음 연계 스킬 ID (서버에서 셋, 클라 표시용 복제)
+	UPROPERTY(Replicated)
 	int m_NextSkillID;
 
 	//OnCastEnd에서 사용할 몽타주 종료시 블렌드
 	float MontageBlendTime = 0.1f;
-	
+
 private:
+	// 남은 쿨타임(서버에서만 감소, 클라로 복제하여 UI에서 사용)
+	UPROPERTY(Replicated)
 	float m_CurrentCoolTime;
 
 	FOnMontageEnded EndDelegate;
 	FOnMontageBlendingOutStarted CompleteDelegate;
 
+public:
+	// UObject 네트워킹 지원 설정
+	virtual bool IsSupportedForNetworking() const override { return true; }
+	virtual bool IsNameStableForNetworking() const override { return true; }
+	// 복제 프로퍼티 등록
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+protected:
+	UFUNCTION()
+	void OnRep_SkillState();
+
+	UFUNCTION()
+	void OnMontageEnded(class UAnimMontage* Montage, bool bInterrupted);
+	UFUNCTION()
+	void OnMontageBlendOut(class UAnimMontage* Montage, bool bInterrupted);
 };

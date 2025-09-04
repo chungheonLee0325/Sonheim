@@ -31,7 +31,7 @@ public:
 	// === Data ===
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AreaObject Data Setting")
 	int m_AreaObjectID;
-	
+
 	// === General ===
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -39,15 +39,19 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	// 복제 속성 설정
+	// 복제 속성/서브오브젝트 설정
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void GetSubobjectsWithStableNamesForNetworking(TArray<UObject*>& ObjList) override;
+	virtual bool ReplicateSubobjects(class UActorChannel* Channel, class FOutBunch* Bunch,
+	                                 FReplicationFlags* RepFlags) override;
 
 	UFUNCTION(BlueprintCallable, Category = "AreaObject")
-	FAreaObjectData GetAreaObjectData() const {return *dt_AreaObject; };
+	FAreaObjectData GetAreaObjectData() const { return *dt_AreaObject; };
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
-	
+
 public:
 	// === Facade Pattern ===
 	// Health 기능 퍼사드 제공
@@ -57,7 +61,7 @@ public:
 	virtual float DecreaseHP(float Delta);
 	UFUNCTION(BlueprintCallable, Category = "HP")
 	void SetHPByRate(float Rate);
-	
+
 	UFUNCTION(BlueprintCallable, Category = "HP")
 	float GetHP() const;
 	float GetMaxHP() const;
@@ -68,7 +72,7 @@ public:
 	float IncreaseStamina(float Delta);
 	UFUNCTION(BlueprintCallable, Category = "Stamina")
 	virtual float DecreaseStamina(float Delta, bool bIsDamaged = true);
-	
+
 	UFUNCTION(BlueprintCallable, Category = "Stamina")
 	float GetStamina() const;
 	UFUNCTION(BlueprintCallable, Category = "Stamina")
@@ -109,7 +113,7 @@ public:
 	// Others
 	UBaseAnimInstance* GetSAnimInstance() const;
 
-	
+
 	// === Attribute ===
 	UPROPERTY(BlueprintReadWrite)
 	UHealthComponent* m_HealthComponent;
@@ -130,21 +134,22 @@ public:
 	// === Combat ===
 	UFUNCTION(BlueprintCallable)
 	virtual void CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Target, FHitResult& HitInfo);
-	
+
 	virtual bool CanAttack(AActor* TargetActor);
-	
+
 protected:
 	// 서버에서 데미지 적용
 	UFUNCTION(Server, Reliable)
 	void Server_CalcDamage(FAttackData AttackData, AActor* Caster, AActor* Target, FHitResult HitInfo);
-	
+
 	UFUNCTION(BlueprintCallable)
 	virtual float TakeDamage(float Damage, const FDamageEvent& DamageEvent, AController* EventInstigator,
-							 AActor* DamageCauser) override;
+	                         AActor* DamageCauser) override;
 
 	// 클라이언트에게 데미지 효과 적용 (VFX, SFX 등)
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastDamageEffect(float Damage, FVector HitLocation, AActor* DamageCauser, bool bWeakPoint, float ElementDamageMultiplier, const FAttackData& AttackData);
+	void MulticastDamageEffect(float Damage, FVector HitLocation, AActor* DamageCauser, bool bWeakPoint,
+	                           float ElementDamageMultiplier, const FAttackData& AttackData);
 
 	// 피격 방향 적용
 	FName DetermineDirection(const FVector& TargetPos) const;
@@ -165,7 +170,7 @@ protected:
 	// 넉백 관련
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void HandleKnockBack(const FVector& TargetPos, const FAttackData& AttackData,
-						 float KnockBackForceMultiplier = 1.0f);
+	                     float KnockBackForceMultiplier = 1.0f);
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void ApplyKnockBack(const FVector& KnockBackForce);
 	float KnockBackDuration = 0.1f;
@@ -175,13 +180,13 @@ protected:
 	//약점에 맞았는지
 	virtual bool IsWeakPointHit(const FVector& HitLoc);
 #pragma endregion DamageSystem
-	
+
 	// === Death Setting ===
 public:
 	//UFUNCTION(BlueprintCallable)
 	UFUNCTION(BlueprintCallable, NetMulticast, reliable)
 	virtual void OnDie();
-	
+
 	UFUNCTION(BlueprintCallable)
 	virtual void OnKill(AAreaObject* Killer);
 	UFUNCTION(BlueprintCallable)
@@ -203,19 +208,18 @@ protected:
 	// 리플리케이션된 데이터를 처리하기 위한 함수들
 	UPROPERTY(ReplicatedUsing = OnRep_IsDead)
 	bool bIsDead = false;
-	
+
 	UFUNCTION()
 	virtual void OnRep_IsDead();
 
-	
+
 	// === Animation ===
 	UPROPERTY()
-	class UBaseAnimInstance* m_AnimInstance; 
+	class UBaseAnimInstance* m_AnimInstance;
 	UPROPERTY()
 	USonheimGameInstance* m_GameInstance = nullptr;
 	UPROPERTY()
 	ASonheimGameMode* m_GameMode = nullptr;
-
 
 public:
 	// === Skill System ===
@@ -236,10 +240,21 @@ public:
 	virtual void UpdateCurrentSkill(UBaseSkill* NewSkill);
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual UBaseSkill* GetSkillByID(int SkillID);
-	
+
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void ClearCurrentSkill();
 	virtual void ClearThisCurrentSkill(UBaseSkill* Skill);
+	// AnimNotify에서 서버에 발사/완료 타이밍 전달
+	UFUNCTION(Server, Reliable)
+	void Server_NotifySkillFire(int SkillID);
+	UFUNCTION(Server, Reliable)
+	void Server_NotifySkillComplete(int SkillID);
+
+protected:
+	// Skill Component (replicated)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Skill")
+	class USonheimSkillComponent* m_SkillComponent;
+
 protected:
 	UPROPERTY(EditAnywhere, Category = "Skill")
 	TSet<int> m_OwnSkillIDSet;
@@ -253,14 +268,16 @@ protected:
 public:
 	// VFX / SFX Network Interface
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlayNiagaraEffectAttached(AActor* AttachTarget, UNiagaraSystem* NiagaraEffect, FRotator Rotator = FRotator::ZeroRotator, float Duration = 0.f);
+	void Multicast_PlayNiagaraEffectAttached(AActor* AttachTarget, UNiagaraSystem* NiagaraEffect,
+	                                         FRotator Rotator = FRotator::ZeroRotator, float Duration = 0.f);
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlayNiagaraEffectAtLocation(FVector Location, UNiagaraSystem* NiagaraEffect, FRotator Rotator = FRotator::ZeroRotator, float Duration = 0.f);
+	void Multicast_PlayNiagaraEffectAtLocation(FVector Location, UNiagaraSystem* NiagaraEffect,
+	                                           FRotator Rotator = FRotator::ZeroRotator, float Duration = 0.f);
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlaySoundAtLocation(FVector Location, USoundBase* SoundEffect);
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlaySound(USoundBase* SoundEffect);
-	
+
 	// Sound Interface 
 	UFUNCTION(BlueprintCallable, Category = "Audio")
 	void PlayGlobalSound(int SoundID);

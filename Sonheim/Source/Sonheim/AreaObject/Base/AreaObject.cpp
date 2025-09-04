@@ -24,6 +24,8 @@
 #include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 #include "Sonheim/UI/FloatingDamagePool.h"
 #include "NiagaraComponent.h"
+#include "Sonheim/AreaObject/Skill/SonheimSkillComponent.h"
+#include "Engine/ActorChannel.h"
 
 // Sets default values
 AAreaObject::AAreaObject()
@@ -55,6 +57,9 @@ AAreaObject::AAreaObject()
 	// MoveUtil Component 생성
 	m_MoveUtilComponent = CreateDefaultSubobject<UMoveUtilComponent>(TEXT("MoveUtilComponent"));
 
+	// Skill Component 생성
+	m_SkillComponent = CreateDefaultSubobject<USonheimSkillComponent>(TEXT("SkillComponent"));
+
 	//GetCapsuleComponent()->SetSimulatePhysics(true);
 	GetCapsuleComponent()->SetNotifyRigidBodyCollision(true);
 
@@ -70,6 +75,34 @@ void AAreaObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 
 	// 사망 상태 리플리케이션
 	DOREPLIFETIME(AAreaObject, bIsDead);
+}
+
+void AAreaObject::GetSubobjectsWithStableNamesForNetworking(TArray<UObject*>& ObjList)
+{
+	Super::GetSubobjectsWithStableNamesForNetworking(ObjList);
+	// 스킬 인스턴스들은 BeginPlay에서 이름을 "BaseSkill_<ID>"로 고정 생성됨 -> 안정적 네트워킹 이름
+	for (const auto& Pair : m_SkillInstanceMap)
+	{
+		if (UBaseSkill* Skill = Pair.Value)
+		{
+			ObjList.Add(Skill);
+		}
+	}
+}
+
+bool AAreaObject::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags)
+{
+	bool bWroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
+
+	for (const auto& Pair : m_SkillInstanceMap)
+	{
+		if (UBaseSkill* Skill = Pair.Value)
+		{
+			bWroteSomething |= Channel->ReplicateSubobject(Skill, *Bunch, *RepFlags);
+		}
+	}
+
+	return bWroteSomething;
 }
 
 UBaseAnimInstance* AAreaObject::GetSAnimInstance() const
@@ -133,12 +166,12 @@ void AAreaObject::BeginPlay()
 		// Component 초기화
 		m_HealthComponent->InitHealth(dt_AreaObject->HPMax);
 		m_StaminaComponent->InitStamina(
-			dt_AreaObject->StaminaMax, 
-			dt_AreaObject->StaminaRecoveryRate, 
+			dt_AreaObject->StaminaMax,
+			dt_AreaObject->StaminaRecoveryRate,
 			dt_AreaObject->GroggyDuration
 		);
 		m_LevelComponent->InitLevel(this);
-        
+
 		GetCharacterMovement()->MaxWalkSpeed = dt_AreaObject->WalkSpeed;
 	}
 
@@ -157,6 +190,15 @@ void AAreaObject::BeginPlay()
 			LOG_SCREEN_MY(4.0f, FColor::Red, "%d 해당 아이디의 스킬이 존재하지 않습니다.", skill);
 			UE_LOG(LogTemp, Error, TEXT("Skill ID is 0!!!"));
 		}
+	}
+
+	// 서버에서 스킬 스펙 컨테이너 초기화
+	if (HasAuthority() && m_SkillComponent)
+	{
+		// 소유 스킬 셋 전달
+		TSet<int32> OwnedSkillIds;
+		for (const int& Id : m_OwnSkillIDSet) { OwnedSkillIds.Add(Id); }
+		m_SkillComponent->InitializeOwnedSkills(OwnedSkillIds);
 	}
 
 	// GameMode Setting
@@ -217,7 +259,7 @@ void AAreaObject::Tick(float DeltaTime)
 
 	if (HasAuthority() && m_CurrentSkill != nullptr)
 	{
-		m_CurrentSkill->OnCastTick(DeltaTime);
+		m_CurrentSkill->Tick(DeltaTime);
 	}
 }
 
@@ -266,7 +308,7 @@ void AAreaObject::CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Ta
 
 
 void AAreaObject::Server_CalcDamage_Implementation(FAttackData AttackData, AActor* Caster, AActor* Target,
-												   FHitResult HitInfo)
+                                                   FHitResult HitInfo)
 {
 	// 서버에서 실행할 데미지 계산 로직
 	CalcDamage(AttackData, Caster, Target, HitInfo);
@@ -275,75 +317,76 @@ void AAreaObject::Server_CalcDamage_Implementation(FAttackData AttackData, AActo
 float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, AController* EventInstigator,
                               AActor* DamageCauser)
 {
-// 서버에서만 처리
-    if (!HasAuthority())
-        return 0.0f;
+	// 서버에서만 처리
+	if (!HasAuthority())
+		return 0.0f;
 
-    // IFF 및 상태 체크
-    AAreaObject* damageCauser = Cast<AAreaObject>(DamageCauser);
+	// IFF 및 상태 체크
+	AAreaObject* damageCauser = Cast<AAreaObject>(DamageCauser);
 	if (damageCauser->CanAttack(this) == false)
 	{
 		return 0.0f;
 	}
 
-    if (bIsDead || HasCondition(EConditionBitsType::Invincible) || HasCondition(EConditionBitsType::Hidden))
-        return 0.0f;
+	if (bIsDead || HasCondition(EConditionBitsType::Invincible) || HasCondition(EConditionBitsType::Hidden))
+		return 0.0f;
 
 	// Instigator 설정 - 경험치 보상에 사용 -> Aggro System으로 확장시 변경 예정
 	SetInstigator(EventInstigator->GetPawn());
-	
-    // 데미지 계산
-    float ActualDamage = HandleDefenceDamageCalculation(Damage);
-    
-    FHitResult hitResult;
-    FVector hitDir;
-    FAttackData attackData;
-    bool bIsWeakPointHit = false;
-    float elementDamageMultiplier = 1.0f;
 
-    if (DamageEvent.IsOfType(FCustomDamageEvent::ClassID))
-    {
-        FCustomDamageEvent* const customDamageEvent = (FCustomDamageEvent*)&DamageEvent;
-        attackData = customDamageEvent->AttackData;
-        customDamageEvent->GetBestHitInfo(this, DamageCauser, hitResult, hitDir);
+	// 데미지 계산
+	float ActualDamage = HandleDefenceDamageCalculation(Damage);
 
-        bIsWeakPointHit = IsWeakPointHit(hitResult.Location);
+	FHitResult hitResult;
+	FVector hitDir;
+	FAttackData attackData;
+	bool bIsWeakPointHit = false;
+	float elementDamageMultiplier = 1.0f;
 
-        if (attackData.bEnableHitStop)
-            ApplyHitStop(attackData.HitStopDuration);
+	if (DamageEvent.IsOfType(FCustomDamageEvent::ClassID))
+	{
+		FCustomDamageEvent* const customDamageEvent = (FCustomDamageEvent*)&DamageEvent;
+		attackData = customDamageEvent->AttackData;
+		customDamageEvent->GetBestHitInfo(this, DamageCauser, hitResult, hitDir);
 
-        HandleKnockBack(DamageCauser->GetActorLocation(), attackData, m_KnockBackForceMultiplier);
-    }
+		bIsWeakPointHit = IsWeakPointHit(hitResult.Location);
 
-    // 약점 및 속성 계산
-    ActualDamage = bIsWeakPointHit ? ActualDamage * 1.5f : ActualDamage;
-    
-    for (auto defectElementalAttribute : dt_AreaObject->DefenceElementalAttributes)
-    {
-        elementDamageMultiplier *= USonheimUtility::CalculateDamageMultiplier(
-            defectElementalAttribute, attackData.AttackElementalAttribute);
-    }
-    ActualDamage *= elementDamageMultiplier;
+		if (attackData.bEnableHitStop)
+			ApplyHitStop(attackData.HitStopDuration);
 
-    // HP 감소 (Component가 알아서 동기화)
-    float CurrentHP = DecreaseHP(ActualDamage);
-    
-    // 사망 처리
-    if (FMath::IsNearlyZero(CurrentHP) && !bIsDead)
-    {
-        bIsDead = true;  // Replicated 변수
-    	OnRep_IsDead();
-        OnDie();  // Multicast로 모두에게 전파
-    }
+		HandleKnockBack(DamageCauser->GetActorLocation(), attackData, m_KnockBackForceMultiplier);
+	}
 
-    // 스태미나 감소
-    DecreaseStamina(attackData.StaminaDamageAmount);
+	// 약점 및 속성 계산
+	ActualDamage = bIsWeakPointHit ? ActualDamage * 1.5f : ActualDamage;
 
-    // 시각 효과 전파
-    FVector spawnLocation = hitResult.Location != FVector::ZeroVector ? hitResult.Location : GetActorLocation();
-    MulticastDamageEffect(ActualDamage, spawnLocation, DamageCauser, bIsWeakPointHit, elementDamageMultiplier, attackData);
+	for (auto defectElementalAttribute : dt_AreaObject->DefenceElementalAttributes)
+	{
+		elementDamageMultiplier *= USonheimUtility::CalculateDamageMultiplier(
+			defectElementalAttribute, attackData.AttackElementalAttribute);
+	}
+	ActualDamage *= elementDamageMultiplier;
 
-    return ActualDamage;
+	// HP 감소 (Component가 알아서 동기화)
+	float CurrentHP = DecreaseHP(ActualDamage);
+
+	// 사망 처리
+	if (FMath::IsNearlyZero(CurrentHP) && !bIsDead)
+	{
+		bIsDead = true; // Replicated 변수
+		OnRep_IsDead();
+		OnDie(); // Multicast로 모두에게 전파
+	}
+
+	// 스태미나 감소
+	DecreaseStamina(attackData.StaminaDamageAmount);
+
+	// 시각 효과 전파
+	FVector spawnLocation = hitResult.Location != FVector::ZeroVector ? hitResult.Location : GetActorLocation();
+	MulticastDamageEffect(ActualDamage, spawnLocation, DamageCauser, bIsWeakPointHit, elementDamageMultiplier,
+	                      attackData);
+
+	return ActualDamage;
 }
 
 
@@ -363,9 +406,9 @@ void AAreaObject::StopAll()
 	m_RotateUtilComponent->StopRotation();
 	if (m_CurrentSkill != nullptr)
 	{
-		if(HasAuthority())
+		if (HasAuthority())
 		{
-			m_CurrentSkill->CancelCast();
+			m_CurrentSkill->Cancel();
 		}
 		ClearCurrentSkill();
 	}
@@ -383,7 +426,7 @@ void AAreaObject::OnDie_Implementation()
 		{
 			OnKill(Killer);
 		}
-        
+
 		// 타이머로 제거 예약
 		// GetWorld()->GetTimerManager().SetTimer(DeathTimerHandle, 
 		// 	[this]() { 
@@ -521,7 +564,11 @@ bool AAreaObject::CastSkill(UBaseSkill* Skill, AAreaObject* Target)
 void AAreaObject::Server_CastSkill_Implementation(int SkillID, AAreaObject* Target)
 {
 	UBaseSkill* Skill = GetSkillByID(SkillID);
-	Skill->OnCastStart(this, Target);
+	if (m_SkillComponent)
+	{
+		m_SkillComponent->OnServerSkillActivated(SkillID);
+	}
+	Skill->Activate(this, Target);
 	MultiCast_CastSkill(SkillID, Target);
 }
 
@@ -531,7 +578,14 @@ void AAreaObject::MultiCast_CastSkill_Implementation(int SkillID, AAreaObject* T
 	UBaseSkill* Skill = GetSkillByID(SkillID);
 	FSkillData* SkillData = m_GameInstance->GetDataSkill(SkillID);
 
-	if (!HasAuthority()) m_AnimInstance->Montage_Play(SkillData->Montage);
+	if (m_AnimInstance && SkillData && SkillData->Montage)
+	{
+		m_AnimInstance->Montage_Play(SkillData->Montage);
+		if (Skill)
+		{
+			Skill->BindMontageDelegates(m_AnimInstance, SkillData->Montage);
+		}
+	}
 	UpdateCurrentSkill(Skill);
 }
 
@@ -540,7 +594,7 @@ void AAreaObject::ClearCurrentSkill()
 {
 	if (m_CurrentSkill != nullptr)
 	{
-		m_CurrentSkill->CancelCast();
+		m_CurrentSkill->Cancel();
 		m_CurrentSkill = nullptr;
 	}
 }
@@ -550,6 +604,29 @@ void AAreaObject::ClearThisCurrentSkill(UBaseSkill* Skill)
 	if (m_CurrentSkill == Skill)
 	{
 		m_CurrentSkill = nullptr;
+	}
+}
+
+void AAreaObject::Server_NotifySkillFire_Implementation(int SkillID)
+{
+	if (UBaseSkill* Skill = GetCurrentSkill())
+	{
+		if (Skill->GetSkillID() == SkillID)
+		{
+			Skill->Fire();
+		}
+	}
+}
+
+void AAreaObject::Server_NotifySkillComplete_Implementation(int SkillID)
+{
+	if (UBaseSkill* Skill = GetCurrentSkill())
+	{
+		if (Skill->GetSkillID() == SkillID)
+		{
+			// PostCasting → CoolTime 전환
+			Skill->Complete();
+		}
 	}
 }
 
@@ -766,62 +843,62 @@ void AAreaObject::MulticastDamageEffect_Implementation(float Damage, FVector Hit
                                                        bool bWeakPoint, float ElementDamageMultiplier,
                                                        const FAttackData& AttackData)
 {
-    // 풀 매니저를 통해 데미지 표시 요청
-    if (AFloatingDamagePool* DamagePool = AFloatingDamagePool::GetInstance(GetWorld()))
-    {
-        FDamageNumberRequest Request;
-        Request.Damage = Damage;
-        Request.WorldLocation = HitLocation;
-        Request.DamageCauser = DamageCauser;
-        Request.DamagedActor = this;
-        
-        // 약점 타입 설정
-        Request.WeakPointType = bWeakPoint 
-            ? EFloatingOutLineDamageType::WeakPointDamage 
-            : EFloatingOutLineDamageType::Normal;
-        
-        // 속성 타입 설정
-        if (ElementDamageMultiplier > 1.0f)
-        {
-            Request.ElementAttributeType = EFloatingTextDamageType::EffectiveElementDamage;
-        }
-        else if (ElementDamageMultiplier < 1.0f)
-        {
-            Request.ElementAttributeType = EFloatingTextDamageType::InefficientElementDamage;
-        }
-        else
-        {
-            Request.ElementAttributeType = EFloatingTextDamageType::Normal;
-        }
-        
-        DamagePool->RequestDamageNumber(Request);
-    }
+	// 풀 매니저를 통해 데미지 표시 요청
+	if (AFloatingDamagePool* DamagePool = AFloatingDamagePool::GetInstance(GetWorld()))
+	{
+		FDamageNumberRequest Request;
+		Request.Damage = Damage;
+		Request.WorldLocation = HitLocation;
+		Request.DamageCauser = DamageCauser;
+		Request.DamagedActor = this;
 
-    // === 사운드 및 VFX는 기존과 동일 ===
-    
-    // Spawn Hit SFX
-    if (dt_AreaObject->HitSoundID != 0)
-    {
-        PlayPositionalSound(dt_AreaObject->HitSoundID, HitLocation);
-    }
+		// 약점 타입 설정
+		Request.WeakPointType = bWeakPoint
+			                        ? EFloatingOutLineDamageType::WeakPointDamage
+			                        : EFloatingOutLineDamageType::Normal;
 
-    // Spawn Hit SFX
-    if (AttackData.HitSFX != nullptr)
-    {
-        UGameplayStatics::PlaySoundAtLocation(GetWorld(), AttackData.HitSFX, HitLocation);
-    }
+		// 속성 타입 설정
+		if (ElementDamageMultiplier > 1.0f)
+		{
+			Request.ElementAttributeType = EFloatingTextDamageType::EffectiveElementDamage;
+		}
+		else if (ElementDamageMultiplier < 1.0f)
+		{
+			Request.ElementAttributeType = EFloatingTextDamageType::InefficientElementDamage;
+		}
+		else
+		{
+			Request.ElementAttributeType = EFloatingTextDamageType::Normal;
+		}
 
-    // Spawn Hit VFX
-    if (AttackData.HitVFX_N != nullptr)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), AttackData.HitVFX_N, HitLocation,
-                                                       FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
-    }
-    else if (AttackData.HitVFX_P != nullptr)
-    {
-        UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), AttackData.HitVFX_P, HitLocation,
-                                                 FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
-    }
+		DamagePool->RequestDamageNumber(Request);
+	}
+
+	// === 사운드 및 VFX는 기존과 동일 ===
+
+	// Spawn Hit SFX
+	if (dt_AreaObject->HitSoundID != 0)
+	{
+		PlayPositionalSound(dt_AreaObject->HitSoundID, HitLocation);
+	}
+
+	// Spawn Hit SFX
+	if (AttackData.HitSFX != nullptr)
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), AttackData.HitSFX, HitLocation);
+	}
+
+	// Spawn Hit VFX
+	if (AttackData.HitVFX_N != nullptr)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), AttackData.HitVFX_N, HitLocation,
+		                                               FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
+	}
+	else if (AttackData.HitVFX_P != nullptr)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), AttackData.HitVFX_P, HitLocation,
+		                                         FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
+	}
 }
 
 void AAreaObject::OnRep_IsDead()
@@ -833,10 +910,11 @@ void AAreaObject::OnRep_IsDead()
 }
 
 void AAreaObject::Multicast_PlayNiagaraEffectAttached_Implementation(AActor* AttachTarget,
-	UNiagaraSystem* NiagaraEffect, FRotator Rotator, float Duration)
+                                                                     UNiagaraSystem* NiagaraEffect, FRotator Rotator,
+                                                                     float Duration)
 {
 	if (!AttachTarget || !NiagaraEffect)
-	{	
+	{
 		return;
 	}
 
@@ -857,7 +935,8 @@ void AAreaObject::Multicast_PlayNiagaraEffectAttached_Implementation(AActor* Att
 	{
 		FTimerHandle TimerHandle;
 		// 타이머 람다에서 NiagaraComp를 안전하게 파괴
-		GetWorld()->GetTimerManager().SetTimer(TimerHandle, [NiagaraComp]() {
+		GetWorld()->GetTimerManager().SetTimer(TimerHandle, [NiagaraComp]()
+		{
 			if (IsValid(NiagaraComp))
 			{
 				NiagaraComp->DestroyComponent();
@@ -867,10 +946,10 @@ void AAreaObject::Multicast_PlayNiagaraEffectAttached_Implementation(AActor* Att
 }
 
 void AAreaObject::Multicast_PlayNiagaraEffectAtLocation_Implementation(FVector Location, UNiagaraSystem* NiagaraEffect,
-	 FRotator Rotator, float Duration)
+                                                                       FRotator Rotator, float Duration)
 {
 	if (!NiagaraEffect)
-	{	
+	{
 		return;
 	}
 
@@ -885,7 +964,8 @@ void AAreaObject::Multicast_PlayNiagaraEffectAtLocation_Implementation(FVector L
 	{
 		FTimerHandle TimerHandle;
 		// 타이머 람다에서 NiagaraComp를 안전하게 파괴
-		GetWorld()->GetTimerManager().SetTimer(TimerHandle, [NiagaraComp]() {
+		GetWorld()->GetTimerManager().SetTimer(TimerHandle, [NiagaraComp]()
+		{
 			if (IsValid(NiagaraComp))
 			{
 				NiagaraComp->DestroyComponent();
@@ -897,7 +977,7 @@ void AAreaObject::Multicast_PlayNiagaraEffectAtLocation_Implementation(FVector L
 void AAreaObject::Multicast_PlaySoundAtLocation_Implementation(FVector Location, USoundBase* SoundEffect)
 {
 	if (!SoundEffect)
-	{	
+	{
 		return;
 	}
 
@@ -907,7 +987,7 @@ void AAreaObject::Multicast_PlaySoundAtLocation_Implementation(FVector Location,
 void AAreaObject::Multicast_PlaySound_Implementation(USoundBase* SoundEffect)
 {
 	if (!SoundEffect)
-	{	
+	{
 		return;
 	}
 

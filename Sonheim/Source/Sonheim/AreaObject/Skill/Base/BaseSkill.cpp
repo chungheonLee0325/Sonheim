@@ -6,13 +6,24 @@
 #include "Sonheim/Animation/Common/AnimInstance/BaseAnimInstance.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/AreaObject/Skill/SonheimSkillComponent.h"
 
-UBaseSkill::UBaseSkill(): m_TargetPos(), m_SkillData(nullptr)
+UBaseSkill::UBaseSkill() : m_TargetPos(), m_SkillData(nullptr)
 {
 	m_CurrentPhase = ESkillPhase::Ready;
 	m_CurrentCoolTime = 0.0f;
 	m_Caster = nullptr;
 	m_Target = nullptr;
+}
+
+void UBaseSkill::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UBaseSkill, m_CurrentPhase);
+	DOREPLIFETIME(UBaseSkill, m_CurrentCoolTime);
+	DOREPLIFETIME(UBaseSkill, m_TargetPos);
+	DOREPLIFETIME(UBaseSkill, m_NextSkillID);
 }
 
 void UBaseSkill::InitSkill(FSkillData* SkillData)
@@ -49,148 +60,63 @@ bool UBaseSkill::CanCast(AAreaObject* Caster, const AAreaObject* Target) const
 	return IsInRange(Caster, Target);
 }
 
-// void UBaseSkill::OnCastStart_Implementation(class AAreaObject* Caster, AAreaObject* Target)
-// {
-// 	if (!Caster || !Target) return;
-//
-// 	m_Caster = Caster;
-// 	m_Target = Target;
-//
-// 	if (m_Caster->HasAuthority())
-// 	{
-// 		Server_OnCastStart(m_Caster, m_Target);
-// 	}
-// 	Client_OnCastStart(m_Caster, m_Target);
-// }
-
-void UBaseSkill::OnCastStart(AAreaObject* Caster, AAreaObject* Target)
+void UBaseSkill::Activate(AAreaObject* Caster, AAreaObject* Target)
 {
 	if (!Caster || !Target) return;
-
 	m_Caster = Caster;
 	m_Target = Target;
-	
-	if (m_Caster->HasAuthority())
-	{
-		Server_OnCastStart(m_Caster, m_Target);
-	}
-	Client_OnCastStart(m_Caster, m_Target);
-}
-
-void UBaseSkill::Server_OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
-{}
-
-void UBaseSkill::Client_OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
-{
+	// 서버 전용 초기화
 	m_TargetPos = m_Target->GetActorLocation();
-	m_NextSkillID = m_SkillData->NextSkillID;
-
-	// 스태미나 소모
-	if (m_SkillData->Cost > 0)
+	m_NextSkillID = m_SkillData ? m_SkillData->NextSkillID : 0;
+	if (m_SkillData && m_SkillData->Cost > 0)
 	{
 		m_Caster->DecreaseStamina(m_SkillData->Cost, false);
 	}
-
 	m_CurrentPhase = ESkillPhase::Casting;
+}
 
-	m_CurrentPhase = ESkillPhase::PostCasting;
+void UBaseSkill::Tick(float DeltaTime)
+{
+}
 
-	// 쿨타임 적용
-	m_CurrentCoolTime = m_SkillData->CoolTime;
-
-	// 애니메이션 몽타주 재생
-	UBaseAnimInstance* AnimInstance = Caster->GetSAnimInstance();
-	if (AnimInstance && m_SkillData->Montage)
+void UBaseSkill::Fire()
+{
+	if (m_CurrentPhase == ESkillPhase::Casting)
 	{
-		// 기존 델리게이트 해제
-		//AnimInstance->Montage_SetEndDelegate(nullptr, m_SkillData->Montage);
-	
-		// 몽타주 재생
-		AnimInstance->Montage_Play(m_SkillData->Montage);
-	
-		// 델리게이트 바인딩
-		EndDelegate.BindUObject(this, &UBaseSkill::OnMontageEnded);
-		AnimInstance->Montage_SetEndDelegate(EndDelegate, m_SkillData->Montage);
-		
-		// 블렌드 아웃
-		CompleteDelegate.BindUObject(this, &UBaseSkill::OnMontageBlendOut);
-		AnimInstance->Montage_SetBlendingOutDelegate(CompleteDelegate, m_SkillData->Montage);
+		m_CurrentPhase = ESkillPhase::PostCasting;
 	}
 }
 
-void UBaseSkill::OnCastTick(float DeltaTime)
+void UBaseSkill::BindMontageDelegates(UAnimInstance* AnimInstance, UAnimMontage* Montage)
 {
-	if (m_Caster->HasAuthority())
+	if (!AnimInstance || !Montage) return;
+
+	// 기존 델리게이트 정리 후 재바인딩
+	EndDelegate.Unbind();
+	CompleteDelegate.Unbind();
+
+	EndDelegate.BindUObject(this, &UBaseSkill::OnMontageEnded);
+	AnimInstance->Montage_SetEndDelegate(EndDelegate, Montage);
+
+	CompleteDelegate.BindUObject(this, &UBaseSkill::OnMontageBlendOut);
+	AnimInstance->Montage_SetBlendingOutDelegate(CompleteDelegate, Montage);
+}
+
+void UBaseSkill::Complete()
+{
+	if (!m_Caster) return;
+	if (m_CurrentPhase == ESkillPhase::CoolTime || m_CurrentPhase == ESkillPhase::Ready)
 	{
-		Server_OnCastTick(DeltaTime);
+		return;
 	}
-	Client_OnCastTick(DeltaTime);
-}
-
-//void UBaseSkill::OnCastTick(float DeltaTime)
-//{
-//	if (m_Caster->HasAuthority())
-//	{
-//		Server_OnCastTick(DeltaTime);
-//	}
-//	Client_OnCastTick(DeltaTime);
-//}
-
-void UBaseSkill::Server_OnCastTick(float DeltaTime)
-{
-}
-
-void UBaseSkill::Client_OnCastTick(float DeltaTime)
-{
-}
-
-void UBaseSkill::OnCastFire()
-{
-	if (m_Caster->HasAuthority())
-	{
-		Server_OnCastFire();
-	}
-	Client_OnCastFire();
-}
-
-void UBaseSkill::Server_OnCastFire()
-{
-}
-
-void UBaseSkill::Client_OnCastFire()
-{
-}
-
-void UBaseSkill::OnCastEnd()
-{
-	if (m_Caster->HasAuthority())
-	{
-		Server_OnCastEnd();
-	}
-	Client_OnCastEnd();
-}
-
-void UBaseSkill::Server_OnCastEnd()
-{
-}
-
-void UBaseSkill::Client_OnCastEnd()
-{
-	// Casting Phase일때 한번만 처리
-	if (m_CurrentPhase != ESkillPhase::PostCasting) return;
-	if (!m_Caster || !m_Target) return;
 
 	m_CurrentPhase = ESkillPhase::CoolTime;
 
-	// 애니메이션 인스턴스 얻기
-	if (UAnimInstance* AnimInstance = m_Caster->GetMesh()->GetAnimInstance())
+	// 델리게이트 정리(중복 호출 방지)
+	if (UAnimInstance* AnimInstance = m_Caster->GetMesh() ? m_Caster->GetMesh()->GetAnimInstance() : nullptr)
 	{
-		// 델리게이트 정리
 		EndDelegate.Unbind();
 		CompleteDelegate.Unbind();
-
-		// 현재 재생중인 몽타주 정지
-		AnimInstance->Montage_Stop(MontageBlendTime, m_SkillData->Montage);
 	}
 
 	m_Caster->ClearThisCurrentSkill(this);
@@ -222,34 +148,12 @@ void UBaseSkill::Client_OnCastEnd()
 	AdjustCoolTime();
 }
 
-void UBaseSkill::CancelCast()
+void UBaseSkill::Cancel()
 {
-	if (m_Caster && m_Caster->HasAuthority())
-	{
-		Server_CancelCast();
-	}
-	Client_CancelCast();
-}
-
-void UBaseSkill::Server_CancelCast()
-{
-
-}
-
-void UBaseSkill::Client_CancelCast()
-{
-	// Casting Phase일때 한번만 처리
-	if (m_CurrentPhase != ESkillPhase::PostCasting) return;
 	if (!m_Caster) return;
-
-	if (UAnimInstance* AnimInstance = m_Caster->GetMesh()->GetAnimInstance())
+	if (m_CurrentPhase == ESkillPhase::CoolTime || m_CurrentPhase == ESkillPhase::Ready)
 	{
-		// 델리게이트 정리
-		EndDelegate.Unbind();
-		CompleteDelegate.Unbind();
-
-		// 현재 재생중인 몽타주 정지
-		AnimInstance->Montage_Stop(MontageBlendTime, m_SkillData->Montage);
+		return;
 	}
 
 	if (OnSkillComplete.IsBound() == true)
@@ -261,42 +165,9 @@ void UBaseSkill::Client_CancelCast()
 		OnSkillCancel.Execute();
 		OnSkillCancel.Unbind();
 	}
-	//if (m_CurrentPhase != ESkillPhase::CoolTime)
-	{
-		m_Caster->ClearThisCurrentSkill(this);
-		m_CurrentPhase = ESkillPhase::CoolTime;
-		AdjustCoolTime();
-	}
-}
-
-void UBaseSkill::OnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
-{
-	if (Montage == m_SkillData->Montage)
-	{
-		if (bInterrupted)
-		{
-			CancelCast();
-		}
-		else
-		{
-			OnCastEnd();
-		}
-	}
-}
-
-void UBaseSkill::OnMontageBlendOut(UAnimMontage* Montage, bool bInterrupted)
-{
-	//if (Montage == m_SkillData->Montage)
-	//{
-	//	if (bInterrupted)
-	//	{
-	//		CancelCast();
-	//	}
-	//	else
-	//	{
-	//		OnCastEnd();
-	//	}
-	//}
+	m_Caster->ClearThisCurrentSkill(this);
+	m_CurrentPhase = ESkillPhase::CoolTime;
+	AdjustCoolTime();
 }
 
 FAttackData* UBaseSkill::GetAttackDataByIndex(int Index) const
@@ -361,33 +232,49 @@ void UBaseSkill::AdjustCoolTime()
 	if (FMath::IsNearlyZero(m_CurrentCoolTime))
 	{
 		m_CurrentPhase = ESkillPhase::Ready;
+		if (m_Caster && m_Caster->HasAuthority())
+		{
+			// Skill Component에 쿨타임 종료 알림(즉시 종료)
+			if (auto* Comp = m_Caster->FindComponentByClass<USonheimSkillComponent>())
+			{
+				Comp->OnServerSkillCooldownStart(GetSkillID(), GetWorld()->GetTimeSeconds());
+			}
+		}
 		return;
 	}
 
 	// 쿨타임 있는 스킬은 쿨타임 로직
 	TWeakObjectPtr<UBaseSkill> WeakThis = this;
 
-	GetWorld()->GetTimerManager().SetTimer(CoolTimeTimerHandle, [WeakThis]
+	// 서버에서만 SkillComponent에 종료 시각 기록
+	if (m_Caster && m_Caster->HasAuthority())
 	{
-		UBaseSkill* StrongThis = WeakThis.Get();
-		if (StrongThis != nullptr)
+		if (auto* Comp = m_Caster->FindComponentByClass<USonheimSkillComponent>())
 		{
-			StrongThis->m_CurrentCoolTime = FMath::Max(0.f, StrongThis->m_CurrentCoolTime - 0.1f);
-			if (FMath::IsNearlyZero(StrongThis->m_CurrentCoolTime))
-			{
-				StrongThis->GetWorld()->GetTimerManager().ClearTimer(StrongThis->CoolTimeTimerHandle);
-				StrongThis->m_CurrentPhase = ESkillPhase::Ready;
-
-				ABaseMonster* monster = Cast<ABaseMonster>(StrongThis->m_Caster);
-				if (monster != nullptr)
-				{
-					monster->AddSkillEntryByID(StrongThis->GetSkillID());
-				}
-
-				// ToDo : 쿨타임 완료 이벤트 바인딩?
-			}
+			Comp->OnServerSkillCooldownStart(GetSkillID(), GetWorld()->GetTimeSeconds() + m_CurrentCoolTime);
 		}
-	}, 0.1f, true);
+		// 서버에서만 타이머 운용
+		GetWorld()->GetTimerManager().SetTimer(CoolTimeTimerHandle, [WeakThis]
+		{
+			UBaseSkill* StrongThis = WeakThis.Get();
+			if (StrongThis != nullptr)
+			{
+				StrongThis->m_CurrentCoolTime = FMath::Max(0.f, StrongThis->m_CurrentCoolTime - 0.1f);
+				if (FMath::IsNearlyZero(StrongThis->m_CurrentCoolTime))
+				{
+					StrongThis->GetWorld()->GetTimerManager().ClearTimer(StrongThis->CoolTimeTimerHandle);
+					StrongThis->m_CurrentPhase = ESkillPhase::Ready;
+
+					ABaseMonster* monster = Cast<ABaseMonster>(StrongThis->m_Caster);
+					if (monster != nullptr)
+					{
+						monster->AddSkillEntryByID(StrongThis->GetSkillID());
+					}
+					// ToDo : 쿨타임 완료 이벤트 바인딩?
+				}
+			}
+		}, 0.1f, true);
+	}
 }
 
 
@@ -395,4 +282,28 @@ void UBaseSkill::SkillLogPrint()
 {
 	LOG_PRINT(TEXT("스킬 상태: %s"), *UEnum::GetValueAsString(m_CurrentPhase));
 	LOG_PRINT(TEXT("스킬 현재 쿨타임: %f"), m_CurrentCoolTime);
+}
+
+void UBaseSkill::OnRep_SkillState()
+{
+	// 클라 측에서 상태 전환 시 추가 처리 필요하면 여기에 작성
+	// 현재는 UI 등에서 GetCooldownProgress/상태 값을 읽어 표시하는 용도로 충분
+}
+
+void UBaseSkill::OnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (!m_SkillData || Montage != m_SkillData->Montage) return;
+	if (bInterrupted)
+	{
+		Cancel();
+	}
+	else
+	{
+		Complete();
+	}
+}
+
+void UBaseSkill::OnMontageBlendOut(UAnimMontage* Montage, bool bInterrupted)
+{
+	// 필요 시 추가 처리. 현재는 End에서만 처리.
 }
