@@ -115,19 +115,6 @@ public:
 	void RemoveSkillEntryByID(const int id);
 	void AddSkillEntryByID(const int id);
 
-	/*
-	// AI Perception 컴포넌트
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
-	class UAIPerceptionComponent* AIPerceptionComponent;
-
-	// 시야 설정
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
-	class UAISenseConfig_Sight* SightConfig;
-
-	// 감지 이벤트를 처리할 함수
-	//UFUNCTION()
-	//void OnPerceptionUpdated(AActor* Actor, struct FAIStimulus Stimulus);
-*/
 protected:
 	// 가상 팩토리 함수
 	UFUNCTION(BlueprintCallable)
@@ -173,14 +160,7 @@ public:
 	// Resource
 	UFUNCTION(BlueprintCallable, Category = "Resource")
 	virtual ABaseResourceObject* GetResourceTarget() const;
-
-	UFUNCTION(BlueprintCallable, Category = "Resource")
-	virtual void SetResourceTarget(ABaseResourceObject* NewTarget)
-	{
-		m_ResourceTarget = NewTarget;
-		if (m_ResourceTarget != nullptr) { IsWorked = true; }
-	}
-
+	
 	// 놀라기
 	void Surprise();
 	void CalmDown();
@@ -188,36 +168,7 @@ public:
 	// 짐 들기
 	void StartTransport();
 	void EndTransport();
-
-	// 얼굴 변화 ( ai 게임 잼 때 쓴 거 )
-	// UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
-	// void ChangeFace(int32 Feel);
-
-	// AI Voice Command
-	UFUNCTION(BlueprintCallable)
-	void AIVoiceCommand(int ResourceID, bool IsForced = false);
-
-	UFUNCTION(BlueprintCallable)
-	class ABaseResourceObject* GetNearResourceObject(int ResourceID);
-
-	void SetIsForced(bool IsForced);
-	bool bIsForced = false;
-	void VFXSpwan(int VFXID);
-	bool IsWorked = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UNiagaraSystem* VFX_Exe;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UNiagaraSystem* VFX_Question;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UNiagaraSystem* VFX_Sweet;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	USceneComponent* HeadVFXPoint;
-
-
+	
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
 	                         class AController* EventInstigator, AActor* DamageCauser) override;
 
@@ -282,6 +233,10 @@ public:
 
 	UFUNCTION()
 	void OnRep_IsAttached();
+
+	// 부착 후 한 프레임 뒤 재스냅(소켓/본 업데이트 지연 보정)
+	UFUNCTION()
+	void ResnapToPartnerSocket();
 	UFUNCTION(NetMulticast, Reliable)
 	void Temp();
 };

@@ -39,32 +39,6 @@ ABaseMonster::ABaseMonster()
 
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 
-	// AI Perception
-	/*
-	// AI Perception 컴포넌트 생성
-	AIPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComponent"));
-
-	// 시야 설정 생성 및 구성
-	SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("Sight Config"));
-	SightConfig->SightRadius = SightRadius;
-	SightConfig->LoseSightRadius = LoseSightRadius;
-	SightConfig->PeripheralVisionAngleDegrees = 90.0f;
-	SightConfig->SetMaxAge(0.5f);
-	SightConfig->AutoSuccessRangeFromLastSeenLocation = 0.0f;
-
-	// 팀 설정 - 여기서는 모든 팀을 감지
-	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
-	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
-	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
-
-	// AI Perception 컴포넌트에 시야 설정 추가
-	AIPerceptionComponent->ConfigureSense(*SightConfig);
-	AIPerceptionComponent->SetDominantSense(SightConfig->GetSenseImplementation());
-
-	// 감지 이벤트에 함수 바인딩
-	AIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &ABaseMonster::OnPerceptionUpdated);
-	*/
-
 	// HP UI
 	HPWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HPUI"));
 	HPWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
@@ -78,8 +52,6 @@ ABaseMonster::ABaseMonster()
 	{
 		HPWidgetComponent->SetWidgetClass(monsterHPWidget.Class);
 	}
-
-	HeadVFXPoint = CreateDefaultSubobject<USceneComponent>(TEXT("HeadVFXPoint"));
 
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
@@ -348,10 +320,6 @@ float ABaseMonster::TakeDamage(float DamageAmount, struct FDamageEvent const& Da
 	FLog::Log("TakeDamage", damage);
 	if (damage > 0.f)
 	{
-		TArray<int> array = {1, 5, 10};
-		int index = FMath::RandRange(0, 2);
-		GetNearResourceObject(array[index]);
-
 		// 어그로 설정
 		AAreaObject* Player{Cast<AAreaObject>(DamageCauser)};
 		if (Player)
@@ -457,10 +425,15 @@ void ABaseMonster::MulticastRPC_ChangeFace_Implementation(EFaceType Type)
 
 void ABaseMonster::OnRep_PartnerOwner()
 {
-	if (PartnerOwner != nullptr)
-	{
-		StatusWidget->SetPartnerPalHPWidget();
-	}
+    if (PartnerOwner != nullptr)
+    {
+        StatusWidget->SetPartnerPalHPWidget();
+        // 파트너가 도착했지만 bIsAttach가 이미 true로 복제된 경우, 실제 부착을 재시도
+        if (bIsAttach)
+        {
+            OnRep_IsAttached();
+        }
+    }
 }
 
 void ABaseMonster::SetPartnerOwner(ASonheimPlayer* NewOwner)
@@ -603,11 +576,30 @@ void ABaseMonster::OnRep_IsAttached()
 
 			//UE_LOG(LogTemp, Display, TEXT("movement mode: %s"), *GetCharacterMovement()->GetMovementName());
 			
-			AttachToComponent(PartnerOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-			                  FName("PartnerWeapon"));
-			PartnerOwner->SetUsePartnerSkill(true);
-			Temp_Implementation();
-		}
+            // 안전한 소켓/부착 처리: 소켓 존재 확인 후 스냅(스케일 포함) + 상대변환 초기화
+            static const FName PartnerSocket("PartnerWeapon");
+            USkeletalMeshComponent* OwnerMesh = PartnerOwner->GetMesh();
+            const bool bHasSocket = OwnerMesh && OwnerMesh->DoesSocketExist(PartnerSocket);
+            const FName SocketToUse = bHasSocket ? PartnerSocket : NAME_None;
+
+            const FAttachmentTransformRules AttachRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, true);
+            if (SocketToUse != NAME_None)
+            {
+                AttachToComponent(OwnerMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, SocketToUse);
+            }
+            else
+            {
+                // 소켓이 없으면 루트에 부착 후 상대변환 0으로 초기화
+                AttachToComponent(OwnerMesh, AttachRules);
+            }
+            GetRootComponent()->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator, false, nullptr, ETeleportType::TeleportPhysics);
+            SetActorRelativeScale3D(FVector(1.f));
+            // 본/소켓 업데이트가 한 프레임 늦는 케이스를 보정하기 위해 재스냅 예약
+            FTimerHandle Tmp;
+            GetWorld()->GetTimerManager().SetTimer(Tmp, this, &ABaseMonster::ResnapToPartnerSocket, 0.01f, false);
+            PartnerOwner->SetUsePartnerSkill(true);
+            Temp_Implementation();
+        }
 		else
 		{
 			DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
@@ -635,8 +627,6 @@ void ABaseMonster::Temp_Implementation()
 
 void ABaseMonster::Surprise()
 {
-	if (bIsForced)
-		return;
 	bIsSurprise = true;
 	// Ouch Face
 	//ChangeFace(2);
@@ -644,8 +634,6 @@ void ABaseMonster::Surprise()
 
 void ABaseMonster::CalmDown()
 {
-	if (bIsForced)
-		return;
 	bIsSurprise = false;
 	// Smile Face
 	//ChangeFace(0);
@@ -661,92 +649,6 @@ void ABaseMonster::EndTransport()
 	bIsTransporting = false;
 }
 
-void ABaseMonster::AIVoiceCommand(int ResourceID, bool IsForced)
-{
-	ABaseResourceObject* Target = nullptr;
-	// Tree
-	if (ResourceID == 1 || ResourceID == 5 || ResourceID == 10)
-	{
-		Target = GetNearResourceObject(ResourceID);
-	}
-	else
-	{
-		FLog::Log("Wrong ResourceID");
-		return;
-	}
-	SetIsForced(IsForced);
-	m_AiFSM->StopFSM();
-	m_AiFSM->ChangeState(EAiStateType::SelectAction);
-}
-
-void ABaseMonster::SetIsForced(bool IsForced)
-{
-	if (IsForced == true)
-	{
-		//ChangeFace(3);
-		GetCharacterMovement()->MaxWalkSpeed = ForcedWalkSpeed;
-		this->bIsForced = IsForced;
-		VFXSpwan(1);
-		VFXSpwan(2);
-		VFXSpwan(3);
-	}
-	else
-	{
-		//ChangeFace(0);
-		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
-		this->bIsForced = IsForced;
-	}
-}
-
-void ABaseMonster::VFXSpwan(int VFXID)
-{
-	FVector VFXLocation = GetActorLocation() + FVector::UpVector * GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-	if (VFXID == 0)
-	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), VFX_Exe, VFXLocation);
-	}
-	else if (VFXID == 1)
-	{
-		//UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), VFX_Question, VFXLocation);
-	}
-	else if (VFXID == 2)
-	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), VFX_Sweet, VFXLocation);
-	}
-}
-
-class ABaseResourceObject* ABaseMonster::GetNearResourceObject(int ResourceID)
-{
-	TArray<AActor*> TargetArr;
-	ABaseResourceObject* Target = nullptr;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABaseResourceObject::StaticClass(), TargetArr);
-
-	// 나중에 동적으로 받으면 지우기
-	// GotResource = 5;
-
-	FVector OwnerLocation{GetActorLocation()};
-	float MinDistance = FLT_MAX;
-
-	for (auto FindTarget : TargetArr)
-	{
-		auto BaseResourceTarget = Cast<ABaseResourceObject>(FindTarget);
-
-		if (BaseResourceTarget->m_ResourceObjectID == ResourceID)
-		{
-			float Distance = FVector::Dist(OwnerLocation, BaseResourceTarget->GetActorLocation());
-
-			if (Distance < MinDistance)
-			{
-				MinDistance = Distance;
-				Target = BaseResourceTarget;
-				SetResourceTarget(Target);
-				GotResource = ResourceID;
-			}
-		}
-	}
-	return Target;
-}
-
 void ABaseMonster::RemoveSkillEntryByID(const int id)
 {
 	m_SkillRoulette->RemoveSkillEntryByID(id);
@@ -757,30 +659,24 @@ void ABaseMonster::AddSkillEntryByID(const int id)
 	m_SkillRoulette->AddSkillEntryByID(id);
 }
 
+void ABaseMonster::ResnapToPartnerSocket()
+{
+    if (!PartnerOwner || !PartnerOwner->GetMesh()) return;
+    if (!bIsAttach) return;
 
-//void ABaseMonster::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
-//{
-//	// 감지된 액터가 유효한지 확인
-//	if (Actor && Stimulus.WasSuccessfullySensed())
-//	{
-//		// 플레이어인지 확인 (플레이어 클래스로 캐스팅)
-//		APlayer_Kazan* PlayerCharacter = Cast<APlayer_Kazan>(Actor);
-//		if (PlayerCharacter)
-//		{
-//			// 플레이어가 감지되었으므로 현재 타겟으로 설정
-//			m_AggroTarget = PlayerCharacter;
-//		}
-//	}
-//	// 감지는 Perception으로, Aggro 해제는 fsm에서
-//	/*
-//	else if (Actor && !Stimulus.WasSuccessfullySensed())
-//	{
-//		// 액터를 더 이상 감지하지 못함
-//		if (Actor == m_AggroTarget)
-//		{
-//			// 현재 타겟을 잃었으므로 리셋
-//			m_AggroTarget = nullptr;
-//		}
-//	}
-//	*/
-//}
+    USkeletalMeshComponent* OwnerMesh = PartnerOwner->GetMesh();
+    static const FName PartnerSocket("PartnerWeapon");
+    const bool bHasSocket = OwnerMesh->DoesSocketExist(PartnerSocket);
+    const FAttachmentTransformRules AttachRulesSnap(FAttachmentTransformRules::SnapToTargetIncludingScale);
+
+    if (bHasSocket)
+    {
+        AttachToComponent(OwnerMesh, AttachRulesSnap, PartnerSocket);
+    }
+    else
+    {
+        AttachToComponent(OwnerMesh, AttachRulesSnap);
+    }
+    GetRootComponent()->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator, false, nullptr, ETeleportType::TeleportPhysics);
+    SetActorRelativeScale3D(FVector(1.f));
+}
