@@ -10,7 +10,7 @@ void UCaptureProgressWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	if (ProgressImage)
+	if (ProgressImage && !MID)
 	{
 		if (UMaterialInterface* Base = Cast<UMaterialInterface>(ProgressImage->GetBrush().GetResourceObject()))
 		{
@@ -18,15 +18,22 @@ void UCaptureProgressWidget::NativeConstruct()
 			ProgressImage->SetBrushFromMaterial(MID);
 		}
 	}
-
-	SetProgressParameter(0.f);
-	UpdateColorTextByProgress(0.f);
 }
 
 void UCaptureProgressWidget::PlayCaptureProgressReveal(float Guess01, bool bSuccess, int32 InSegments,
 													 float InSegmentTime, float InInterStageDelay,
 													 float InStartDelay, int32 FailStageOverride)
 {
+	// NativeConstruct보다 먼저 호출될 경우 MID 생성
+	if (ProgressImage && !MID)
+	{
+		if (UMaterialInterface* Base = Cast<UMaterialInterface>(ProgressImage->GetBrush().GetResourceObject()))
+		{
+			MID = UMaterialInstanceDynamic::Create(Base, this);
+			ProgressImage->SetBrushFromMaterial(MID);
+		}
+	}
+	
 	Guess = FMath::Clamp(Guess01, 0.f, 1.f);
 	Segments = FMath::Clamp(InSegments, 1, 10);
 	SegmentTime = FMath::Max(0.05f, InSegmentTime);
@@ -158,11 +165,7 @@ void UCaptureProgressWidget::UpdateColorTextByProgress(float P)
 	{
 		MID->SetVectorParameterValue(FillColorParamName, C);
 	}
-	else if (ProgressImage)
-	{
-		ProgressImage->SetColorAndOpacity(C);
-	}
-
+	
 	if (capturerateArrow)
 	{
 		capturerateArrow->SetColorAndOpacity(C);
