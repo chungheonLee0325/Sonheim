@@ -142,6 +142,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool UnEquipItem(EEquipmentSlotType SlotType);
 
+	// UI/검증용: 아이템ID가 슬롯에 장착 가능한지 확인
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool IsItemCompatibleWithSlot(int32 ItemID, EEquipmentSlotType SlotType) const;
 
 	// 지정 장비 슬롯으로 아이템 장착 (ItemID 기반)
 	UFUNCTION(BlueprintCallable, Category="Inventory")
@@ -157,6 +160,9 @@ public:
 
     // 서버에서 인벤토리 특정 인덱스의 아이템을 교체 배치
     bool SetInventoryItemAtIndex(int32 Index, const FInventoryItem& NewItem);
+
+    // 서버에서 인벤토리에 지정 위치로 삽입
+    bool InsertInventoryItemAtIndex(int32 Index, const FInventoryItem& NewItem);
 
 	// 외부(상자 등)에서 바로 장착: 인벤토리를 거치지 않고 해당 슬롯에 장착
 	// OutReplaced: 기존 장착 아이템(있으면 반환, 없으면 ItemID=0)
@@ -212,9 +218,21 @@ public:
 	UPROPERTY(BlueprintAssignable, Category="Events")
 	FOnItemRemoved OnItemRemoved;
 
-private:
-	// 내부 헬퍼 함수들
-	bool IsValidItemID(int ItemID) const;
+  private:
+    // === 내부 헬퍼 ===
+    // 슬롯-아이템 적합성 판정
+    bool AcceptsSlot(EEquipmentSlotType SlotType, const FItemData& ItemData) const;
+    // 장비 스탯 적용/해제(무기/비무기 내부 분기 포함)
+    void ApplyEquipState(EEquipmentSlotType SlotType, int ItemID, bool bEquip);
+    // 무기 슬롯 변경 알림(무기 슬롯인 경우에만 브로드캐스트)
+    void NotifyWeaponSlot(EEquipmentSlotType SlotType);
+    // 코어: 장비 해제(인벤토리 비조작). OutReturned: 해제된 아이템(있으면)
+    bool UnEquipCore(EEquipmentSlotType SlotType, FInventoryItem& OutReturned, bool bNotifyWeapon, bool bBroadcastEmpty);
+    // 코어: 장비 장착(인벤토리 비조작)
+    void EquipCore(EEquipmentSlotType SlotType, const FInventoryItem& NewItem, bool bNotifyWeapon);
+
+    // 내부 헬퍼 함수들
+    bool IsValidItemID(int ItemID) const;
 	FItemData* GetItemData(int ItemID) const;
 	void ApplyEquipmentStats(int ItemID, bool bEquipping);
 	int FindItemIndexInInventory(int ItemID) const;
@@ -264,3 +282,4 @@ private:
 	UPROPERTY()
 	ASonheimPlayer* m_Player = nullptr;
 };
+

@@ -3,6 +3,7 @@
 
 #include "SlotWidget.h"
 
+#include "Sonheim/Utilities/InventoryRulesLibrary.h"
 #include "InventoryWidget.h"
 #include "ToolTipWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
@@ -446,33 +447,11 @@ bool USlotWidget::IsDropValidFrom(USlotWidget* FromSlot) const
 		return !this->IsEmpty();
 	}
 
-	// 인벤토리 -> 장비 슬롯: 아이템-슬롯 적합성 검사
-	if (FromInv && ToEquip)
-	{
-		if (!m_GameInstance) return false;
-		const FItemData* ItemData = m_GameInstance->GetDataItem(FromSlot->ItemID);
-		if (!ItemData) return false;
-
-		if (!(ItemData->ItemCategory == EItemCategory::Equipment || ItemData->ItemCategory == EItemCategory::Weapon))
-			return false;
-
-		switch (EquipmentSlotType)
-		{
-		case EEquipmentSlotType::Head: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Head;
-		case EEquipmentSlotType::Body: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Body;
-		case EEquipmentSlotType::Shield: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Shield;
-		case EEquipmentSlotType::Glider: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Glider;
-		case EEquipmentSlotType::SphereModule: return ItemData->EquipmentData.EquipKind ==
-				EEquipmentKindType::SphereModule;
-		case EEquipmentSlotType::Accessory1:
-		case EEquipmentSlotType::Accessory2: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Accessory;
-		case EEquipmentSlotType::Weapon1:
-		case EEquipmentSlotType::Weapon2:
-		case EEquipmentSlotType::Weapon3:
-		case EEquipmentSlotType::Weapon4: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon;
-		default: return false;
-		}
-	}
+    // 인벤토리 -> 장비 슬롯: 아이템-슬롯 적합성 검사(InventoryComponent에 위임)
+    if (FromInv && ToEquip)
+    {
+        return UInventoryRulesLibrary::IsItemCompatibleWithSlot(this, FromSlot->ItemID, EquipmentSlotType);
+    }
 
 	// 장비 -> 인벤토리: 허용(인벤 용량은 서버가 검증)
 	if (FromEquip && ToInv)
@@ -545,32 +524,11 @@ bool USlotWidget::IsDropValidFrom(USlotWidget* FromSlot) const
 		return true;
 	}
 
-	// 컨테이너 -> 장비 슬롯: 아이템-슬롯 적합성 검사
-	if (FromCont && ToEquip)
-	{
-		if (!m_GameInstance) return false;
-		const FItemData* ItemData = m_GameInstance->GetDataItem(FromSlot->ItemID);
-		if (!ItemData) return false;
-		if (!(ItemData->ItemCategory == EItemCategory::Equipment || ItemData->ItemCategory == EItemCategory::Weapon))
-			return false;
-
-		switch (EquipmentSlotType)
-		{
-		case EEquipmentSlotType::Head: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Head;
-		case EEquipmentSlotType::Body: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Body;
-		case EEquipmentSlotType::Shield: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Shield;
-		case EEquipmentSlotType::Glider: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Glider;
-		case EEquipmentSlotType::SphereModule: return ItemData->EquipmentData.EquipKind ==
-				EEquipmentKindType::SphereModule;
-		case EEquipmentSlotType::Accessory1:
-		case EEquipmentSlotType::Accessory2: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Accessory;
-		case EEquipmentSlotType::Weapon1:
-		case EEquipmentSlotType::Weapon2:
-		case EEquipmentSlotType::Weapon3:
-		case EEquipmentSlotType::Weapon4: return ItemData->EquipmentData.EquipKind == EEquipmentKindType::Weapon;
-		default: return false;
-		}
-	}
+    // 컨테이너 -> 장비 슬롯: 아이템-슬롯 적합성 검사(InventoryComponent에 위임)
+    if (FromCont && ToEquip)
+    {
+        return UInventoryRulesLibrary::IsItemCompatibleWithSlot(this, FromSlot->ItemID, EquipmentSlotType);
+    }
 
 	// 장비 -> 컨테이너: 허용(서버가 용량/스왑 판단)
 	if (FromEquip && ToCont)

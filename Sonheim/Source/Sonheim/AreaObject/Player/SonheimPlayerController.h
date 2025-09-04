@@ -17,8 +17,7 @@ struct FInputActionValue;
 UCLASS()
 class SONHEIM_API ASonheimPlayerController : public APlayerController
 {
-	GENERATED_BODY()
-	virtual void SetupInputComponent() override;
+    GENERATED_BODY()
 
 public:
 	ASonheimPlayerController();
@@ -36,7 +35,12 @@ public:
 
 	class UPlayerStatusWidget* GetPlayerStatusWidget() const;
 
-	bool GetIsMenuActivate() { return IsMenuActivate; }
+    // 상태 조회
+    bool GetIsMenuActivate() { return IsMenuActivate; }
+
+protected:
+    // 입력 설정
+    virtual void SetupInputComponent() override;
 
 private:
 	// Input Action
