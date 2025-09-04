@@ -15,9 +15,14 @@ class ASonheimPlayer;
 
 // 델리게이트 선언
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInventoryChanged, const TArray<FInventoryItem>&, Inventory);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnEquipmentChanged, EEquipmentSlotType, Slot, FInventoryItem, InventoryItem);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnEquipmentChanged, EEquipmentSlotType, Slot, FInventoryItem,
+                                             InventoryItem);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWeaponChanged, EEquipmentSlotType, Slot, int, ItemID);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemAdded, int, ItemID, int, Count);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemRemoved, int, ItemID, int, Count);
 
 // 장착된 아이템을 추적하기 위한 구조체
@@ -32,10 +37,14 @@ struct FEquippedSlot
 	UPROPERTY()
 	FInventoryItem Item;
 
-	FEquippedSlot() {}
-	
+	FEquippedSlot()
+	{
+	}
+
 	FEquippedSlot(EEquipmentSlotType InSlot, const FInventoryItem& InItem)
-		: SlotType(InSlot), Item(InItem) {}
+		: SlotType(InSlot), Item(InItem)
+	{
+	}
 };
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
@@ -49,7 +58,8 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
+	                           FActorComponentTickFunction* ThisTickFunction) override;
 
 	// 인벤토리 설정
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Inventory")
@@ -155,14 +165,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	int GetItemCount(int ItemID) const;
 
-    UFUNCTION(BlueprintCallable, Category="Inventory")
-    TArray<FInventoryItem> GetInventory() const;
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	TArray<FInventoryItem> GetInventory() const;
 
-    // 서버에서 인벤토리 특정 인덱스의 아이템을 교체 배치
-    bool SetInventoryItemAtIndex(int32 Index, const FInventoryItem& NewItem);
+	// 서버에서 인벤토리 특정 인덱스의 아이템을 교체 배치
+	bool SetInventoryItemAtIndex(int32 Index, const FInventoryItem& NewItem);
 
-    // 서버에서 인벤토리에 지정 위치로 삽입
-    bool InsertInventoryItemAtIndex(int32 Index, const FInventoryItem& NewItem);
+	// 서버에서 인벤토리에 지정 위치로 삽입
+	bool InsertInventoryItemAtIndex(int32 Index, const FInventoryItem& NewItem);
 
 	// 외부(상자 등)에서 바로 장착: 인벤토리를 거치지 않고 해당 슬롯에 장착
 	// OutReplaced: 기존 장착 아이템(있으면 반환, 없으면 ItemID=0)
@@ -218,28 +228,29 @@ public:
 	UPROPERTY(BlueprintAssignable, Category="Events")
 	FOnItemRemoved OnItemRemoved;
 
-  private:
-    // === 내부 헬퍼 ===
-    // 슬롯-아이템 적합성 판정
-    bool AcceptsSlot(EEquipmentSlotType SlotType, const FItemData& ItemData) const;
-    // 장비 스탯 적용/해제(무기/비무기 내부 분기 포함)
-    void ApplyEquipState(EEquipmentSlotType SlotType, int ItemID, bool bEquip);
-    // 무기 슬롯 변경 알림(무기 슬롯인 경우에만 브로드캐스트)
-    void NotifyWeaponSlot(EEquipmentSlotType SlotType);
-    // 코어: 장비 해제(인벤토리 비조작). OutReturned: 해제된 아이템(있으면)
-    bool UnEquipCore(EEquipmentSlotType SlotType, FInventoryItem& OutReturned, bool bNotifyWeapon, bool bBroadcastEmpty);
-    // 코어: 장비 장착(인벤토리 비조작)
-    void EquipCore(EEquipmentSlotType SlotType, const FInventoryItem& NewItem, bool bNotifyWeapon);
+private:
+	// === 내부 헬퍼 ===
+	// 슬롯-아이템 적합성 판정
+	bool AcceptsSlot(EEquipmentSlotType SlotType, const FItemData& ItemData) const;
+	// 장비 스탯 적용/해제(무기/비무기 내부 분기 포함)
+	void ApplyEquipState(EEquipmentSlotType SlotType, int ItemID, bool bEquip);
+	// 무기 슬롯 변경 알림(무기 슬롯인 경우에만 브로드캐스트)
+	void NotifyWeaponSlot(EEquipmentSlotType SlotType);
+	// 코어: 장비 해제(인벤토리 비조작). OutReturned: 해제된 아이템(있으면)
+	bool UnEquipCore(EEquipmentSlotType SlotType, FInventoryItem& OutReturned, bool bNotifyWeapon,
+	                 bool bBroadcastEmpty);
+	// 코어: 장비 장착(인벤토리 비조작)
+	void EquipCore(EEquipmentSlotType SlotType, const FInventoryItem& NewItem, bool bNotifyWeapon);
 
-    // 내부 헬퍼 함수들
-    bool IsValidItemID(int ItemID) const;
+	// 내부 헬퍼 함수들
+	bool IsValidItemID(int ItemID) const;
 	FItemData* GetItemData(int ItemID) const;
 	void ApplyEquipmentStats(int ItemID, bool bEquipping);
 	int FindItemIndexInInventory(int ItemID) const;
 	// 장비 종류로 어느 슬롯에 들어갈수 있는지 반환
 	EEquipmentSlotType FindEquipSlotByEquipKindType(EEquipmentKindType ItemKindType) const;
 	void BroadcastInventoryChanged();
-	
+
 	// 장착 슬롯 헬퍼 함수들
 	int32 FindEquippedSlotIndex(EEquipmentSlotType SlotType) const;
 	FInventoryItem* GetEquippedSlotItem(EEquipmentSlotType SlotType);
@@ -249,7 +260,7 @@ public:
 	// 데이터 유효성 검증
 	bool ValidateItemCount(int ItemCount) const;
 	bool ValidateItemOperation(int ItemID, int ItemCount) const;
-	
+
 	// 인벤토리 슬롯 인덱스로 조회 인벤 차감 + 월드에 드랍
 	bool DropItemByIndex(int32 Index, int32 Count);
 	// 인벤토리 슬롯 인덱스로 조회 인벤 차감(삭제)
@@ -262,7 +273,7 @@ public:
 	// 장비 아이템 자동 장착 설정
 	UPROPERTY(EditDefaultsOnly, Category="Inventory|Equip")
 	bool bAutoEquipOnPickup = true;
-	
+
 private:
 	// 클라이언트 예측 메서드
 	void PerformClientPrediction_AddItem(int ItemID, int ItemCount);
@@ -272,7 +283,7 @@ private:
 	void PerformClientPrediction_UnEquipItem(EEquipmentSlotType SlotType);
 	void PerformClientPrediction_SwapItems(int32 FromIndex, int32 ToIndex);
 	void PerformClientPrediction_SwitchWeaponSlot(int Index);
-	
+
 	UPROPERTY()
 	USonheimGameInstance* m_GameInstance = nullptr;
 
@@ -282,4 +293,3 @@ private:
 	UPROPERTY()
 	ASonheimPlayer* m_Player = nullptr;
 };
-

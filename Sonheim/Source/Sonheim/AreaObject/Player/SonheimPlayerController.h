@@ -17,7 +17,7 @@ struct FInputActionValue;
 UCLASS()
 class SONHEIM_API ASonheimPlayerController : public APlayerController
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
 public:
 	ASonheimPlayerController();
@@ -35,12 +35,12 @@ public:
 
 	class UPlayerStatusWidget* GetPlayerStatusWidget() const;
 
-    // 상태 조회
-    bool GetIsMenuActivate() { return IsMenuActivate; }
+	// 상태 조회
+	bool GetIsMenuActivate() { return IsMenuActivate; }
 
 protected:
-    // 입력 설정
-    virtual void SetupInputComponent() override;
+	// 입력 설정
+	virtual void SetupInputComponent() override;
 
 private:
 	// Input Action
@@ -96,7 +96,7 @@ private:
 	/** Called for CKey input */
 	void On_CKey_Pressed(const FInputActionValue& InputActionValue);
 	void On_CKey_Released(const FInputActionValue& InputActionValue);
-	
+
 	// Owner
 	UPROPERTY(VisibleAnywhere)
 	ASonheimPlayer* m_Player;
@@ -185,7 +185,7 @@ private:
 	/** ThrowPalSphere Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* ThrowPalSphereAction;
-	
+
 	/** Menu Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* MenuAction;
@@ -205,7 +205,7 @@ private:
 	/** CKey Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* CKeyAction;
-	
+
 	bool IsMenuActivate = false;
 	bool IsContainerActivate = false;
 
@@ -220,17 +220,17 @@ public:
 	void Client_OpenContainerUI(ABaseContainer* Container);
 	UFUNCTION(Client, Reliable)
 	void Client_CloseContainerUI();
-	
+
 	// ===== Container 중계 함수들 =====
 	// 기본 상자 작업
 	UFUNCTION(Server, Reliable)
 	void Server_ContainerOperation(
-		class ABaseContainer* Container, 
-		EContainerOperation Operation, 
-		int32 Param1 = 0, 
+		class ABaseContainer* Container,
+		EContainerOperation Operation,
+		int32 Param1 = 0,
 		int32 Param2 = 0
 	);
-    
+
 	// 플레이어-컨테이너 간 전송
 	UFUNCTION(Server, Reliable)
 	void Server_PlayerContainerTransfer(

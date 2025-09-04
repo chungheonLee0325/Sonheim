@@ -447,11 +447,11 @@ bool USlotWidget::IsDropValidFrom(USlotWidget* FromSlot) const
 		return !this->IsEmpty();
 	}
 
-    // 인벤토리 -> 장비 슬롯: 아이템-슬롯 적합성 검사(InventoryComponent에 위임)
-    if (FromInv && ToEquip)
-    {
-        return UInventoryRulesLibrary::IsItemCompatibleWithSlot(this, FromSlot->ItemID, EquipmentSlotType);
-    }
+	// 인벤토리 -> 장비 슬롯: 아이템-슬롯 적합성 검사(InventoryComponent에 위임)
+	if (FromInv && ToEquip)
+	{
+		return UInventoryRulesLibrary::IsItemCompatibleWithSlot(this, FromSlot->ItemID, EquipmentSlotType);
+	}
 
 	// 장비 -> 인벤토리: 허용(인벤 용량은 서버가 검증)
 	if (FromEquip && ToInv)
@@ -524,11 +524,11 @@ bool USlotWidget::IsDropValidFrom(USlotWidget* FromSlot) const
 		return true;
 	}
 
-    // 컨테이너 -> 장비 슬롯: 아이템-슬롯 적합성 검사(InventoryComponent에 위임)
-    if (FromCont && ToEquip)
-    {
-        return UInventoryRulesLibrary::IsItemCompatibleWithSlot(this, FromSlot->ItemID, EquipmentSlotType);
-    }
+	// 컨테이너 -> 장비 슬롯: 아이템-슬롯 적합성 검사(InventoryComponent에 위임)
+	if (FromCont && ToEquip)
+	{
+		return UInventoryRulesLibrary::IsItemCompatibleWithSlot(this, FromSlot->ItemID, EquipmentSlotType);
+	}
 
 	// 장비 -> 컨테이너: 허용(서버가 용량/스왑 판단)
 	if (FromEquip && ToCont)
