@@ -6,28 +6,28 @@
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 
-void UMeleeAttack::Server_OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
+void UMeleeAttack::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
 	bDebugDraw = Caster->bShowDebug;
-	Super::Server_OnCastStart(Caster, Target);
+	Super::Activate(Caster, Target);
 }
 
-void UMeleeAttack::Server_OnCastEnd()
+void UMeleeAttack::Complete()
 {
-	Super::Server_OnCastEnd();
+	Super::Complete();
 	NotifyStateMap.Empty();
 }
 
-void UMeleeAttack::Server_CancelCast()
+void UMeleeAttack::Cancel()
 {
-	Super::Server_CancelCast();
+	Super::Cancel();
 }
 
-void UMeleeAttack::Server_OnCastTick(float DeltaTime)
+void UMeleeAttack::Tick(float DeltaTime)
 {
-	Super::Server_OnCastTick(DeltaTime);
-		
-	if (m_CurrentPhase != ESkillPhase::PostCasting)
+	Super::Tick(DeltaTime);
+	// 서버에서만 판정 수행
+	if (!m_Caster || !m_Caster->HasAuthority())
 	{
 		return;
 	}
@@ -81,21 +81,36 @@ void UMeleeAttack::SetCasterMesh(int AttackDataIndex)
 		}
 	}
 	AttackCollision.IsEnableHitDetection = true;
+	// 서버에서 근접 판정 창 동안 최고 LOD 강제(소켓/본 안정성 확보)
+	if (m_Caster && m_Caster->HasAuthority() && AttackCollision.OwnerSourceMesh)
+	{
+		AttackCollision.PrevForcedLodModel = AttackCollision.OwnerSourceMesh->GetForcedLOD();
+		AttackCollision.OwnerSourceMesh->SetForcedLOD(1); // LOD0 강제
+		AttackCollision.bForcedLODApplied = true;
+	}
 	NotifyStateMap.Add(AttackDataIndex, AttackCollision);
 }
 
 void UMeleeAttack::ProcessHitDetection(int AttackDataIndex)
 {
-		FAttackCollision* AttackCollision = NotifyStateMap.Find(AttackDataIndex);
-	if (!AttackCollision->OwnerSourceMesh || !m_Caster)
+	FAttackCollision* AttackCollision = NotifyStateMap.Find(AttackDataIndex);
+	if (!AttackCollision || !AttackCollision->OwnerSourceMesh || !m_Caster)
 		return;
 
-	// 현재 위치 가져오기
-	FVector CurrentStartLocation = AttackCollision->OwnerSourceMesh->GetSocketLocation(
-		AttackCollision->IndexedAttackData->HitBoxData.StartSocketName);
-	FVector CurrentEndLocation = AttackCollision->IndexedAttackData->HitBoxData.EndSocketName != NAME_None
-		                             ? AttackCollision->OwnerSourceMesh->GetSocketLocation(
-			                             AttackCollision->IndexedAttackData->HitBoxData.EndSocketName)
+	// 현재 위치 가져오기 (소켓 미존재/LOD 영향 대비 안전 가드)
+	const FName StartSocket = AttackCollision->IndexedAttackData->HitBoxData.StartSocketName;
+	const FName EndSocket = AttackCollision->IndexedAttackData->HitBoxData.EndSocketName;
+	USkeletalMeshComponent* Mesh = AttackCollision->OwnerSourceMesh;
+
+	const bool bHasStart = Mesh->DoesSocketExist(StartSocket);
+	const bool bHasEnd = (EndSocket != NAME_None) && Mesh->DoesSocketExist(EndSocket);
+
+	FVector CurrentStartLocation = bHasStart
+		                               ? Mesh->GetSocketLocation(StartSocket)
+		                               : Mesh->GetComponentLocation();
+
+	FVector CurrentEndLocation = bHasEnd
+		                             ? Mesh->GetSocketLocation(EndSocket)
 		                             : CurrentStartLocation;
 	FRotator CurrentSocketRotation = AttackCollision->OwnerSourceMesh->GetSocketRotation(
 		AttackCollision->IndexedAttackData->HitBoxData.StartSocketName);
@@ -216,6 +231,12 @@ void UMeleeAttack::ResetCollisionData(int AttackDataIndex)
 {
 	FAttackCollision* AttackCollision = NotifyStateMap.Find(AttackDataIndex);
 	if (AttackCollision == nullptr) return;
+	// LOD 강제 복원
+	if (m_Caster && m_Caster->HasAuthority() && AttackCollision->OwnerSourceMesh && AttackCollision->bForcedLODApplied)
+	{
+		AttackCollision->OwnerSourceMesh->SetForcedLOD(AttackCollision->PrevForcedLodModel);
+		AttackCollision->bForcedLODApplied = false;
+	}
 	NotifyStateMap.Remove(AttackDataIndex);
 	AttackCollision->IsEnableHitDetection = false;
 	AttackCollision->HitActors.Empty();
@@ -225,8 +246,9 @@ void UMeleeAttack::ResetCollisionData(int AttackDataIndex)
 }
 
 bool UMeleeAttack::PerformCollisionCheck(EHitDetectionType DetectionType, const FVector& StartLocation,
-	const FVector& EndLocation, const FRotator& SocketRotation, const FHitBoxData& HitBoxData,
-	const FCollisionQueryParams& QueryParams, TArray<FHitResult>& OutHitResults)
+                                         const FVector& EndLocation, const FRotator& SocketRotation,
+                                         const FHitBoxData& HitBoxData,
+                                         const FCollisionQueryParams& QueryParams, TArray<FHitResult>& OutHitResults)
 {
 	bool bHit = false;
 	UWorld* World = m_Caster->GetWorld();
@@ -301,7 +323,7 @@ void UMeleeAttack::ResetNextSkillByBHit()
 }
 
 void UMeleeAttack::DrawDebugHitDetection(int AttackDataIndex, const FVector& Start, const FVector& End,
-	const TArray<FHitResult>& HitResults, const FRotator& SocketRotation)
+                                         const TArray<FHitResult>& HitResults, const FRotator& SocketRotation)
 {
 	FAttackCollision* AttackCollision = NotifyStateMap.Find(AttackDataIndex);
 	auto& HitBoxData = AttackCollision->IndexedAttackData->HitBoxData;

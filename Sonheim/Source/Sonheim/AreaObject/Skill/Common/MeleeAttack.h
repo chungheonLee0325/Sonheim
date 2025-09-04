@@ -27,18 +27,22 @@ struct FAttackCollision
 	FVector PreviousEndLocation = FVector::ZeroVector;
 	FRotator PreviousSocketRotation = FRotator::ZeroRotator;
 	bool bHasPreviousPositions = false;
+
+	// LOD 강제 제어 복원용
+	int32 PrevForcedLodModel = 0;
+	bool bForcedLODApplied = false;
 };
 
 UCLASS()
 class SONHEIM_API UMeleeAttack : public UBaseSkill
 {
 	GENERATED_BODY()
-	
+
 public:
-	virtual void Server_OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void Server_OnCastEnd() override;
-	virtual void Server_CancelCast() override;
-	virtual void Server_OnCastTick(float DeltaTime) override;
+	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual void Complete() override;
+	virtual void Cancel() override;
+	virtual void Tick(float DeltaTime) override;
 	void SetCasterMesh(int AttackDataIndex);
 	void ProcessHitDetection(int AttackDataIndex);
 	void ResetCollisionData(int AttackDataIndex);
@@ -51,7 +55,7 @@ public:
 		const FCollisionQueryParams& QueryParams,
 		TArray<FHitResult>& OutHitResults);
 	virtual void ResetNextSkillByBHit() override;
-	
+
 	// 디버그 드로잉 옵션
 	bool bDebugDraw = false;
 	float DebugDrawDuration = 0.3f;
@@ -63,8 +67,8 @@ protected:
 
 private:
 	void DrawDebugHitDetection(int AttackDataIndex, const FVector& Start, const FVector& End,
-							   const TArray<FHitResult>& HitResults,
-							   const FRotator& SocketRotation);
+	                           const TArray<FHitResult>& HitResults,
+	                           const FRotator& SocketRotation);
 
 	UPROPERTY()
 	TMap<int, FAttackCollision> NotifyStateMap;
