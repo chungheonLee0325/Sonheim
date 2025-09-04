@@ -15,14 +15,14 @@ UCLASS()
 class SONHEIM_API URolling : public UMeleeAttack
 {
 	GENERATED_BODY()
-	
+
 public:
 	URolling();
-	
-	virtual void OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void OnCastTick(float DeltaTime) override;
 
-	virtual void OnCastFire() override;
+	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual void Tick(float DeltaTime) override;
+
+	virtual void Fire() override;
 
 	void StartRoll();
 	void MoveCompleted(FAIRequestID FaiRequestID, const FPathFollowingResult& PathFollowingResult);
@@ -31,6 +31,6 @@ public:
 public:
 	UPROPERTY()
 	class ALamBall* CastPal;
-	
+
 	FTimerHandle DizzyWaitTimer;
 };

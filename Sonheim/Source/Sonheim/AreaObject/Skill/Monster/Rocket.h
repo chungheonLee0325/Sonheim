@@ -16,11 +16,11 @@ class SONHEIM_API URocket : public UBaseSkill
 
 public:
 	URocket();
-	
-	virtual void OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void OnCastTick(float DeltaTime) override;
 
-	virtual void OnCastFire() override;
+	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual void Tick(float DeltaTime) override;
+
+	virtual void Fire() override;
 
 	void Launch();
 };

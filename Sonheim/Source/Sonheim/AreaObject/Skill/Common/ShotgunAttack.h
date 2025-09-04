@@ -19,10 +19,8 @@ public:
 
 	// BaseSkill 인터페이스 구현
 	virtual void InitSkill(FSkillData* SkillData) override;
-	virtual void Server_OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void Client_OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void Server_OnCastFire() override;
-	virtual void Client_OnCastFire() override;
+	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual void Fire() override;
 
 protected:
 	// 샷건 특성 설정
@@ -47,10 +45,10 @@ protected:
 private:
 	// 단일 산탄 발사
 	void FirePellet(const FVector& StartLocation, const FVector& Direction);
-	
+
 	// 거리에 따른 데미지 계산
 	float CalculateDamageWithFalloff(float BaseDamage, float Distance) const;
-	
+
 	// 산탄 방향 계산 (스프레드 적용)
 	FVector CalculatePelletDirection(const FVector& BaseDirection) const;
 

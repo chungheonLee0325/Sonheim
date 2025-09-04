@@ -14,23 +14,23 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 
 URolling::URolling()
-{}
-
-void URolling::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
 {
-	Super::OnCastStart(Caster, Target);
+}
+
+void URolling::Activate(class AAreaObject* Caster, AAreaObject* Target)
+{
+	Super::Activate(Caster, Target);
 	CastPal = Cast<ALamBall>(m_Caster);
 }
 
-void URolling::OnCastTick(float DeltaTime)
+void URolling::Tick(float DeltaTime)
 {
-	Super::OnCastTick(DeltaTime);
+	Super::Tick(DeltaTime);
 }
 
-void URolling::OnCastFire()
+void URolling::Fire()
 {
-	Super::OnCastFire();
-	//FLog::Log("Rolling");
+	Super::Fire();
 	StartRoll();
 }
 
@@ -50,7 +50,6 @@ void URolling::StartRoll()
 	AAIController* CasterAiController{Cast<ABaseMonster>(m_Caster)->AIController};
 	EPathFollowingRequestResult::Type Result{CasterAiController->MoveToLocation(Next.Location)};
 
-	//if ()
 
 	if (Result == EPathFollowingRequestResult::Type::RequestSuccessful)
 	{
@@ -62,10 +61,7 @@ void URolling::StartRoll()
 void URolling::MoveCompleted(FAIRequestID FaiRequestID, const FPathFollowingResult& PathFollowingResult)
 {
 	m_Caster->GetCharacterMovement()->MaxWalkSpeed = 600.f;
-	// if (PathFollowingResult.IsSuccess())
-	// {
-	// 	
-	// }
+
 	// Todo: 일단 도로롱일때만 ..
 	if (CastPal)
 	{

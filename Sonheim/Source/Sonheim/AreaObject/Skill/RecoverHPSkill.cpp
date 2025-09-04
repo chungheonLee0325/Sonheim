@@ -5,9 +5,9 @@
 
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 
-void URecoverHPSkill::OnCastFire()
+void URecoverHPSkill::Fire()
 {
-	Super::OnCastFire();
+	Super::Fire();
 
 	m_Caster->IncreaseHP(m_SkillData->AttackData[0].HealthDamageAmountMax);
 }

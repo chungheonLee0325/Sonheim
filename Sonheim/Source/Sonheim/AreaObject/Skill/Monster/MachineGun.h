@@ -17,10 +17,10 @@ class SONHEIM_API UMachineGun : public UBaseSkill
 public:
 	UMachineGun();
 	
-	virtual void OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void OnCastTick(float DeltaTime) override;
+    virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
+    virtual void Tick(float DeltaTime) override;
 
-	virtual void OnCastFire() override;
+    virtual void Fire() override;
 
 	void FireGun();
 

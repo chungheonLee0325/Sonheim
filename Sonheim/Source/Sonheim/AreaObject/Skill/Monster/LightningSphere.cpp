@@ -10,40 +10,32 @@
 ULightningSphere::ULightningSphere()
 {
 	static ConstructorHelpers::FClassFinder<AElectricBall> ElectricBallClass
-	(TEXT("/Script/Engine.Blueprint'/Game/_BluePrint/Element/ElectricBall/BP_ElectricBall.BP_ElectricBall_C'"));
+		(TEXT("/Script/Engine.Blueprint'/Game/_BluePrint/Element/ElectricBall/BP_ElectricBall.BP_ElectricBall_C'"));
 	if (ElectricBallClass.Succeeded())
 	{
 		ElectricBallFactory = ElectricBallClass.Class;
 	}
 }
 
-void ULightningSphere::Server_OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
+void ULightningSphere::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
 	IsFired = false;
 
-	Super::Server_OnCastStart(Caster, Target);
-	
+	Super::Activate(Caster, Target);
+
 	CurrentTime = 0.f;
-	
 }
 
-void ULightningSphere::Server_OnCastTick(float DeltaTime)
+void ULightningSphere::Tick(float DeltaTime)
 {
-	Super::Server_OnCastTick(DeltaTime);
-
-	// CurrentTime += DeltaTime;
-	// if (CurrentTime > DelayTime)
-	// {
-	// 	CurrentTime = 0.f;
-	// 	OnCastFire();
-	// }
+	Super::Tick(DeltaTime);
 }
 
-void ULightningSphere::Server_OnCastFire()
+void ULightningSphere::Fire()
 {
 	if (IsFired) return;
 
-	Super::Server_OnCastFire();
+	Super::Fire();
 
 	FireElectricBall();
 }
@@ -54,7 +46,7 @@ void ULightningSphere::FireElectricBall()
 
 	AElectricBall* SpawnedElectricBall{
 		GetWorld()->SpawnActor<AElectricBall>(ElectricBallFactory, m_Caster->GetActorLocation(),
-											   m_Caster->GetActorRotation())
+		                                      m_Caster->GetActorRotation())
 	};
 
 	// ToDo : Notify에서 Index 주입
@@ -62,8 +54,6 @@ void ULightningSphere::FireElectricBall()
 	// ToDo : TempTarget -> m_Target으로 수정
 	ASonheimPlayer* TempTarget{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
 
-	//m_Target = TempTarget;
-	
 	m_TargetPos = m_Caster->GetActorForwardVector();
 
 	if (SpawnedElectricBall)
@@ -71,4 +61,3 @@ void ULightningSphere::FireElectricBall()
 		SpawnedElectricBall->InitElement(m_Caster, m_Target, m_TargetPos, AttackData);
 	}
 }
-

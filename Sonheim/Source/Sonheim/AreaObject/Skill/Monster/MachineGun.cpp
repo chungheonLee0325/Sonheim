@@ -4,29 +4,27 @@
 #include "MachineGun.h"
 
 #include "Kismet/KismetMathLibrary.h"
-#include "Kismet/KismetSystemLibrary.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
-#include "Sonheim/Utilities/LogMacro.h"
 
 UMachineGun::UMachineGun()
 {}
 
-void UMachineGun::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
+void UMachineGun::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
-	Super::OnCastStart(Caster, Target);
+	Super::Activate(Caster, Target);
 	
-	OnCastFire();
+	Fire();
 }
 
-void UMachineGun::OnCastTick(float DeltaTime)
+void UMachineGun::Tick(float DeltaTime)
 {
-	Super::OnCastTick(DeltaTime);
+	Super::Tick(DeltaTime);
 }
 
-void UMachineGun::OnCastFire()
+void UMachineGun::Fire()
 {
-	Super::OnCastFire();
+	Super::Fire();
 
 	GetWorld()->GetTimerManager().SetTimer(FireTimer, this, &UMachineGun::FireGun, 0.1f, true);
 }

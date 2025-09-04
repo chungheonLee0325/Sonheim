@@ -19,34 +19,25 @@ USparkShot::USparkShot()
 	}
 }
 
-void USparkShot::Server_OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
+void USparkShot::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
 	IsFired = false;
 
 	CurrentTime = 0.f;
 
-	Super::Server_OnCastStart(Caster, Target);
-
-	//OnCastFire();
+	Super::Activate(Caster, Target);
 }
 
-void USparkShot::Server_OnCastTick(float DeltaTime)
+void USparkShot::Tick(float DeltaTime)
 {
-	Super::Server_OnCastTick(DeltaTime);
-
-	// CurrentTime += DeltaTime;
-	// if (CurrentTime > DelayTime)
-	// {
-	// 	CurrentTime = 0.f;
-	// 	OnCastFire();
-	// }
+	Super::Tick(DeltaTime);
 }
 
-void USparkShot::Server_OnCastFire()
+void USparkShot::Fire()
 {
 	if (IsFired) return;
 
-	Super::Server_OnCastFire();
+	Super::Fire();
 
 	FireSparkShot();
 }
@@ -69,8 +60,6 @@ void USparkShot::FireSparkShot()
 		FAttackData* AttackData = GetAttackDataByIndex(0);
 		// ToDo : TempTarget -> m_Target으로 수정
 		ASonheimPlayer* TempTarget{Cast<ASonheimPlayer>(GetWorld()->GetFirstPlayerController()->GetPawn())};
-
-		//m_Target = TempTarget;
 
 		float Angle{StartAngle + AngleIncrease * i};
 		FVector Direction{

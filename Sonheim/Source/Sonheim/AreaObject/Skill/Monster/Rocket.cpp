@@ -4,22 +4,24 @@
 #include "Rocket.h"
 
 URocket::URocket()
-{}
-
-void URocket::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
 {
-	Super::OnCastStart(Caster, Target);
 }
 
-void URocket::OnCastTick(float DeltaTime)
+void URocket::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
-	Super::OnCastTick(DeltaTime);
+	Super::Activate(Caster, Target);
 }
 
-void URocket::OnCastFire()
+void URocket::Tick(float DeltaTime)
 {
-	Super::OnCastFire();
+	Super::Tick(DeltaTime);
+}
+
+void URocket::Fire()
+{
+	Super::Fire();
 }
 
 void URocket::Launch()
-{}
+{
+}

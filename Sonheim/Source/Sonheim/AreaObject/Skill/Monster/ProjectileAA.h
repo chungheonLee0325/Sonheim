@@ -17,12 +17,12 @@ class SONHEIM_API UProjectileAA : public UBaseSkill
 public:
 	UProjectileAA();
 
-	virtual void OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void OnCastTick(float DeltaTime) override;
+	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual void Tick(float DeltaTime) override;
 
-	virtual void OnCastFire() override;
-	virtual void OnCastEnd() override;
-	
+	virtual void Fire() override;
+	virtual void Complete() override;
+
 	void FireSandBlast();
 	UFUNCTION(Server, Reliable)
 	void SeverRPC_FireSandBlast();
@@ -32,5 +32,4 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class ASandBlast> SandBlastFactory;
-
 };

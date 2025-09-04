@@ -17,54 +17,45 @@ UProjectileBlade::UProjectileBlade()
 	}
 }
 
-void UProjectileBlade::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
+void UProjectileBlade::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
 	//CurrentTime = 0.f;
 
-	Super::OnCastStart(Caster, Target);
+	Super::Activate(Caster, Target);
 }
 
-void UProjectileBlade::OnCastTick(float DeltaTime)
+void UProjectileBlade::Tick(float DeltaTime)
 {
-	Super::OnCastTick(DeltaTime);
-
-	// CurrentTime += DeltaTime;
-	// if (CurrentTime > DelayTime)
-	// {
-	// 	CurrentTime = 0.f;
-	// 	OnCastFire();
-	// }
+	Super::Tick(DeltaTime);
 }
 
-void UProjectileBlade::OnCastFire()
+void UProjectileBlade::Fire()
 {
-	Super::OnCastFire();
+	Super::Fire();
 
 	FireBladeWind();
 }
 
-void UProjectileBlade::OnCastEnd()
+void UProjectileBlade::Complete()
 {
-	Super::OnCastEnd();
+	Super::Complete();
 }
 
 void UProjectileBlade::FireBladeWind()
 {
-	//FLog::Log("UProjectileBlade::OnCastFire");
-
 	// Data Table에서 셋팅했으면 셋팅 하기
 	if (m_SkillData->ElementClass != nullptr)
 	{
 		BladeWindFactory = m_SkillData->ElementClass;
 	}
-	
+
 	ABladeWind* SpawnedBladeWind{
 		GetWorld()->SpawnActor<ABladeWind>(BladeWindFactory, m_Caster->GetActorLocation(), m_Caster->GetActorRotation())
 	};
 
 	// ToDo : Notify에서 Index 주입
 	FAttackData* AttackData = GetAttackDataByIndex(0);
-	
+
 	m_TargetPos = m_Target->GetActorLocation();
 
 	if (SpawnedBladeWind)

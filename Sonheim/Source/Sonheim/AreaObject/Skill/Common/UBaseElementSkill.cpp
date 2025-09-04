@@ -5,27 +5,17 @@
 #include "Sonheim/Element/BaseElement.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
-void UUBaseElementSkill::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
+void UUBaseElementSkill::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
-	IsFired = false;
-	Super::OnCastStart(Caster, Target);
+    IsFired = false;
+    Super::Activate(Caster, Target);
 }
 
-void UUBaseElementSkill::OnCastFire()
+void UUBaseElementSkill::Fire()
 {
-	if (IsFired) return;
-	Super::OnCastFire();
-}
-
-void UUBaseElementSkill::Client_OnCastFire()
-{
-	Super::Client_OnCastFire();
-}
-
-void UUBaseElementSkill::Server_OnCastFire()
-{
-	Super::Server_OnCastFire();
-	FireElement();
+    if (IsFired) return;
+    Super::Fire();
+    FireElement();
 }
 
 void UUBaseElementSkill::FireElement()

@@ -9,32 +9,33 @@
 #include "Sonheim/Utilities/LogMacro.h"
 
 UElectricWave::UElectricWave()
-{}
-
-void UElectricWave::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
 {
-	Super::OnCastStart(Caster, Target);
-
-	CurrentTime = 0.f;
-	
-	OnCastFire();
 }
 
-void UElectricWave::OnCastTick(float DeltaTime)
+void UElectricWave::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
-	Super::OnCastTick(DeltaTime);
+	Super::Activate(Caster, Target);
+
+	CurrentTime = 0.f;
+
+	Fire();
+}
+
+void UElectricWave::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
 
 	CurrentTime += DeltaTime;
 	if (CurrentTime > DelayTime)
 	{
 		CurrentTime = 0.f;
-		OnCastFire();
+		Fire();
 	}
 }
 
-void UElectricWave::OnCastFire()
+void UElectricWave::Fire()
 {
-	Super::OnCastFire();
+	Super::Fire();
 
 	for (int32 i{}; i < AttackCount; ++i)
 	{
@@ -58,10 +59,10 @@ void UElectricWave::ShockWave()
 		DrawDebugSphere(GetWorld(), Start, Range, 32, FColor::Red, false, 0.1f, 0, 1.0f);
 		FLog::Log("ElectricWave::ShockWave");
 	}
-	
+
 	TArray<FOverlapResult> OverlapResults;
 	if (GetWorld()->OverlapMultiByChannel(OverlapResults, Start, FQuat::Identity, ECC_Visibility, CollisionShape,
-										QueryParams))
+	                                      QueryParams))
 	{
 		for (FOverlapResult& Overlap : OverlapResults)
 		{
@@ -69,20 +70,20 @@ void UElectricWave::ShockWave()
 			if (Player)
 			{
 				FVector PlayerLocation{Player->GetActorLocation()};
-				
+
 				FHitResult CustomHitResult;
 				CustomHitResult.Location = PlayerLocation;
 				CustomHitResult.ImpactPoint = PlayerLocation;
 				CustomHitResult.Normal = (PlayerLocation - Start).GetSafeNormal();
-				
+
 				if (m_Caster->bShowDebug)
 				{
 					LOG_PRINT(TEXT("%s"), *Player->GetName());
 					DrawDebugSphere(GetWorld(), PlayerLocation, 5, 32, FColor::Green, false, 1.0f, 0, 1.0f);
 				}
-				
+
 				FAttackData* AttackData = GetAttackDataByIndex(0);
-				m_Caster->CalcDamage(*AttackData, m_Caster, Player, CustomHitResult);	
+				m_Caster->CalcDamage(*AttackData, m_Caster, Player, CustomHitResult);
 			}
 		}
 	}

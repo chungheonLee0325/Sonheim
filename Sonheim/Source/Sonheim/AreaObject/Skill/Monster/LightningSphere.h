@@ -16,20 +16,19 @@ class SONHEIM_API ULightningSphere : public UBaseSkill
 
 public:
 	ULightningSphere();
-	
-	virtual void Server_OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void Server_OnCastTick(float DeltaTime) override;
 
-	virtual void Server_OnCastFire() override;
+	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual void Tick(float DeltaTime) override;
+
+	virtual void Fire() override;
 
 	void FireElectricBall();
 
 	float DelayTime = 2.0f;
 	float CurrentTime = 0.0f;
-	
+
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class AElectricBall> ElectricBallFactory;
 
 	bool IsFired = false;
-
 };

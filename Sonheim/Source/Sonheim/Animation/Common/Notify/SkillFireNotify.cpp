@@ -10,12 +10,18 @@ class AAreaObject;
 
 void USkillFireNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation)
 {
-	if (MeshComp && MeshComp->GetOwner() && MeshComp->GetOwner()->HasAuthority())
+	if (!MeshComp || !MeshComp->GetOwner()) return;
+	AAreaObject* owner = Cast<AAreaObject>(MeshComp->GetOwner());
+	if (!owner) return;
+	if (UBaseSkill* Skill = owner->GetCurrentSkill())
 	{
-		AAreaObject* owner = Cast<AAreaObject>(MeshComp->GetOwner());
-		if (owner != nullptr && owner->GetCurrentSkill() != nullptr)
+		if (owner->HasAuthority())
 		{
-			owner->GetCurrentSkill()->OnCastFire();
+			Skill->Fire();
+		}
+		else
+		{
+			owner->Server_NotifySkillFire(Skill->GetSkillID());
 		}
 	}
 }

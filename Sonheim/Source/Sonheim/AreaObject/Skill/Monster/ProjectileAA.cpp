@@ -20,61 +20,51 @@ UProjectileAA::UProjectileAA()
 	}
 }
 
-void UProjectileAA::OnCastStart(class AAreaObject* Caster, AAreaObject* Target)
+void UProjectileAA::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
 	//CurrentTime = 0.f;
 	FLog::Log("start");
 
-	Super::OnCastStart(Caster, Target);
-
+	Super::Activate(Caster, Target);
 }
 
-void UProjectileAA::OnCastTick(float DeltaTime)
+void UProjectileAA::Tick(float DeltaTime)
 {
-	Super::OnCastTick(DeltaTime);
-
-	// CurrentTime += DeltaTime;
-	// if (CurrentTime > DelayTime)
-	// {
-	// 	CurrentTime = 0.f;
-	// 	OnCastFire();
-	// }
+	Super::Tick(DeltaTime);
 }
 
-void UProjectileAA::OnCastFire()
+void UProjectileAA::Fire()
 {
-	Super::OnCastFire();
-	
+	Super::Fire();
+
 	FireSandBlast();
 	//SeverRPC_FireSandBlast();
 }
 
-void UProjectileAA::OnCastEnd()
+void UProjectileAA::Complete()
 {
 	FLog::Log("end");
 
-	Super::OnCastEnd();
-
+	Super::Complete();
 }
 
 void UProjectileAA::FireSandBlast()
 {
-
 	// Data Table에서 셋팅했으면 셋팅 하기
 	if (m_SkillData->ElementClass != nullptr)
 	{
 		SandBlastFactory = m_SkillData->ElementClass;
 	}
-	
+
 	ASandBlast* SpawnedSandBlast{
 		GetWorld()->SpawnActor<ASandBlast>(SandBlastFactory, m_Caster->GetActorLocation(), m_Caster->GetActorRotation())
 	};
 
 	// ToDo : Notify에서 Index 주입
 	FAttackData* AttackData = GetAttackDataByIndex(0);
-	
+
 	m_TargetPos = m_Target->GetActorLocation();
-	
+
 	if (SpawnedSandBlast)
 	{
 		SpawnedSandBlast->InitElement(m_Caster, m_Target, m_TargetPos, AttackData);
@@ -88,16 +78,16 @@ void UProjectileAA::FireSandBlast()
 void UProjectileAA::SeverRPC_FireSandBlast_Implementation()
 {
 	FLog::Log("UProjectileAA::OnCastFire");
-	
+
 	ASandBlast* SpawnedSandBlast{
 		GetWorld()->SpawnActor<ASandBlast>(SandBlastFactory, m_Caster->GetActorLocation(), m_Caster->GetActorRotation())
 	};
 
 	// ToDo : Notify에서 Index 주입
 	FAttackData* AttackData = GetAttackDataByIndex(0);
-	
+
 	m_TargetPos = m_Target->GetActorLocation();
-	
+
 	if (SpawnedSandBlast)
 	{
 		SpawnedSandBlast->InitElement(m_Caster, m_Target, m_TargetPos, AttackData);

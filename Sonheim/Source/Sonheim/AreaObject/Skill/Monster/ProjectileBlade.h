@@ -16,20 +16,18 @@ class SONHEIM_API UProjectileBlade : public UBaseSkill
 
 public:
 	UProjectileBlade();
-	
-	virtual void OnCastStart(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void OnCastTick(float DeltaTime) override;
 
-	virtual void OnCastFire() override;
-	virtual void OnCastEnd() override;
-	
+	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual void Tick(float DeltaTime) override;
+
+	virtual void Fire() override;
+	virtual void Complete() override;
+
 	void FireBladeWind();
-	
+
 	float DelayTime = 2.0f;
 	float CurrentTime = 0.0f;
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class ABladeWind> BladeWindFactory;
-	
-	
 };

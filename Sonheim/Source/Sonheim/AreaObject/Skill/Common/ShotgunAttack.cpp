@@ -25,24 +25,15 @@ void UShotgunAttack::InitSkill(FSkillData* SkillData)
     Super::InitSkill(SkillData);
 }
 
-void UShotgunAttack::Server_OnCastStart(AAreaObject* Caster, AAreaObject* Target)
+void UShotgunAttack::Activate(AAreaObject* Caster, AAreaObject* Target)
 {
-    Super::Server_OnCastStart(Caster, Target);
-
+    Super::Activate(Caster, Target);
     CachedAttackData = GetAttackDataByIndex(0);
 }
 
-void UShotgunAttack::Client_OnCastStart(AAreaObject* Caster, AAreaObject* Target)
+void UShotgunAttack::Fire()
 {
-    Super::Client_OnCastStart(Caster, Target);
-    
-    // 첫 번째 공격 데이터 캐싱
-    CachedAttackData = GetAttackDataByIndex(0);
-}
-
-void UShotgunAttack::Server_OnCastFire()
-{
-    Super::Server_OnCastFire();
+    Super::Fire();
     
     if (!m_Caster || !CachedAttackData)
         return;
@@ -104,10 +95,7 @@ void UShotgunAttack::Server_OnCastFire()
     }
 }
 
-void UShotgunAttack::Client_OnCastFire()
-{
-    Super::Client_OnCastFire();
-}
+// Client fire path removed; server executes Fire via RPC from AnimNotify
 
 void UShotgunAttack::FirePellet(const FVector& StartLocation, const FVector& Direction)
 {
