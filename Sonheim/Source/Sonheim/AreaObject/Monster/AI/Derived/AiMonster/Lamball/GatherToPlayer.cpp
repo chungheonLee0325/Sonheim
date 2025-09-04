@@ -25,7 +25,6 @@ void UGatherToPlayer::Enter()
 	bFlow = true;
 	bTarget = false;
 	bArrive = false;
-	m_Owner->IsWorked = true;
 }
 
 void UGatherToPlayer::Execute(float dt)
@@ -65,7 +64,6 @@ void UGatherToPlayer::Execute(float dt)
 		bArrive = distance < 320.f ? true : false;
 		if (bArrive)
 		{
-			m_Owner->IsWorked = false;
 		}
 		else
 		{
