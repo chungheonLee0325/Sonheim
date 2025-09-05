@@ -217,9 +217,9 @@ public:
 	bool bIsCanAttack = false;
 
 	UFUNCTION(BlueprintCallable)
-	void ActivateMonster();
+	virtual void ActivateMonster();
 	UFUNCTION(BlueprintCallable)
-	void DeactivateMonster();
+	virtual void DeactivateMonster();
 
 	virtual bool CanAttack(AActor* TargetActor) override;
 

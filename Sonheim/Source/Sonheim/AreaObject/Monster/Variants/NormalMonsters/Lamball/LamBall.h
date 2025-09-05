@@ -34,4 +34,8 @@ public:
 	
 	UPROPERTY(Replicated)
 	bool isDizzy{false};
+
+	virtual void ActivateMonster() override;
+
+	virtual void DeactivateMonster() override;
 };

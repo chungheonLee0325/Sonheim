@@ -84,3 +84,17 @@ void ALamBall::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLi
 
 	DOREPLIFETIME(ALamBall, isDizzy);
 }
+
+void ALamBall::ActivateMonster()
+{
+	Super::ActivateMonster();
+
+	isDizzy = false;
+}
+
+void ALamBall::DeactivateMonster()
+{
+	Super::DeactivateMonster();
+
+	isDizzy = true;
+}
