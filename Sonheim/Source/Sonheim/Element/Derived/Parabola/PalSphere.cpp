@@ -39,14 +39,14 @@ void APalSphere::BeginPlay()
 
 void APalSphere::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	UnbindRevealDelegates();  
+	UnbindRevealDelegates();
 	Super::EndPlay(EndPlayReason);
 }
 
 void APalSphere::BindRevealDelegates(UCaptureProgressWidget* W)
 {
 	if (!W) return;
-	
+
 	W->OnSegmentFilled.RemoveDynamic(this, &APalSphere::OnWidgetSegmentFilled);
 	W->OnRevealFinished.RemoveDynamic(this, &APalSphere::OnWidgetRevealFinished);
 
@@ -226,7 +226,8 @@ void APalSphere::CheckPalCatch(ASonheimPlayer* Caster, ABaseMonster* Target)
 }
 
 
-void APalSphere::HandleCaptureReveal(class ABaseMonster* Pal, const FPalCaptureRevealParams& Params, APalSphere* SourceSphere)
+void APalSphere::HandleCaptureReveal(class ABaseMonster* Pal, const FPalCaptureRevealParams& Params,
+                                     APalSphere* SourceSphere)
 {
 	if (SourceSphere != this) return;
 	if (!IsValid(Pal)) return;
@@ -250,8 +251,8 @@ void APalSphere::HandleCaptureReveal(class ABaseMonster* Pal, const FPalCaptureR
 }
 
 void APalSphere::StartCaptureProgressReveal(float Guess01, bool bSuccess, int32 Segments,
-                                     float SegmentTime, float InterDelay,
-                                     float StartDelay, int32 FailStageOverride)
+                                            float SegmentTime, float InterDelay,
+                                            float StartDelay, int32 FailStageOverride)
 {
 	if (!CaptureWidget) return;
 
@@ -265,7 +266,7 @@ void APalSphere::StartCaptureProgressReveal(float Guess01, bool bSuccess, int32 
 		BindRevealDelegates(UW);
 
 		UW->PlayCaptureProgressReveal(Guess01, bSuccess, Segments, SegmentTime,
-		                            InterDelay, StartDelay, FailStageOverride);
+		                              InterDelay, StartDelay, FailStageOverride);
 	}
 }
 
@@ -296,16 +297,45 @@ void APalSphere::OnWidgetRevealFinished(bool bSuccess)
 
 void APalSphere::NodOnce()
 {
-	// 짧게 Roll(+Angle) → 잠시 후 원위치
-	SkeletalMesh->AddLocalRotation(FRotator(0.f, 0.f, NodAngleDeg));
+	BP_OnNode();
+
+	// 좌 대각선(피치+롤) → 우 대각선 → 원상복구 한 사이클
+	// 진행 중 잔여 회전/타이머가 있으면 정리 후 시작
 	if (NodTimerHandle.IsValid())
 	{
 		GetWorldTimerManager().ClearTimer(NodTimerHandle);
 	}
-	GetWorldTimerManager().SetTimer(NodTimerHandle, this, &APalSphere::NodReturn, NodReturnDelay, false);
+	if (!FMath::IsNearlyZero(NodAccumPitch) || !FMath::IsNearlyZero(NodAccumRoll))
+	{
+		SkeletalMesh->AddLocalRotation(FRotator(-NodAccumPitch, 0.f, -NodAccumRoll));
+		NodAccumPitch = 0.f;
+		NodAccumRoll = 0.f;
+	}
+
+	// 1단계: 좌 대각선(전방 숙임 + 좌로 기울임)
+	SkeletalMesh->AddLocalRotation(FRotator(NodPitchDeg, 0.f, -NodRollDeg));
+	NodAccumPitch += NodPitchDeg;
+	NodAccumRoll += -NodRollDeg;
+
+	GetWorldTimerManager().SetTimer(NodTimerHandle, this, &APalSphere::NodStepRight, NodStepDelay, false);
+}
+
+void APalSphere::NodStepRight()
+{
+	// 2단계: 좌 대각 → 우 대각으로 롤만 반대로 교차(피치는 유지)
+	SkeletalMesh->AddLocalRotation(FRotator(0.f, 0.f, 2.f * NodRollDeg));
+	NodAccumRoll += 2.f * NodRollDeg;
+
+	GetWorldTimerManager().SetTimer(NodTimerHandle, this, &APalSphere::NodReturn, NodStepDelay, false);
 }
 
 void APalSphere::NodReturn()
 {
-	SkeletalMesh->AddLocalRotation(FRotator(0.f, 0.f, -NodAngleDeg));
+	// 3단계: 누적된 피치/롤을 정확히 원점으로 복귀
+	if (!FMath::IsNearlyZero(NodAccumPitch) || !FMath::IsNearlyZero(NodAccumRoll))
+	{
+		SkeletalMesh->AddLocalRotation(FRotator(-NodAccumPitch, 0.f, -NodAccumRoll));
+		NodAccumPitch = 0.f;
+		NodAccumRoll = 0.f;
+	}
 }
