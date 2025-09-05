@@ -117,7 +117,6 @@ void ABaseItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME(ABaseItem, bRequireInteraction);
 	DOREPLIFETIME(ABaseItem, InteractionType);
 	DOREPLIFETIME(ABaseItem, HoldDuration);
-	DOREPLIFETIME(ABaseItem, ItemRarity);
 }
 
 void ABaseItem::BeginPlay()
@@ -131,6 +130,7 @@ void ABaseItem::BeginPlay()
 	}
 
 	SetupComponents();
+	ApplyRarityVFX();
 }
 
 void ABaseItem::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -157,14 +157,9 @@ void ABaseItem::InitializeItem(int32 InItemID, const FItemSpawnOptions& Options)
 	if (m_GameInstance)
 	{
 		dt_ItemData = m_GameInstance->GetDataItem(m_ItemID);
-
-		if (dt_ItemData && RarityVFXComp)
-		{
-			auto vfx = RarityVFXMap.FindRef(dt_ItemData->ItemRarity);
-			RarityVFXComp->SetAsset(vfx);
-			RarityVFXComp->Activate(true);
-		}
 	}
+
+	ApplyRarityVFX();
 
 	SetupComponents();
 
@@ -263,6 +258,18 @@ void ABaseItem::SetupComponents()
 		DetectWidgetComponent->SetVisibility(false);
 		DetectWidgetComponent->SetActive(true);
 	}
+}
+
+void ABaseItem::OnRep_ItemID()
+{
+	if (!m_GameInstance) m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
+	if (m_GameInstance)
+		dt_ItemData = m_GameInstance->GetDataItem(m_ItemID);
+
+	// 메시 등 외형도 갱신
+	SetupComponents();
+	// 희귀도 VFX 반영
+	ApplyRarityVFX();
 }
 
 void ABaseItem::EnableAutoPickup()
@@ -471,4 +478,18 @@ void ABaseItem::Interact_Implementation(ASonheimPlayer* Player)
 		OnCollected(Player);
 		Multicast_OnCollected();
 	}
+}
+
+void ABaseItem::ApplyRarityVFX()
+{
+	if (!RarityVFXComp) return;
+
+	UNiagaraSystem* Sys = nullptr;
+	if (!dt_ItemData) return;
+	
+	Sys = RarityVFXMap.FindRef(dt_ItemData->ItemRarity);
+
+	RarityVFXComp->SetAsset(Sys);
+	if (Sys) RarityVFXComp->Activate(true);
+	else RarityVFXComp->DeactivateImmediate();
 }

@@ -9,11 +9,14 @@
 class UProgressBar;
 class UTextBlock;
 class UImage;
+class ABaseMonster;
+class UPalInventoryComponent;
+class UPalPartnerSkillComponent;
 
 UENUM(BlueprintType)
 enum class EUIKeyGuide : uint8
 {
-	None UMETA(DisplayName = "None"), 
+	None UMETA(DisplayName = "None"),
 	LButton UMETA(DisplayName = "LButton"),
 	RButton UMETA(DisplayName = "RButton"),
 };
@@ -35,7 +38,7 @@ public:
 
 	UFUNCTION()
 	void UpdateExp(int32 CurrentExp, int32 MaxExp, int32 Delta);
-	
+
 	UFUNCTION()
 	void UpdateStamina(float CurrentStamina, float Delta, float MaxStamina);
 
@@ -47,7 +50,7 @@ public:
 
 	UFUNCTION()
 	void AddOwnedPal(int MonsterID, int Index);
-	
+
 	UFUNCTION()
 	void SwitchSelectedPalIndex(int Index);
 	void ClearOwnedPals();
@@ -56,12 +59,12 @@ public:
 	void OnItemAdded(int ItemID, int ItemCount);
 
 	UFUNCTION(BlueprintImplementableEvent)
-	void OnItemPopupDisplay(UTexture2D* ItemIcon,const FText& ItemName, int ItemCount, FLinearColor ItemRarityColor);
+	void OnItemPopupDisplay(UTexture2D* ItemIcon, const FText& ItemName, int ItemCount, FLinearColor ItemRarityColor);
 
 	// 포획 UI를 업데이트하는 함수.
 	UFUNCTION(BlueprintImplementableEvent, Category = "Capture")
 	void UpdateCaptureUI(const FCaptureUIInfo& UIData);
-	
+
 	// 무기 타입에 따라 크로스헤어 종류 변경
 	UFUNCTION(BlueprintCallable, Category = "Crosshair")
 	void SetCrosshairType(EWeaponType WeaponType);
@@ -69,7 +72,20 @@ public:
 	// 이동 속도에 따라 크로스헤어 스케일 업데이트
 	UFUNCTION(BlueprintCallable, Category = "Crosshair")
 	void UpdateCrosshairScale(float ScaleRatio);
-	
+
+	// Pal 인벤토리/소환 델리게이트 핸들러
+	UFUNCTION()
+	void HandlePalAdded(class ABaseMonster* Pal, int32 Index);
+
+	UFUNCTION()
+	void HandlePalRemoved(int32 Index);
+
+	UFUNCTION()
+	void HandlePalSummoned(class ABaseMonster* SummonedPal);
+
+	UFUNCTION()
+	void HandlePalDismissed();
+
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* StaminaBar;
@@ -121,6 +137,28 @@ protected:
 	class UImage* SelectBG3;
 	UPROPERTY(meta = (BindWidget))
 	class UImage* SelectBG4;
+	UPROPERTY(meta = (BindWidget))
+	class UImage* SummonBG_0;
+	UPROPERTY(meta = (BindWidget))
+	class UImage* SummonBG_1;
+	UPROPERTY(meta = (BindWidget))
+	class UImage* SummonBG_2;
+	UPROPERTY(meta = (BindWidget))
+	class UImage* SummonBG_3;
+	UPROPERTY(meta = (BindWidget))
+	class UImage* SummonBG_4;
+
+	// Pal 획득 연출용 애니메이션
+	UPROPERTY(meta = (BindWidgetAnim), Transient)
+	class UWidgetAnimation* PalAcquire_0;
+	UPROPERTY(meta = (BindWidgetAnim), Transient)
+	class UWidgetAnimation* PalAcquire_1;
+	UPROPERTY(meta = (BindWidgetAnim), Transient)
+	class UWidgetAnimation* PalAcquire_2;
+	UPROPERTY(meta = (BindWidgetAnim), Transient)
+	class UWidgetAnimation* PalAcquire_3;
+	UPROPERTY(meta = (BindWidgetAnim), Transient)
+	class UWidgetAnimation* PalAcquire_4;
 
 	UPROPERTY(EditAnywhere, Category="Crosshair|Scale")
 	float CrosshairScaleMin = 1.0f;
@@ -139,9 +177,28 @@ private:
 	FORCEINLINE class ASonheimPlayer* GetPlayerFast() const { return CachedPlayer.Get(); }
 
 	UPROPERTY()
-	TMap<int,UImage*> PalSlots;
+	TMap<int, UImage*> PalSlots;
 	UPROPERTY()
-	TMap<int,UImage*> SelectBGs;
+	TMap<int, UImage*> SelectBGs;
+	UPROPERTY()
+	TMap<int, UImage*> SummonBGs;
+	UPROPERTY()
+	TMap<int, UWidgetAnimation*> PalAcquireAnims;
+
+	// Delegate sources
+	UPROPERTY()
+	UPalInventoryComponent* CachedPalInventory = nullptr;
+	UPROPERTY()
+	UPalPartnerSkillComponent* CachedPartnerSkill = nullptr;
+
+	// 현재 소환된 인덱스(없으면 -1)
+	int32 CurrentSummonedIndex = -1;
+
+	void BindToPlayerComponents();
+	void UnbindFromPlayerComponents();
+	void SyncInitialPalUI();
+	void SetSummonBGActive(int32 Index, bool bActive);
+	void PlayPalAcquiredFeedback(int32 Index);
 
 	float CrosshairTargetScale = 1.0f;
 	float CrosshairCurrentScale = 1.0f;

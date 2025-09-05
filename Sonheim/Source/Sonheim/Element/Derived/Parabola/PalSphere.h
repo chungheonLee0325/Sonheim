@@ -21,25 +21,25 @@ public:
 	// Sets default values for this actor's properties
 	APalSphere();
 
-protected: 
+protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	virtual void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-							UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
-							const FHitResult& SweepResult) override;
+	                            UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
+	                            const FHitResult& SweepResult) override;
 
 	virtual void OnComponentHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-								FVector NormalImpulse, const FHitResult& Hit) override;
-	
+	                            FVector NormalImpulse, const FHitResult& Hit) override;
+
 
 	UFUNCTION()
 	void HandleCaptureReveal(class ABaseMonster* Pal, const FPalCaptureRevealParams& Params, APalSphere* SourceSphere);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	USkeletalMeshComponent* SkeletalMesh = nullptr;
-	
+
 	UPROPERTY(VisibleAnywhere)
 	UWidgetComponent* CaptureWidget = nullptr;
 
@@ -55,12 +55,16 @@ protected:
 
 	UFUNCTION(BlueprintImplementableEvent, Category="Capture|FX")
 	void BP_OnSegmentFilled(int32 SegmentIndex);
-	
+
+	UFUNCTION(BlueprintImplementableEvent, Category="Capture|FX")
+	void BP_OnNode();
+
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	virtual void InitElement(AAreaObject* Caster, AAreaObject* Target, const FVector& TargetLocation, FAttackData* AttackData) override;
+	virtual void InitElement(AAreaObject* Caster, AAreaObject* Target, const FVector& TargetLocation,
+	                         FAttackData* AttackData) override;
 
 	virtual FVector Fire(AAreaObject* Caster, AAreaObject* Target, FVector TargetLocation, float ArcValue) override;
 
@@ -80,9 +84,9 @@ private:
 
 	// 헬퍼 함수
 	/** 진행 위젯 호출 편의 */
-	void StartCaptureProgressReveal(float Guess01, bool bSuccess, int32 Segments=3,
-							 float SegmentTime=0.55f, float InterDelay=0.2f,
-							 float StartDelay=0.0f, int32 FailStageOverride=-1);
+	void StartCaptureProgressReveal(float Guess01, bool bSuccess, int32 Segments = 3,
+	                                float SegmentTime = 0.55f, float InterDelay = 0.2f,
+	                                float StartDelay = 0.0f, int32 FailStageOverride = -1);
 	/** 소유자 클라에서만 델리게이트 연결 */
 	void TryBindToCaptureComp();
 	/** 연출 동안 흔들림 방지 */
@@ -97,12 +101,18 @@ private:
 
 	/** 회전 연출 파라미터 */
 	UPROPERTY(EditDefaultsOnly, Category="Capture|FX")
-	float NodAngleDeg = 18.f;
+	float NodPitchDeg = 12.f; // 전방으로 숙이는 각도
 
 	UPROPERTY(EditDefaultsOnly, Category="Capture|FX")
-	float NodReturnDelay = 0.1f;
+	float NodRollDeg = 10.f; // 좌우 기울기(대각 연출)
+
+	UPROPERTY(EditDefaultsOnly, Category="Capture|FX")
+	float NodStepDelay = 0.08f; // 좌→우, 우→복귀 단계 간 지연
 
 	FTimerHandle NodTimerHandle;
+	float NodAccumPitch = 0.f;
+	float NodAccumRoll = 0.f;
 	void NodOnce();
 	void NodReturn();
+	void NodStepRight();
 };
