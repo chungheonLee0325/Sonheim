@@ -10,9 +10,9 @@ class USphereComponent;
 class UWidgetComponent;
 class UDataTable;
 class UInventoryComponent;
+class USoundBase;
 class ASonheimPlayer;
 class ASonheimPlayerController;
-class UWidgetComponent;
 class UCraftingQueueWidget;
 class UDetectWidget;
 
@@ -198,6 +198,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Crafting|Work")
 	float StationBaseWorkPerSecond = 0.f;
 
+    // SFX
+    UPROPERTY(EditDefaultsOnly, Category="Crafting|SFX")
+    USoundBase* CraftWorkSFX = nullptr;
+	// 제작 중 주기 재생 간격
+    UPROPERTY(EditDefaultsOnly, Category="Crafting|SFX", meta=(ClampMin="0.05", ClampMax="5.0"))
+    float CraftSFXInterval = 0.9f;
+
 	// State
 	UPROPERTY(Replicated, VisibleAnywhere, Category="Crafting|State")
 	FName SelectedRecipe;
@@ -205,7 +212,14 @@ protected:
 	UPROPERTY(Replicated, VisibleAnywhere, Category="Crafting|State")
 	ASonheimPlayer* UIOwner = nullptr;
 
-	// Server-only
-	TSet<TWeakObjectPtr<ASonheimPlayer>> Assistants;
-	bool bIsDetected = false;
+    // Server-only
+    TSet<TWeakObjectPtr<ASonheimPlayer>> Assistants;
+    bool bIsDetected = false;
+	
+private:
+    // SFX control (작업 추가 시 1회 재생, 최소 간격 제한)
+    float LastCraftSfxServerTime = -1000.f;
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayCraftSfx();
+    void PlayCraftSfxOnce();
 };

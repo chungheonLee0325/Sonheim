@@ -11,6 +11,7 @@
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "Sonheim/UI/Widget/GameObject/Crafting/CraftingQueueWidget.h"
+#include "Kismet/GameplayStatics.h"
 
 ACraftingStation::ACraftingStation()
 {
@@ -57,7 +58,7 @@ ACraftingStation::ACraftingStation()
 
 void ACraftingStation::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 
 	if (DetectWidget && DetectWidgetClass)
 	{
@@ -81,7 +82,6 @@ void ACraftingStation::BeginPlay()
 		}
 	}
 }
-
 
 void ACraftingStation::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -261,14 +261,25 @@ void ACraftingStation::ServerStartWork_Implementation(ASonheimPlayer* Requestor,
 	ActiveWork.UnitsTotal = Units;
 	ActiveWork.UnitsDone = 0;
 	ActiveWork.WorkAccumulated = 0.f;
-	bHasActiveWork = true;
+    bHasActiveWork = true;
 
-	ForceNetUpdate();
-	OnRep_ActiveWork();
+    ForceNetUpdate();
+    OnRep_ActiveWork();
 }
 
 void ACraftingStation::ServerAddWork_Implementation(float WorkDelta, class ASonheimPlayer* Worker)
 {
+    // 작업 입력마다 SFX 재생(서버 시간 기준 최소 간격으로 스로틀링)
+    if (CraftWorkSFX)
+    {
+        const float Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+        if (Now - LastCraftSfxServerTime >= CraftSFXInterval)
+        {
+            LastCraftSfxServerTime = Now;
+            Multicast_PlayCraftSfx();
+        }
+    }
+
 	ActiveWork.WorkAccumulated += WorkDelta;
 
 	while (ActiveWork.WorkAccumulated >= ActiveWork.WorkPerUnit && bHasActiveWork)
@@ -412,6 +423,19 @@ UDetectWidget* ACraftingStation::GetDetectWidget() const
 
 const FCraftingRecipe* ACraftingStation::FindRecipe(FName Row) const
 {
-	if (!RecipeTable) return nullptr;
-	return RecipeTable->FindRow<FCraftingRecipe>(Row, TEXT("CraftingStation"));
+    if (!RecipeTable) return nullptr;
+    return RecipeTable->FindRow<FCraftingRecipe>(Row, TEXT("CraftingStation"));
+}
+
+// ===== SFX Helpers =====
+void ACraftingStation::PlayCraftSfxOnce()
+{
+    if (!CraftWorkSFX) return;
+    if (GetNetMode() == NM_DedicatedServer) return;
+    UGameplayStatics::PlaySoundAtLocation(this, CraftWorkSFX, GetActorLocation());
+}
+
+void ACraftingStation::Multicast_PlayCraftSfx_Implementation()
+{
+    PlayCraftSfxOnce();
 }
