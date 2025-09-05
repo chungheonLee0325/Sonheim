@@ -27,6 +27,13 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	// 초기 동기화 상태 확인용 (클라 UI가 초깃값 채우기 애니메이션을 억제할 때 사용)
+	UFUNCTION(BlueprintPure, Category = "Pal Inventory")
+	bool IsInitialSyncInProgress() const { return bInitialSyncInProgress; }
+
+	UFUNCTION(BlueprintPure, Category = "Pal Inventory")
+	bool IsRepOwnedPalsInitialized() const { return bRepOwnedPalsInitialized; }
+
 	// Pal 관리 함수들
 	UFUNCTION(BlueprintCallable, Category = "Pal Inventory")
 	bool AddPal(ABaseMonster* NewPal);
@@ -40,14 +47,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Pal Inventory")
 	ABaseMonster* GetSelectedPal() const;
 
+	// 현재 보유 목록에서 Pal의 인덱스를 찾기. 없으면 -1 반환
+	UFUNCTION(BlueprintCallable, Category = "Pal Inventory")
+	int32 FindPalIndex(ABaseMonster* Pal) const;
+
 	UFUNCTION(BlueprintCallable, Category = "Pal Inventory")
 	void SwitchPalSlot(int32 Direction);
 
 	UFUNCTION(Server, Reliable, Category = "Pal Inventory")
 	void ServerRPC_SwitchPalSlot(int32 Direction);
-	
-	UFUNCTION(Client, Reliable, Category = "Pal Inventory")
-	void ClientRPC_SwitchPalSlot(int32 Direction);
 
 
 	UFUNCTION(BlueprintCallable, Category = "Pal Inventory")
@@ -75,20 +83,11 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	void BindDelegates();
-	UFUNCTION()
-	void HandlePalAdded(ABaseMonster* Pal, int32 Index);
-	UFUNCTION()
-	void HandlePalRemoved(int32 Index);
-	UFUNCTION()
-	void HandleSelectedPalChanged(int32 NewIndex);
 
 	UFUNCTION()
 	void OnRep_OwnedPals();
 	UFUNCTION()
 	void OnRep_CurrentPalIndex();
-
-	void RefreshAllPalUI();
 
 private:
 	// 소유한 Pal 목록
@@ -101,4 +100,9 @@ private:
 
 	UPROPERTY()
 	ASonheimPlayer* OwnerPlayer;
+
+	// 클라이언트에서 소유 팔 목록의 이전 상태를 추적하여 OnRep 시 변경분만 브로드캐스트
+	TArray<TWeakObjectPtr<ABaseMonster>> PrevOwnedPals;
+	bool bRepOwnedPalsInitialized = false;
+	bool bInitialSyncInProgress = false;
 };

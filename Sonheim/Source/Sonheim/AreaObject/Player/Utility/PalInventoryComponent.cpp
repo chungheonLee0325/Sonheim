@@ -3,8 +3,6 @@
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
-#include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
-#include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
 UPalInventoryComponent::UPalInventoryComponent()
@@ -16,12 +14,6 @@ UPalInventoryComponent::UPalInventoryComponent()
 void UPalInventoryComponent::InitializeWithPlayer(ASonheimPlayer* Player)
 {
 	OwnerPlayer = Player;
-
-	// 델리게이트 바인드 (로컬 플레이어인 경우)
-	if (OwnerPlayer && OwnerPlayer->IsLocallyControlled())
-	{
-		BindDelegates();
-	}
 }
 
 void UPalInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -38,56 +30,6 @@ void UPalInventoryComponent::BeginPlay()
 	Super::BeginPlay();
 }
 
-void UPalInventoryComponent::BindDelegates()
-{
-	// UI 업데이트 바인드
-	OnPalAdded.AddDynamic(this, &UPalInventoryComponent::HandlePalAdded);
-	OnPalRemoved.AddDynamic(this, &UPalInventoryComponent::HandlePalRemoved);
-	OnSelectedPalChanged.AddDynamic(this, &UPalInventoryComponent::HandleSelectedPalChanged);
-}
-
-void UPalInventoryComponent::HandlePalAdded(ABaseMonster* Pal, int32 Index)
-{
-	if (!OwnerPlayer || !OwnerPlayer->IsLocallyControlled())
-		return;
-
-	if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(OwnerPlayer->GetController()))
-	{
-		if (UPlayerStatusWidget* StatusWidget = PC->GetPlayerStatusWidget())
-		{
-			StatusWidget->AddOwnedPal(Pal->m_AreaObjectID, Index);
-		}
-	}
-}
-
-void UPalInventoryComponent::HandlePalRemoved(int32 Index)
-{
-	if (!OwnerPlayer || !OwnerPlayer->IsLocallyControlled())
-		return;
-
-	if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(OwnerPlayer->GetController()))
-	{
-		if (UPlayerStatusWidget* StatusWidget = PC->GetPlayerStatusWidget())
-		{
-			//StatusWidget->RemoveOwnedPal(Index);
-		}
-	}
-}
-
-void UPalInventoryComponent::HandleSelectedPalChanged(int32 NewIndex)
-{
-	if (!OwnerPlayer || !OwnerPlayer->IsLocallyControlled())
-		return;
-
-	if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(OwnerPlayer->GetController()))
-	{
-		if (UPlayerStatusWidget* StatusWidget = PC->GetPlayerStatusWidget())
-		{
-			StatusWidget->SwitchSelectedPalIndex(NewIndex);
-		}
-	}
-}
-
 bool UPalInventoryComponent::AddPal(ABaseMonster* NewPal)
 {
 	if (!NewPal || OwnedPals.Num() >= MaxPalCount)
@@ -101,8 +43,8 @@ bool UPalInventoryComponent::AddPal(ABaseMonster* NewPal)
 	{
 		int32 NewIndex = OwnedPals.Add(NewPal);
 
-		// OnRep 함수가 클라이언트에서 호출됨
-		OnRep_OwnedPals();
+		// 서버는 즉시 로컬 브로드캐스트
+		OnPalAdded.Broadcast(NewPal, NewIndex);
 
 		FLog::Log("Pal added successfully at index: {}", NewIndex);
 		return true;
@@ -122,8 +64,8 @@ bool UPalInventoryComponent::RemovePal(int32 Index)
 	{
 		OwnedPals.RemoveAt(Index);
 
-		// OnRep 함수가 클라이언트에서 호출됨
-		OnRep_OwnedPals();
+		// 서버 로컬 브로드캐스트만 수행
+		OnPalRemoved.Broadcast(Index);
 
 		return true;
 	}
@@ -147,8 +89,22 @@ ABaseMonster* UPalInventoryComponent::GetSelectedPal() const
 
 void UPalInventoryComponent::SwitchPalSlot(int32 Direction)
 {
-	if (GetOwnerRole() != ROLE_Authority || OwnedPals.Num() == 0)
+	if (OwnedPals.Num() == 0)
 	{
+		return;
+	}
+
+	// 클라에서 호출되면 즉시 UI 예측 갱신 후 서버로 위임
+	if (GetOwnerRole() != ROLE_Authority)
+	{
+		int32 Predicted = (CurrentPalIndex + Direction);
+		if (OwnedPals.Num() > 0)
+		{
+			Predicted %= OwnedPals.Num();
+			if (Predicted < 0) Predicted += OwnedPals.Num();
+			OnSelectedPalChanged.Broadcast(Predicted);
+		}
+		ServerRPC_SwitchPalSlot(Direction);
 		return;
 	}
 
@@ -159,7 +115,8 @@ void UPalInventoryComponent::SwitchPalSlot(int32 Direction)
 	}
 
 	CurrentPalIndex = NewIndex;
-	
+
+	// 서버는 즉시 브로드캐스트
 	OnSelectedPalChanged.Broadcast(CurrentPalIndex);
 
 	FLog::Log("Switched to Pal index: {}", CurrentPalIndex);
@@ -167,9 +124,6 @@ void UPalInventoryComponent::SwitchPalSlot(int32 Direction)
 
 void UPalInventoryComponent::ServerRPC_SwitchPalSlot_Implementation(int32 Direction)
 {
-	// 클라예측
-	ClientRPC_SwitchPalSlot(Direction);
-	
 	if (GetOwnerRole() != ROLE_Authority || OwnedPals.Num() == 0)
 	{
 		return;
@@ -182,8 +136,12 @@ void UPalInventoryComponent::ServerRPC_SwitchPalSlot_Implementation(int32 Direct
 	}
 
 	CurrentPalIndex = NewIndex;
-	
+
+	// 서버에서 변경 → 소유자에게 Replicate, 클라에서는 먼저 적용했으므로 다르면 롤백 
 	OnSelectedPalChanged.Broadcast(CurrentPalIndex);
+
+	// 클라 반응성 나쁘면 아래 방법으로 전환예정
+	//GetOwner()->ForceNetUpdate();
 
 	FLog::Log("Switched to Pal index: {}", CurrentPalIndex);
 }
@@ -193,62 +151,82 @@ void UPalInventoryComponent::OnRep_CurrentPalIndex()
 	OnSelectedPalChanged.Broadcast(CurrentPalIndex);
 }
 
-void UPalInventoryComponent::ClientRPC_SwitchPalSlot_Implementation(int32 Direction)
-{
-	if (OwnedPals.Num() == 0)
-	{
-		return;
-	}
-
-	int32 NewIndex = (CurrentPalIndex + Direction) % OwnedPals.Num();
-	if (NewIndex < 0)
-	{
-		NewIndex += OwnedPals.Num();
-	}
-
-	CurrentPalIndex = NewIndex;
-	
-	OnSelectedPalChanged.Broadcast(CurrentPalIndex);
-
-	FLog::Log("Switched to Pal index: {}", CurrentPalIndex);
-}
-
 void UPalInventoryComponent::OnRep_OwnedPals()
 {
-	// 모든 Pal UI 재구성
-	RefreshAllPalUI();
-
-	// 브로드캐스트
-	for (int32 i = 0; i < OwnedPals.Num(); ++i)
+	// 초기 동기화 단계: 최초 1회는 전체 추가를 브로드캐스트하되, 위젯에서 애니메이션 억제용 플래그를 참조하도록 함
+	if (!bRepOwnedPalsInitialized)
 	{
-		if (OwnedPals[i])
+		bInitialSyncInProgress = true;
+
+		for (int32 i = 0; i < OwnedPals.Num(); ++i)
 		{
-			OnPalAdded.Broadcast(OwnedPals[i], i);
+			if (OwnedPals[i])
+			{
+				OnPalAdded.Broadcast(OwnedPals[i], i);
+			}
+		}
+
+		PrevOwnedPals.Reset();
+		PrevOwnedPals.Reserve(OwnedPals.Num());
+		for (ABaseMonster* Pal : OwnedPals)
+		{
+			PrevOwnedPals.Add(Pal);
+		}
+
+		OnSelectedPalChanged.Broadcast(CurrentPalIndex);
+
+		bRepOwnedPalsInitialized = true;
+		bInitialSyncInProgress = false;
+		return;
+	}
+
+	const int32 OldNum = PrevOwnedPals.Num();
+	const int32 NewNum = OwnedPals.Num();
+	const int32 MaxNum = FMath::Max(OldNum, NewNum);
+
+	for (int32 i = 0; i < MaxNum; ++i)
+	{
+		ABaseMonster* OldPal = (i < OldNum) ? PrevOwnedPals[i].Get() : nullptr;
+		ABaseMonster* NewPal = (i < NewNum) ? OwnedPals[i] : nullptr;
+
+		if (OldPal == NewPal)
+		{
+			continue;
+		}
+
+		if (OldPal)
+		{
+			OnPalRemoved.Broadcast(i);
+		}
+		if (NewPal)
+		{
+			OnPalAdded.Broadcast(NewPal, i);
 		}
 	}
+
+	// 최신 상태 저장
+	PrevOwnedPals.Reset();
+	PrevOwnedPals.Reserve(OwnedPals.Num());
+	for (ABaseMonster* Pal : OwnedPals)
+	{
+		PrevOwnedPals.Add(Pal);
+	}
+
 	OnSelectedPalChanged.Broadcast(CurrentPalIndex);
 }
 
-void UPalInventoryComponent::RefreshAllPalUI()
+int32 UPalInventoryComponent::FindPalIndex(ABaseMonster* Pal) const
 {
-	if (!OwnerPlayer || !OwnerPlayer->IsLocallyControlled())
-		return;
-
-	if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(OwnerPlayer->GetController()))
+	if (!Pal)
 	{
-		if (UPlayerStatusWidget* StatusWidget = PC->GetPlayerStatusWidget())
+		return -1;
+	}
+	for (int32 i = 0; i < OwnedPals.Num(); ++i)
+	{
+		if (OwnedPals[i] == Pal)
 		{
-			// 기존 UI 클리어
-			StatusWidget->ClearOwnedPals();
-
-			// 모든 Pal 다시 추가
-			for (int32 i = 0; i < OwnedPals.Num(); ++i)
-			{
-				if (OwnedPals[i])
-				{
-					StatusWidget->AddOwnedPal(OwnedPals[i]->m_AreaObjectID, i);
-				}
-			}
+			return i;
 		}
 	}
+	return -1;
 }
