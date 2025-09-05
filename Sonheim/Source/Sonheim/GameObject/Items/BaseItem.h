@@ -114,10 +114,12 @@ public:
 	// Getter
 	bool CanBeCollectedBy(ASonheimPlayer* Player);
 	USphereComponent* GetCollectionSphere() const { return CollectionSphere; }
-
-	// Properties - Replicated
-	UPROPERTY(Replicated, EditDefaultsOnly, BlueprintReadWrite, Category = "Data")
+	
+	UPROPERTY(ReplicatedUsing=OnRep_ItemID, EditDefaultsOnly, BlueprintReadWrite, Category = "Data")
 	int32 m_ItemID = 0;
+
+	UFUNCTION()
+	void OnRep_ItemID();
 
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Interaction")
 	bool bRequireInteraction = false;
@@ -179,11 +181,7 @@ protected:
 	// 하이라이트
 	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
 	UMaterialInterface* HighlightMaterial;
-
-	// 아이템 속성
-	UPROPERTY(Replicated, EditDefaultsOnly, Category = "Item")
-	EItemRarity ItemRarity = EItemRarity::Common;
-
+	
 	// 오버랩 이벤트
 	UFUNCTION()
 	virtual void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent,
@@ -214,4 +212,6 @@ private:
 
 	// 초기화 헬퍼 함수
 	void SetupComponents();
+
+	void ApplyRarityVFX();
 };
