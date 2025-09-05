@@ -1,14 +1,64 @@
+// ContainerComponent.h
+//
+// [컨테이너 복제 원칙]
+// - FastArray(FFastArraySerializer)로 슬롯 단위 델타 복제를 수행합니다.
+//   (추가/삭제/수정/스왑 시 변경된 엔트리만 Dirty 처리)
+// - 구독형 복제: 열람 중인 플레이어가 있을 때만 컨테이너 리스트를 복제합니다.
+//   (PreReplication에서 Subscribers 유무로 활성/비활성 제어)
+
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "Net/UnrealNetwork.h"
+#include "Net/Serialization/FastArraySerializer.h"
 #include "ContainerComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnContainerInventoryChanged, const TArray<FInventoryItem>&, Items);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnContainerItemAdded, int32, ItemID, int32, Count);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnContainerItemRemoved, int32, ItemID, int32, Count);
+
+USTRUCT(BlueprintType)
+struct FRepContainerEntry : public FFastArraySerializerItem
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	int32 SlotIndex = 0;
+
+	UPROPERTY()
+	int32 ItemID = 0;
+
+	UPROPERTY()
+	int32 Count = 0;
+};
+
+USTRUCT(BlueprintType)
+struct FRepContainerList : public FFastArraySerializer
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	TArray<FRepContainerEntry> Items;
+
+	UPROPERTY(NotReplicated)
+	class UContainerComponent* Owner = nullptr;
+
+	bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms)
+	{
+		return FFastArraySerializer::FastArrayDeltaSerialize<FRepContainerEntry, FRepContainerList>(
+			Items, DeltaParms, *this);
+	}
+};
+
+template <>
+struct TStructOpsTypeTraits<FRepContainerList> : public TStructOpsTypeTraitsBase2<FRepContainerList>
+{
+	enum { WithNetDeltaSerializer = true };
+};
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class SONHEIM_API UContainerComponent : public UActorComponent
@@ -19,6 +69,7 @@ public:
 	UContainerComponent();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker) override;
 	virtual void BeginPlay() override;
 
 	// 컨테이너 초기화
@@ -69,9 +120,15 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerSwapItems(int32 FromIndex, int32 ToIndex);
 
+	// View subscription (open/close container)
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Container|Net")
+	void ServerSubscribeViewer(APlayerController* Viewer);
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Container|Net")
+	void ServerUnsubscribeViewer(APlayerController* Viewer);
+
 	UFUNCTION(BlueprintCallable, Category = "Container")
 	void SetMaxSlots(int32 NewMaxSlots) { MaxSlots = NewMaxSlots; }
-	
+
 	// 이벤트
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnContainerInventoryChanged OnContainerInventoryChanged;
@@ -83,7 +140,12 @@ public:
 	FOnContainerItemRemoved OnContainerItemRemoved;
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Container", ReplicatedUsing = OnRep_ContainerItems)
+	// FastArray replicated entries
+	UPROPERTY(ReplicatedUsing=OnRep_RepContainerItems)
+	FRepContainerList RepContainerItems;
+
+	// Local mirror for UI/logic; rebuilt on clients
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Container")
 	TArray<FInventoryItem> ContainerItems;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Container", Replicated)
@@ -93,7 +155,7 @@ protected:
 	int32 MaxStackSize = 999;
 
 	UFUNCTION()
-	void OnRep_ContainerItems();
+	void OnRep_RepContainerItems();
 
 private:
 	UPROPERTY()
@@ -106,4 +168,18 @@ private:
 	bool IsValidItemID(int32 ItemID) const;
 	FItemData* GetItemData(int32 ItemID) const;
 	void BroadcastInventoryChanged();
+
+	// Rebuild local mirror array from FastArray (sorted by SlotIndex)
+	void RebuildContainerArrayFromRep();
+	// Rebuild FastArray from local array (server only)
+	void SyncRepFromContainerArray();
+
+	// Fine-grained FastArray helpers (server only)
+	void UpdateRepEntryAtIndex(int32 Index);
+	void InsertRepEntryAtIndex(int32 Index, const FInventoryItem& Item);
+	void RemoveRepEntryAtIndex(int32 Index);
+
+	// Active viewers (server only). When empty, container list will not replicate.
+	UPROPERTY(Transient)
+	TSet<TWeakObjectPtr<APlayerController>> Subscribers;
 };

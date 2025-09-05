@@ -1,5 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+// InventoryComponent.h
+//
+// [인벤토리 복제 원칙]
+// - FastArray로 슬롯 단위 델타 복제를 수행합니다(소유자 전용 COND_OwnerOnly).
+// - 서버에서만 인벤토리 변경이 일어나며, 변경 슬롯만 Dirty 처리하여 전송합니다.
+// - 클라이언트는 OnRep(FastArray)에서 로컬 미러 배열을 재구성하고 UI를 갱신합니다.
+
 #pragma once
 
 #include "CoreMinimal.h"
@@ -7,6 +14,7 @@
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "Net/UnrealNetwork.h"
 #include "Engine/NetSerialization.h"
+#include "Net/Serialization/FastArraySerializer.h"
 #include "InventoryComponent.generated.h"
 
 class ASonheimPlayerState;
@@ -47,6 +55,45 @@ struct FEquippedSlot
 	}
 };
 
+USTRUCT(BlueprintType)
+struct FRepInventoryEntry : public FFastArraySerializerItem
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	int32 SlotIndex = 0;
+
+	UPROPERTY()
+	int32 ItemID = 0;
+
+	UPROPERTY()
+	int32 Count = 0;
+};
+
+USTRUCT(BlueprintType)
+struct FRepInventoryList : public FFastArraySerializer
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	TArray<FRepInventoryEntry> Items;
+
+	UPROPERTY(NotReplicated)
+	class UInventoryComponent* Owner = nullptr;
+
+	bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms)
+	{
+		return FFastArraySerializer::FastArrayDeltaSerialize<FRepInventoryEntry, FRepInventoryList>(
+			Items, DeltaParms, *this);
+	}
+};
+
+template <>
+struct TStructOpsTypeTraits<FRepInventoryList> : public TStructOpsTypeTraitsBase2<FRepInventoryList>
+{
+	enum { WithNetDeltaSerializer = true };
+};
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class SONHEIM_API UInventoryComponent : public UActorComponent
 {
@@ -69,7 +116,12 @@ public:
 	int32 MaxItemStackCount = 9999;
 
 	// 인벤토리 데이터
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Inventory", ReplicatedUsing=OnRep_InventoryItems)
+	// FastArray replicated entries (owner-only)
+	UPROPERTY(ReplicatedUsing=OnRep_RepItems)
+	FRepInventoryList RepItems;
+
+	// Local mirror for UI/logic
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Inventory")
 	TArray<FInventoryItem> InventoryItems;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Inventory", ReplicatedUsing=OnRep_EquippedItems)
@@ -80,7 +132,7 @@ public:
 
 	// OnRep 함수들
 	UFUNCTION()
-	void OnRep_InventoryItems();
+	void OnRep_RepItems();
 
 	UFUNCTION()
 	void OnRep_EquippedItems();
@@ -228,6 +280,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category="Events")
 	FOnItemRemoved OnItemRemoved;
 
+	// SkillComponent 연동을 위한 활성 무기 그랜트 ID(이 컴포넌트에서 관리)
+	UPROPERTY()
+	FGuid ActiveWeaponGrantId;
+
 private:
 	// === 내부 헬퍼 ===
 	// 슬롯-아이템 적합성 판정
@@ -292,4 +348,11 @@ private:
 
 	UPROPERTY()
 	ASonheimPlayer* m_Player = nullptr;
+
+	// Helpers: rebuild mirrors
+	void RebuildInventoryArrayFromRep();
+	void SyncRepFromInventoryArray();
+	void UpdateRepEntryAtIndex(int32 Index);
+	void InsertRepEntryAtIndex(int32 Index, const FInventoryItem& Item);
+	void RemoveRepEntryAtIndex(int32 Index);
 };

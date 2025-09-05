@@ -5,11 +5,11 @@
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
-#include "Sonheim/Utilities/LogMacro.h"
 #include "Net/UnrealNetwork.h"
-#include "Engine/ActorChannel.h"
 #include "Sonheim/Utilities/SonheimUtility.h"
 #include "Sonheim/Utilities/InventoryRulesLibrary.h"
+#include "Sonheim/Utilities/Net/FastArraySlotUtils.h"
+#include "Sonheim/AreaObject/Skill/SonheimSkillComponent.h"
 
 UInventoryComponent::UInventoryComponent()
 {
@@ -22,7 +22,7 @@ void UInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// 조건부 복제로 네트워크 트래픽 감소
-	DOREPLIFETIME_CONDITION(UInventoryComponent, InventoryItems, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UInventoryComponent, RepItems, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UInventoryComponent, EquippedSlots, COND_OwnerOnly);
 	DOREPLIFETIME(UInventoryComponent, CurrentWeaponSlot); // 모든 클라이언트가 볼 수 있어야 함
 }
@@ -54,6 +54,9 @@ void UInventoryComponent::BeginPlay()
 			m_PlayerState->m_StatBonusComponent->SetCurrentWeaponSlot(CurrentWeaponSlot);
 		}
 	}
+
+	// FastArray owner
+	RepItems.Owner = this;
 }
 
 void UInventoryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -80,18 +83,10 @@ void UInventoryComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 }
 
 // OnRep 함수들
-void UInventoryComponent::OnRep_InventoryItems()
+void UInventoryComponent::OnRep_RepItems()
 {
+	RebuildInventoryArrayFromRep();
 	BroadcastInventoryChanged();
-
-#if !UE_BUILD_SHIPPING
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green,
-		                                 FString::Printf(
-			                                 TEXT("[Client] Inventory Updated: %d items"), InventoryItems.Num()));
-	}
-#endif
 }
 
 void UInventoryComponent::OnRep_EquippedItems()
@@ -107,6 +102,32 @@ void UInventoryComponent::OnRep_CurrentWeaponSlot()
 {
 	// 클라이언트: 현 슬롯의 무기 UI만 동기화
 	NotifyWeaponSlot(CurrentWeaponSlot);
+}
+
+void UInventoryComponent::RebuildInventoryArrayFromRep()
+{
+	InventoryItems.Empty();
+	TArray<FRepInventoryEntry> Copy = RepItems.Items;
+	Copy.Sort([](const FRepInventoryEntry& A, const FRepInventoryEntry& B) { return A.SlotIndex < B.SlotIndex; });
+	for (const FRepInventoryEntry& E : Copy)
+	{
+		InventoryItems.Add(FInventoryItem(E.ItemID, E.Count));
+	}
+}
+
+void UInventoryComponent::SyncRepFromInventoryArray()
+{
+	if (GetOwnerRole() != ROLE_Authority) return;
+	RepItems.Items.Empty();
+	RepItems.MarkArrayDirty();
+	for (int32 i = 0; i < InventoryItems.Num(); ++i)
+	{
+		FRepInventoryEntry& Entry = RepItems.Items.AddDefaulted_GetRef();
+		Entry.SlotIndex = i;
+		Entry.ItemID = InventoryItems[i].ItemID;
+		Entry.Count = InventoryItems[i].Count;
+		RepItems.MarkItemDirty(Entry);
+	}
 }
 
 // 서버 RPC 구현
@@ -263,9 +284,9 @@ bool UInventoryComponent::AddItem(int ItemID, int ItemCount, bool IsDirectAcquis
 		// 2) (스택형) 기존 스택 채우기
 		if (bStackable)
 		{
-			for (FInventoryItem& It : InventoryItems)
+			for (int32 i = 0; i < InventoryItems.Num() && Remaining > 0; ++i)
 			{
-				if (Remaining <= 0) break;
+				FInventoryItem& It = InventoryItems[i];
 				if (It.ItemID != ItemID) continue;
 
 				const int32 Space = MaxItemStackCount - It.Count;
@@ -275,6 +296,7 @@ bool UInventoryComponent::AddItem(int ItemID, int ItemCount, bool IsDirectAcquis
 				It.Count += Add;
 				Remaining -= Add;
 				AddedToInventory += Add;
+				UpdateRepEntryAtIndex(i);
 			}
 		}
 
@@ -285,12 +307,14 @@ bool UInventoryComponent::AddItem(int ItemID, int ItemCount, bool IsDirectAcquis
 			{
 				const int32 Add = FMath::Min(MaxItemStackCount, Remaining);
 				InventoryItems.Add(FInventoryItem(ItemID, Add));
+				InsertRepEntryAtIndex(InventoryItems.Num() - 1, InventoryItems.Last());
 				Remaining -= Add;
 				AddedToInventory += Add;
 			}
 			else
 			{
 				InventoryItems.Add(FInventoryItem(ItemID, 1));
+				InsertRepEntryAtIndex(InventoryItems.Num() - 1, InventoryItems.Last());
 				Remaining -= 1;
 				AddedToInventory += 1;
 			}
@@ -370,7 +394,12 @@ bool UInventoryComponent::RemoveItem(int ItemID, int ItemCount)
 			if (It.Count <= 0)
 			{
 				InventoryItems.RemoveAt(i);
+				RemoveRepEntryAtIndex(i);
 				continue;
+			}
+			else
+			{
+				UpdateRepEntryAtIndex(i);
 			}
 			++i;
 		}
@@ -381,9 +410,11 @@ bool UInventoryComponent::RemoveItem(int ItemID, int ItemCount)
 			if (It.Count - Use <= 0)
 			{
 				InventoryItems.RemoveAt(i);
+				RemoveRepEntryAtIndex(i);
 				continue;
 			}
 			It.Count -= Use;
+			UpdateRepEntryAtIndex(i);
 			++i;
 		}
 	}
@@ -405,6 +436,7 @@ bool UInventoryComponent::RemoveItemByIndex(int Index)
 		int Count = InventoryItems[Index].Count;
 
 		InventoryItems.RemoveAt(Index);
+		RemoveRepEntryAtIndex(Index);
 
 		OnItemRemoved.Broadcast(ItemID, Count);
 		BroadcastInventoryChanged();
@@ -591,6 +623,7 @@ bool UInventoryComponent::SetInventoryItemAtIndex(int32 Index, const FInventoryI
 		return false;
 
 	InventoryItems[Index] = NewItem;
+	UpdateRepEntryAtIndex(Index);
 	BroadcastInventoryChanged();
 	return true;
 }
@@ -603,6 +636,7 @@ bool UInventoryComponent::InsertInventoryItemAtIndex(int32 Index, const FInvento
 		return false;
 	Index = FMath::Clamp(Index, 0, InventoryItems.Num());
 	InventoryItems.Insert(NewItem, Index);
+	InsertRepEntryAtIndex(Index, NewItem);
 	BroadcastInventoryChanged();
 	return true;
 }
@@ -641,6 +675,24 @@ void UInventoryComponent::NotifyWeaponSlot(EEquipmentSlotType SlotType)
 		{
 			const int ItemID = GetEquippedItem(SlotType).ItemID;
 			OnWeaponChanged.Broadcast(SlotType, ItemID);
+			// SkillComponent에 활성 무기 스킬 그랜트 교체를 통지
+			if (ASonheimPlayer* Player = GetSonheimPlayer())
+			{
+				if (USonheimSkillComponent* Comp = Player->GetSkillComponent())
+				{
+					int32 SkillId = 0;
+					if (ItemID > 0 && m_GameInstance)
+					{
+						if (FItemData* ItemData = m_GameInstance->GetDataItem(ItemID))
+						{
+							SkillId = ItemData->EquipmentData.SkillID;
+						}
+					}
+					TArray<int32> Skills;
+					if (SkillId > 0) { Skills.Add(SkillId); }
+					Comp->ReplaceGrant(ActiveWeaponGrantId, Skills);
+				}
+			}
 			break;
 		}
 	default:
@@ -800,6 +852,8 @@ bool UInventoryComponent::SwapItems(int32 FromIndex, int32 ToIndex)
 	if (GetOwnerRole() == ROLE_Authority)
 	{
 		InventoryItems.Swap(FromIndex, ToIndex);
+		UpdateRepEntryAtIndex(FromIndex);
+		UpdateRepEntryAtIndex(ToIndex);
 		BroadcastInventoryChanged();
 		return true;
 	}
@@ -1042,13 +1096,12 @@ EEquipmentSlotType UInventoryComponent::FindEquipSlotByEquipKindType(EEquipmentK
 
 void UInventoryComponent::BroadcastInventoryChanged()
 {
-	OnInventoryChanged.Broadcast(InventoryItems);
-
-	// 서버에서 값이 바뀐 경우 즉시 복제 전송
 	if (GetOwnerRole() == ROLE_Authority)
 	{
+		SyncRepFromInventoryArray();
 		GetOwner()->ForceNetUpdate();
 	}
+	OnInventoryChanged.Broadcast(InventoryItems);
 }
 
 // 장착 슬롯 헬퍼 함수들
@@ -1383,5 +1436,54 @@ bool UInventoryComponent::SwapEquippedItems(EEquipmentSlotType SlotA, EEquipment
 	{
 		ServerSwapEquippedItems(SlotA, SlotB);
 		return true;
+	}
+}
+
+// === FastArray entry helpers ===
+void UInventoryComponent::UpdateRepEntryAtIndex(int32 Index)
+{
+	if (GetOwnerRole() != ROLE_Authority) return;
+	if (!RepItems.Items.IsValidIndex(Index))
+	{
+		if (InventoryItems.IsValidIndex(Index))
+		{
+			InsertRepEntryAtIndex(Index, InventoryItems[Index]);
+		}
+		return;
+	}
+	FRepInventoryEntry& Entry = RepItems.Items[Index];
+	Entry.SlotIndex = Index;
+	Entry.ItemID = InventoryItems[Index].ItemID;
+	Entry.Count = InventoryItems[Index].Count;
+	RepItems.MarkItemDirty(Entry);
+}
+
+void UInventoryComponent::InsertRepEntryAtIndex(int32 Index, const FInventoryItem& Item)
+{
+	if (GetOwnerRole() != ROLE_Authority) return;
+	RepItems.Items.InsertDefaulted(Index);
+	for (int32 i = Index + 1; i < RepItems.Items.Num(); ++i)
+	{
+		RepItems.Items[i].SlotIndex = i;
+		RepItems.MarkItemDirty(RepItems.Items[i]);
+	}
+	FRepInventoryEntry& NewEntry = RepItems.Items[Index];
+	NewEntry.SlotIndex = Index;
+	NewEntry.ItemID = Item.ItemID;
+	NewEntry.Count = Item.Count;
+	RepItems.MarkArrayDirty();
+	RepItems.MarkItemDirty(NewEntry);
+}
+
+void UInventoryComponent::RemoveRepEntryAtIndex(int32 Index)
+{
+	if (GetOwnerRole() != ROLE_Authority) return;
+	if (!RepItems.Items.IsValidIndex(Index)) return;
+	RepItems.Items.RemoveAt(Index);
+	RepItems.MarkArrayDirty();
+	for (int32 i = Index; i < RepItems.Items.Num(); ++i)
+	{
+		RepItems.Items[i].SlotIndex = i;
+		RepItems.MarkItemDirty(RepItems.Items[i]);
 	}
 }

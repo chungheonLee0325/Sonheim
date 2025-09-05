@@ -35,10 +35,18 @@ void UContainerInteractionWidget::NativeDestruct()
 
 void UContainerInteractionWidget::OpenContainer(ABaseContainer* Container)
 {
-	if (!Container || !Container->GetContainerComponent())
-		return;
+    if (!Container || !Container->GetContainerComponent())
+        return;
     
-	CurrentContainer = Container;
+    CurrentContainer = Container;
+    // 열람 시작: 서버에 컨테이너 구독 요청
+    if (APlayerController* PC = GetOwningPlayer())
+    {
+        if (UContainerComponent* CC = Container->GetContainerComponent())
+        {
+            CC->ServerSubscribeViewer(PC);
+        }
+    }
     
 	// 플레이어 인벤토리 설정
 	if (PlayerInventoryWidget)
@@ -71,14 +79,22 @@ void UContainerInteractionWidget::OpenContainer(ABaseContainer* Container)
 
 void UContainerInteractionWidget::CloseContainer()
 {
-	// 상자 닫기
-	if (CurrentContainer)
-	{
-		// 서버에 닫기 요청
-		if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
-		{
-			PC->Server_ContainerOperation(CurrentContainer, EContainerOperation::Close);
-			PlayerInventoryWidget->SetContainerMode(false);
+    // 상자 닫기
+    if (CurrentContainer)
+    {
+        // 열람 종료: 서버에 구독 해제 요청
+        if (APlayerController* PC = GetOwningPlayer())
+        {
+            if (UContainerComponent* CC = CurrentContainer->GetContainerComponent())
+            {
+                CC->ServerUnsubscribeViewer(PC);
+            }
+        }
+        // 서버에 닫기 요청
+        if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
+        {
+            PC->Server_ContainerOperation(CurrentContainer, EContainerOperation::Close);
+            PlayerInventoryWidget->SetContainerMode(false);
 		}
 		CurrentContainer = nullptr;
 	}
