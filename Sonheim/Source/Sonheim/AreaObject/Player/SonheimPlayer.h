@@ -6,6 +6,7 @@
 #include "SonheimPlayerState.h"
 #include "Sonheim/Animation/Player/PlayerAniminstance.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
+#include "Sonheim/AreaObject/Skill/SonheimSkillComponent.h"
 #include "Utility/InteractionComponent.h"
 #include "Utility/PalCaptureComponent.h"
 #include "SonheimPlayer.generated.h"
@@ -90,6 +91,7 @@ public:
 	void SetPlayerNormalState() { SetPlayerState(EPlayerState::NORMAL); }
 	void SetComboState(bool bCanCombo, int SkillID);
 	USkeletalMeshComponent* GetPalSphereComponent();
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -103,10 +105,12 @@ protected:
 
 	virtual void OnRevival() override;
 
-	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
+	                         class AController* EventInstigator, AActor* DamageCauser) override;
 
 	virtual float HandleAttackDamageCalculation(float Damage) override;
 	virtual float HandleDefenceDamageCalculation(float Damage) override;
+
 public:
 	// Movement
 	/** Called for movement input */
@@ -120,7 +124,7 @@ public:
 	void LeftMouse_Pressed();
 	void LeftMouse_Triggered();
 	void LeftMouse_Released();
-	
+
 	UFUNCTION(Server, Reliable)
 	void Server_LeftMouse_Pressed();
 	UFUNCTION(NetMulticast, Reliable)
@@ -133,66 +137,66 @@ public:
 	void Server_LeftMouse_Released();
 	UFUNCTION(NetMulticast, Reliable)
 	void MultiCast_LeftMouse_Released();
-	
+
 	// 마우스 오른쪽 입력 처리
 	void RightMouse_Pressed();
 	void RightMouse_Triggered();
 	void RightMouse_Released();
-	
+
 	// 록온(우클릭 카메라 처리)
 	void AdjustCameraForLockOn(bool IsLockOn);
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetLockOn(bool bNew);
-	
+
 	// 재장전 입력 처리
 	void Reload_Pressed();
-	
+
 	UFUNCTION(Server, Reliable)
 	void Server_Reload_Pressed();
 	UFUNCTION(NetMulticast, Reliable)
 	void MultiCast_Reload_Pressed();
-	
+
 	// 회피 입력 처리
 	void Dodge_Pressed();
-	
+
 	UFUNCTION(Server, Reliable)
 	void Server_Dodge_Pressed();
 	UFUNCTION(NetMulticast, Reliable)
 	void MultiCast_Dodge_Pressed();
-	
+
 	// 달리기 입력 처리
 	void Sprint_Pressed();
 	void Sprint_Triggered();
 	void Sprint_Released();
-	
+
 	UFUNCTION(Server, Reliable)
 	void Server_Sprint_Triggered();
-	
+
 	// 점프 입력 처리
 	void Jump_Pressed();
 	void Jump_Released();
-	
+
 	// 파트너 스킬 입력 처리
 	void PartnerSkill_Pressed();
 	void PartnerSkill_Triggered();
 	void PartnerSkill_Released();
-	
+
 	// 팔 소환 입력 처리
 	void SummonPal_Pressed();
-	
+
 	// 팔 슬롯 전환 입력 처리
 	void SwitchPalSlot_Triggered(int Index);
-	
+
 	// 메뉴 입력 처리
 	void Menu_Pressed();
-	
+
 	// 팔 구체 던지기 입력 처리
 	void ThrowPalSphere_Pressed();
 	void ThrowPalSphere_Triggered();
 	void ThrowPalSphere_Released();
 	void ThrowPalSphere_Canceled();
-	
+
 	// 재시작 입력 처리
 	void Restart_Pressed();
 
@@ -203,9 +207,9 @@ public:
 	void RespawnAtCheckpoint();
 
 	UFUNCTION(BlueprintCallable)
-	ASonheimPlayerState* GetSPlayerState() const {return S_PlayerState;};
+	ASonheimPlayerState* GetSPlayerState() const { return S_PlayerState; };
 	UFUNCTION(BlueprintCallable)
-	UInventoryComponent* GetInventoryComponent() const {return S_PlayerState->m_InventoryComponent;};
+	UInventoryComponent* GetInventoryComponent() const { return S_PlayerState->m_InventoryComponent; };
 
 	// 아이템 획득 
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
@@ -213,32 +217,27 @@ public:
 
 	// 장비 업데이트 
 	UFUNCTION()
-	void UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventoryItem Item);
-    
-	UFUNCTION()
 	void UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int ItemID);
-    
+
 	UFUNCTION(Server, Reliable)
 	void Server_UpdateSelectedWeapon(EEquipmentSlotType WeaponSlot, int ItemID);
-    
+
 	// 스탯 변경 - 서버 권한 추가
 	UFUNCTION()
 	void StatChanged(EAreaObjectStatType StatType, float StatValue);
 
 	// 무기 전환
 	void WeaponSwitch_Triggered(int Index);
-	
+
 	// 같은 무기 중복 사용으로 인한 오류 방지.. 전부 최신화
-	void RefreshWeaponSkillToSkillInstanceMap();
 
 	// 현재 무기에 따른 공격 처리
+	// 현재 선택 무기의 공격 스킬을 가져오거나, 미장착이면 기본공격 ID 사용
 	UFUNCTION(BlueprintCallable, Category = "Combat")
-	UBaseSkill* GetWeaponAttack() { return WeaponSkillMap[SelectedWeaponSlot]; };
+	UBaseSkill* GetWeaponAttack();
 
-	UPROPERTY()
-	TMap<EEquipmentSlotType, UBaseSkill*> WeaponSkillMap;
 
-	UPROPERTY(Replicated) 
+	UPROPERTY(Replicated)
 	EEquipmentSlotType SelectedWeaponSlot = EEquipmentSlotType::Weapon1;
 
 	UFUNCTION(BlueprintCallable)
@@ -257,10 +256,10 @@ public:
 	// Glider
 	UFUNCTION(BlueprintCallable, Category = "Movement|Glider")
 	void ActivateGlider();
-	
+
 	UFUNCTION(BlueprintCallable, Category = "Movement|Glider")
 	void DeactivateGlider();
-	
+
 	// 글라이더 상태 확인
 	UFUNCTION(BlueprintPure, Category = "Movement|Glider")
 	bool IsGliding() const { return bIsGliding; }
@@ -268,28 +267,30 @@ public:
 
 	// 상호작용 키
 	void Interaction_Pressed(EHoldPurpose Purpose) const;
-	
+
 	void Interaction_Released(EHoldPurpose Purpose) const;
-	
+
 	// 무기 메쉬 
-	USkeletalMeshComponent* GetWeaponMesh() const {return WeaponComponent;};
-	
+	USkeletalMeshComponent* GetWeaponMesh() const { return WeaponComponent; };
+
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayWeaponMontage(UAnimMontage* Montage);
-	
+
 	// Skill 로 이관 예정.. 타이밍 등 적용
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Montage, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* SummonPalMontage;
-	
+
 	UFUNCTION(BlueprintPure, Category = "Interaction")
 	UInteractionComponent* GetInteractionComponent() const { return InteractionComponent; }
 
 	void SetWeaponVisible(bool bNew, bool bLocalPreview = true);
-	
+
 	UFUNCTION()
 	void SetWeaponMeshVisible() { SetWeaponVisible(true); }
+
 	UFUNCTION()
 	void SetWeaponMeshInvisible() { SetWeaponVisible(false); }
+
 private:
 	// Weapon Setting
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Equipment, meta = (AllowPrivateAccess = "true"))
@@ -372,10 +373,7 @@ private:
 
 	float NormalCameraBoomAramLength = 180.f;
 	float RClickCameraBoomAramLength = 90.f;
-
-	UPROPERTY()
-	UBaseSkill* CommonAttack = nullptr;
-
+	
 	// ToDO : 이관 예정!!!!
 	float m_Attack = 10.f;
 	float m_Defence = 10.f;
@@ -383,7 +381,7 @@ private:
 	bool bCanRecover = true;
 	float m_RecoveryRate = 5.0f;
 	FTimerHandle RecoveryTimerHandle;
-	
+
 	// 중복 제거를 위한 초기화 함수
 	void InitPlayer();
 	void BindDelegates();
@@ -407,50 +405,51 @@ private:
 
 public:
 	void SetUsePartnerSkill(bool UsePartnerSkill);
-	
+
 	virtual bool CanAttack(AActor* TargetActor) override;
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void RestoreStair(int ItemID, int ItemCount);
 
 	UFUNCTION(BlueprintCallable)
-	bool IsThrowingPalSphere() {return PalCaptureComponent->IsThrowingPalSphere();};
+	bool IsThrowingPalSphere() { return PalCaptureComponent->IsThrowingPalSphere(); };
 
 private:
 	void UpdateSelectedPal();
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "Pals")
 	int PalMaxIndex = 5;
 	int CurrentPalIndex = 0;
 	UPROPERTY(VisibleAnywhere, Category = "Pals")
 	TMap<int, ABaseMonster*> m_OwnedPals;
-	UPROPERTY(VisibleAnywhere, Category = "Pals")	
+	UPROPERTY(VisibleAnywhere, Category = "Pals")
 	ABaseMonster* m_SelectedPal = nullptr;
 	UPROPERTY(VisibleAnywhere, Category = "Pals")
 	ABaseMonster* m_SummonedPal = nullptr;
 
 	// Glider Variable
-	UPROPERTY(ReplicatedUsing=OnRep_IsGliding, VisibleAnywhere, BlueprintReadOnly, Category = "Movement|Glider", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing=OnRep_IsGliding, VisibleAnywhere, BlueprintReadOnly, Category = "Movement|Glider",
+		meta = (AllowPrivateAccess = "true"))
 	bool bIsGliding = false;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Glider")
 	float GliderFallSpeed = 200.0f;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Glider")
 	float GliderForwardSpeed = 800.0f;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Glider")
 	UAnimMontage* GliderOpenMontage;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Glider")
 	UAnimMontage* GliderLoopMontage;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Glider")
 	UAnimMontage* GliderCloseMontage;
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement|Glider", meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* GliderMeshComponent;
-	
+
 	// Glider Helper Function
 	void UpdateGliding(float DeltaTime);
 
@@ -482,13 +481,13 @@ private:
 	// === Weapon Select & Visibility ===
 	UFUNCTION()
 	void OnRep_SelectedWeapon();
-	
+
 	UPROPERTY(ReplicatedUsing=OnRep_WeaponVisible)
 	bool bWeaponVisible = true;
-	
+
 	UFUNCTION()
 	void OnRep_WeaponVisible();
-	
+
 	UFUNCTION(Server, Reliable)
 	void Server_SetWeaponVisible(bool bNew);
 
@@ -504,7 +503,7 @@ private:
 
 	UFUNCTION()
 	void OnRep_CurrentWeaponType();
-	
+
 	UFUNCTION()
 	void HandlePalThrowingStateChanged(bool bIsPreparing);
 };

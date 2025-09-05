@@ -13,7 +13,7 @@
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/Utilities/LogMacro.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
-#include "Sonheim/AreaObject/Monster/BaseMonster.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Utility/MoveUtilComponent.h"
 #include "Sonheim/AreaObject/Utility/RotateUtilComponent.h"
 #include "Sonheim/GameManager/SonheimGameMode.h"
@@ -21,7 +21,6 @@
 #include "Sonheim/Utilities/SonheimUtility.h"
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/Animation/Common/AnimInstance/BaseAnimInstance.h"
-#include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 #include "Sonheim/UI/FloatingDamagePool.h"
 #include "NiagaraComponent.h"
 #include "Sonheim/AreaObject/Skill/SonheimSkillComponent.h"
@@ -80,12 +79,15 @@ void AAreaObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 void AAreaObject::GetSubobjectsWithStableNamesForNetworking(TArray<UObject*>& ObjList)
 {
 	Super::GetSubobjectsWithStableNamesForNetworking(ObjList);
-	// 스킬 인스턴스들은 BeginPlay에서 이름을 "BaseSkill_<ID>"로 고정 생성됨 -> 안정적 네트워킹 이름
-	for (const auto& Pair : m_SkillInstanceMap)
+	// 스킬 인스턴스들은 이름을 "BaseSkill_<ID>"로 고정 생성됨 -> 안정적 네트워킹 이름
+	if (m_SkillComponent)
 	{
-		if (UBaseSkill* Skill = Pair.Value)
+		for (const auto& Pair : m_SkillComponent->GetSkillInstances())
 		{
-			ObjList.Add(Skill);
+			if (UBaseSkill* Skill = Pair.Value)
+			{
+				ObjList.Add(Skill);
+			}
 		}
 	}
 }
@@ -94,11 +96,14 @@ bool AAreaObject::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, 
 {
 	bool bWroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
 
-	for (const auto& Pair : m_SkillInstanceMap)
+	if (m_SkillComponent)
 	{
-		if (UBaseSkill* Skill = Pair.Value)
+		for (const auto& Pair : m_SkillComponent->GetSkillInstances())
 		{
-			bWroteSomething |= Channel->ReplicateSubobject(Skill, *Bunch, *RepFlags);
+			if (UBaseSkill* Skill = Pair.Value)
+			{
+				bWroteSomething |= Channel->ReplicateSubobject(Skill, *Bunch, *RepFlags);
+			}
 		}
 	}
 
@@ -178,26 +183,26 @@ void AAreaObject::BeginPlay()
 	// 스킬 인스턴스 생성
 	for (auto& skill : m_OwnSkillIDSet)
 	{
-		if (FSkillData* skillData = m_GameInstance->GetDataSkill(skill))
+		if (m_SkillComponent)
 		{
-			FString SkillName = FString::Printf(TEXT("BaseSkill_%d"), skill);
-			UBaseSkill* NewSkill = NewObject<UBaseSkill>(this, skillData->SkillClass, *SkillName);
-			NewSkill->InitSkill(skillData);
-			m_SkillInstanceMap.Add(skill, NewSkill);
-		}
-		else
-		{
-			LOG_SCREEN_MY(4.0f, FColor::Red, "%d 해당 아이디의 스킬이 존재하지 않습니다.", skill);
-			UE_LOG(LogTemp, Error, TEXT("Skill ID is 0!!!"));
+			if (!m_SkillComponent->EnsureSkillInstance(skill))
+			{
+				LOG_SCREEN_MY(4.0f, FColor::Red, "%d 해당 아이디의 스킬이 존재하지 않습니다.", skill);
+				UE_LOG(LogTemp, Error, TEXT("Skill ID is 0!!!"));
+			}
 		}
 	}
 
-	// 서버에서 스킬 스펙 컨테이너 초기화
-	if (HasAuthority() && m_SkillComponent)
+	// 소유 스킬 셋 전달(서버/클라 공통; 서버는 FastArray도 초기화)
+	if (m_SkillComponent)
 	{
-		// 소유 스킬 셋 전달
 		TSet<int32> OwnedSkillIds;
 		for (const int& Id : m_OwnSkillIDSet) { OwnedSkillIds.Add(Id); }
+		// 플레이어의 경우 기본공격(10) 보장
+		if (Cast<ASonheimPlayer>(this))
+		{
+			OwnedSkillIds.Add(10);
+		}
 		m_SkillComponent->InitializeOwnedSkills(OwnedSkillIds);
 	}
 
@@ -478,25 +483,33 @@ void AAreaObject::OnRevival()
 
 UBaseSkill* AAreaObject::GetCurrentSkill()
 {
-	if (false == IsValid(m_CurrentSkill))
+	if (!IsValid(m_CurrentSkill))
 	{
 		if (m_CurrentSkill != nullptr)
 		{
 			LOG_PRINT(TEXT("스킬 댕글링 포인터 문제발생!!!!"));
 		}
-		m_CurrentSkill = nullptr;
-		return nullptr;
+		// 컴포넌트 기준 활성 ID로 복구 시도
+		const int32 ActiveId = GetCurrentSkillId();
+		if (ActiveId != 0)
+		{
+			m_CurrentSkill = GetSkillByID(ActiveId);
+		}
 	}
 	return m_CurrentSkill;
 }
 
 FAttackData* AAreaObject::GetCurrentSkillAttackData(int Index)
 {
-	if (false == IsValid(m_CurrentSkill))
+	if (!IsValid(m_CurrentSkill))
 	{
 		LOG_PRINT(TEXT("스킬 댕글링 포인터 문제발생!!!!"));
-		m_CurrentSkill = nullptr;
-		return nullptr;
+		const int32 ActiveId = GetCurrentSkillId();
+		m_CurrentSkill = (ActiveId != 0) ? GetSkillByID(ActiveId) : nullptr;
+		if (!IsValid(m_CurrentSkill))
+		{
+			return nullptr;
+		}
 	}
 	return m_CurrentSkill->GetAttackDataByIndex(Index);
 }
@@ -514,19 +527,21 @@ void AAreaObject::UpdateCurrentSkill(UBaseSkill* NewSkill)
 
 UBaseSkill* AAreaObject::GetSkillByID(int SkillID)
 {
-	auto skillPointer = m_SkillInstanceMap.Find(SkillID);
-
-	if (skillPointer == nullptr || !IsValid(*skillPointer))
+	if (m_SkillComponent)
 	{
-		//LOG_PRINT(TEXT("스킬 댕글링 포인터 문제발생!!!!"));
-		return nullptr;
+		if (UBaseSkill* S = m_SkillComponent->GetSkillById(SkillID))
+		{
+			return S;
+		}
+		return m_SkillComponent->EnsureSkillInstance(SkillID);
 	}
-	return *skillPointer;
+	return nullptr;
 }
 
 bool AAreaObject::CanCastSkill(UBaseSkill* Skill, AAreaObject* Target)
 {
-	if (nullptr != m_CurrentSkill)
+	// 컴포넌트 기준 활성 여부 확인(중첩 캐스팅 방지)
+	if (IsSkillActive())
 	{
 		LOG_PRINT(TEXT("현재 스킬 사용중. m_CurrentSkill 초기화 후 사용"));
 		return false;
@@ -547,10 +562,12 @@ bool AAreaObject::CastSkill(UBaseSkill* Skill, AAreaObject* Target)
 {
 	if (CanCastSkill(Skill, Target))
 	{
-		// 권한 체크
-		// 클라이언트에서는 서버에 요청 보냄
-		Server_CastSkill(Skill->GetSkillID(), Target);
-		return true;
+		// 컴포넌트 경유 캐스팅(클라→서버 RPC)
+		if (m_SkillComponent)
+		{
+			return m_SkillComponent->TryCastSkillById(Skill->GetSkillID(), Target);
+		}
+		return false;
 	}
 	else
 	{
@@ -563,13 +580,10 @@ bool AAreaObject::CastSkill(UBaseSkill* Skill, AAreaObject* Target)
 
 void AAreaObject::Server_CastSkill_Implementation(int SkillID, AAreaObject* Target)
 {
-	UBaseSkill* Skill = GetSkillByID(SkillID);
 	if (m_SkillComponent)
 	{
-		m_SkillComponent->OnServerSkillActivated(SkillID);
+		m_SkillComponent->Server_TryCastSkill(SkillID, Target);
 	}
-	Skill->Activate(this, Target);
-	MultiCast_CastSkill(SkillID, Target);
 }
 
 void AAreaObject::MultiCast_CastSkill_Implementation(int SkillID, AAreaObject* Target)
@@ -609,24 +623,17 @@ void AAreaObject::ClearThisCurrentSkill(UBaseSkill* Skill)
 
 void AAreaObject::Server_NotifySkillFire_Implementation(int SkillID)
 {
-	if (UBaseSkill* Skill = GetCurrentSkill())
+	if (m_SkillComponent)
 	{
-		if (Skill->GetSkillID() == SkillID)
-		{
-			Skill->Fire();
-		}
+		m_SkillComponent->Server_NotifySkillFire(SkillID);
 	}
 }
 
 void AAreaObject::Server_NotifySkillComplete_Implementation(int SkillID)
 {
-	if (UBaseSkill* Skill = GetCurrentSkill())
+	if (m_SkillComponent)
 	{
-		if (Skill->GetSkillID() == SkillID)
-		{
-			// PostCasting → CoolTime 전환
-			Skill->Complete();
-		}
+		m_SkillComponent->Server_NotifySkillComplete(SkillID);
 	}
 }
 
@@ -992,4 +999,15 @@ void AAreaObject::Multicast_PlaySound_Implementation(USoundBase* SoundEffect)
 	}
 
 	UGameplayStatics::PlaySound2D(GetWorld(), SoundEffect);
+}
+
+
+bool AAreaObject::IsSkillActive() const
+{
+	return m_SkillComponent && m_SkillComponent->IsAnySkillCasting();
+}
+
+int32 AAreaObject::GetCurrentSkillId() const
+{
+	return m_SkillComponent ? m_SkillComponent->GetActiveSkillId() : 0;
 }

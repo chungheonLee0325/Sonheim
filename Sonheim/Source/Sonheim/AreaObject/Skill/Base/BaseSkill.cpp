@@ -150,11 +150,11 @@ void UBaseSkill::Complete()
 
 void UBaseSkill::Cancel()
 {
-	if (!m_Caster) return;
-	if (m_CurrentPhase == ESkillPhase::CoolTime || m_CurrentPhase == ESkillPhase::Ready)
-	{
-		return;
-	}
+    if (!m_Caster) return;
+    if (m_CurrentPhase == ESkillPhase::CoolTime || m_CurrentPhase == ESkillPhase::Ready)
+    {
+        return;
+    }
 
 	if (OnSkillComplete.IsBound() == true)
 	{
@@ -165,9 +165,17 @@ void UBaseSkill::Cancel()
 		OnSkillCancel.Execute();
 		OnSkillCancel.Unbind();
 	}
-	m_Caster->ClearThisCurrentSkill(this);
-	m_CurrentPhase = ESkillPhase::CoolTime;
-	AdjustCoolTime();
+    m_Caster->ClearThisCurrentSkill(this);
+    m_CurrentPhase = ESkillPhase::CoolTime;
+    // 서버에서 캐스팅 상태 해제 반영
+    if (m_Caster->HasAuthority())
+    {
+        if (auto* Comp = m_Caster->GetSkillComponent())
+        {
+            Comp->OnServerSkillCancelled(GetSkillID());
+        }
+    }
+    AdjustCoolTime();
 }
 
 FAttackData* UBaseSkill::GetAttackDataByIndex(int Index) const
@@ -235,7 +243,7 @@ void UBaseSkill::AdjustCoolTime()
 		if (m_Caster && m_Caster->HasAuthority())
 		{
 			// Skill Component에 쿨타임 종료 알림(즉시 종료)
-			if (auto* Comp = m_Caster->FindComponentByClass<USonheimSkillComponent>())
+			if (auto* Comp = m_Caster->GetSkillComponent())
 			{
 				Comp->OnServerSkillCooldownStart(GetSkillID(), GetWorld()->GetTimeSeconds());
 			}
@@ -243,17 +251,17 @@ void UBaseSkill::AdjustCoolTime()
 		return;
 	}
 
-	// 쿨타임 있는 스킬은 쿨타임 로직
-	TWeakObjectPtr<UBaseSkill> WeakThis = this;
+    // 쿨타임 있는 스킬은 쿨타임 로직
+    TWeakObjectPtr<UBaseSkill> WeakThis = this;
 
-	// 서버에서만 SkillComponent에 종료 시각 기록
-	if (m_Caster && m_Caster->HasAuthority())
-	{
-		if (auto* Comp = m_Caster->FindComponentByClass<USonheimSkillComponent>())
-		{
-			Comp->OnServerSkillCooldownStart(GetSkillID(), GetWorld()->GetTimeSeconds() + m_CurrentCoolTime);
-		}
-		// 서버에서만 타이머 운용
+    // 서버에서만 SkillComponent에 종료 시각 기록
+    if (m_Caster && m_Caster->HasAuthority())
+    {
+        if (auto* Comp = m_Caster->GetSkillComponent())
+        {
+            Comp->OnServerSkillCooldownStart(GetSkillID(), GetWorld()->GetTimeSeconds() + m_CurrentCoolTime);
+        }
+        // 서버에서만 타이머 운용
 		GetWorld()->GetTimerManager().SetTimer(CoolTimeTimerHandle, [WeakThis]
 		{
 			UBaseSkill* StrongThis = WeakThis.Get();
@@ -305,5 +313,10 @@ void UBaseSkill::OnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 
 void UBaseSkill::OnMontageBlendOut(UAnimMontage* Montage, bool bInterrupted)
 {
-	// 필요 시 추가 처리. 현재는 End에서만 처리.
+    // 필요 시 추가 처리. 현재는 End에서만 처리.
+}
+
+USonheimSkillComponent* UBaseSkill::GetSkillComponent() const
+{
+    return m_Caster ? m_Caster->GetSkillComponent() : nullptr;
 }

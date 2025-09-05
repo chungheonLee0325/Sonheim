@@ -15,6 +15,7 @@ class UBaseAnimInstance;
 class USonheimGameInstance;
 class UMoveUtilComponent;
 class ASonheimGameMode;
+class USonheimSkillComponent;
 
 UCLASS()
 class SONHEIM_API AAreaObject : public ACharacter
@@ -226,6 +227,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual UBaseSkill* GetCurrentSkill();
 	virtual FAttackData* GetCurrentSkillAttackData(int Index);
+	
+	// SkillComponent 접근자(중앙 상태 관리)
+	UFUNCTION(BlueprintPure, Category = "Skill")
+	USonheimSkillComponent* GetSkillComponent() const { return m_SkillComponent; }
+
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual bool CanCastSkill(UBaseSkill* Skill, AAreaObject* Target);
 	UFUNCTION(BlueprintCallable, Category = "Combat")
@@ -244,6 +250,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void ClearCurrentSkill();
 	virtual void ClearThisCurrentSkill(UBaseSkill* Skill);
+
+	// 현재 스킬 활성 여부/ID 조회
+	UFUNCTION(BlueprintPure, Category = "Combat")
+	bool IsSkillActive() const;
+	UFUNCTION(BlueprintPure, Category = "Combat")
+	int32 GetCurrentSkillId() const;
 	// AnimNotify에서 서버에 발사/완료 타이밍 전달
 	UFUNCTION(Server, Reliable)
 	void Server_NotifySkillFire(int SkillID);
@@ -259,11 +271,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Skill")
 	TSet<int> m_OwnSkillIDSet;
 
-	UPROPERTY(EditAnywhere, Category = "Skill")
-	TMap<int, TObjectPtr<UBaseSkill>> m_SkillInstanceMap;
 
 	UPROPERTY()
 	TObjectPtr<UBaseSkill> m_CurrentSkill;
+
+	// 현재 활성 스킬 ID는 SkillComponent의 FastArray(bIsCasting)로 판단
 
 public:
 	// VFX / SFX Network Interface

@@ -81,7 +81,8 @@ void UMeleeAttack::SetCasterMesh(int AttackDataIndex)
 		}
 	}
 	AttackCollision.IsEnableHitDetection = true;
-	// 서버에서 근접 판정 창 동안 최고 LOD 강제(소켓/본 안정성 확보)
+    // 서버에서 근접 판정 창 동안 최고 LOD 강제(소켓/본 안정성 확보)
+    // 원격/비가시/LOD 상황에서도 소켓 위치를 안정적으로 얻기 위함
 	if (m_Caster && m_Caster->HasAuthority() && AttackCollision.OwnerSourceMesh)
 	{
 		AttackCollision.PrevForcedLodModel = AttackCollision.OwnerSourceMesh->GetForcedLOD();
@@ -231,7 +232,7 @@ void UMeleeAttack::ResetCollisionData(int AttackDataIndex)
 {
 	FAttackCollision* AttackCollision = NotifyStateMap.Find(AttackDataIndex);
 	if (AttackCollision == nullptr) return;
-	// LOD 강제 복원
+    // LOD 강제 복원(판정 창 종료 시 이전 상태로 되돌림)
 	if (m_Caster && m_Caster->HasAuthority() && AttackCollision->OwnerSourceMesh && AttackCollision->bForcedLODApplied)
 	{
 		AttackCollision->OwnerSourceMesh->SetForcedLOD(AttackCollision->PrevForcedLodModel);

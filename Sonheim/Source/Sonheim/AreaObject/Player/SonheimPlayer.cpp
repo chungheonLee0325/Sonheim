@@ -15,6 +15,7 @@
 #include "Sonheim/Animation/Player/PlayerAniminstance.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
+#include "Sonheim/AreaObject/Skill/SonheimSkillComponent.h"
 #include "Sonheim/AreaObject/Utility/GhostTrail.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/GameObject/Items/BaseItem.h"
@@ -192,8 +193,7 @@ void ASonheimPlayer::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>&
 
 void ASonheimPlayer::InitPlayer()
 {
-	// 무기 없을때 공격 바인드
-	CommonAttack = GetSkillByID(10);
+	// 기본 스킬셋(m_OwnSkillIDSet)은 AreaObject가 SkillComponent로 전달해 초기화됨
 
 	S_PlayerAnimInstance = Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance());
 
@@ -203,23 +203,34 @@ void ASonheimPlayer::InitPlayer()
 	if (S_PlayerController == nullptr)
 		S_PlayerController = Cast<ASonheimPlayerController>(GetController());
 
-	// 기본 무기 스킬 맵 초기화
-	WeaponSkillMap.Add(EEquipmentSlotType::Weapon1, CommonAttack);
-	WeaponSkillMap.Add(EEquipmentSlotType::Weapon2, CommonAttack);
-	WeaponSkillMap.Add(EEquipmentSlotType::Weapon3, CommonAttack);
-	WeaponSkillMap.Add(EEquipmentSlotType::Weapon4, CommonAttack);
+	// 선택 무기 그랜트는 선택 이벤트에서 처리
+}
+
+UBaseSkill* ASonheimPlayer::GetWeaponAttack()
+{
+	// 현재 선택 무기 아이템의 SkillID → 스킬 인스턴스 조회
+	int32 SkillId = 0;
+	if (CurrentWeaponItemID > 0 && m_GameInstance)
+	{
+		if (FItemData* ItemData = m_GameInstance->GetDataItem(CurrentWeaponItemID))
+		{
+			SkillId = ItemData->EquipmentData.SkillID;
+		}
+	}
+	if (SkillId <= 0)
+	{
+		// 기본 공격 ID 10으로 fallback
+		SkillId = 10;
+	}
+	return GetSkillByID(SkillId);
 }
 
 void ASonheimPlayer::BindDelegates()
 {
 	if (S_PlayerState && S_PlayerState->m_InventoryComponent)
 	{
-		// 기존 바인딩 제거
-		S_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
+		// 기존 바인딩 제거/갱신
 		S_PlayerState->m_InventoryComponent->OnWeaponChanged.RemoveDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
-
-		// 새로 바인딩
-		S_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
 		S_PlayerState->m_InventoryComponent->OnWeaponChanged.AddDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
 	}
 
@@ -235,7 +246,6 @@ void ASonheimPlayer::UnbindDelegates()
 	if (S_PlayerState && S_PlayerState->m_InventoryComponent)
 	{
 		// 기존 바인딩 제거
-		S_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(this, &ASonheimPlayer::UpdateEquipWeapon);
 		S_PlayerState->m_InventoryComponent->OnWeaponChanged.RemoveDynamic(this, &ASonheimPlayer::UpdateSelectedWeapon);
 	}
 
@@ -344,7 +354,7 @@ void ASonheimPlayer::UpdateWeaponMesh(int ItemID)
 			S_PlayerAnimInstance->bIsMelee = (ItemData->EquipmentData.WeaponType == EWeaponType::Melee);
 			S_PlayerAnimInstance->bIsShotgun = (ItemData->EquipmentData.WeaponType == EWeaponType::ShotGun);
 		}
-		
+
 		CurrentWeaponType = ItemData->EquipmentData.WeaponType;
 		OnRep_CurrentWeaponType();
 	}
@@ -381,56 +391,7 @@ void ASonheimPlayer::OnRep_WeaponVisible()
 	}
 }
 
-void ASonheimPlayer::UpdateEquipWeapon(EEquipmentSlotType WeaponSlot, FInventoryItem Item)
-{
-	// 무기 슬롯인지 확인
-	if (WeaponSlot < EEquipmentSlotType::Weapon1 || WeaponSlot > EEquipmentSlotType::Weapon4)
-		return;
-
-	// 아이템 데이터 가져오기
-	FItemData* ItemData = nullptr;
-	FSkillData* SkillData = nullptr;
-
-	if (Item.ItemID > 0 && m_GameInstance)
-	{
-		ItemData = m_GameInstance->GetDataItem(Item.ItemID);
-		if (ItemData)
-		{
-			SkillData = m_GameInstance->GetDataSkill(ItemData->EquipmentData.SkillID);
-		}
-	}
-
-	// 기존 스킬 제거
-	if (WeaponSkillMap.Contains(WeaponSlot))
-	{
-		UBaseSkill* OldSkill = WeaponSkillMap[WeaponSlot];
-		if (OldSkill && OldSkill != CommonAttack)
-		{
-			m_SkillInstanceMap.Remove(OldSkill->GetSkillID());
-		}
-	}
-
-	// 새 스킬 설정
-	if (ItemData && SkillData && SkillData->SkillClass)
-	{
-		// 무기 스킬 생성
-		UBaseSkill* NewWeaponSkill = NewObject<UBaseSkill>(this, SkillData->SkillClass);
-		NewWeaponSkill->InitSkill(SkillData);
-
-		// 스킬 등록
-		WeaponSkillMap[WeaponSlot] = NewWeaponSkill;
-		m_SkillInstanceMap.Add(SkillData->SkillID, NewWeaponSkill);
-	}
-	else
-	{
-		// 기본 스킬로 복귀
-		WeaponSkillMap[WeaponSlot] = CommonAttack;
-		if (CommonAttack)
-		{
-			m_SkillInstanceMap.Add(CommonAttack->GetSkillID(), CommonAttack);
-		}
-	}
-}
+// 무기 장착 변경 로직은 인벤토리 → SkillComponent로 이관됨
 
 void ASonheimPlayer::OnRep_CurrentWeaponType()
 {
@@ -523,15 +484,6 @@ void ASonheimPlayer::Multicast_RegisterOwnPal_Implementation(ABaseMonster* Pal)
 	}
 }
 
-void ASonheimPlayer::RefreshWeaponSkillToSkillInstanceMap()
-{
-	for (auto& pair : WeaponSkillMap)
-	{
-		int skillID = pair.Value->GetSkillID();
-		m_SkillInstanceMap.Remove(skillID);
-		m_SkillInstanceMap.Add(skillID, pair.Value);
-	}
-}
 
 // Called every frame
 void ASonheimPlayer::Tick(float DeltaTime)
@@ -794,9 +746,8 @@ void ASonheimPlayer::Server_LeftMouse_Triggered_Implementation()
 	}
 	else
 	{
-		auto skill = GetSkillByID(GetWeaponAttack()->GetSkillID());
-		//auto skill = GetCurrentSkill();
-		if (CastSkill(skill, this))
+		UBaseSkill* skill = GetWeaponAttack();
+		if (skill && CastSkill(skill, this))
 		{
 			SetPlayerState(EPlayerState::ACTION);
 			skill->OnSkillComplete.BindUObject(this, &ASonheimPlayer::SetPlayerNormalState);
@@ -849,8 +800,9 @@ void ASonheimPlayer::AdjustCameraForLockOn(bool IsLockOn)
 					strongThis->GetWorld()->GetTimerManager().ClearTimer(strongThis->LockOnCameraTimerHandle);
 				}
 				float alpha = 0.f;
-				alpha = FMath::FInterpTo(strongThis->CameraBoom->TargetArmLength, strongThis->RClickCameraBoomAramLength,
-										 0.01f, 5.f);
+				alpha = FMath::FInterpTo(strongThis->CameraBoom->TargetArmLength,
+				                         strongThis->RClickCameraBoomAramLength,
+				                         0.01f, 5.f);
 
 				strongThis->CameraBoom->TargetArmLength = alpha;
 			}
@@ -872,8 +824,9 @@ void ASonheimPlayer::AdjustCameraForLockOn(bool IsLockOn)
 					strongThis->GetWorld()->GetTimerManager().ClearTimer(strongThis->LockOnCameraTimerHandle);
 				}
 				float alpha = 0.f;
-				alpha = FMath::FInterpTo(strongThis->CameraBoom->TargetArmLength, strongThis->NormalCameraBoomAramLength,
-										 0.01f, 8.f);
+				alpha = FMath::FInterpTo(strongThis->CameraBoom->TargetArmLength,
+				                         strongThis->NormalCameraBoomAramLength,
+				                         0.01f, 8.f);
 
 				strongThis->CameraBoom->TargetArmLength = alpha;
 			}
@@ -1047,7 +1000,8 @@ void ASonheimPlayer::SwitchPalSlot_Triggered(int Index)
 	{
 		if (UPalInventoryComponent* PalInventory = S_PlayerState->FindComponentByClass<UPalInventoryComponent>())
 		{
-			PalInventory->ServerRPC_SwitchPalSlot(Index);
+			// 클라 UI 예측을 위한 Server RPC 호출대신 먼저 SwitchPalSlot 호출
+			PalInventory->SwitchPalSlot(Index);
 		}
 	}
 }
@@ -1070,16 +1024,6 @@ void ASonheimPlayer::Restart_Pressed()
 void ASonheimPlayer::SetUsePartnerSkill(bool UsePartnerSkill)
 {
 	PalPartnerSkillComponent->SetPartnerSkillState(UsePartnerSkill);
-	// this->bUsingPartnerSkill = UsePartnerSkill;
-	//
-	// if (UsePartnerSkill)
-	// {
-	// 	S_PlayerAnimInstance->bUsingPartnerSkill = true;
-	// }
-	// else
-	// {
-	// 	S_PlayerAnimInstance->bUsingPartnerSkill = false;
-	// }
 }
 
 bool ASonheimPlayer::CanAttack(AActor* TargetActor)
@@ -1453,7 +1397,7 @@ void ASonheimPlayer::HandlePalThrowingStateChanged(bool bIsPreparing)
 				if (bIsPreparing)
 				{
 					// PalSphere를 들었을 때는 무조건 일반 크로스헤어로 변경
-					StatusWidget->SetCrosshairType(EWeaponType::None); 
+					StatusWidget->SetCrosshairType(EWeaponType::None);
 				}
 				else
 				{
@@ -1462,5 +1406,5 @@ void ASonheimPlayer::HandlePalThrowingStateChanged(bool bIsPreparing)
 				}
 			}
 		}
-	}	
+	}
 }
