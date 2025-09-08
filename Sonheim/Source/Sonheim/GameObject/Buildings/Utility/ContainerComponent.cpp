@@ -32,6 +32,13 @@ void UContainerComponent::BeginPlay()
 
 	GameInstance = Cast<USonheimGameInstance>(GetWorld()->GetGameInstance());
 	RepContainerItems.Owner = this;
+
+	if (GetOwnerRole() == ROLE_Authority)
+	{
+		// 블루프린트 등에서 미리 채워진 아이템이 있을 경우,
+		// 복제 배열(RepContainerItems)과 동기화하여 클라이언트에 초기 상태를 전송합니다.
+		SyncRepFromContainerArray();
+	}
 }
 
 void UContainerComponent::InitializeContainer(int32 InContainerID)
