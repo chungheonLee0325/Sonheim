@@ -605,6 +605,11 @@ USkeletalMeshComponent* ASonheimPlayer::GetPalSphereComponent()
 	return PalSphereComponent;
 }
 
+bool ASonheimPlayer::HasPalSphere() const
+{
+	return GetInventoryComponent()->GetPalSphereCount() > 0;
+}
+
 bool ASonheimPlayer::IsLockOn() const
 {
 	return S_PlayerAnimInstance->bIsLockOn;

@@ -86,6 +86,9 @@ public:
 	UFUNCTION()
 	void HandlePalDismissed();
 
+	UFUNCTION()
+	void DisplayItemPopup(int ItemID, int Count);
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "UI Update")
 	void BP_DisplaySkillFailedFeedback(int32 SkillID, ESkillFailCase Reason);
 

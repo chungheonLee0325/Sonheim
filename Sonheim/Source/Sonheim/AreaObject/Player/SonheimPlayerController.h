@@ -23,6 +23,7 @@ public:
 	ASonheimPlayerController();
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	virtual void OnPossess(APawn* InPawn) override;
 	void InitializeWithPlayer(ASonheimPlayer* NewPlayer);
@@ -37,6 +38,9 @@ public:
 
 	// 상태 조회
 	bool GetIsMenuActivate() { return IsMenuActivate; }
+
+	UFUNCTION(Client, Unreliable)
+	void Client_DisplayItemPopup(int32 ItemID, int32 Delta);
 
 protected:
 	// 입력 설정

@@ -217,6 +217,16 @@ void ASonheimPlayerController::BeginPlay()
 	//InitializeHUD();
 }
 
+void ASonheimPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	if (m_Player && m_Player->GetInventoryComponent() && HasAuthority())
+	{
+		m_Player->GetInventoryComponent()->OnItemAdded.RemoveDynamic(this, &ASonheimPlayerController::Client_DisplayItemPopup);
+	}
+}
+
 void ASonheimPlayerController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
@@ -226,6 +236,12 @@ void ASonheimPlayerController::OnPossess(APawn* InPawn)
 	if (m_PlayerState != nullptr)
 	{
 		m_PlayerState->InitPlayerState();
+
+		// 서버에만 델리게이트 바인드
+		if (m_Player->GetInventoryComponent() && HasAuthority())
+		{
+			m_Player->GetInventoryComponent()->OnItemAdded.AddDynamic(this, &ASonheimPlayerController::Client_DisplayItemPopup);
+		}
 	}
 }
 
@@ -283,6 +299,14 @@ void ASonheimPlayerController::InitializeHUD_Implementation(ASonheimPlayer* NewP
 			StatusWidget->UpdateExp(0, 1, 0);
 		}
 		StatusWidget->SetEnableCrossHair(false);
+	}
+}
+
+void ASonheimPlayerController::Client_DisplayItemPopup_Implementation(int32 ItemID, int32 Delta)
+{
+	if (StatusWidget)
+	{
+		StatusWidget->DisplayItemPopup(ItemID, Delta);
 	}
 }
 

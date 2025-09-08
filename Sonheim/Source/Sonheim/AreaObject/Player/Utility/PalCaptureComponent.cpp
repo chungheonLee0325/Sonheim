@@ -92,6 +92,7 @@ void UPalCaptureComponent::Server_ThrowPalSphere_Implementation()
 	{
 		// 스킬 종료 후 무기메시 보이도록 델리게이트 바인드
 		Skill->OnSkillComplete.BindUObject(OwnerPlayer, &ASonheimPlayer::SetWeaponMeshVisible);
+		Skill->OnSkillCancel.BindUObject(OwnerPlayer, &ASonheimPlayer::SetWeaponMeshVisible);
 		// 스킬 발사
 		OwnerPlayer->CastSkill(Skill, OwnerPlayer);
 	}
@@ -129,7 +130,14 @@ void UPalCaptureComponent::ApplyThrowingState(bool bThrowing)
 	// PalSphere(준비 자세) 메시
 	if (OwnerPlayer->GetPalSphereComponent())
 	{
-		OwnerPlayer->GetPalSphereComponent()->SetVisibility(bThrowing);
+		if (bThrowing && OwnerPlayer->HasPalSphere())
+		{
+			OwnerPlayer->GetPalSphereComponent()->SetVisibility(true);
+		}
+		else
+		{
+			OwnerPlayer->GetPalSphereComponent()->SetVisibility(false);
+		}
 	}
 
 	// 무기 메쉬: 시작 시 숨기고, 종료 시 보이기

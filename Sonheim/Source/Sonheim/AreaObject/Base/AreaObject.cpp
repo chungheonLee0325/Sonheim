@@ -552,7 +552,8 @@ bool AAreaObject::CanCastSkill(UBaseSkill* Skill, AAreaObject* Target)
 
 	bool result = Skill->CanCast(this, Target);
 
-	if (OnSkillBlocked.IsBound())
+	// 스킬 실패하면 노티
+	if (!result && OnSkillBlocked.IsBound())
 	{
 		OnSkillBlocked.Broadcast(Skill->GetSkillID(), Skill->SkillFailCase);
 	}

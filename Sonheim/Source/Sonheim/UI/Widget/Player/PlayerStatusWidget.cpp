@@ -415,7 +415,7 @@ void UPlayerStatusWidget::HandleSkillFailed(int32 SkillId, ESkillFailCase Reason
 	BP_DisplaySkillFailedFeedback(SkillId, Reason);
 }
 
-void UPlayerStatusWidget::HandleItemAdded(int ItemID, int Count)
+void UPlayerStatusWidget::DisplayItemPopup(int ItemID, int Count)
 {
 	FItemData* ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(ItemID);
 	if (ItemData && Count != 0)
@@ -423,6 +423,10 @@ void UPlayerStatusWidget::HandleItemAdded(int ItemID, int Count)
 		OnItemPopupDisplay(ItemData->ItemIcon, ItemData->ItemName, Count,
 		                   USonheimUtility::GetRarityColor(ItemData->ItemRarity));
 	}
+}
+
+void UPlayerStatusWidget::HandleItemAdded(int ItemID, int Count)
+{
 }
 
 void UPlayerStatusWidget::HandleItemRemoved(int ItemID, int Count)

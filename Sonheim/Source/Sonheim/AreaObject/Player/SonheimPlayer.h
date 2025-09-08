@@ -91,6 +91,7 @@ public:
 	void SetPlayerNormalState() { SetPlayerState(EPlayerState::NORMAL); }
 	void SetComboState(bool bCanCombo, int SkillID);
 	USkeletalMeshComponent* GetPalSphereComponent();
+	bool HasPalSphere() const;
 
 protected:
 	// Called when the game starts or when spawned
