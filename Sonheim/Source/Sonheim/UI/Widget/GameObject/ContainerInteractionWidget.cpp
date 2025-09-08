@@ -3,11 +3,8 @@
 #include "ContainerWidget.h"
 #include "Components/Button.h"
 #include "Sonheim/UI/Widget/Player/Inventory/InventoryWidget.h"
-#include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
-#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
-#include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/GameObject/Buildings/Storage/BaseContainer.h"
 
 void UContainerInteractionWidget::NativeConstruct()
@@ -39,15 +36,7 @@ void UContainerInteractionWidget::OpenContainer(ABaseContainer* Container)
         return;
     
     CurrentContainer = Container;
-    // 열람 시작: 서버에 컨테이너 구독 요청
-    if (APlayerController* PC = GetOwningPlayer())
-    {
-        if (UContainerComponent* CC = Container->GetContainerComponent())
-        {
-            CC->ServerSubscribeViewer(PC);
-        }
-    }
-    
+
 	// 플레이어 인벤토리 설정
 	if (PlayerInventoryWidget)
 	{
@@ -82,14 +71,6 @@ void UContainerInteractionWidget::CloseContainer()
     // 상자 닫기
     if (CurrentContainer)
     {
-        // 열람 종료: 서버에 구독 해제 요청
-        if (APlayerController* PC = GetOwningPlayer())
-        {
-            if (UContainerComponent* CC = CurrentContainer->GetContainerComponent())
-            {
-                CC->ServerUnsubscribeViewer(PC);
-            }
-        }
         // 서버에 닫기 요청
         if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(GetOwningPlayer()))
         {

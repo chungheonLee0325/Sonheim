@@ -182,6 +182,15 @@ void ABaseContainer::OpenContainer(ASonheimPlayer* Player)
 	{
 		//ContainerComponent->BroadcastInventoryChanged();
 	}
+
+	// 서버에서 즉시 구독 활성화 (복제 깨움)
+	if (ContainerComponent)
+	{
+		if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(Player->GetController()))
+		{
+			ContainerComponent->ServerSubscribeViewer(PC);
+		}
+	}
     
 	// 클라이언트에서 UI 열기
 	if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(Player->GetController()))
@@ -208,6 +217,10 @@ void ABaseContainer::CloseContainer()
 	{
 		if (ASonheimPlayerController* PC = Cast<ASonheimPlayerController>(CurrentUser->GetController()))
 		{
+			if (ContainerComponent)
+			{
+				ContainerComponent->ServerUnsubscribeViewer(PC);
+			}
 			PC->Client_CloseContainerUI();
 		}
 	}

@@ -3,11 +3,7 @@
 #include "Components/TextBlock.h"
 #include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
-#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
-#include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
-#include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
-#include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
 
 void UContainerWidget::NativePreConstruct()
@@ -26,15 +22,7 @@ void UContainerWidget::NativeConstruct()
     Super::NativeConstruct();
     
     GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
-    // 컨테이너 UI가 열렸으므로 서버에 열람 구독 요청
-    if (ContainerComponent)
-    {
-        if (APlayerController* PC = GetOwningPlayer())
-        {
-            ContainerComponent->ServerSubscribeViewer(PC);
-        }
-    }
-	
+
 	// 슬롯 이벤트 바인딩
 	for (USlotWidget* SlotWidget : SlotWidgets)
 	{
@@ -51,11 +39,6 @@ void UContainerWidget::NativeDestruct()
     if (ContainerComponent)
     {
         ContainerComponent->OnContainerInventoryChanged.RemoveDynamic(this, &UContainerWidget::UpdateContainerInventory);
-        // 컨테이너 UI가 닫히므로 서버에 열람 구독 해제 요청
-        if (APlayerController* PC = GetOwningPlayer())
-        {
-            ContainerComponent->ServerUnsubscribeViewer(PC);
-        }
     }
     
     Super::NativeDestruct();
@@ -75,11 +58,6 @@ void UContainerWidget::SetContainerComponent(UContainerComponent* InContainerCom
     {
         // 새 바인딩
         ContainerComponent->OnContainerInventoryChanged.AddDynamic(this, &UContainerWidget::UpdateContainerInventory);
-        // 컨테이너 할당 시점에도 구독 보장
-        if (APlayerController* PC = GetOwningPlayer())
-        {
-            ContainerComponent->ServerSubscribeViewer(PC);
-        }
 		
 		// 초기 데이터로 업데이트
 		// Replicate 될 시간 타이머로 지연
