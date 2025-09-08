@@ -96,6 +96,11 @@ void UInventoryComponent::OnRep_EquippedItems()
 	{
 		OnEquipmentChanged.Broadcast(Slot.SlotType, Slot.Item);
 	}
+
+	// 현재 활성 무기 슬롯에 아이템이 장착/해제되었을 수 있으므로,
+	// OnWeaponChanged 이벤트를 발생시켜 활성 무기 UI를 갱신합니다.
+	// OnRep_CurrentWeaponSlot은 슬롯 '인덱스'가 바뀔 때만 호출되므로 이 처리가 필요합니다.
+	NotifyWeaponSlot(CurrentWeaponSlot);
 }
 
 void UInventoryComponent::OnRep_CurrentWeaponSlot()
@@ -957,7 +962,7 @@ bool UInventoryComponent::DiscardItemByIndex(int32 Index, int32 Count)
 	return true;
 }
 
-FItemData* UInventoryComponent::GetCurrentWeaponData()
+FItemData* UInventoryComponent::GetCurrentWeaponData() const
 {
 	FInventoryItem CurrentWeapon = GetEquippedItem(CurrentWeaponSlot);
 	return GetItemData(CurrentWeapon.ItemID);

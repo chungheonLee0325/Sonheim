@@ -253,7 +253,7 @@ public:
 	// Item ID로 조회
 	void DropItem_ServerOnly(int32 ItemID, int32 Count, bool bStackable);
 
-	FItemData* GetCurrentWeaponData();
+	FItemData* GetCurrentWeaponData() const;
 
 	// Blueprint 헬퍼 함수들
 	UFUNCTION(BlueprintCallable, Category = "Inventory", meta = (DisplayName = "Get Equipped Weapon Data"))
