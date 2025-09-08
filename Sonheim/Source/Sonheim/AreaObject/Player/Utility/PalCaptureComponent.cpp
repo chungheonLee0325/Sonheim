@@ -7,8 +7,6 @@
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/Animation/Player/PlayerAniminstance.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
-#include "Sonheim/Element/Derived/Parabola/PalSphere.h"
-#include "Sonheim/Utilities/LogMacro.h"
 #include "PalInventoryComponent.h"
 
 UPalCaptureComponent::UPalCaptureComponent()
