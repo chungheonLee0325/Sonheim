@@ -33,6 +33,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemAdded, int, ItemID, int, Cou
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemRemoved, int, ItemID, int, Count);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnItemUseFailed, int, ItemID);
+
 // 장착된 아이템을 추적하기 위한 구조체
 USTRUCT(BlueprintType)
 struct FEquippedSlot
@@ -261,6 +263,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory", meta = (DisplayName = "Get Current Weapon Info"))
 	void GetCurrentWeaponInfo(bool& bHasWeapon, FItemData& OutWeaponData) const;
+	
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void GetCurrentWeaponAmmoInfo(int32& OutItemID, int32& OutAmmoValue, int32& OutMagazineValue) const;
+	
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	int32 GetPalSphereCount() const;
 
 	ASonheimPlayer* GetSonheimPlayer();
 
@@ -279,6 +287,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category="Events")
 	FOnItemRemoved OnItemRemoved;
+
+	UPROPERTY(BlueprintAssignable, Category="Events")
+	FOnItemUseFailed OnItemUseFailed;
 
 	// SkillComponent 연동을 위한 활성 무기 그랜트 ID(이 컴포넌트에서 관리)
 	UPROPERTY()
@@ -306,6 +317,10 @@ private:
 	// 장비 종류로 어느 슬롯에 들어갈수 있는지 반환
 	EEquipmentSlotType FindEquipSlotByEquipKindType(EEquipmentKindType ItemKindType) const;
 	void BroadcastInventoryChanged();
+
+	// 아이템 종류로 아이템을 찾아 반환
+	const FInventoryItem* FindFirstItemByCategory(EItemCategory ItemCategory) const;
+	TSet<const FInventoryItem*> FindItemsByCategory(EItemCategory ItemCategory) const;
 
 	// 장착 슬롯 헬퍼 함수들
 	int32 FindEquippedSlotIndex(EEquipmentSlotType SlotType) const;

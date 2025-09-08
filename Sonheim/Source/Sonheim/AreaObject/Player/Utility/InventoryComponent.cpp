@@ -379,7 +379,11 @@ bool UInventoryComponent::RemoveItem(int ItemID, int ItemCount)
 		if (It.ItemID == ItemID)
 			Available += bStackable ? It.Count : FMath::Max(1, It.Count);
 	}
-	if (Available < ItemCount) return false;
+	if (Available < ItemCount)
+	{
+		OnItemUseFailed.Broadcast(ItemID);
+		return false;
+	}
 
 	int Remaining = ItemCount;
 	for (int i = 0; i < InventoryItems.Num() && Remaining > 0;)
@@ -563,11 +567,24 @@ bool UInventoryComponent::HasItem(int ItemID, int RequiredCount) const
 	if (RequiredCount <= 0 || !IsValidItemID(ItemID))
 		return false;
 
-	int ItemIndex = FindItemIndexInInventory(ItemID);
-	if (ItemIndex == INDEX_NONE)
-		return false;
+	const FItemData* ItemData = GetItemData(ItemID);
+	// 아이템 데이터를 찾을 수 없으면 유효한 아이템이 아닙니다.
+	if (!ItemData) return false;
+	
+	const bool bStackable = ItemData->bStackable;
 
-	return InventoryItems[ItemIndex].Count >= RequiredCount;
+	int32 TotalCount = 0;
+	// 인벤토리 내의 모든 스택을 확인하여 총 개수를 계산합니다.
+	// 장착된 아이템은 소모 대상이 아니므로 계산에 포함하지 않습니다.
+	for (const FInventoryItem& Item : InventoryItems)
+	{
+		if (Item.ItemID == ItemID)
+		{
+			TotalCount += bStackable ? Item.Count : FMath::Max(1, Item.Count);
+		}
+	}
+
+	return TotalCount >= RequiredCount;
 }
 
 int UInventoryComponent::GetItemCount(int ItemID) const
@@ -605,6 +622,30 @@ int UInventoryComponent::GetItemCount(int ItemID) const
 	}
 
 	return Total;
+}
+
+void UInventoryComponent::GetCurrentWeaponAmmoInfo(int32& OutItemID, int32& OutAmmoValue, int32& OutMagazineValue) const
+{
+	OutItemID = 0;
+	OutAmmoValue = 0;
+	OutMagazineValue = 0;
+
+	const FItemData* WeaponData = GetCurrentWeaponData();
+	if (WeaponData && WeaponData->EquipmentData.bUseBullet && WeaponData->EquipmentData.BulletItemID.Num() > 0)
+	{
+		OutItemID = *WeaponData->EquipmentData.BulletItemID.begin();
+		OutAmmoValue = GetItemCount(OutItemID);
+		// 현재는 탄창 개념이 없으므로 동일하게 설정
+		OutMagazineValue = GetItemCount(OutItemID);
+	}
+}
+
+int32 UInventoryComponent::GetPalSphereCount() const
+{
+	// ToDo : 팰스피어 종류 생기면 어떻게 UI 구성되는지 따라 구현 변경될듯
+	const FInventoryItem* PalSphere = FindFirstItemByCategory(EItemCategory::Sphere);
+
+	return PalSphere ? PalSphere->Count : 0;
 }
 
 TArray<FInventoryItem> UInventoryComponent::GetInventory() const
@@ -1029,6 +1070,38 @@ int UInventoryComponent::FindItemIndexInInventory(int ItemID) const
 			return i;
 	}
 	return INDEX_NONE;
+}
+
+const FInventoryItem* UInventoryComponent::FindFirstItemByCategory(EItemCategory ItemCategory) const
+{
+	for (const FInventoryItem& Item : InventoryItems)
+	{
+		if (const FItemData* ItemData = GetItemData(Item.ItemID))
+		{
+			if (ItemData->ItemCategory == ItemCategory)
+			{
+				return &Item;
+			}
+		}
+	}
+	return nullptr;
+}
+
+TSet<const FInventoryItem*> UInventoryComponent::FindItemsByCategory(EItemCategory ItemCategory) const
+{
+	TSet<const FInventoryItem*> Result;
+	for (const FInventoryItem& Item : InventoryItems)
+	{
+		if (const FItemData* ItemData = GetItemData(Item.ItemID))
+		{
+			if (ItemData->ItemCategory == ItemCategory)
+			{
+				Result.Add(&Item);
+			}
+		}
+	}
+
+	return Result;
 }
 
 bool UInventoryComponent::EquipItemDirect(int32 ItemID, EEquipmentSlotType SlotType, FInventoryItem& OutReplaced)
