@@ -712,15 +712,6 @@ struct FEquipmentData : public FTableRowBase
 		meta=(EditCondition="EquipKind == EEquipmentKindType::Weapon"))
 	int SkillID = 0;
 
-	// 특수 능력 활성화 (예: 높은 점프 등)
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Special Abilities")
-	//TArray<ESpecialAbility> GrantedAbilities;
-
-	// 시각 효과
-	// Weapon Mesh 
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
-	//TSoftObjectPtr<USkeletalMeshComponent> EquipmentMesh;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
 	USkeletalMesh* EquipmentMesh = nullptr;
 
@@ -791,6 +782,10 @@ struct FItemData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Visual")
 	UStaticMesh* ItemMesh = nullptr;
 
+	// 메시 스케일
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
+	FVector MeshScale = FVector(1.0f);
+
 	// 아이템 레어리티
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Visual")
 	EItemRarity ItemRarity = EItemRarity::Common;
@@ -839,9 +834,6 @@ struct FResourceObjectData : public FTableRowBase
 	FName Name = "";
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	EResourceObjectType ResourceObjectType = EResourceObjectType::None;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	float HPMax = 100.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
@@ -886,6 +878,10 @@ struct FResourceObjectData : public FTableRowBase
 	// 시각적 표현을 위한 메시
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Visual")
 	UStaticMesh* ResourceMesh = nullptr;
+
+	// 메시 스케일
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
+	FVector MeshScale = FVector(1.0f);
 };
 
 USTRUCT(BlueprintType)

@@ -22,7 +22,7 @@ ABaseItem::ABaseItem()
 	// 메시 컴포넌트 (루트 및 물리 담당)
 	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
 	RootComponent = ItemMesh;
-	ItemMesh->SetRelativeScale3D(FVector(0.01f));
+	ItemMesh->SetRelativeScale3D(FVector(1.f));
 	ItemMesh->SetIsReplicated(true);
 
 	// 메시가 물리를 담당
@@ -199,8 +199,10 @@ void ABaseItem::InitializeItem(int32 InItemID, const FItemSpawnOptions& Options)
 	// 랜덤 임펄스(드랍 연출)
 	if (Options.bApplyPhysicsOnDrop)
 	{
-		FVector RandomDirection = FMath::VRand();
-		RandomDirection.Z = FMath::Abs(RandomDirection.Z); // 위쪽으로만
+		//Z축(위)을 중심으로 45도 각도의 원뿔 내에서 랜덤 방향 생성
+		const FVector ConeDirection = FVector::UpVector;
+		const float ConeHalfAngleRad = FMath::DegreesToRadians(45.0f);
+		FVector RandomDirection = FMath::VRandCone(ConeDirection, ConeHalfAngleRad);
 		FVector DropImpulse = RandomDirection * Options.DropForce;
 		ItemMesh->AddImpulse(DropImpulse);
 	}
@@ -222,7 +224,12 @@ void ABaseItem::SetupComponents()
 	// 메쉬 설정
 	if (dt_ItemData && dt_ItemData->ItemMesh)
 	{
-		ItemMesh->SetStaticMesh(dt_ItemData->ItemMesh);
+		// 동일 메쉬면 교체 생략 (중복 호출 방지)
+		if (ItemMesh->GetStaticMesh() != dt_ItemData->ItemMesh)
+		{
+			ItemMesh->SetStaticMesh(dt_ItemData->ItemMesh);
+			ItemMesh->SetRelativeScale3D(dt_ItemData->MeshScale);
+		}
 	}
 	
 	// 콜리전 설정

@@ -48,6 +48,12 @@ void ABaseResourceObject::BeginPlay()
 	m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
 	dt_ResourceObject = m_GameInstance->GetDataResourceObject(m_ResourceObjectID);
 
+	if (dt_ResourceObject && dt_ResourceObject->ResourceMesh)
+	{
+		m_StaticMeshComponent->SetStaticMesh(dt_ResourceObject->ResourceMesh);
+		m_StaticMeshComponent->SetRelativeScale3D(dt_ResourceObject->MeshScale);
+	}
+
 	HealthComponent->InitHealth(dt_ResourceObject->HPMax);
 	
 	// GameMode Setting
@@ -100,7 +106,7 @@ void ABaseResourceObject::SpawnPartialResources(int32 SegmentsLost) const
 	Opt.ItemCount = 1;
 	Opt.AutoPickupDelay = 1.0f;
 	Opt.bApplyPhysicsOnDrop = true;
-	Opt.DropForce = 600.f;
+	Opt.DropForce = 1500.f;
 	Opt.LifeTime = 300.f;
 
 	const TMap<int32, int32>& DropChance = dt_ResourceObject->PossibleDropItemID;
