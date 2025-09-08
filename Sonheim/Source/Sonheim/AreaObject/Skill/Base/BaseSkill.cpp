@@ -5,6 +5,8 @@
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/Animation/Common/AnimInstance/BaseAnimInstance.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/AreaObject/Skill/SonheimSkillComponent.h"
 
@@ -46,45 +48,56 @@ bool UBaseSkill::CanCast(AAreaObject* Caster, const AAreaObject* Target) const
 		return false;
 	}
 
-	// ToDo : 고민중... 스태미나 체크
-	if (m_SkillData->Cost > 0)
+	bool bStaLack = false;
+	TArray<int32> Missing;
+	if (!CheckCosts(Caster, ESkillCostPhase::OnActivate, &bStaLack, &Missing))
 	{
-		if (!Caster->CanUseStamina(m_SkillData->Cost))
-		{
-			SkillFailCase = ESkillFailCase::OutStamina;
-			return false;
-		}
+		SkillFailCase = bStaLack ? ESkillFailCase::OutStamina : ESkillFailCase::OutItem;
+		return false;
 	}
 
 	// 사거리 체크
 	return IsInRange(Caster, Target);
 }
 
-void UBaseSkill::Activate(AAreaObject* Caster, AAreaObject* Target)
+bool UBaseSkill::Activate(AAreaObject* Caster, AAreaObject* Target)
 {
-	if (!Caster || !Target) return;
+	if (!Caster || !Target) return false;
 	m_Caster = Caster;
 	m_Target = Target;
 	// 서버 전용 초기화
 	m_TargetPos = m_Target->GetActorLocation();
 	m_NextSkillID = m_SkillData ? m_SkillData->NextSkillID : 0;
-	if (m_SkillData && m_SkillData->Cost > 0)
+	
+	// OnCast 시점 비용 실제 소모
+	if (!ApplyCosts(m_Caster, ESkillCostPhase::OnActivate))
 	{
-		m_Caster->DecreaseStamina(m_SkillData->Cost, false);
+		return false;
 	}
+	
 	m_CurrentPhase = ESkillPhase::Casting;
+	return true;
 }
 
 void UBaseSkill::Tick(float DeltaTime)
 {
 }
 
-void UBaseSkill::Fire()
+bool UBaseSkill::Fire()
 {
 	if (m_CurrentPhase == ESkillPhase::Casting)
 	{
+		// Fire 시점 비용 실제 소모
+		if (!ApplyCosts(m_Caster, ESkillCostPhase::OnFire))
+		{
+			Cancel();
+			return false;
+		}
+		
 		m_CurrentPhase = ESkillPhase::PostCasting;
+		return true;
 	}
+	return false;
 }
 
 void UBaseSkill::BindMontageDelegates(UAnimInstance* AnimInstance, UAnimMontage* Montage)
@@ -102,12 +115,20 @@ void UBaseSkill::BindMontageDelegates(UAnimInstance* AnimInstance, UAnimMontage*
 	AnimInstance->Montage_SetBlendingOutDelegate(CompleteDelegate, Montage);
 }
 
-void UBaseSkill::Complete()
+bool UBaseSkill::Complete()
 {
-	if (!m_Caster) return;
+	if (!m_Caster) return false;
 	if (m_CurrentPhase == ESkillPhase::CoolTime || m_CurrentPhase == ESkillPhase::Ready)
 	{
-		return;
+		return false;
+	}
+
+	// 스킬 종료 시점 비용 실제 소모
+	if (!ApplyCosts(m_Caster, ESkillCostPhase::OnComplete))
+	{
+		// 완료 시점 비용 지불 실패 -> 실패로 간주
+		Cancel();
+		return false;
 	}
 
 	m_CurrentPhase = ESkillPhase::CoolTime;
@@ -146,6 +167,8 @@ void UBaseSkill::Complete()
 	}
 
 	AdjustCoolTime();
+
+	return true;
 }
 
 void UBaseSkill::Cancel()
@@ -231,6 +254,98 @@ void UBaseSkill::SetNextSkillID(int NextSkillID)
 
 void UBaseSkill::ResetNextSkillByBHit()
 {
+}
+
+bool UBaseSkill::CheckCosts(AAreaObject* Caster, ESkillCostPhase Phase, bool* bOutStaminaLack, TArray<int32>* OutMissingItems) const
+{
+	if (!m_SkillData || !Caster) return true;
+	if (OutMissingItems) OutMissingItems->Reset();
+	if (bOutStaminaLack) *bOutStaminaLack = false;
+
+	// 1) 스태미나
+	for (const FSkillStaminaCost& C : m_SkillData->StaminaCosts)
+	{
+		if (C.Phase != Phase) continue;
+		if (!Caster->CanUseStamina(C.Cost))
+		{
+			// 스태미나 부족이면 바로 실패
+			if (bOutStaminaLack) *bOutStaminaLack = true;
+			return false;
+		}
+	}
+
+	// 2) 아이템
+	const ASonheimPlayerState* PS = Caster->GetPlayerState<ASonheimPlayerState>();
+	const UInventoryComponent* Inv = PS ? PS->m_InventoryComponent : nullptr;
+
+	bool bItemsOK = true;
+	for (const FSkillItemCost& C : m_SkillData->ItemCosts)
+	{
+		if (C.Phase != Phase) continue;
+		const int32 ItemID = ResolveItemID(C, Caster);
+		if (!Inv || ItemID <= 0 || !Inv->HasItem(ItemID, C.Count))
+		{
+			bItemsOK = false;
+			if (OutMissingItems) OutMissingItems->Add(ItemID);
+		}
+	}
+	return bItemsOK;
+}
+
+// 실 소모 로직. 실패 시 선택 환불(선소모 중 일부 성공했다가 중간 실패한 경우 복원).
+bool UBaseSkill::ApplyCosts(AAreaObject* Caster, ESkillCostPhase Phase)
+{
+	if (!m_SkillData || !Caster || !Caster->HasAuthority()) return true;
+
+	ASonheimPlayerState* PS = Caster->GetPlayerState<ASonheimPlayerState>();
+	UInventoryComponent* Inv = PS ? PS->m_InventoryComponent : nullptr;
+
+	// 1) 스태미나
+	for (const FSkillStaminaCost& C : m_SkillData->StaminaCosts)
+	{
+		if (C.Phase != Phase) continue;
+		{
+			if (!Caster->CanUseStamina(C.Cost))
+			{
+				SkillFailCase = ESkillFailCase::OutStamina;
+				return false;
+			}
+			Caster->DecreaseStamina(C.Cost, false);
+		}
+	}
+
+	// 2) 아이템
+	TArray<TPair<int32, int32>> consumed;
+	for (const FSkillItemCost& C : m_SkillData->ItemCosts)
+	{
+		if (C.Phase != Phase) continue;
+		const int32 ItemID = ResolveItemID(C, Caster);
+		if (ItemID <= 0 || !Inv || !Inv->RemoveItem(ItemID, C.Count))
+		{
+			// 실패 → (이미 TryConsumeItem 내부에서 UI 이벤트가 나감)
+			// 지금까지 소모한 것 환불
+			for (const auto& P : consumed) Inv->AddItem(P.Key, P.Value, false);
+			SkillFailCase = ESkillFailCase::OutItem;
+			return false;
+		}
+		consumed.Emplace(ItemID, C.Count);
+	}
+
+	return true;
+}
+
+int32 UBaseSkill::ResolveItemID(const FSkillItemCost& Cost, const AAreaObject* Caster) const
+{
+	if (Cost.RefKind == ESkillItemRefKind::FixedItemID) return Cost.ItemID;
+	const ASonheimPlayer* P = Cast<ASonheimPlayer>(Caster);
+	if (P && P->GetInventoryComponent())
+	{
+		int32 ItemID, Count, MagazineCount;
+		
+		P->GetInventoryComponent()->GetCurrentWeaponAmmoInfo(ItemID, Count, MagazineCount);
+		return ItemID;
+	}
+	return 0;
 }
 
 void UBaseSkill::AdjustCoolTime()

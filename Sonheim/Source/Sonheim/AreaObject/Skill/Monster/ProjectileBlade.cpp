@@ -17,29 +17,20 @@ UProjectileBlade::UProjectileBlade()
 	}
 }
 
-void UProjectileBlade::Activate(class AAreaObject* Caster, AAreaObject* Target)
-{
-	//CurrentTime = 0.f;
-
-	Super::Activate(Caster, Target);
-}
-
 void UProjectileBlade::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }
 
-void UProjectileBlade::Fire()
+bool UProjectileBlade::Fire()
 {
-	Super::Fire();
+	if (!Super::Fire()) return false;
 
 	FireBladeWind();
+
+	return true;
 }
 
-void UProjectileBlade::Complete()
-{
-	Super::Complete();
-}
 
 void UProjectileBlade::FireBladeWind()
 {

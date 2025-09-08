@@ -17,10 +17,10 @@ class SONHEIM_API UFlamethrower : public UBaseSkill
 public:
 	UFlamethrower();
 
-	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual bool Activate(class AAreaObject* Caster, AAreaObject* Target) override;
 	virtual void Tick(float DeltaTime) override;
 
-	virtual void Fire() override;
+	virtual bool Fire() override;
 
 	void FireFlame();
 

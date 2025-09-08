@@ -17,11 +17,9 @@ class SONHEIM_API UProjectileBlade : public UBaseSkill
 public:
 	UProjectileBlade();
 
-	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
 	virtual void Tick(float DeltaTime) override;
 
-	virtual void Fire() override;
-	virtual void Complete() override;
+	virtual bool Fire() override;
 
 	void FireBladeWind();
 

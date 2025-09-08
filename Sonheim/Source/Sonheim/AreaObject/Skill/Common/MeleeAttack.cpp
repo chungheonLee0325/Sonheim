@@ -6,20 +6,29 @@
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 
-void UMeleeAttack::Activate(class AAreaObject* Caster, AAreaObject* Target)
+bool UMeleeAttack::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
 	bDebugDraw = Caster->bShowDebug;
-	Super::Activate(Caster, Target);
+	return Super::Activate(Caster, Target);
 }
 
-void UMeleeAttack::Complete()
+bool UMeleeAttack::Complete()
 {
-	Super::Complete();
+	if (!Super::Complete()) return false;
+	// 완료 시에도 판정 창/LOD 흔적 정리
+	for (auto& Pair : NotifyStateMap) { ResetCollisionData(Pair.Key); }
 	NotifyStateMap.Empty();
+	bIsHitOnce = false;
+	return true;
 }
 
 void UMeleeAttack::Cancel()
 {
+	Super::Cancel();
+	// 중도 취소 시에도 확실한 정리(LOD 복원 포함)
+	for (auto& Pair : NotifyStateMap) { ResetCollisionData(Pair.Key); }
+	NotifyStateMap.Empty();
+	bIsHitOnce = false;
 	Super::Cancel();
 }
 
@@ -28,6 +37,11 @@ void UMeleeAttack::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	// 서버에서만 판정 수행
 	if (!m_Caster || !m_Caster->HasAuthority())
+	{
+		return;
+	}
+	// 캐스팅/포스트캐스팅 상태가 아니면 판정 금지
+	if (m_CurrentPhase != ESkillPhase::Casting && m_CurrentPhase != ESkillPhase::PostCasting)
 	{
 		return;
 	}
@@ -81,8 +95,8 @@ void UMeleeAttack::SetCasterMesh(int AttackDataIndex)
 		}
 	}
 	AttackCollision.IsEnableHitDetection = true;
-    // 서버에서 근접 판정 창 동안 최고 LOD 강제(소켓/본 안정성 확보)
-    // 원격/비가시/LOD 상황에서도 소켓 위치를 안정적으로 얻기 위함
+	// 서버에서 근접 판정 창 동안 최고 LOD 강제(소켓/본 안정성 확보)
+	// 원격/비가시/LOD 상황에서도 소켓 위치를 안정적으로 얻기 위함
 	if (m_Caster && m_Caster->HasAuthority() && AttackCollision.OwnerSourceMesh)
 	{
 		AttackCollision.PrevForcedLodModel = AttackCollision.OwnerSourceMesh->GetForcedLOD();
@@ -232,7 +246,7 @@ void UMeleeAttack::ResetCollisionData(int AttackDataIndex)
 {
 	FAttackCollision* AttackCollision = NotifyStateMap.Find(AttackDataIndex);
 	if (AttackCollision == nullptr) return;
-    // LOD 강제 복원(판정 창 종료 시 이전 상태로 되돌림)
+	// LOD 강제 복원(판정 창 종료 시 이전 상태로 되돌림)
 	if (m_Caster && m_Caster->HasAuthority() && AttackCollision->OwnerSourceMesh && AttackCollision->bForcedLODApplied)
 	{
 		AttackCollision->OwnerSourceMesh->SetForcedLOD(AttackCollision->PrevForcedLodModel);

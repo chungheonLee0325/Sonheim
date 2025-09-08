@@ -19,13 +19,15 @@ USparkShot::USparkShot()
 	}
 }
 
-void USparkShot::Activate(class AAreaObject* Caster, AAreaObject* Target)
+bool USparkShot::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
 	IsFired = false;
 
 	CurrentTime = 0.f;
 
-	Super::Activate(Caster, Target);
+	if (!Super::Activate(Caster, Target)) return false;
+
+	return true;
 }
 
 void USparkShot::Tick(float DeltaTime)
@@ -33,13 +35,15 @@ void USparkShot::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void USparkShot::Fire()
+bool USparkShot::Fire()
 {
-	if (IsFired) return;
+	if (IsFired) return false;
 
-	Super::Fire();
+	if (!Super::Fire()) return false;
 
 	FireSparkShot();
+
+	return true;
 }
 
 void USparkShot::FireSparkShot()

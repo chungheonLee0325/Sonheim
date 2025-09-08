@@ -14,5 +14,5 @@ class SONHEIM_API URecoverHPSkill : public UBaseSkill
 {
 	GENERATED_BODY()
 
-	virtual void Fire() override;
+	virtual bool Fire() override;
 };

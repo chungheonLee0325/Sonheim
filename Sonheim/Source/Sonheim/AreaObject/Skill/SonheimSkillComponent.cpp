@@ -158,8 +158,12 @@ bool USonheimSkillComponent::TryCastSkillById(int32 SkillId, AAreaObject* Target
 		return false;
 	}
 
+	if (!Skill->Activate(OwnerArea, Target))
+	{
+		// 실패시 캐스팅 상태로 진입 x
+		return false;
+	}
 	OnServerSkillActivated(SkillId);
-	Skill->Activate(OwnerArea, Target);
 	OwnerArea->MultiCast_CastSkill(SkillId, Target);
 	return true;
 }

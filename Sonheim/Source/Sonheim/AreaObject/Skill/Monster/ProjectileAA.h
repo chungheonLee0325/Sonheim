@@ -16,12 +16,10 @@ class SONHEIM_API UProjectileAA : public UBaseSkill
 
 public:
 	UProjectileAA();
-
-	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
+	
 	virtual void Tick(float DeltaTime) override;
 
-	virtual void Fire() override;
-	virtual void Complete() override;
+	virtual bool Fire() override;
 
 	void FireSandBlast();
 	UFUNCTION(Server, Reliable)

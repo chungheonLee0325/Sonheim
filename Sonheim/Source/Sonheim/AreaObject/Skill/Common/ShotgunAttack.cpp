@@ -9,6 +9,7 @@
 #include "DrawDebugHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 
 UShotgunAttack::UShotgunAttack()
 {
@@ -25,18 +26,20 @@ void UShotgunAttack::InitSkill(FSkillData* SkillData)
     Super::InitSkill(SkillData);
 }
 
-void UShotgunAttack::Activate(AAreaObject* Caster, AAreaObject* Target)
+bool UShotgunAttack::Activate(AAreaObject* Caster, AAreaObject* Target)
 {
-    Super::Activate(Caster, Target);
+    if (!Super::Activate(Caster, Target)) return false;
     CachedAttackData = GetAttackDataByIndex(0);
+
+    return true;
 }
 
-void UShotgunAttack::Fire()
+bool UShotgunAttack::Fire()
 {
-    Super::Fire();
+    if (!Super::Fire()) return false;
     
     if (!m_Caster || !CachedAttackData)
-        return;
+        return false;
     
     // 발사 시작 위치 계산
     FVector StartLocation = GetFireStartLocation();
@@ -93,6 +96,8 @@ void UShotgunAttack::Fire()
     {
         m_Caster->Multicast_PlayNiagaraEffectAtLocation(StartLocation, m_SkillData->AttackData[0].FireVFX_N, BaseDirection.Rotation());
     }
+    
+    return true;
 }
 
 // Client fire path removed; server executes Fire via RPC from AnimNotify

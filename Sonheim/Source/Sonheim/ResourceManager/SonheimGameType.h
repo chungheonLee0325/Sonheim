@@ -331,6 +331,57 @@ enum class EReactionDirection : uint8
 	RIGHT UMETA(DisplayName = "RIGHT")
 };
 
+UENUM(BlueprintType)
+enum class ESkillCostPhase : uint8
+{
+	// Activate 들어갈 때
+	OnActivate UMETA(DisplayName = "On Cast"),
+	// 발사 타이밍(애님 노티 직후)
+	OnFire UMETA(DisplayName = "On Fire"),
+	// 성공 종료 시
+	OnComplete UMETA(DisplayName = "On Complete"),
+};
+
+UENUM(BlueprintType)
+enum class ESkillItemRefKind : uint8
+{
+	// 고정 ItemID
+	FixedItemID UMETA(DisplayName = "Fixed ItemID"),
+	// 현재 장착 무기의 탄 (WeaponData.EquipmentData.BulletItemID[0])
+	CurrentWeaponBullet UMETA(DisplayName = "Current Weapon Bullet")
+};
+
+USTRUCT(BlueprintType)
+struct FSkillStaminaCost
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int Cost = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	ESkillCostPhase Phase = ESkillCostPhase::OnFire;
+};
+
+
+USTRUCT(BlueprintType)
+struct FSkillItemCost
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	ESkillItemRefKind RefKind = ESkillItemRefKind::FixedItemID;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(EditCondition="RefKind == ESkillItemRefKind::FixedItemID"))
+	int32 ItemID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(ClampMin="1"))
+	int32 Count = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	ESkillCostPhase Phase = ESkillCostPhase::OnFire;
+};
+
 // Struct
 // AreaObject 데이터 테이블용 구조체
 USTRUCT(BlueprintType)
@@ -569,10 +620,14 @@ struct FSkillData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<UBaseSkill> SkillClass = nullptr;
 
-	// 소모 자원(현재는 스태미너 고정 추후 체력등 확장시 enum 추가될듯)
+	// 소모 스태미너(페이즈별로 나누어 소모 가능)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int Cost = 0;
+	TArray<FSkillStaminaCost> StaminaCosts;
 
+	// 소모 아이템(총알 / 팰 스피어...)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FSkillItemCost> ItemCosts;
+	
 	// 스킬 사정거리 (AI 용)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float CastRange = 0.0f;
@@ -604,7 +659,6 @@ struct FSkillData : public FTableRowBase
 	// 다음 스킬 ID (플레이어 및 몬스터 콤보 어택)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int NextSkillID = 0;
-	// Todo : Sound & Cast/Hit FX 관련 항목 추가? -> Anim Notify로 처리할듯
 };
 
 // 장비 타입 정의

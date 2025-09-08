@@ -15,9 +15,11 @@ UFlamethrower::UFlamethrower()
 {
 }
 
-void UFlamethrower::Activate(class AAreaObject* Caster, AAreaObject* Target)
+bool UFlamethrower::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
-	Super::Activate(Caster, Target);
+	if (!Super::Activate(Caster, Target)) return false;
+
+	return true;
 }
 
 void UFlamethrower::Tick(float DeltaTime)
@@ -25,11 +27,14 @@ void UFlamethrower::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void UFlamethrower::Fire()
+bool UFlamethrower::Fire()
 {
-	Super::Fire();
-
+	if(!Super::Fire()) return false;
+	
 	FireFlame();
+	m_CurrentPhase = ESkillPhase::Casting;
+
+	return true;
 }
 
 void UFlamethrower::FireFlame()

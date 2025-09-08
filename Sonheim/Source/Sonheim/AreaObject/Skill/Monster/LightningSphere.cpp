@@ -17,13 +17,15 @@ ULightningSphere::ULightningSphere()
 	}
 }
 
-void ULightningSphere::Activate(class AAreaObject* Caster, AAreaObject* Target)
+bool ULightningSphere::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
 	IsFired = false;
 
-	Super::Activate(Caster, Target);
+	if (!Super::Activate(Caster, Target)) return false;
 
 	CurrentTime = 0.f;
+
+	return true;
 }
 
 void ULightningSphere::Tick(float DeltaTime)
@@ -31,13 +33,15 @@ void ULightningSphere::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void ULightningSphere::Fire()
+bool ULightningSphere::Fire()
 {
-	if (IsFired) return;
+	if (IsFired) return false;
 
-	Super::Fire();
+	if (!Super::Fire()) return false;
 
 	FireElectricBall();
+
+	return true;
 }
 
 void ULightningSphere::FireElectricBall()

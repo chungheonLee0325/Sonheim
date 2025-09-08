@@ -5,17 +5,21 @@
 #include "Sonheim/Element/BaseElement.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
-void UUBaseElementSkill::Activate(class AAreaObject* Caster, AAreaObject* Target)
+bool UUBaseElementSkill::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
     IsFired = false;
-    Super::Activate(Caster, Target);
+    if (!Super::Activate(Caster, Target)) return false;
+
+	return true;
 }
 
-void UUBaseElementSkill::Fire()
+bool UUBaseElementSkill::Fire()
 {
-    if (IsFired) return;
-    Super::Fire();
+    if (IsFired) return false;
+    if (!Super::Fire()) return false;
     FireElement();
+
+	return true;
 }
 
 void UUBaseElementSkill::FireElement()

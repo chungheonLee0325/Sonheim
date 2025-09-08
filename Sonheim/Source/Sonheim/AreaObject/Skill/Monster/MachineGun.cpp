@@ -10,11 +10,13 @@
 UMachineGun::UMachineGun()
 {}
 
-void UMachineGun::Activate(class AAreaObject* Caster, AAreaObject* Target)
+bool UMachineGun::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
-	Super::Activate(Caster, Target);
+	if (!Super::Activate(Caster, Target)) return false; 
 	
 	Fire();
+
+	return true;
 }
 
 void UMachineGun::Tick(float DeltaTime)
@@ -22,11 +24,13 @@ void UMachineGun::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void UMachineGun::Fire()
+bool UMachineGun::Fire()
 {
-	Super::Fire();
+	if(!Super::Fire()) return false;
 
 	GetWorld()->GetTimerManager().SetTimer(FireTimer, this, &UMachineGun::FireGun, 0.1f, true);
+
+	return true;
 }
 
 void UMachineGun::FireGun()

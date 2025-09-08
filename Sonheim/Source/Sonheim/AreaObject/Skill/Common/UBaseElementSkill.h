@@ -15,8 +15,8 @@ class SONHEIM_API UUBaseElementSkill : public UBaseSkill
 {
 	GENERATED_BODY()
 
-	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void Fire() override;
+	virtual bool Activate(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual bool Fire() override;
 
 	virtual void FireElement();
 

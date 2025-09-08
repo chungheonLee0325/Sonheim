@@ -19,8 +19,8 @@ public:
 
 	// BaseSkill 인터페이스 구현
 	virtual void InitSkill(FSkillData* SkillData) override;
-	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void Fire() override;
+	virtual bool Activate(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual bool Fire() override;
 
 protected:
 	// 샷건 특성 설정

@@ -20,32 +20,18 @@ UProjectileAA::UProjectileAA()
 	}
 }
 
-void UProjectileAA::Activate(class AAreaObject* Caster, AAreaObject* Target)
-{
-	//CurrentTime = 0.f;
-	FLog::Log("start");
-
-	Super::Activate(Caster, Target);
-}
-
 void UProjectileAA::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }
 
-void UProjectileAA::Fire()
+bool UProjectileAA::Fire()
 {
-	Super::Fire();
+	if (!Super::Fire()) return false;
 
 	FireSandBlast();
-	//SeverRPC_FireSandBlast();
-}
 
-void UProjectileAA::Complete()
-{
-	FLog::Log("end");
-
-	Super::Complete();
+	return true;
 }
 
 void UProjectileAA::FireSandBlast()

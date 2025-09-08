@@ -12,13 +12,15 @@ UElectricWave::UElectricWave()
 {
 }
 
-void UElectricWave::Activate(class AAreaObject* Caster, AAreaObject* Target)
+bool UElectricWave::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
-	Super::Activate(Caster, Target);
+	if (!Super::Activate(Caster, Target)) return false;
 
 	CurrentTime = 0.f;
 
 	Fire();
+
+	return true;
 }
 
 void UElectricWave::Tick(float DeltaTime)
@@ -33,15 +35,17 @@ void UElectricWave::Tick(float DeltaTime)
 	}
 }
 
-void UElectricWave::Fire()
+bool UElectricWave::Fire()
 {
-	Super::Fire();
+	if (!Super::Fire()) return false;
 
 	for (int32 i{}; i < AttackCount; ++i)
 	{
 		FTimerHandle ShockWaveTimer;
 		GetWorld()->GetTimerManager().SetTimer(ShockWaveTimer, this, &UElectricWave::ShockWave, 0.2f * (i + 1), false);
 	}
+
+	return true;
 }
 
 void UElectricWave::ShockWave()

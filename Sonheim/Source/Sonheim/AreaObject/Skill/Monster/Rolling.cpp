@@ -17,10 +17,12 @@ URolling::URolling()
 {
 }
 
-void URolling::Activate(class AAreaObject* Caster, AAreaObject* Target)
+bool URolling::Activate(class AAreaObject* Caster, AAreaObject* Target)
 {
-	Super::Activate(Caster, Target);
+	if (!Super::Activate(Caster, Target)) return false;
 	CastPal = Cast<ALamBall>(m_Caster);
+
+	return true;
 }
 
 void URolling::Tick(float DeltaTime)
@@ -28,10 +30,12 @@ void URolling::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void URolling::Fire()
+bool URolling::Fire()
 {
-	Super::Fire();
+	if (!Super::Fire()) return false;
 	StartRoll();
+
+	return true;
 }
 
 void URolling::StartRoll()

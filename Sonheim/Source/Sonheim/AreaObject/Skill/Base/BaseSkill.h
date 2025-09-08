@@ -26,6 +26,7 @@ enum class ESkillFailCase : uint8
 	Null,
 	NotReady,
 	OutStamina,
+	OutItem,
 	None
 };
 
@@ -56,14 +57,14 @@ public:
 
     // 서버 전용 실행 경계
     virtual bool CanCast(class AAreaObject* Caster, const AAreaObject* Target) const;
-    virtual void Activate(class AAreaObject* Caster, AAreaObject* Target);
+    virtual bool Activate(class AAreaObject* Caster, AAreaObject* Target);
     virtual void Tick(float DeltaTime);
-    virtual void Complete();
+    virtual bool Complete();
     virtual void Cancel();
 
     // 서버 전용: 실제 효과(투사체/판정 등)
     UFUNCTION(BlueprintCallable)
-    virtual void Fire();
+    virtual bool Fire();
 
     // 코스메틱: 몽타주 종료/블렌드아웃 바인딩
     void BindMontageDelegates(class UAnimInstance* AnimInstance, class UAnimMontage* Montage);
@@ -83,6 +84,15 @@ public:
     void SkillLogPrint();
     void SetNextSkillID(int NextSkillID);
     virtual void ResetNextSkillByBHit();
+
+	// === 비용 처리 유틸 (스태미나 + ItemCosts) ===
+	// Phase 시점의 '검사' (소모는 안함). 부족 아이템을 OutMissingItems로 반환.
+	bool CheckCosts(class AAreaObject* Caster, ESkillCostPhase Phase, bool * bOutStaminaLack = nullptr, TArray<int32>* OutMissingItems = nullptr) const;
+	// Phase 시점의 '실소모' (서버 권한 전제). 실패 시 false.
+	bool ApplyCosts(class AAreaObject* Caster, ESkillCostPhase Phase);
+	// RefKind에 따라 실제 ItemID 해석
+	int32 ResolveItemID(const FSkillItemCost& Cost, const class AAreaObject* Caster) const;
+	
 
     // 편의: 캐스터의 SkillComponent 가져오기
     UFUNCTION(BlueprintPure, Category = "Skill")

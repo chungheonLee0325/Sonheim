@@ -39,8 +39,8 @@ class SONHEIM_API UMeleeAttack : public UBaseSkill
 	GENERATED_BODY()
 
 public:
-	virtual void Activate(class AAreaObject* Caster, AAreaObject* Target) override;
-	virtual void Complete() override;
+	virtual bool Activate(class AAreaObject* Caster, AAreaObject* Target) override;
+	virtual bool Complete() override;
 	virtual void Cancel() override;
 	virtual void Tick(float DeltaTime) override;
 	void SetCasterMesh(int AttackDataIndex);
