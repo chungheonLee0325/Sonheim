@@ -547,10 +547,17 @@ bool AAreaObject::CanCastSkill(UBaseSkill* Skill, AAreaObject* Target)
 		return false;
 	}
 
-	if (Skill == nullptr) LOG_PRINT(TEXT("Skill is Empty"));
+	if (Skill == nullptr) {LOG_PRINT(TEXT("Skill is Empty")); return false;}
 	if (Target == nullptr) LOG_PRINT(TEXT("Target is Empty"));
 
-	return Skill && Skill->CanCast(this, Target);
+	bool result = Skill->CanCast(this, Target);
+
+	if (OnSkillBlocked.IsBound())
+	{
+		OnSkillBlocked.Broadcast(Skill->GetSkillID(), Skill->SkillFailCase);
+	}
+	
+	return result;
 }
 
 bool AAreaObject::CanCastNextSkill(UBaseSkill* Skill, AAreaObject* Target)

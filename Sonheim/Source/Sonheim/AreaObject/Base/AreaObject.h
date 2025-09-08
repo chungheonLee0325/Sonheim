@@ -11,11 +11,14 @@
 #include "Sonheim/UI/Widget/FloatingDamageWidget.h"
 #include "AreaObject.generated.h"
 
+enum class ESkillFailCase : uint8;
 class UBaseAnimInstance;
 class USonheimGameInstance;
 class UMoveUtilComponent;
 class ASonheimGameMode;
 class USonheimSkillComponent;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSkillBlocked, int32, SkillId, ESkillFailCase, Reason);
 
 UCLASS()
 class SONHEIM_API AAreaObject : public ACharacter
@@ -261,6 +264,9 @@ public:
 	void Server_NotifySkillFire(int SkillID);
 	UFUNCTION(Server, Reliable)
 	void Server_NotifySkillComplete(int SkillID);
+
+	// 스킬 실패 델리게이트 - 플레이어 UI 피드백
+	FOnSkillBlocked OnSkillBlocked;
 
 protected:
 	// Skill Component (replicated)
