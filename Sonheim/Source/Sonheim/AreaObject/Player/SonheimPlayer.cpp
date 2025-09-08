@@ -527,18 +527,6 @@ void ASonheimPlayer::InitializeByPlayerState()
 {
 	PalCaptureComponent->InitializeWithPlayerState(S_PlayerState);
 	PalPartnerSkillComponent->InitializeWithPlayerState(S_PlayerState);
-
-	//if(S_PlayerState->m_InventoryComponent && IsLocallyControlled())
-	if (S_PlayerState->m_InventoryComponent && HasAuthority())
-	{
-		//S_PlayerState->m_InventoryComponent->OnItemAdded.AddDynamic(S_PlayerController->GetPlayerStatusWidget(), &UPlayerStatusWidget::OnItemAdded);
-		S_PlayerState->m_InventoryComponent->OnItemAdded.AddDynamic(this, &ASonheimPlayer::Client_OnItemAdded);
-	}
-}
-
-void ASonheimPlayer::Client_OnItemAdded_Implementation(int ItemID, int ItemCount)
-{
-	S_PlayerController->GetPlayerStatusWidget()->OnItemAdded(ItemID, ItemCount);
 }
 
 void ASonheimPlayer::InitializeStateRestrictions()

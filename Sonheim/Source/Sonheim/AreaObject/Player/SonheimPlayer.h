@@ -329,9 +329,6 @@ private:
 	virtual void OnRep_Controller() override;
 	void InitializeByPlayerState();
 
-	UFUNCTION(Client, Reliable)
-	void Client_OnItemAdded(int ItemID, int ItemCount);
-
 	// 플레이어 상태 관리
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", meta = (AllowPrivateAccess = "true"))
 	EPlayerState CurrentPlayerState;

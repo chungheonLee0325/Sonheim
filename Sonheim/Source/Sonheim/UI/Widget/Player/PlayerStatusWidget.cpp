@@ -9,6 +9,7 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
+#include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/AreaObject/Player/Utility/PalCaptureComponent.h"
 #include "Sonheim/AreaObject/Player/Utility/PalInventoryComponent.h"
 #include "Sonheim/AreaObject/Player/Utility/PalPartnerSkillComponent.h"
@@ -27,7 +28,6 @@ void UPlayerStatusWidget::NativeConstruct()
 			UPalCaptureComponent* CaptureComp = CachedPlayer->FindComponentByClass<UPalCaptureComponent>();
 			if (CaptureComp)
 			{
-				// 델리게이트 바인딩
 				CaptureComp->OnCaptureUIDataUpdated.AddDynamic(this, &UPlayerStatusWidget::UpdateCaptureUI);
 			}
 		}
@@ -271,16 +271,6 @@ void UPlayerStatusWidget::ClearOwnedPals()
 	}
 }
 
-void UPlayerStatusWidget::OnItemAdded(int ItemID, int ItemCount)
-{
-	FItemData* ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(ItemID);
-	if (ItemData && ItemCount != 0)
-	{
-		OnItemPopupDisplay(ItemData->ItemIcon, ItemData->ItemName, ItemCount,
-		                   USonheimUtility::GetRarityColor(ItemData->ItemRarity));
-	}
-}
-
 void UPlayerStatusWidget::SetCrosshairType(EWeaponType WeaponType)
 {
 	const bool bIsShotgun = (WeaponType == EWeaponType::ShotGun);
@@ -314,11 +304,24 @@ void UPlayerStatusWidget::BindToPlayerComponents()
 	ASonheimPlayer* Player = GetPlayerFast();
 	if (!Player) return;
 
+	// 스킬 실패 피드백 바인드
+	Player->OnSkillBlocked.AddDynamic(this, &UPlayerStatusWidget::HandleSkillFailed);
+	
+
 	if (ASonheimPlayerState* PS = Cast<ASonheimPlayerState>(Player->GetPlayerState()))
 	{
+		CachedInventoryComponent = PS->m_InventoryComponent;
 		CachedPalInventory = PS->m_PalInventoryComponent;
 	}
 	CachedPartnerSkill = Player->FindComponentByClass<UPalPartnerSkillComponent>();
+
+	if (CachedInventoryComponent.IsValid())
+	{
+		CachedInventoryComponent->OnItemAdded.AddDynamic(this, &UPlayerStatusWidget::HandleItemAdded);
+		CachedInventoryComponent->OnItemRemoved.AddDynamic(this, &UPlayerStatusWidget::HandleItemRemoved);
+		CachedInventoryComponent->OnWeaponChanged.AddDynamic(this, &UPlayerStatusWidget::HandleWeaponChanged);
+		CachedInventoryComponent->OnInventoryChanged.AddDynamic(this, &UPlayerStatusWidget::HandleItemChanged);
+	}
 
 	if (CachedPalInventory)
 	{
@@ -334,10 +337,23 @@ void UPlayerStatusWidget::BindToPlayerComponents()
 
 	// 바인딩 이후 초기 동기화
 	SyncInitialPalUI();
+	UpdateUIItemCounts();
 }
 
 void UPlayerStatusWidget::UnbindFromPlayerComponents()
 {
+	ASonheimPlayer* Player = GetPlayerFast();
+	if (Player)
+		Player->OnSkillBlocked.RemoveDynamic(this, &UPlayerStatusWidget::HandleSkillFailed);
+	
+	if (CachedInventoryComponent.IsValid())
+	{
+		CachedInventoryComponent->OnItemAdded.RemoveDynamic(this, &UPlayerStatusWidget::HandleItemAdded);
+		CachedInventoryComponent->OnItemRemoved.RemoveDynamic(this, &UPlayerStatusWidget::HandleItemRemoved);
+		CachedInventoryComponent->OnWeaponChanged.RemoveDynamic(this, &UPlayerStatusWidget::HandleWeaponChanged);
+		CachedInventoryComponent->OnInventoryChanged.RemoveDynamic(this, &UPlayerStatusWidget::HandleItemChanged);
+	}
+
 	if (CachedPalInventory)
 	{
 		CachedPalInventory->OnPalAdded.RemoveDynamic(this, &UPlayerStatusWidget::HandlePalAdded);
@@ -391,6 +407,66 @@ void UPlayerStatusWidget::SyncInitialPalUI()
 			HandlePalSummoned(Summoned);
 		}
 	}
+}
+
+void UPlayerStatusWidget::HandleSkillFailed(int32 SkillId, ESkillFailCase Reason)
+{
+	// 스킬 실패 피드백
+	BP_DisplaySkillFailedFeedback(SkillId, Reason);
+}
+
+void UPlayerStatusWidget::HandleItemAdded(int ItemID, int Count)
+{
+	FItemData* ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(ItemID);
+	if (ItemData && Count != 0)
+	{
+		OnItemPopupDisplay(ItemData->ItemIcon, ItemData->ItemName, Count,
+		                   USonheimUtility::GetRarityColor(ItemData->ItemRarity));
+	}
+}
+
+void UPlayerStatusWidget::HandleItemRemoved(int ItemID, int Count)
+{
+}
+
+void UPlayerStatusWidget::HandleWeaponChanged(EEquipmentSlotType EquipmentSlotType, int ItemID)
+{
+	UpdateUIItemCounts();
+
+	FItemData* ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(ItemID);
+	UTexture2D* Icon = nullptr;
+	FText ItemName = FText::GetEmpty();
+	if (ItemData)
+	{
+		Icon = ItemData->ItemIcon;
+		ItemName = ItemData->ItemName;
+	}
+	BP_DisplayWeaponInfo(ItemName, Icon);
+}
+
+void UPlayerStatusWidget::HandleItemChanged(const TArray<FInventoryItem>& Inventory)
+{
+	UpdateUIItemCounts();
+}
+
+void UPlayerStatusWidget::UpdateUIItemCounts()
+{
+	if (!CachedInventoryComponent.IsValid()) return;
+
+	int32 ItemID, CurrentAmmo, MaxAmmo;
+	CachedInventoryComponent->GetCurrentWeaponAmmoInfo(ItemID, CurrentAmmo, MaxAmmo);
+	FItemData* ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(ItemID);
+	UTexture2D* Icon = nullptr;
+	FText ItemName = FText::GetEmpty();
+	if (ItemData)
+	{
+		Icon = ItemData->ItemIcon;
+		ItemName = ItemData->ItemName;
+	}
+	BP_DisplayWeaponAmmoInfo(ItemName, Icon, CurrentAmmo, MaxAmmo);
+
+	const int32 PalSphereCount = CachedInventoryComponent->GetPalSphereCount();
+	BP_DisplayPalSphereCount(PalSphereCount);
 }
 
 void UPlayerStatusWidget::HandlePalAdded(ABaseMonster* Pal, int32 Index)

@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "Sonheim/UI/Widget/BaseStatusWidget.h"
 #include "PlayerStatusWidget.generated.h"
@@ -10,6 +11,7 @@ class UProgressBar;
 class UTextBlock;
 class UImage;
 class ABaseMonster;
+class UInventoryComponent;
 class UPalInventoryComponent;
 class UPalPartnerSkillComponent;
 
@@ -54,9 +56,7 @@ public:
 	UFUNCTION()
 	void SwitchSelectedPalIndex(int Index);
 	void ClearOwnedPals();
-
-	UFUNCTION()
-	void OnItemAdded(int ItemID, int ItemCount);
+	
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnItemPopupDisplay(UTexture2D* ItemIcon, const FText& ItemName, int ItemCount, FLinearColor ItemRarityColor);
@@ -86,6 +86,17 @@ public:
 	UFUNCTION()
 	void HandlePalDismissed();
 
+	UFUNCTION(BlueprintImplementableEvent, Category = "UI Update")
+	void BP_DisplaySkillFailedFeedback(int32 SkillID, ESkillFailCase Reason);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "UI Update")
+	void BP_DisplayWeaponInfo(const FText& ItemName, const UTexture2D* Icon);
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "UI Update")
+	void BP_DisplayWeaponAmmoInfo(const FText& ItemName, const UTexture2D* Icon, int32 CurrentAmmoValue, int32 MagazineAmmoValue);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "UI Update")
+	void BP_DisplayPalSphereCount(int32 Count);
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* StaminaBar;
@@ -171,10 +182,25 @@ private:
 	int Level = 0;
 
 	TWeakObjectPtr<class ASonheimPlayer> CachedPlayer;
+	TWeakObjectPtr<class UInventoryComponent> CachedInventoryComponent;
 	FDelegateHandle NewPawnHandle;
 
 	void HandleNewPawn(class APawn* NewPawn);
 	FORCEINLINE class ASonheimPlayer* GetPlayerFast() const { return CachedPlayer.Get(); }
+
+	UFUNCTION()
+	void HandleSkillFailed(int32 SkillId, ESkillFailCase Reason);
+	
+	UFUNCTION()
+	void HandleItemAdded(int ItemID, int Count);
+	UFUNCTION()
+	void HandleItemRemoved(int ItemID, int Count);
+	UFUNCTION()
+	void HandleWeaponChanged(EEquipmentSlotType EquipmentSlotType, int ItemID);
+	UFUNCTION()
+	void HandleItemChanged(const TArray<FInventoryItem>& Inventory);
+
+	void UpdateUIItemCounts();
 
 	UPROPERTY()
 	TMap<int, UImage*> PalSlots;
@@ -193,7 +219,7 @@ private:
 
 	// 현재 소환된 인덱스(없으면 -1)
 	int32 CurrentSummonedIndex = -1;
-
+	
 	void BindToPlayerComponents();
 	void UnbindFromPlayerComponents();
 	void SyncInitialPalUI();
