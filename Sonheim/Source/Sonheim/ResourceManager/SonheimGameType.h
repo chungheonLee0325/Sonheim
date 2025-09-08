@@ -405,6 +405,9 @@ struct FAreaObjectData : public FTableRowBase
 	// 종 고유 저항(0~1). 0.2면 최종 확률 * (1-0.2)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Capture", meta=(ClampMin="0.0", ClampMax="0.95"))
 	float CaptureResist = 0.0f;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	TMap<int, int> PossibleDropItemID;
 };
 
 // LevelData 구조체

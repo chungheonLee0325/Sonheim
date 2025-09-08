@@ -10,17 +10,16 @@
 //#include "Perception/AISenseConfig_Sight.h"
 #include "AIController.h"
 #include "BaseSkillRoulette.h"
-#include "NiagaraFunctionLibrary.h"
-#include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
-#include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameObject/Items/BaseItem.h"
 #include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 #include "Sonheim/UI/Widget/BaseStatusWidget.h"
 #include "Sonheim/UI/Widget/Monster/MonsterStatusWidget.h"
 #include "Sonheim/Utilities/CommonUtil.h"
+#include "Sonheim/Utilities/SonheimUtility.h"
 
 // Sets default values
 ABaseMonster::ABaseMonster()
@@ -254,6 +253,29 @@ void ABaseMonster::OnDie_Implementation()
 	// 죽는 애니메이션 하고
 	IsDead = true;
 	ChangeFace(EFaceType::Dead);
+
+	if (HasAuthority())
+	{
+		if (dt_AreaObject && dt_AreaObject->PossibleDropItemID.Num() > 0)
+		{
+			FItemSpawnOptions Opt;
+			Opt.bRequireInteraction = false;
+			Opt.ItemCount = 1;
+			Opt.AutoPickupDelay = 1.5f;
+			Opt.bApplyPhysicsOnDrop = true;
+			Opt.DropForce = 1500.f;
+			Opt.LifeTime = 300.f;
+
+			USonheimUtility::SpawnFromDropTableWithOptions(
+				this,
+				dt_AreaObject->PossibleDropItemID,
+				GetActorLocation(),
+				1,
+				150.f,
+				Opt
+			);
+		}
+	}
 
 	// 굴러다니게
 	GetCapsuleComponent()->SetSimulatePhysics(true);
