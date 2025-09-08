@@ -70,6 +70,11 @@ struct FRepInventoryEntry : public FFastArraySerializerItem
 
 	UPROPERTY()
 	int32 Count = 0;
+
+	// --- FastArray per-item 콜백 (서버→클라 델타)
+	// void PreReplicatedRemove(const struct FRepInventoryList& InArraySerializer);
+	// void PostReplicatedAdd(const struct FRepInventoryList& InArraySerializer);
+	// void PostReplicatedChange(const struct FRepInventoryList& InArraySerializer);
 };
 
 USTRUCT(BlueprintType)
@@ -339,7 +344,7 @@ private:
 
 	// Client Prediction 설정
 	UPROPERTY(EditDefaultsOnly, Category = "Network")
-	bool bEnableClientPrediction = true;
+	bool bEnableClientPrediction = false;
 
 	// 장비 아이템 자동 장착 설정
 	UPROPERTY(EditDefaultsOnly, Category="Inventory|Equip")

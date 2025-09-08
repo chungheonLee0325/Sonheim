@@ -513,7 +513,14 @@ bool UInventoryComponent::EquipItemByIndex(int32 InventoryIndex)
 	// 서버에서 실행
 	if (GetOwnerRole() == ROLE_Authority)
 	{
-		return EquipItem(ItemID);
+		FItemData* ItemData = GetItemData(ItemID);
+		if (!ItemData)
+			return false;
+		EEquipmentSlotType EquipSlotType = FindEquipSlotByEquipKindType(ItemData->EquipmentData.EquipKind);
+		if (EquipSlotType == EEquipmentSlotType::None)
+			return false;
+
+		return EquipItemToSlotByIndex(InventoryIndex, EquipSlotType);
 	}
 	// 클라이언트에서 실행
 	else
@@ -873,6 +880,8 @@ void UInventoryComponent::SwitchWeaponSlot(int Index)
 			}
 
 			NotifyWeaponSlot(CurrentWeaponSlot);
+
+			GetOwner()->ForceNetUpdate();
 		}
 	}
 	// 클라이언트에서 실행
@@ -1521,47 +1530,40 @@ bool UInventoryComponent::SwapEquippedItems(EEquipmentSlotType SlotA, EEquipment
 void UInventoryComponent::UpdateRepEntryAtIndex(int32 Index)
 {
 	if (GetOwnerRole() != ROLE_Authority) return;
-	if (!RepItems.Items.IsValidIndex(Index))
-	{
-		if (InventoryItems.IsValidIndex(Index))
-		{
-			InsertRepEntryAtIndex(Index, InventoryItems[Index]);
-		}
-		return;
-	}
-	FRepInventoryEntry& Entry = RepItems.Items[Index];
-	Entry.SlotIndex = Index;
-	Entry.ItemID = InventoryItems[Index].ItemID;
-	Entry.Count = InventoryItems[Index].Count;
-	RepItems.MarkItemDirty(Entry);
+	if (!InventoryItems.IsValidIndex(Index)) return;
+	Sonheim::FastArray::UpdateAt(RepItems, Index, InventoryItems[Index].ItemID, InventoryItems[Index].Count);
+	RepItems.MarkItemDirty(RepItems.Items[Index]);
+
+	GetOwner()->ForceNetUpdate();
 }
 
 void UInventoryComponent::InsertRepEntryAtIndex(int32 Index, const FInventoryItem& Item)
 {
 	if (GetOwnerRole() != ROLE_Authority) return;
-	RepItems.Items.InsertDefaulted(Index);
-	for (int32 i = Index + 1; i < RepItems.Items.Num(); ++i)
-	{
-		RepItems.Items[i].SlotIndex = i;
-		RepItems.MarkItemDirty(RepItems.Items[i]);
-	}
-	FRepInventoryEntry& NewEntry = RepItems.Items[Index];
-	NewEntry.SlotIndex = Index;
-	NewEntry.ItemID = Item.ItemID;
-	NewEntry.Count = Item.Count;
+	Sonheim::FastArray::InsertAt(RepItems, Index, Item.ItemID, Item.Count);
 	RepItems.MarkArrayDirty();
-	RepItems.MarkItemDirty(NewEntry);
+
+	GetOwner()->ForceNetUpdate();
 }
 
 void UInventoryComponent::RemoveRepEntryAtIndex(int32 Index)
 {
 	if (GetOwnerRole() != ROLE_Authority) return;
-	if (!RepItems.Items.IsValidIndex(Index)) return;
-	RepItems.Items.RemoveAt(Index);
+	Sonheim::FastArray::RemoveAt(RepItems, Index);
 	RepItems.MarkArrayDirty();
-	for (int32 i = Index; i < RepItems.Items.Num(); ++i)
-	{
-		RepItems.Items[i].SlotIndex = i;
-		RepItems.MarkItemDirty(RepItems.Items[i]);
-	}
+
+	GetOwner()->ForceNetUpdate();
 }
+
+// 현재 아이템 전부 업데이트 로직이므로, 추후 도입예정..
+// void FRepInventoryEntry::PostReplicatedAdd(const FRepInventoryList& Array)
+// {
+// }
+//
+// void FRepInventoryEntry::PreReplicatedRemove(const FRepInventoryList& Array)
+// {
+// }
+//
+// void FRepInventoryEntry::PostReplicatedChange(const FRepInventoryList& Array)
+// {
+// }
