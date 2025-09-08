@@ -123,7 +123,7 @@ bool AAreaObject::CanAttack(AActor* TargetActor)
 	{
 		if (targetAreaObject->HasCondition(EConditionBitsType::Dead) || targetAreaObject->
 			HasCondition(EConditionBitsType::Invincible) || targetAreaObject->HasCondition(
-				EConditionBitsType::Invincible))
+				EConditionBitsType::Hidden))
 		{
 			return false;
 		}
