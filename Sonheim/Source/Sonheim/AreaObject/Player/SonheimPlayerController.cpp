@@ -508,7 +508,14 @@ void ASonheimPlayerController::On_Jump_Pressed(const FInputActionValue& InputAct
 		if (JumpCount >= 2 && m_Player && !m_Player->GetCharacterMovement()->IsMovingOnGround())
 		{
 			// 글라이더 활성화
-			m_Player->ActivateGlider();
+			if (m_PlayerState && m_PlayerState->m_InventoryComponent)
+			{
+				FInventoryItem GliderItem = m_PlayerState->m_InventoryComponent->GetEquippedItem(EEquipmentSlotType::Glider);
+				if (GliderItem.ItemID > 0)
+				{
+					m_Player->ActivateGlider();
+				}
+			}
 			JumpCount = 0;
 		}
 	}
@@ -645,7 +652,14 @@ void ASonheimPlayerController::On_Glider_Pressed(const FInputActionValue& InputA
 	if (IsMenuActivate || IsContainerActivate) return;
 	if (m_Player && !m_Player->GetCharacterMovement()->IsMovingOnGround())
 	{
-		m_Player->ActivateGlider();
+		if (m_PlayerState && m_PlayerState->m_InventoryComponent)
+		{
+			FInventoryItem GliderItem = m_PlayerState->m_InventoryComponent->GetEquippedItem(EEquipmentSlotType::Glider);
+			if (GliderItem.ItemID > 0)
+			{
+				m_Player->ActivateGlider();
+			}
+		}
 	}
 }
 
