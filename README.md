@@ -8,6 +8,17 @@
 
 ---
 
+### 💡 프로젝트 탐색 가이드
+> 이 README는 프로젝트의 핵심을 요약한 '쇼케이스'입니다. 전체적인 개요를 파악한 뒤, 더 깊은 기술적 내용이 궁금하다면 Tech Docs를 확인해 보세요.
+
+| 문서 | 역할                | 내용                          |
+| :--- |:------------------|:----------------------------|
+| 📋 [Project Gallery](https://github.com/chungheonLee0325/chungheonLee0325) | Root (전체 개요)      | 주요 프로젝트 목록, 핵심 역량 요약        |
+| 📁 **Repository README** | **What (개요)**     | 프로젝트 요약, 데모 영상, 핵심 기능, 아키텍처 |
+| 🔗 [Tech Docs](https://github.com/chungheonLee0325/Sonheim/wiki) | How & Why (상세 구현) | 코드 분석, 설계 과정, 기술 회고, 트러블슈팅  |
+
+---
+
 ## 핵심 특징
 
 - **멀티플레이어 아키텍처**: 서버 권위 + 예측/보정 + Steam 세션
