@@ -23,10 +23,10 @@ graph TD
     C --> D{<b>보스 레이드</b><br>궁극의 장비와 동료 '팰'과 함께<br>강력한 보스에 도전};
 ```
 
-*   **탐험과 수집**: 광활한 월드를 탐험하며 채집, 채광, 벌목 등 다양한 방법으로 제작에 필요한 재료를 수집합니다.
-*   **제작과 성장**: 수집한 재료를 사용하여 무기, 방어구, 건물 등 다양한 아이템을 제작하고 캐릭터를 성장시킵니다.
+*   **탐험과 수집**: 광활한 월드를 탐험하며 채집, 채광, 벌목, 사냥 등 다양한 방법으로 제작에 필요한 재료를 수집합니다.
+*   **제작과 성장**: 수집한 재료를 사용하여 무기, 방어구, 악세서리, 도구 등 다양한 아이템을 제작하고 캐릭터를 성장시킵니다.
 *   **전투와 포획**: 실시간 액션 전투를 통해 몬스터를 사냥하고, 특별한 생명체인 '팰'을 포획하여 동료로 삼습니다.
-*   **협력**: 친구들과 파티를 맺어 함께 탐험하고, 강력한 보스를 공략하며, 자원을 공유하는 등 멀티플레이어 환경에서 협력의 재미를 느낄 수 있습니다.
+*   **협력**: 친구들과 함께 탐험하고, 강력한 보스를 공략하며, 자원을 공유하는 등 멀티플레이어 환경에서 협력의 재미를 느낄 수 있습니다.
 
 ---
 
@@ -44,7 +44,7 @@ HP, 인벤토리 등 재사용 가능한 기능들을 독립적인 부품(컴포
 아이템의 능력치, 몬스터의 스탯 등 게임의 핵심 내용을 코드에서 분리하여 데이터 테이블로 관리합니다. 이를 통해 프로그래머의 개입 없이 기획자가 직접 콘텐츠를 수정하고 확장할 수 있습니다. (자세한 내용은 [2.1. 데이터 주도 설계](./2.1_Data_Driven_Design.md)에서 확인)
 
 #### 4. 관심사의 분리 (Separation of Concerns)
-플레이어의 입력([`PlayerController`](https://github.com/chungheonLee0325/Sonheim/blob/main/Source/Sonheim/AreaObject/Player/SonheimPlayerController.h)), 데이터([`PlayerState`](https://github.com/chungheonLee0325/Sonheim/blob/main/Source/Sonheim/AreaObject/Player/SonheimPlayerState.h)), 외형([`Pawn`](https://github.com/chungheonLee0325/Sonheim/blob/main/Source/Sonheim/AreaObject/Player/SonheimPlayer.h))처럼 각 클래스와 시스템이 하나의 명확한 책임만 갖도록 설계하여 코드의 복잡도를 낮추고 유지보수성을 높입니다. (자세한 내용은 [4.1. 플레이어 클래스 아키텍처](./4.1_Player_Class_Architecture.md)에서 확인)
+플레이어의 입력(`PlayerController`), 데이터(`PlayerState`), 외형(`Pawn`)처럼 각 클래스와 시스템이 하나의 명확한 책임만 갖도록 설계하여 코드의 복잡도를 낮추고 유지보수성을 높입니다. (자세한 내용은 [4.1. 플레이어 클래스 아키텍처](./4.1_Player_Class_Architecture.md)에서 확인)
 
 ---
 
@@ -73,30 +73,36 @@ graph TD
 
     C --> A; D --> A; E --> A; F --> A; G --> A; H --> A
     B --> C; B --> H
-    C -- Uses --> E; C -- Uses --> G; C -- Interacts with --> F; C -- Fights/Captures --> D
-    D -- Uses --> E; D -- Interacts with --> F
-    H -- Displays data from --> C; H -- Displays data from --> D; H -- Displays data from --> E; H -- Displays data from --> G
+    C -- "Uses" --> E; C -- "Uses" --> G; C -- "Interacts with" --> F; C -- "Fights/Captures" --> D
+    D -- "Uses" --> E; D -- "Interacts with" --> F
+    H -- "Displays data from" --> C; H -- "Displays data from" --> D; H -- "Displays data from" --> E; H -- "Displays data from" --> G
 
-    style Core fill:#e3f2fd,stroke:#333,stroke-width:2px
-    style Gameplay fill:#e8f5e9,stroke:#333,stroke-width:2px
-    style Presentation fill:#fff3e0,stroke:#333,stroke-width:2px
+    style Core fill:#E0F7FA,stroke:#00BCD4,stroke-width:2px,color:#212121
+    style Gameplay fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px,color:#212121
+    style Presentation fill:#FFF3E0,stroke:#FFC107,stroke-width:2px,color:#212121
+
+    style A fill:white,stroke:#2196F3,stroke-width:1px,color:#212121
+    style B fill:white,stroke:#2196F3,stroke-width:1px,color:#212121
+    style C fill:white,stroke:#4CAF50,stroke-width:1px,color:#212121
+    style D fill:white,stroke:#4CAF50,stroke-width:1px,color:#212121
+    style E fill:white,stroke:#4CAF50,stroke-width:1px,color:#212121
+    style F fill:white,stroke:#4CAF50,stroke-width:1px,color:#212121
+    style G fill:white,stroke:#4CAF50,stroke-width:1px,color:#212121
+    style H fill:white,stroke:#FFC107,stroke-width:1px,color:#212121
+
+    linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17 stroke:dimgray,stroke-width:1.5px;
+    linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17 fill:none;
+    linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17 stroke-dasharray:none;
+
+    classDef labelStyle fill:none,stroke:none,color:black,font-weight:bold;
+
+    linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17 text-align:center, font-weight:bold, color:black;
 ```
 
 이 아키텍처를 기반으로, 플레이어는 세션에 참여하고, 월드와 상호작용하며, 전투와 제작을 통해 성장하는 핵심 게임플레이 루프를 경험하게 됩니다. 각 시스템의 상세한 구현 방식은 이어지는 문서들에서 설명합니다.
 
 1.  **세션 참여:** 플레이어는 로비 UI를 통해 게임 세션에 참여하여 멀티플레이 월드에 진입합니다.
-2.  **탐험 및 상호작용:** 월드를 탐험하며 [`InteractableInterface`](https://github.com/chungheonLee0325/Sonheim/blob/main/Source/Sonheim/GameObject/InteractableInterface.h)를 구현한 자원, 건물 등과 상호작용합니다.
-3.  **전투 및 포획:** 서버 주도 AI를 가진 몬스터와 전투를 벌이고, 약화시킨 몬스터를 포획하여 [`InventoryComponent`](https://github.com/chungheonLee0325/Sonheim/blob/main/Source/Sonheim/AreaObject/Player/Utility/InventoryComponent.h)에 추가합니다.
-4.  **제작 및 성장:** 획득한 자원으로 아이템을 제작하고, 전투를 통해 캐릭터의 [`Attribute`](https://github.com/chungheonLee0325/Sonheim/blob/main/Source/Sonheim/AreaObject/Attribute/Base/AttributeComponent.h)를 성장시킵니다.
+2.  **탐험 및 상호작용:** 월드를 탐험하며 `InteractableInterface`를 구현한 자원, 건물 등과 상호작용합니다.
+3.  **전투 및 포획:** 서버 주도 AI를 가진 몬스터와 전투를 벌이고, 약화시킨 몬스터를 포획하여 `PalInventoryComponent`에 추가합니다.
+4.  **제작 및 성장:** 획득한 자원으로 아이템을 제작하고, 전투를 통해 캐릭터의 레벨과 장비를 성장시킵니다.
 5.  **순환:** 성장한 능력을 바탕으로 더 어려운 지역을 탐험하고 강력한 몬스터에 도전하는 과정이 반복됩니다.
-
----
-
-## 1.5. 관련 GitHub 코드 링크
-
-- **AreaObject (전투/복제 기반)**: [AreaObject.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Source/Sonheim/AreaObject/Base/AreaObject.h)
-- **GameType (데이터 스키마/공격 데이터)**: [SonheimGameType.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Source/Sonheim/ResourceManager/SonheimGameType.h)
-- **SonheimUtility (상성/스폰 로직)**: [SonheimUtility.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Source/Sonheim/Utilities/SonheimUtility.cpp)
-- **Skill Base/Component**: [BaseSkill.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Source/Sonheim/AreaObject/Skill/Base/BaseSkill.h)
-- **Player (입력/상태 관리)**: [SonheimPlayer.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Source/Sonheim/AreaObject/Player/SonheimPlayer.h)
-- **GameInstance (데이터 로딩)**: [SonheimGameInstance.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Source/Sonheim/GameManager/SonheimGameInstance.cpp)
