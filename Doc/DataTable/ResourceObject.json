@@ -1,0 +1,181 @@
+[
+	{
+		"Name": "Tree",
+		"ResourceObjectID": 1,
+		"HPMax": 2000,
+		"ResourceAmount": 30,
+		"DamageThresholdPct": 0.05,
+		"PossibleDropItemID":
+		{
+			"1": 100
+		},
+		"ExperienceReward": 0,
+		"RespawnTime": 300,
+		"WeaknessAttackMap":
+		{
+			"TreeEffective": 3,
+			"Normal": 0.5
+		},
+		"HarvestSoundID": 0,
+		"DestroySoundID": 0,
+		"HarvestEffect": "/Script/Engine.ParticleSystem'/Game/_Resource/FX/_UseFX/LCH/P_Destruction_Building_A.P_Destruction_Building_A'",
+		"DestroyEffect": "None",
+		"ResourceMesh": "None",
+		"MeshScale":
+		{
+			"X": 1,
+			"Y": 1,
+			"Z": 1
+		}
+	},
+	{
+		"Name": "Rock",
+		"ResourceObjectID": 5,
+		"HPMax": 2000,
+		"ResourceAmount": 30,
+		"DamageThresholdPct": 0.05,
+		"PossibleDropItemID":
+		{
+			"5": 100,
+			"15": 30
+		},
+		"ExperienceReward": 0,
+		"RespawnTime": 300,
+		"WeaknessAttackMap":
+		{
+			"MineEffective": 3,
+			"Normal": 1
+		},
+		"HarvestSoundID": 0,
+		"DestroySoundID": 0,
+		"HarvestEffect": "/Script/Engine.ParticleSystem'/Game/_Resource/FX/_UseFX/LCH/P_Destruction_Building_A.P_Destruction_Building_A'",
+		"DestroyEffect": "None",
+		"ResourceMesh": "None",
+		"MeshScale":
+		{
+			"X": 1,
+			"Y": 1,
+			"Z": 1
+		}
+	},
+	{
+		"Name": "OreRock",
+		"ResourceObjectID": 10,
+		"HPMax": 3000,
+		"ResourceAmount": 10,
+		"DamageThresholdPct": 0.05,
+		"PossibleDropItemID":
+		{
+			"10": 100,
+			"5": 70,
+			"15": 50
+		},
+		"ExperienceReward": 0,
+		"RespawnTime": 300,
+		"WeaknessAttackMap":
+		{
+			"MineEffective": 3
+		},
+		"HarvestSoundID": 0,
+		"DestroySoundID": 0,
+		"HarvestEffect": "/Script/Engine.ParticleSystem'/Game/_Resource/FX/_UseFX/LCH/P_Destruction_Building_A.P_Destruction_Building_A'",
+		"DestroyEffect": "None",
+		"ResourceMesh": "None",
+		"MeshScale":
+		{
+			"X": 1,
+			"Y": 1,
+			"Z": 1
+		}
+	},
+	{
+		"Name": "OreRock_0",
+		"ResourceObjectID": 15,
+		"HPMax": 5000,
+		"ResourceAmount": 15,
+		"DamageThresholdPct": 0.05,
+		"PossibleDropItemID":
+		{
+			"15": 100,
+			"10": 30,
+			"5": 70
+		},
+		"ExperienceReward": 50,
+		"RespawnTime": 300,
+		"WeaknessAttackMap":
+		{
+			"MineEffective": 3
+		},
+		"HarvestSoundID": 0,
+		"DestroySoundID": 0,
+		"HarvestEffect": "/Script/Engine.ParticleSystem'/Game/_Resource/FX/_UseFX/LCH/P_Destruction_Building_A.P_Destruction_Building_A'",
+		"DestroyEffect": "None",
+		"ResourceMesh": "None",
+		"MeshScale":
+		{
+			"X": 1,
+			"Y": 1,
+			"Z": 1
+		}
+	},
+	{
+		"Name": "IronOreRock",
+		"ResourceObjectID": 11,
+		"HPMax": 3500,
+		"ResourceAmount": 12,
+		"DamageThresholdPct": 0.05,
+		"PossibleDropItemID":
+		{
+			"5": 60,
+			"11": 100
+		},
+		"ExperienceReward": 10,
+		"RespawnTime": 300,
+		"WeaknessAttackMap":
+		{
+			"MineEffective": 3
+		},
+		"HarvestSoundID": 0,
+		"DestroySoundID": 0,
+		"HarvestEffect": "/Script/Engine.ParticleSystem'/Game/_Resource/FX/_UseFX/LCH/P_Destruction_Building_A.P_Destruction_Building_A'",
+		"DestroyEffect": "None",
+		"ResourceMesh": "None",
+		"MeshScale":
+		{
+			"X": 1,
+			"Y": 1,
+			"Z": 1
+		}
+	},
+	{
+		"Name": "GemOreRock",
+		"ResourceObjectID": 60,
+		"HPMax": 4000,
+		"ResourceAmount": 8,
+		"DamageThresholdPct": 0.05,
+		"PossibleDropItemID":
+		{
+			"60": 15,
+			"61": 35,
+			"63": 35,
+			"62": 15
+		},
+		"ExperienceReward": 20,
+		"RespawnTime": 300,
+		"WeaknessAttackMap":
+		{
+			"MineEffective": 3
+		},
+		"HarvestSoundID": 0,
+		"DestroySoundID": 0,
+		"HarvestEffect": "/Script/Engine.ParticleSystem'/Game/_Resource/FX/_UseFX/LCH/P_Destruction_Building_A.P_Destruction_Building_A'",
+		"DestroyEffect": "None",
+		"ResourceMesh": "None",
+		"MeshScale":
+		{
+			"X": 1,
+			"Y": 1,
+			"Z": 1
+		}
+	}
+]

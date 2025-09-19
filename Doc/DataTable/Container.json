@@ -1,0 +1,32 @@
+[
+	{
+		"Name": "NewRow",
+		"ContainerID": 1,
+		"ContainerName": "NSLOCTEXT(\"\", \"F30F755A4807A716EDD0BD86522AC4F1\", \"Container\")",
+		"ContainerType": "SmallBox",
+		"SlotCount": 12,
+		"GridColumns": 5,
+		"GridRows": 4,
+		"ContainerMesh": "/Script/Engine.StaticMesh'/Game/_Resource/Cine/model/Barrel/barrel1.barrel1'",
+		"OpenSound": "None",
+		"CloseSound": "None",
+		"InteractionDistance": 300,
+		"bRequireHoldToOpen": true,
+		"HoldDuration": 1
+	},
+	{
+		"Name": "NewRow_0",
+		"ContainerID": 2,
+		"ContainerName": "NSLOCTEXT(\"\", \"C4BCC827493195DA73C06B96E4774D80\", \"Container\")",
+		"ContainerType": "MediumBox",
+		"SlotCount": 20,
+		"GridColumns": 5,
+		"GridRows": 4,
+		"ContainerMesh": "/Script/Engine.StaticMesh'/Game/_Resource/SurvivalGameKitV2/Meshes/Static/SM_Chest_Closed.SM_Chest_Closed'",
+		"OpenSound": "None",
+		"CloseSound": "None",
+		"InteractionDistance": 300,
+		"bRequireHoldToOpen": true,
+		"HoldDuration": 1.5
+	}
+]

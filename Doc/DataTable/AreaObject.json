@@ -1,0 +1,222 @@
+[
+	{
+		"Name": "Player",
+		"AreaObjectID": 1,
+		"AreaObjectType": "Player",
+		"EnemyType": "None",
+		"DefenceElementalAttributes": [],
+		"SkillBagID": 0,
+		"HPMax": 300,
+		"WalkSpeed": 600,
+		"Die_AnimMontage": "/Script/Engine.AnimMontage'/Game/_BluePrint/AreaObject/Player/AnimMontage/Player/Dying_Backwards_Montage.Dying_Backwards_Montage'",
+		"Stagger_AnimMontage": "None",
+		"SkillList": [ 10, 2, 15 ],
+		"AreaObjectIcon": "None",
+		"StaminaMax": 100,
+		"StaminaRecoveryRate": 20,
+		"GroggyDuration": 5,
+		"HitSoundID": 0,
+		"bCapturable": true,
+		"CaptureBase": 0.5,
+		"CaptureLowHPThreshold": 0.3,
+		"CaptureResist": 0,
+		"PossibleDropItemID":
+		{
+		}
+	},
+	{
+		"Name": "Gumoss",
+		"AreaObjectID": 100,
+		"AreaObjectType": "Enemy",
+		"EnemyType": "Monster",
+		"DefenceElementalAttributes": [
+			"Grass",
+			"Ground"
+		],
+		"SkillBagID": 100,
+		"HPMax": 100,
+		"WalkSpeed": 400,
+		"Die_AnimMontage": "None",
+		"Stagger_AnimMontage": "None",
+		"SkillList": [ 1000, 1003 ],
+		"AreaObjectIcon": "/Script/Engine.Texture2D'/Game/_Resource/Image/Monster/Gummos.Gummos'",
+		"StaminaMax": 100,
+		"StaminaRecoveryRate": 20,
+		"GroggyDuration": 5,
+		"HitSoundID": 0,
+		"bCapturable": true,
+		"CaptureBase": 0.6,
+		"CaptureLowHPThreshold": 0.3,
+		"CaptureResist": 0,
+		"PossibleDropItemID":
+		{
+			"11": 100,
+			"61": 100,
+			"40": 100,
+			"41": 100
+		}
+	},
+	{
+		"Name": "Lamball",
+		"AreaObjectID": 103,
+		"AreaObjectType": "Enemy",
+		"EnemyType": "Monster",
+		"DefenceElementalAttributes": [
+			"Neutral"
+		],
+		"SkillBagID": 103,
+		"HPMax": 130,
+		"WalkSpeed": 400,
+		"Die_AnimMontage": "None",
+		"Stagger_AnimMontage": "None",
+		"SkillList": [ 1030 ],
+		"AreaObjectIcon": "/Script/Engine.Texture2D'/Game/_Resource/Image/Monster/lambball.lambball'",
+		"StaminaMax": 100,
+		"StaminaRecoveryRate": 20,
+		"GroggyDuration": 5,
+		"HitSoundID": 0,
+		"bCapturable": true,
+		"CaptureBase": 0.4,
+		"CaptureLowHPThreshold": 0.3,
+		"CaptureResist": 0,
+		"PossibleDropItemID":
+		{
+		}
+	},
+	{
+		"Name": "Foxparks",
+		"AreaObjectID": 106,
+		"AreaObjectType": "Enemy",
+		"EnemyType": "Monster",
+		"DefenceElementalAttributes": [
+			"Fire"
+		],
+		"SkillBagID": 106,
+		"HPMax": 150,
+		"WalkSpeed": 400,
+		"Die_AnimMontage": "None",
+		"Stagger_AnimMontage": "None",
+		"SkillList": [ 1060, 1063, 1066 ],
+		"AreaObjectIcon": "/Script/Engine.Texture2D'/Game/_Resource/Image/Monster/Foxparks.Foxparks'",
+		"StaminaMax": 100,
+		"StaminaRecoveryRate": 20,
+		"GroggyDuration": 5,
+		"HitSoundID": 0,
+		"bCapturable": true,
+		"CaptureBase": 0.2,
+		"CaptureLowHPThreshold": 0.3,
+		"CaptureResist": 0,
+		"PossibleDropItemID":
+		{
+		}
+	},
+	{
+		"Name": "Lifmunk",
+		"AreaObjectID": 109,
+		"AreaObjectType": "Enemy",
+		"EnemyType": "Monster",
+		"DefenceElementalAttributes": [
+			"Grass"
+		],
+		"SkillBagID": 109,
+		"HPMax": 100,
+		"WalkSpeed": 400,
+		"Die_AnimMontage": "None",
+		"Stagger_AnimMontage": "None",
+		"SkillList": [ 1090 ],
+		"AreaObjectIcon": "None",
+		"StaminaMax": 100,
+		"StaminaRecoveryRate": 20,
+		"GroggyDuration": 5,
+		"HitSoundID": 0,
+		"bCapturable": true,
+		"CaptureBase": 0.5,
+		"CaptureLowHPThreshold": 0.3,
+		"CaptureResist": 0,
+		"PossibleDropItemID":
+		{
+		}
+	},
+	{
+		"Name": "Pengullet",
+		"AreaObjectID": 112,
+		"AreaObjectType": "Enemy",
+		"EnemyType": "Monster",
+		"DefenceElementalAttributes": [
+			"Ice",
+			"Water"
+		],
+		"SkillBagID": 112,
+		"HPMax": 100,
+		"WalkSpeed": 400,
+		"Die_AnimMontage": "None",
+		"Stagger_AnimMontage": "None",
+		"SkillList": [ 1120 ],
+		"AreaObjectIcon": "None",
+		"StaminaMax": 100,
+		"StaminaRecoveryRate": 20,
+		"GroggyDuration": 5,
+		"HitSoundID": 0,
+		"bCapturable": true,
+		"CaptureBase": 0.5,
+		"CaptureLowHPThreshold": 0.3,
+		"CaptureResist": 0,
+		"PossibleDropItemID":
+		{
+		}
+	},
+	{
+		"Name": "Grizzbolt",
+		"AreaObjectID": 115,
+		"AreaObjectType": "Enemy",
+		"EnemyType": "Monster",
+		"DefenceElementalAttributes": [
+			"Electric"
+		],
+		"SkillBagID": 115,
+		"HPMax": 100,
+		"WalkSpeed": 400,
+		"Die_AnimMontage": "None",
+		"Stagger_AnimMontage": "None",
+		"SkillList": [ 1150, 1153, 1156, 1159 ],
+		"AreaObjectIcon": "None",
+		"StaminaMax": 100,
+		"StaminaRecoveryRate": 20,
+		"GroggyDuration": 5,
+		"HitSoundID": 0,
+		"bCapturable": true,
+		"CaptureBase": 0.5,
+		"CaptureLowHPThreshold": 0.3,
+		"CaptureResist": 0,
+		"PossibleDropItemID":
+		{
+		}
+	},
+	{
+		"Name": "Elec_Gumoss",
+		"AreaObjectID": 118,
+		"AreaObjectType": "Enemy",
+		"EnemyType": "Monster",
+		"DefenceElementalAttributes": [
+			"Electric"
+		],
+		"SkillBagID": 118,
+		"HPMax": 1000,
+		"WalkSpeed": 400,
+		"Die_AnimMontage": "None",
+		"Stagger_AnimMontage": "None",
+		"SkillList": [ 1153, 1156, 1159, 1162 ],
+		"AreaObjectIcon": "/Script/Engine.Texture2D'/Game/_Resource/Image/Monster/Gummos.Gummos'",
+		"StaminaMax": 100,
+		"StaminaRecoveryRate": 20,
+		"GroggyDuration": 5,
+		"HitSoundID": 0,
+		"bCapturable": false,
+		"CaptureBase": 0.5,
+		"CaptureLowHPThreshold": 0.3,
+		"CaptureResist": 0,
+		"PossibleDropItemID":
+		{
+		}
+	}
+]

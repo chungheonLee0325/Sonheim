@@ -1,0 +1,1184 @@
+[
+	{
+		"Name": "Dodge",
+		"SkillID": 2,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.BaseSkill'",
+		"StaminaCosts": [
+			{
+				"Cost": 20,
+				"Phase": "OnActivate"
+			}
+		],
+		"ItemCosts": [],
+		"CastRange": 0,
+		"CoolTime": 0,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "/Script/Engine.AnimMontage'/Game/_BluePrint/AreaObject/Player/AnimMontage/Player/P_RollFwd.P_RollFwd'",
+		"AttackData": [],
+		"ElementClass": "None",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "PunchAttack",
+		"SkillID": 10,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.MeleeAttack'",
+		"StaminaCosts": [
+			{
+				"Cost": 10,
+				"Phase": "OnActivate"
+			}
+		],
+		"ItemCosts": [],
+		"CastRange": 0,
+		"CoolTime": 0,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "/Script/Engine.AnimMontage'/Game/_BluePrint/AreaObject/Player/AnimMontage/Player/P_Attack_N.P_Attack_N'",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 3,
+				"HealthDamageAmountMax": 4,
+				"StaminaDamageAmount": 0,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "Fire",
+				"HitBoxData":
+				{
+					"DetectionType": "Sphere",
+					"MeshComponentTag": "None",
+					"StartSocketName": "hand_r",
+					"EndSocketName": "hand_r",
+					"Radius": 30,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 3
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.3,
+				"KnockBackForce": 10,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/minecraft_hit_soundmp3converter.minecraft_hit_soundmp3converter'",
+				"HitVFX_P": "None",
+				"HitVFX_N": "/Script/Niagara.NiagaraSystem'/Game/_Resource/FX/Effect/NiagaraSystems/FireBullet/NS_Fire_Hit_01.NS_Fire_Hit_01'",
+				"VFXScale": 1
+			},
+			{
+				"HealthDamageAmountMin": 3,
+				"HealthDamageAmountMax": 4,
+				"StaminaDamageAmount": 0,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "Dark",
+				"HitBoxData":
+				{
+					"DetectionType": "Sphere",
+					"MeshComponentTag": "None",
+					"StartSocketName": "hand_l",
+					"EndSocketName": "hand_l",
+					"Radius": 30,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 3
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.5,
+				"KnockBackForce": 100,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/minecraft_hit_soundmp3converter.minecraft_hit_soundmp3converter'",
+				"HitVFX_P": "None",
+				"HitVFX_N": "/Script/Niagara.NiagaraSystem'/Game/_Resource/FX/BlinkAndDashVFX/VFX_Niagara/NS_Blink_DarkMagic.NS_Blink_DarkMagic'",
+				"VFXScale": 0.7
+			}
+		],
+		"ElementClass": "None",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "ThorowPalSphere",
+		"SkillID": 15,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.UBaseElementSkill'",
+		"StaminaCosts": [],
+		"ItemCosts": [
+			{
+				"RefKind": "FixedItemID",
+				"ItemID": 500,
+				"Count": 1,
+				"Phase": "OnFire"
+			}
+		],
+		"CastRange": 0,
+		"CoolTime": 1,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "/Script/Engine.AnimMontage'/Game/_BluePrint/AreaObject/Player/AnimMontage/Player/P_Throw.P_Throw'",
+		"AttackData": [],
+		"ElementClass": "/Script/Engine.BlueprintGeneratedClass'/Game/_BluePrint/Element/Parabola/BP_PalSphere.BP_PalSphere_C'",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "SandBlast",
+		"SkillID": 1000,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.ProjectileAA'",
+		"StaminaCosts": [],
+		"ItemCosts": [],
+		"CastRange": 1500,
+		"CoolTime": 1,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "None",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 50,
+				"HealthDamageAmountMax": 50,
+				"StaminaDamageAmount": 1,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "Ground",
+				"HitBoxData":
+				{
+					"DetectionType": "Line",
+					"MeshComponentTag": "None",
+					"StartSocketName": "None",
+					"EndSocketName": "None",
+					"Radius": 15,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 4
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.1,
+				"KnockBackForce": 1,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/minecraft_hit_soundmp3converter.minecraft_hit_soundmp3converter'",
+				"HitVFX_P": "None",
+				"HitVFX_N": "None",
+				"VFXScale": 1
+			}
+		],
+		"ElementClass": "None",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "BladeWind",
+		"SkillID": 1003,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.ProjectileBlade'",
+		"StaminaCosts": [],
+		"ItemCosts": [],
+		"CastRange": 1500,
+		"CoolTime": 1,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "None",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 40,
+				"HealthDamageAmountMax": 40,
+				"StaminaDamageAmount": 1,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "Grass",
+				"HitBoxData":
+				{
+					"DetectionType": "Line",
+					"MeshComponentTag": "None",
+					"StartSocketName": "None",
+					"EndSocketName": "None",
+					"Radius": 15,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 4
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.1,
+				"KnockBackForce": 1,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/minecraft_hit_soundmp3converter.minecraft_hit_soundmp3converter'",
+				"HitVFX_P": "None",
+				"HitVFX_N": "/Script/Niagara.NiagaraSystem'/Game/_Resource/FX/Effect/NiagaraSystems/DarkBullet/NS_DarkHit_01.NS_DarkHit_01'",
+				"VFXScale": 1
+			}
+		],
+		"ElementClass": "None",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "Rolling",
+		"SkillID": 1030,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.Rolling'",
+		"StaminaCosts": [],
+		"ItemCosts": [],
+		"CastRange": 99999,
+		"CoolTime": 0.5,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "None",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 10,
+				"HealthDamageAmountMax": 10,
+				"StaminaDamageAmount": 0,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "Neutral",
+				"HitBoxData":
+				{
+					"DetectionType": "Sphere",
+					"MeshComponentTag": "None",
+					"StartSocketName": "spine",
+					"EndSocketName": "spine",
+					"Radius": 150,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 3
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.3,
+				"KnockBackForce": 300,
+				"bUseCustomKnockBackDirection": true,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 1,
+					"Z": 1
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/minecraft_hit_soundmp3converter.minecraft_hit_soundmp3converter'",
+				"HitVFX_P": "None",
+				"HitVFX_N": "None",
+				"VFXScale": 0
+			}
+		],
+		"ElementClass": "None",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "Flamethrower",
+		"SkillID": 1060,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.Flamethrower'",
+		"StaminaCosts": [],
+		"ItemCosts": [],
+		"CastRange": 99999,
+		"CoolTime": 5,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "None",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 7,
+				"HealthDamageAmountMax": 7,
+				"StaminaDamageAmount": 1,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "Fire",
+				"HitBoxData":
+				{
+					"DetectionType": "Line",
+					"MeshComponentTag": "None",
+					"StartSocketName": "None",
+					"EndSocketName": "None",
+					"Radius": 15,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 4
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.1,
+				"KnockBackForce": 0,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/minecraft_hit_soundmp3converter.minecraft_hit_soundmp3converter'",
+				"HitVFX_P": "None",
+				"HitVFX_N": "None",
+				"VFXScale": 1
+			}
+		],
+		"ElementClass": "None",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "MachineGun",
+		"SkillID": 1090,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.MachineGun'",
+		"StaminaCosts": [],
+		"ItemCosts": [],
+		"CastRange": 99999,
+		"CoolTime": 5,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "None",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 7,
+				"HealthDamageAmountMax": 7,
+				"StaminaDamageAmount": 1,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "None",
+				"HitBoxData":
+				{
+					"DetectionType": "Line",
+					"MeshComponentTag": "None",
+					"StartSocketName": "None",
+					"EndSocketName": "None",
+					"Radius": 15,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 4
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.1,
+				"KnockBackForce": 0,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/minecraft_hit_soundmp3converter.minecraft_hit_soundmp3converter'",
+				"HitVFX_P": "None",
+				"HitVFX_N": "None",
+				"VFXScale": 1
+			}
+		],
+		"ElementClass": "None",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "Rocket",
+		"SkillID": 1120,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.Rocket'",
+		"StaminaCosts": [],
+		"ItemCosts": [],
+		"CastRange": 99999,
+		"CoolTime": 5,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "None",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 200,
+				"HealthDamageAmountMax": 200,
+				"StaminaDamageAmount": 1,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "None",
+				"HitBoxData":
+				{
+					"DetectionType": "Line",
+					"MeshComponentTag": "None",
+					"StartSocketName": "None",
+					"EndSocketName": "None",
+					"Radius": 15,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 4
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.1,
+				"KnockBackForce": 1,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "None",
+				"HitVFX_P": "None",
+				"HitVFX_N": "None",
+				"VFXScale": 1
+			}
+		],
+		"ElementClass": "None",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "ElectricScratch",
+		"SkillID": 1150,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.ElectricScratch'",
+		"StaminaCosts": [],
+		"ItemCosts": [],
+		"CastRange": 99999,
+		"CoolTime": 5,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "None",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 20,
+				"HealthDamageAmountMax": 20,
+				"StaminaDamageAmount": 1,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "Electric",
+				"HitBoxData":
+				{
+					"DetectionType": "Line",
+					"MeshComponentTag": "None",
+					"StartSocketName": "None",
+					"EndSocketName": "None",
+					"Radius": 15,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 4
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.1,
+				"KnockBackForce": 1,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "None",
+				"HitVFX_P": "None",
+				"HitVFX_N": "None",
+				"VFXScale": 1
+			}
+		],
+		"ElementClass": "None",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "ElectricWave",
+		"SkillID": 1153,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.ElectricWave'",
+		"StaminaCosts": [],
+		"ItemCosts": [],
+		"CastRange": 1500,
+		"CoolTime": 5,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "None",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 10,
+				"HealthDamageAmountMax": 10,
+				"StaminaDamageAmount": 1,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "Electric",
+				"HitBoxData":
+				{
+					"DetectionType": "Line",
+					"MeshComponentTag": "None",
+					"StartSocketName": "None",
+					"EndSocketName": "None",
+					"Radius": 15,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 4
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.1,
+				"KnockBackForce": 0,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/minecraft_hit_soundmp3converter.minecraft_hit_soundmp3converter'",
+				"HitVFX_P": "None",
+				"HitVFX_N": "/Script/Niagara.NiagaraSystem'/Game/_Resource/FX/Electric_VFX/Niagara/Electric/NS_AirCrack_Electric.NS_AirCrack_Electric'",
+				"VFXScale": 1
+			}
+		],
+		"ElementClass": "None",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "SparkShot",
+		"SkillID": 1156,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.SparkShot'",
+		"StaminaCosts": [],
+		"ItemCosts": [],
+		"CastRange": 1500,
+		"CoolTime": 5,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "None",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 30,
+				"HealthDamageAmountMax": 1,
+				"StaminaDamageAmount": 1,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "Electric",
+				"HitBoxData":
+				{
+					"DetectionType": "Line",
+					"MeshComponentTag": "None",
+					"StartSocketName": "None",
+					"EndSocketName": "None",
+					"Radius": 15,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 4
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.1,
+				"KnockBackForce": 1,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/minecraft_hit_soundmp3converter.minecraft_hit_soundmp3converter'",
+				"HitVFX_P": "None",
+				"HitVFX_N": "/Script/Niagara.NiagaraSystem'/Game/_Resource/FX/Electric_VFX/Niagara/Projectile/NS_Elec_Shooting_Small.NS_Elec_Shooting_Small'",
+				"VFXScale": 1
+			}
+		],
+		"ElementClass": "/Script/Engine.BlueprintGeneratedClass'/Game/_BluePrint/Element/LightningBall/BP_LightningBall.BP_LightningBall_C'",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "LightningSphere",
+		"SkillID": 1159,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.LightningSphere'",
+		"StaminaCosts": [],
+		"ItemCosts": [],
+		"CastRange": 1500,
+		"CoolTime": 5,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "None",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 50,
+				"HealthDamageAmountMax": 50,
+				"StaminaDamageAmount": 1,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "Electric",
+				"HitBoxData":
+				{
+					"DetectionType": "Line",
+					"MeshComponentTag": "None",
+					"StartSocketName": "None",
+					"EndSocketName": "None",
+					"Radius": 15,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 4
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.1,
+				"KnockBackForce": 1,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/minecraft_hit_soundmp3converter.minecraft_hit_soundmp3converter'",
+				"HitVFX_P": "None",
+				"HitVFX_N": "/Script/Niagara.NiagaraSystem'/Game/_Resource/FX/Electric_VFX/Niagara/Projectile/NS_Elec_Shooting_Small.NS_Elec_Shooting_Small'",
+				"VFXScale": 1
+			}
+		],
+		"ElementClass": "/Script/Engine.BlueprintGeneratedClass'/Game/_BluePrint/Element/ElectricBall/BP_ElectricBall.BP_ElectricBall_C'",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "pickaxeAttack",
+		"SkillID": 111,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.MeleeAttack'",
+		"StaminaCosts": [
+			{
+				"Cost": 15,
+				"Phase": "OnActivate"
+			}
+		],
+		"ItemCosts": [],
+		"CastRange": 0,
+		"CoolTime": 0,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "/Script/Engine.AnimMontage'/Game/_BluePrint/AreaObject/Player/AnimMontage/Player/P_Mining.P_Mining'",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 5,
+				"HealthDamageAmountMax": 5,
+				"StaminaDamageAmount": 0,
+				"AttackType": "MineEffective",
+				"AttackElementalAttribute": "None",
+				"HitBoxData":
+				{
+					"DetectionType": "Capsule",
+					"MeshComponentTag": "WeaponMesh",
+					"StartSocketName": "ColStart",
+					"EndSocketName": "ColEnd",
+					"Radius": 30,
+					"HalfHeight": 60,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": true,
+					"InterpolationSteps": 3
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.3,
+				"KnockBackForce": 10,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/mining_ore.mining_ore'",
+				"HitVFX_P": "/Script/Engine.ParticleSystem'/Game/_Resource/FX/HitVFX/Particles/P_Hit1.P_Hit1'",
+				"HitVFX_N": "None",
+				"VFXScale": 1
+			},
+			{
+				"HealthDamageAmountMin": 5,
+				"HealthDamageAmountMax": 5,
+				"StaminaDamageAmount": 0,
+				"AttackType": "MineEffective",
+				"AttackElementalAttribute": "None",
+				"HitBoxData":
+				{
+					"DetectionType": "Line",
+					"MeshComponentTag": "WeaponMesh",
+					"StartSocketName": "ColStart",
+					"EndSocketName": "ColEnd",
+					"Radius": 0,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 3
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.3,
+				"KnockBackForce": 10,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/mining_ore.mining_ore'",
+				"HitVFX_P": "/Script/Engine.ParticleSystem'/Game/_Resource/FX/HitVFX/Particles/P_Hit1.P_Hit1'",
+				"HitVFX_N": "None",
+				"VFXScale": 1
+			}
+		],
+		"ElementClass": "None",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "axeAttack",
+		"SkillID": 112,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.MeleeAttack'",
+		"StaminaCosts": [
+			{
+				"Cost": 15,
+				"Phase": "OnActivate"
+			}
+		],
+		"ItemCosts": [],
+		"CastRange": 0,
+		"CoolTime": 0,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "/Script/Engine.AnimMontage'/Game/_BluePrint/AreaObject/Player/AnimMontage/Player/P_Attack_M.P_Attack_M'",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 5,
+				"HealthDamageAmountMax": 5,
+				"StaminaDamageAmount": 0,
+				"AttackType": "TreeEffective",
+				"AttackElementalAttribute": "None",
+				"HitBoxData":
+				{
+					"DetectionType": "Capsule",
+					"MeshComponentTag": "WeaponMesh",
+					"StartSocketName": "ColStart",
+					"EndSocketName": "ColEnd",
+					"Radius": 30,
+					"HalfHeight": 60,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": true,
+					"InterpolationSteps": 3
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.3,
+				"KnockBackForce": 10,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/Hittingtree.Hittingtree'",
+				"HitVFX_P": "/Script/Engine.ParticleSystem'/Game/_Resource/FX/HitVFX/Particles/P_Hit1.P_Hit1'",
+				"HitVFX_N": "None",
+				"VFXScale": 1
+			}
+		],
+		"ElementClass": "None",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "clubAttack",
+		"SkillID": 115,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.MeleeAttack'",
+		"StaminaCosts": [
+			{
+				"Cost": 15,
+				"Phase": "OnActivate"
+			}
+		],
+		"ItemCosts": [],
+		"CastRange": 0,
+		"CoolTime": 0,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "/Script/Engine.AnimMontage'/Game/_BluePrint/AreaObject/Player/AnimMontage/Player/P_Attack_M1.P_Attack_M1'",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 10,
+				"HealthDamageAmountMax": 10,
+				"StaminaDamageAmount": 0,
+				"AttackType": "None",
+				"AttackElementalAttribute": "None",
+				"HitBoxData":
+				{
+					"DetectionType": "Capsule",
+					"MeshComponentTag": "WeaponMesh",
+					"StartSocketName": "ColStart",
+					"EndSocketName": "ColEnd",
+					"Radius": 30,
+					"HalfHeight": 70,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": true,
+					"InterpolationSteps": 3
+				},
+				"bEnableHitStop": true,
+				"HitStopDuration": 0.1,
+				"KnockBackForce": 15,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "None",
+				"HitVFX_P": "/Script/Engine.ParticleSystem'/Game/_Resource/FX/HitVFX/Particles/P_Hit1.P_Hit1'",
+				"HitVFX_N": "None",
+				"VFXScale": 1
+			}
+		],
+		"ElementClass": "None",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "FireBall",
+		"SkillID": 1063,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.ProjectileBlade'",
+		"StaminaCosts": [],
+		"ItemCosts": [],
+		"CastRange": 1500,
+		"CoolTime": 1,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "None",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 8,
+				"HealthDamageAmountMax": 9,
+				"StaminaDamageAmount": 1,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "Fire",
+				"HitBoxData":
+				{
+					"DetectionType": "Line",
+					"MeshComponentTag": "None",
+					"StartSocketName": "None",
+					"EndSocketName": "None",
+					"Radius": 15,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 4
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.1,
+				"KnockBackForce": 1,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/minecraft_hit_soundmp3converter.minecraft_hit_soundmp3converter'",
+				"HitVFX_P": "None",
+				"HitVFX_N": "/Script/Niagara.NiagaraSystem'/Game/_Resource/FX/Effect/NiagaraSystems/FireBullet/NS_DarkFire_Hit_01.NS_DarkFire_Hit_01'",
+				"VFXScale": 0.2
+			}
+		],
+		"ElementClass": "/Script/Engine.BlueprintGeneratedClass'/Game/_BluePrint/Element/BladeWind/BP_BladeFire.BP_BladeFire_C'",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "FireBall2",
+		"SkillID": 1066,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.ProjectileBlade'",
+		"StaminaCosts": [],
+		"ItemCosts": [],
+		"CastRange": 1500,
+		"CoolTime": 0.5,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "None",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 8,
+				"HealthDamageAmountMax": 9,
+				"StaminaDamageAmount": 1,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "Fire",
+				"HitBoxData":
+				{
+					"DetectionType": "Line",
+					"MeshComponentTag": "None",
+					"StartSocketName": "None",
+					"EndSocketName": "None",
+					"Radius": 15,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 4
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.1,
+				"KnockBackForce": 1,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Sounds/minecraft_hit_soundmp3converter.minecraft_hit_soundmp3converter'",
+				"HitVFX_P": "None",
+				"HitVFX_N": "/Script/Niagara.NiagaraSystem'/Game/_Resource/FX/Effect/NiagaraSystems/FireBullet/NS_DarkFire_Hit_01.NS_DarkFire_Hit_01'",
+				"VFXScale": 0.2
+			}
+		],
+		"ElementClass": "/Script/Engine.BlueprintGeneratedClass'/Game/_BluePrint/Element/BladeWind/BP_BladeFire.BP_BladeFire_C'",
+		"NextSkillID": 0
+	},
+	{
+		"Name": "Dash",
+		"SkillID": 1162,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.Rolling'",
+		"StaminaCosts": [],
+		"ItemCosts": [],
+		"CastRange": 99999,
+		"CoolTime": 5,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "None",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 10,
+				"HealthDamageAmountMax": 10,
+				"StaminaDamageAmount": 0,
+				"AttackType": "Normal",
+				"AttackElementalAttribute": "Neutral",
+				"HitBoxData":
+				{
+					"DetectionType": "Sphere",
+					"MeshComponentTag": "None",
+					"StartSocketName": "spine",
+					"EndSocketName": "spine",
+					"Radius": 1000,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 3
+				},
+				"bEnableHitStop": false,
+				"HitStopDuration": 0.3,
+				"KnockBackForce": 300,
+				"bUseCustomKnockBackDirection": true,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 1,
+					"Z": 1
+				},
+				"FireVFX_N": "None",
+				"FireVFX2_N": "None",
+				"FireSFX": "None",
+				"HitSFX": "None",
+				"HitVFX_P": "None",
+				"HitVFX_N": "None",
+				"VFXScale": 0
+			}
+		],
+		"ElementClass": "None",
+		"NextSkillID": 1153
+	},
+	{
+		"Name": "ShotgunAttack",
+		"SkillID": 120,
+		"SkillClass": "/Script/CoreUObject.Class'/Script/Sonheim.ShotgunAttack'",
+		"StaminaCosts": [
+			{
+				"Cost": 5,
+				"Phase": "OnActivate"
+			}
+		],
+		"ItemCosts": [
+			{
+				"RefKind": "CurrentWeaponBullet",
+				"ItemID": 0,
+				"Count": 1,
+				"Phase": "OnActivate"
+			}
+		],
+		"CastRange": 0,
+		"CoolTime": 0,
+		"FireInvokeTime": -1,
+		"PostDelayTime": -1,
+		"Montage": "/Script/Engine.AnimMontage'/Game/_Resource/Player/Merchent/Animation/PumbActionShotGun/AS_Player_Female_Aim_PumpActionShotgun_Montage.AS_Player_Female_Aim_PumpActionShotgun_Montage'",
+		"AttackData": [
+			{
+				"HealthDamageAmountMin": 2,
+				"HealthDamageAmountMax": 5,
+				"StaminaDamageAmount": 2,
+				"AttackType": "Pierce",
+				"AttackElementalAttribute": "None",
+				"HitBoxData":
+				{
+					"DetectionType": "Line",
+					"MeshComponentTag": "WeaponMesh",
+					"StartSocketName": "None",
+					"EndSocketName": "None",
+					"Radius": 15,
+					"HalfHeight": 30,
+					"BoxExtent":
+					{
+						"X": 15,
+						"Y": 15,
+						"Z": 15
+					},
+					"bUseInterpolation": false,
+					"InterpolationSteps": 4
+				},
+				"bEnableHitStop": true,
+				"HitStopDuration": 0.1,
+				"KnockBackForce": 5,
+				"bUseCustomKnockBackDirection": false,
+				"KnockBackDirection":
+				{
+					"X": 1,
+					"Y": 0,
+					"Z": 0
+				},
+				"FireVFX_N": "/Script/Niagara.NiagaraSystem'/Game/_Resource/Fab/ToonProjectiles2/Effects/NS_Flash_10.NS_Flash_10'",
+				"FireVFX2_N": "/Script/Niagara.NiagaraSystem'/Game/_Resource/Fab/Bullet_Impact_Hit/Prefabs/Wall/Fx_Bullet_Impact_01.Fx_Bullet_Impact_01'",
+				"FireSFX": "/Script/Engine.SoundCue'/Game/_Resource/Audio/Weapon/Wp_Pistol/Fire/SC_Classic_Fire.SC_Classic_Fire'",
+				"HitSFX": "/Script/Engine.SoundWave'/Game/_Resource/Audio/Bullet/Impact_Bullet_Flesh_Blood_Victim_01__SFX_.Impact_Bullet_Flesh_Blood_Victim_01__SFX_'",
+				"HitVFX_P": "None",
+				"HitVFX_N": "/Script/Niagara.NiagaraSystem'/Game/_Resource/Fab/ToonProjectiles2/Effects/NS_Hit_10.NS_Hit_10'",
+				"VFXScale": 1
+			}
+		],
+		"ElementClass": "None",
+		"NextSkillID": 0
+	}
+]

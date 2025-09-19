@@ -1,0 +1,109 @@
+[
+	{
+		"Name": "Gumoss_Skill",
+		"SkillBagID": 100,
+		"TypeSkillBag":
+		{
+			"Main":
+			{
+				"SkillID_Weight":
+				{
+					"1000": 1,
+					"1003": 1
+				}
+			}
+		}
+	},
+	{
+		"Name": "LamBall_Skill",
+		"SkillBagID": 103,
+		"TypeSkillBag":
+		{
+			"Main":
+			{
+				"SkillID_Weight":
+				{
+					"1030": 1
+				}
+			}
+		}
+	},
+	{
+		"Name": "Foxparks_Skill",
+		"SkillBagID": 106,
+		"TypeSkillBag":
+		{
+			"Main":
+			{
+				"SkillID_Weight":
+				{
+					"1060": 1,
+					"1063": 1,
+					"1066": 1
+				}
+			}
+		}
+	},
+	{
+		"Name": "Lifmunk_Skill",
+		"SkillBagID": 109,
+		"TypeSkillBag":
+		{
+			"Main":
+			{
+				"SkillID_Weight":
+				{
+					"1090": 1
+				}
+			}
+		}
+	},
+	{
+		"Name": "Pengullet_Skill",
+		"SkillBagID": 112,
+		"TypeSkillBag":
+		{
+			"Main":
+			{
+				"SkillID_Weight":
+				{
+					"1120": 1
+				}
+			}
+		}
+	},
+	{
+		"Name": "Grizzbolt_Skill",
+		"SkillBagID": 115,
+		"TypeSkillBag":
+		{
+			"Main":
+			{
+				"SkillID_Weight":
+				{
+					"1150": 1,
+					"1153": 1,
+					"1156": 1,
+					"1159": 1
+				}
+			}
+		}
+	},
+	{
+		"Name": "Elec_Gumoss_Skill",
+		"SkillBagID": 118,
+		"TypeSkillBag":
+		{
+			"Main":
+			{
+				"SkillID_Weight":
+				{
+					"1153": 0,
+					"1156": 1,
+					"1159": 1,
+					"1162": 1
+				}
+			}
+		}
+	}
+]
