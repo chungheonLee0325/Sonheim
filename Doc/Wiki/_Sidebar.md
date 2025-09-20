@@ -2,10 +2,10 @@
 
 *   **주요 기술 시연 (For Busy Interviewer)**
     > 어느 페이지에서든 프로젝트의 핵심 기술 사례로 빠르게 이동할 수 있는 바로가기 링크입니다.
-    *   [[사례 연구: 반응형 인벤토리 UX|8.1_Case_Study_Inventory_Interaction]]
-    *   [[사례 연구: 팰 포획 시퀀스|8.2_Case_Study_Pal_Capture_Sequence]]
-    *   [[사례 연구: 데이터 기반 근접 공격|8.4_Case_Study_Melee_Attack]]
-    *   [[사례 연구: 서버 권위 제작|8.3_Case_Study_Server_Authority_Crafting]]
+    *   [[사례 연구: 팰 포획 시퀀스|8.1_Case_Study_Pal_Capture_Sequence]]
+    *   [[사례 연구: 서버 권위 제작|8.2_Case_Study_Server_Authority_Crafting]]
+    *   [[사례 연구: 데이터 기반 근접 공격|8.3_Case_Study_Melee_Attack]]
+    *   [[사례 연구: 반응형 인벤토리 UX|8.4_Case_Study_Inventory_Interaction]]
 
 *   **1. 프로젝트 개요**
     > 프로젝트의 비전, 핵심 게임플레이 루프, 그리고 전체 아키텍처를 관통하는 설계 원칙을 소개합니다.
@@ -61,10 +61,10 @@
 
 *   **8. 사례 연구**
     > 각 시스템들이 어떻게 유기적으로 협력하여 하나의 완전한 기능을 완성하는지 실제 사례를 통해 보여줍니다.
-    *   [[8.1 반응형 인벤토리 UX|8.1_Case_Study_Inventory_Interaction]]
-    *   [[8.2 팰 포획 시퀀스|8.2_Case_Study_Pal_Capture_Sequence]]
-    *   [[8.3 서버 권위 제작|8.3_Case_Study_Server_Authority_Crafting]]
-    *   [[8.4 데이터 기반 근접 공격|8.4_Case_Study_Melee_Attack]]
+    *   [[8.1 팰 포획 시퀀스|8.1_Case_Study_Pal_Capture_Sequence]]
+    *   [[8.2 서버 권위 제작|8.2_Case_Study_Server_Authority_Crafting]]
+    *   [[8.3 데이터 기반 근접 공격|8.3_Case_Study_Melee_Attack]]
+    *   [[8.4 반응형 인벤토리 UX|8.4_Case_Study_Inventory_Interaction]]
 
 *   **9. 회고 및 향후 계획**
     > 프로젝트를 통해 얻은 기술적 교훈과 미래 발전 가능성을 다룹니다.

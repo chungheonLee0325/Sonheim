@@ -6,10 +6,10 @@
 
 ### **주요 기술 시연 (For Busy Interviewer)**
 > 바쁘신 분들을 위해, 이 프로젝트의 핵심적인 기술 구현 사례 4가지를 먼저 소개합니다.
-*   [[사례 연구: 반응형 인벤토리 UX|8.1_Case_Study_Inventory_Interaction]]: 클라이언트 예측으로 온라인 게임의 랙(Lag)을 감추는 방법
-*   [[사례 연구: 팰 포획 시퀀스|8.2_Case_Study_Pal_Capture_Sequence]]: 여러 시스템이 협력하여 복잡한 기능을 완성하는 과정
-*   [[사례 연구: 데이터 기반 근접 공격|8.4_Case_Study_Melee_Attack]]: 데이터와 애니메이션으로 스킬을 확장하는 방법
-*   [[사례 연구: 서버 권위 제작|8.3_Case_Study_Server_Authority_Crafting]]: 멀티플레이 동시성 문제를 해결하는 방법
+*   [[사례 연구: 팰 포획 시퀀스|8.1_Case_Study_Pal_Capture_Sequence]]: 여러 시스템이 협력하여 복잡한 기능을 완성하는 과정
+*   [[사례 연구: 서버 권위 제작|8.2_Case_Study_Server_Authority_Crafting]]: 멀티플레이 동시성 문제를 해결하는 방법
+*   [[사례 연구: 데이터 기반 근접 공격|8.3_Case_Study_Melee_Attack]]: 데이터와 애니메이션으로 스킬을 확장하는 방법
+*   [[사례 연구: 반응형 인벤토리 UX|8.4_Case_Study_Inventory_Interaction]]: 클라이언트 예측으로 온라인 게임의 랙(Lag)을 감추는 방법
 
 ### **구현된 기능 한눈에 보기 (Full Feature List)**
 > 이 프로젝트에 구현된 모든 기능의 상세 목록과 관련 기술 문서는 [[1.2 주요 기능 요약|1.2_Key_Features]] 문서에서 한눈에 확인하실 수 있습니다.
@@ -72,10 +72,10 @@
 
 ### 8. 사례 연구
 > 각 시스템들이 어떻게 유기적으로 협력하여 하나의 완전한 기능을 완성하는지 실제 사례를 통해 보여줍니다.
-*   [[8.1 반응형 인벤토리 UX|8.1_Case_Study_Inventory_Interaction]]: 클라이언트 예측을 통해 온라인 게임의 랙(Lag)을 감추는 방법을 실제 코드로 분석합니다.
-*   [[8.2 팰 포획 시퀀스|8.2_Case_Study_Pal_Capture_Sequence]]: 여러 시스템이 협력하여 복잡한 팰 포획 기능을 완성하는 전체 데이터 흐름을 추적합니다.
-*   [[8.3 서버 권위 제작|8.3_Case_Study_Server_Authority_Crafting]]: 멀티플레이 환경에서 제작 시스템의 동시성 문제를 해결하는 과정을 심층 분석합니다.
-*   [[8.4 데이터 기반 근접 공격|8.4_Case_Study_Melee_Attack]]: 데이터와 애니메이션의 조합만으로 다양한 근접 공격을 대량 생산하는 아키텍처를 분석합니다.
+*   [[8.1 팰 포획 시퀀스|8.1_Case_Study_Pal_Capture_Sequence]]: 여러 시스템이 협력하여 복잡한 팰 포획 기능을 완성하는 전체 데이터 흐름을 추적합니다.
+*   [[8.2 서버 권위 제작|8.2_Case_Study_Server_Authority_Crafting]]: 멀티플레이 환경에서 제작 시스템의 동시성 문제를 해결하는 과정을 심층 분석합니다.
+*   [[8.3 데이터 기반 근접 공격|8.3_Case_Study_Melee_Attack]]: 데이터와 애니메이션의 조합만으로 다양한 근접 공격을 대량 생산하는 아키텍처를 분석합니다.
+*   [[8.4 반응형 인벤토리 UX|8.4_Case_Study_Inventory_Interaction]]: 클라이언트 예측을 통해 온라인 게임의 랙(Lag)을 감추는 방법을 실제 코드로 분석합니다.
 
 ### 9. 회고 및 향후 계획
 > 프로젝트를 통해 얻은 기술적 교훈과 미래 발전 가능성을 다룹니다.

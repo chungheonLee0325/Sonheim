@@ -48,6 +48,8 @@
 
 ###  팰 포획 시스템 (Pal Capture System)
 > 팰월드의 핵심 재미인 몬스터 포획 시스템을 구현했습니다. 플레이어는 팰 스피어를 조준하여 던질 수 있으며, 조준 중인 대상 몬스터의 HP에 따라 실시간으로 계산되는 포획 확률을 UI로 확인할 수 있습니다. 포획 시도 시, 서버는 성공 여부를 즉시 판정하지만, 클라이언트에서는 긴장감 넘치는 연출 시퀀스가 재생된 후 최종 결과가 공개됩니다.
+>
+> 🔗 **관련 위키:** [8.1 Case Study: Pal Capture Sequence](https://github.com/chungheonLee0325/Sonheim/wiki/8.1_Case_Study_Pal_Capture_Sequence)
 
 ► **주요 기술:**
 1.  **조준:** `UInteractionComponent`가 전방의 몬스터를 탐지하고, `UPalCaptureComponent`는 이 정보를 받아 `CalculateCaptureRate` 함수로 HP 기반 포획률을 실시간 계산하여 UI에 표시합니다.
@@ -61,6 +63,8 @@ https://github.com/user-attachments/assets/57246d79-bd3b-473f-85fc-762670023729
 
 ### 아이템 및 상호작용 시스템 (Items & Interaction)
 > 클라이언트 예측을 적용한 반응형 인벤토리, 데이터 기반 제작 시스템, 그리고 네트워크 최적화가 적용된 공유 보관함을 구현했습니다.
+>
+> 🔗 **관련 위키:** [6.1 Unified Interaction System](https://github.com/chungheonLee0325/Sonheim/wiki/6.1-Unified-Interaction-System), [8.4 Case Study: Inventory Interaction](https://github.com/chungheonLee0325/Sonheim/wiki/8.4_Case_Study_Inventory_Interaction), [8.2 Case Study: Server-Authority Crafting](https://github.com/chungheonLee0325/Sonheim/wiki/8.2_Case_Study_Server_Authority_Crafting)
 
 ► **주요 기술:**
 *   **인벤토리 (반응성):** `PerformClientPrediction_...` 함수로 UI를 먼저 업데이트(낙관적 업데이트)하고, 서버 RPC로 실제 처리를 요청합니다. 서버의 최종 데이터가 도착하면 `OnRep` 함수가 UI 상태를 보정하여 데이터 정합성을 100% 보장합니다. 또한, `UInventoryComponent`와 `UContainerComponent` 모두 `FFastArraySerializer`를 사용하여 변경된 슬롯만 전송하는 **델타 복제**로 네트워크 부하를 극단적으로 줄였습니다.
@@ -75,6 +79,8 @@ https://github.com/user-attachments/assets/c594e8a3-2840-456c-ae04-cabaaeb4d8ca
 
 ### ️전투 및 피드백 시스템 (Combat & Feedback)
 > 9가지 원소 속성 간의 상성 관계를 적용한 전략적인 전투 시스템을 구현했습니다. 공격은 `ApplyDamage`라는 단일 함수로 시작되지만, `TakeDamage` 가상 함수를 오버라이드한 대상(몬스터, 자원 등)에 따라 전혀 다른 결과(피해, 자원 생성)가 발생하는 다형적 구조입니다. 타격 시 히트스톱, 넉백과 함께, 속성, 약점 여부에 따라 색상과 스타일이 변하는 플로팅 데미지 UI가 표시됩니다.
+>
+> 🔗 **관련 위키:** [3.5 Combat and Feedback System](https://github.com/chungheonLee0325/Sonheim/wiki/3.5-Combat-and-Feedback-System), [8.3 Case Study: Melee Attack](https://github.com/chungheonLee0325/Sonheim/wiki/8.3_Case_Study_Melee_Attack)
 
 ► **주요 기술:**
 *   **템플릿 메서드 패턴:** `AAreaObject::TakeDamage`를 템플릿 메서드로 사용하여, `ABaseMonster`(HP 감소), `ABaseResourceObject`(자원 생성) 등 각 클래스가 피격 반응을 자신만의 로직으로 재정의(Override)합니다.
@@ -85,6 +91,8 @@ https://github.com/user-attachments/assets/c594e8a3-2840-456c-ae04-cabaaeb4d8ca
 
 ### 플레이어 액션 및 스킬 시스템 (Player Actions & Skills)
 > `Enhanced Input`을 기반으로 캐릭터의 모든 행동을 `UBaseSkill`이라는 객체로 캡슐화했습니다. 구르기, 달리기, 공격 등 모든 행동은 독립된 스킬 객체이며, 데이터 테이블에 애니메이션, 이펙트, 비용 등을 정의하여 관리합니다. 특히 무기 교체 시, `OnWeaponChanged` 델리게이트가 `StatBonusComponent`와 `SkillComponent`에 변경사항을 전파하여 플레이어의 스탯과 사용 가능한 공격 스킬이 실시간으로 업데이트됩니다.
+>
+> 🔗 **관련 위키:** [3.3 Skill Architecture](https://github.com/chungheonLee0325/Sonheim/wiki/3.3-Skill-Architecture), [4.1 Player Character Control](https://github.com/chungheonLee0325/Sonheim/wiki/4.1-Player-Character-Control)
 
 ► **주요 기술:**
 *   **커맨드 패턴:** 모든 행동을 `UBaseSkill`(`Command`)로 객체화하고, `USkillComponent`(`Invoker`)를 통해 실행하여 행동의 재사용성과 확장성을 확보했습니다.
@@ -95,6 +103,8 @@ https://github.com/user-attachments/assets/c594e8a3-2840-456c-ae04-cabaaeb4d8ca
 
 ### 멀티플레이 아키텍처 및 세션 (Multiplayer & Session)
 > 모든 기능은 서버 권위(Server-Authoritative) 모델을 기반으로 설계되었으며, Steam API를 연동하여 멀티플레이 세션 생성, 검색, 참여 기능을 구현했습니다. 복잡한 Online Subsystem(OSS) 로직은 `FSessionUtil` 유틸리티 클래스에 캡슐화하여 다른 시스템과의 결합도를 낮췄습니다.
+>
+> 🔗 **관련 위키:** [2.1 Server Authority Architecture](https://github.com/chungheonLee0325/Sonheim/wiki/2.1-Server-Authority-Architecture)
 
 ► **주요 기술:**
 *   **서버 권위 모델:** 모든 핵심 게임플레이 판정(데미지, 아이템 이동 등)은 서버에서만 이루어져 데이터 정합성과 보안을 100% 보장합니다.
@@ -184,6 +194,15 @@ ABaseMonster    ..> UDataTable : Reads
 AResourceObject ..> UDataTable : Reads
 ACraftingStation..> UDataTable : Reads
 ```
+
+---
+
+## 📖 상세 기술 위키 (Technical Wiki)
+
+> 본 프로젝트의 상세한 아키텍처, 전체 시스템 설계, 각 클래스의 역할, 핵심 코드 분석, 그리고 프로젝트 회고에 대한 내용은 아래 기술 위키에서 확인하실 수 있습니다.
+> 
+> ### **➡️ [프로젝트 기술 위키 바로가기 (Click here for the Project's Technical Wiki)](https://github.com/chungheonLee0325/Sonheim/wiki)**
+
 ---
 
 ## 프로젝트 구조
