@@ -54,7 +54,10 @@
 2.  **투척:** `SuggestProjectileVelocity_CustomArc` 함수를 사용하여 목표 지점을 향하는 자연스러운 포물선 궤도를 계산하고 `APalSphere`를 발사합니다.
 3.  **판정 및 연출:** 서버는 포획 성공 여부를 즉시 판정하고, `Multicast` RPC로 연출 데이터만 클라이언트에 전송합니다. 클라이언트의 `UCaptureProgressWidget`은 이 데이터를 받아 연출을 "지휘"하고, 서버는 연출 시간에 맞춰 실제 결과를 게임 월드에 적용합니다.
 
+#### 시연 영상 - 팰 포획 기능
 https://github.com/user-attachments/assets/57246d79-bd3b-473f-85fc-762670023729
+
+
 
 ### 아이템 및 상호작용 시스템 (Items & Interaction)
 > 클라이언트 예측을 적용한 반응형 인벤토리, 데이터 기반 제작 시스템, 그리고 네트워크 최적화가 적용된 공유 보관함을 구현했습니다.
@@ -64,8 +67,11 @@ https://github.com/user-attachments/assets/57246d79-bd3b-473f-85fc-762670023729
 *   **제작 (동시성 제어):** `ACraftingStation`의 `UIOwner` 변수를 일종의 Mutex로 사용하여, 여러 플레이어가 동시에 제작 UI를 열려고 할 때 발생하는 경쟁 상태(Race Condition)를 방지합니다.
 *   **보관함 (네트워크 최적화):** `UContainerComponent`의 `PreReplication` 함수에서 구독자(`Subscribers`) 유무를 확인하여, `DOREPLIFETIME_ACTIVE_OVERRIDE` 매크로로 아이템 목록의 복제를 동적으로 활성화/비활성화하는 **구독 기반 복제**를 구현했습니다.
 
+#### 시연 영상 - 인벤토리, 상자 기능
 https://github.com/user-attachments/assets/c594e8a3-2840-456c-ae04-cabaaeb4d8ca
+
 ![GIF](Doc/Gifs/Feature_Crafting.gif)
+
 
 ### ️전투 및 피드백 시스템 (Combat & Feedback)
 > 9가지 원소 속성 간의 상성 관계를 적용한 전략적인 전투 시스템을 구현했습니다. 공격은 `ApplyDamage`라는 단일 함수로 시작되지만, `TakeDamage` 가상 함수를 오버라이드한 대상(몬스터, 자원 등)에 따라 전혀 다른 결과(피해, 자원 생성)가 발생하는 다형적 구조입니다. 타격 시 히트스톱, 넉백과 함께, 속성, 약점 여부에 따라 색상과 스타일이 변하는 플로팅 데미지 UI가 표시됩니다.
