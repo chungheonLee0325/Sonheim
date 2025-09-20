@@ -64,7 +64,7 @@ https://github.com/user-attachments/assets/57246d79-bd3b-473f-85fc-762670023729
 *   **제작 (동시성 제어):** `ACraftingStation`의 `UIOwner` 변수를 일종의 Mutex로 사용하여, 여러 플레이어가 동시에 제작 UI를 열려고 할 때 발생하는 경쟁 상태(Race Condition)를 방지합니다.
 *   **보관함 (네트워크 최적화):** `UContainerComponent`의 `PreReplication` 함수에서 구독자(`Subscribers`) 유무를 확인하여, `DOREPLIFETIME_ACTIVE_OVERRIDE` 매크로로 아이템 목록의 복제를 동적으로 활성화/비활성화하는 **구독 기반 복제**를 구현했습니다.
 
-![GIF](Doc/Gifs/Feature_Inventory.gif)
+https://github.com/user-attachments/assets/c594e8a3-2840-456c-ae04-cabaaeb4d8ca
 ![GIF](Doc/Gifs/Feature_Crafting.gif)
 
 ### ️전투 및 피드백 시스템 (Combat & Feedback)
