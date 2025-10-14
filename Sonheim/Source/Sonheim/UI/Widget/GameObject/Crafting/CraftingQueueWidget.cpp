@@ -54,6 +54,19 @@ void UCraftingQueueWidget::Refresh()
 			if (ItemName) ItemName->SetText(ItemData->ItemName);
 			if (ItemIcon) ItemIcon->SetVisibility(ESlateVisibility::Visible);
 			if (ItemIcon) ItemIcon->SetBrushFromTexture(ItemData->ItemIcon);
+            if (PerUnitText)
+            {
+                if (Station->ActiveWork.ResultPerUnit > 1)
+                {
+                    PerUnitText->SetText(FText::FromString(FString::Printf(TEXT("x%d"), Station->ActiveWork.ResultPerUnit)));
+                    PerUnitText->SetVisibility(ESlateVisibility::HitTestInvisible);
+                }
+                else
+                {
+                    PerUnitText->SetText(FText::GetEmpty());
+                    PerUnitText->SetVisibility(ESlateVisibility::Collapsed);
+                }
+            }
 		}
 
 		if (CountText)
@@ -72,7 +85,8 @@ void UCraftingQueueWidget::Refresh()
 		if (Station->CompletedToCollect > 0)
 		{
 			if (MID) MID->SetScalarParameterValue("Progress", 0.f);
-			if (CountText) CountText->SetText(FText::FromString(TEXT("0 / 0")));
+			if (CountText) CountText->SetText(FText::FromString(TEXT("수령 대기: ") + FString::FromInt(Station->CompletedToCollect)));
+			if (PerUnitText) PerUnitText->SetVisibility(ESlateVisibility::Collapsed);
 		}
 		else
 		{
@@ -80,6 +94,7 @@ void UCraftingQueueWidget::Refresh()
 			if (ItemIcon) ItemIcon->SetVisibility(ESlateVisibility::Hidden);
 			if (MID) MID->SetScalarParameterValue("Progress", 0.f);
 			if (CountText) CountText->SetText(FText::FromString(TEXT("할당된 작업이 없습니다.")));
+			if (PerUnitText) PerUnitText->SetVisibility(ESlateVisibility::Collapsed);
 		}
 	}
 }

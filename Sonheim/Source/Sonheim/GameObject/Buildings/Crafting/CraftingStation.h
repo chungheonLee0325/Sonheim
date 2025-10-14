@@ -80,7 +80,7 @@ class SONHEIM_API ACraftingStation : public AActor, public IInteractableInterfac
 	GENERATED_BODY()
 
 public:
-	ACraftingStation();
+    ACraftingStation();
 
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -132,6 +132,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	float GetCurrentProgress() const;
+
+	UFUNCTION(BlueprintPure, Category="Crafting|Data")
+	UDataTable* GetRecipeTable() const { return RecipeTable; }
 
 	// 활성화 작업
 	UPROPERTY(ReplicatedUsing=OnRep_ActiveWork)
@@ -215,11 +218,18 @@ protected:
     // Server-only
     TSet<TWeakObjectPtr<ASonheimPlayer>> Assistants;
     bool bIsDetected = false;
-	
+
 private:
     // SFX control (작업 추가 시 1회 재생, 최소 간격 제한)
     float LastCraftSfxServerTime = -1000.f;
     UFUNCTION(NetMulticast, Unreliable)
     void Multicast_PlayCraftSfx();
     void PlayCraftSfxOnce();
+
+	// 자동수령 방지용: 최근 작업 추가 서버시간
+	float LastWorkAddServerTime = -1000.f;
+
+	// 최근 작업 직후 수령 허용까지의 최소 지연(초) — 홀드 중 자동수령 방지
+	UPROPERTY(EditDefaultsOnly, Category="Crafting|Interaction", meta=(ClampMin="0.0", ClampMax="2.0"))
+	float ManualCollectDelay = 0.35f;
 };

@@ -25,7 +25,7 @@ class USlotWidget;
 UCLASS()
 class SONHEIM_API UCraftingQueueWidget : public UUserWidget
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
 	virtual void NativeConstruct() override;
@@ -50,8 +50,10 @@ private:
 	class UTextBlock* CountText = nullptr; // "완료/총개수"
 	UPROPERTY(meta=(BindWidget))
 	class UImage* ItemIcon = nullptr;
-	UPROPERTY(meta=(BindWidget))
-	class UTextBlock* ItemName = nullptr;
+    UPROPERTY(meta=(BindWidget))
+    class UTextBlock* ItemName = nullptr;
+    UPROPERTY(meta=(BindWidgetOptional))
+    class UTextBlock* PerUnitText = nullptr;
 
 	UPROPERTY()
 	UMaterialInstanceDynamic* MID = nullptr;

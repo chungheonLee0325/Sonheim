@@ -142,7 +142,7 @@ void ACraftingStation::OnDetected_Implementation(bool bDetected)
 FString ACraftingStation::GetInteractionName_Implementation() const
 {
 	if (CompletedToCollect > 0) return TEXT("취득");
-	if (bHasActiveWork) return TEXT("[길게 누르기] 작업");
+	if (bHasActiveWork) return TEXT("제작");
 	return TEXT("레시피 선택");
 }
 
@@ -172,19 +172,30 @@ void ACraftingStation::ExecuteCancel_Implementation(ASonheimPlayer* Player)
 
 void ACraftingStation::Interact_Implementation(ASonheimPlayer* Player)
 {
+	// 우선순위 : 아이템 수령 -> 제작 작업 -> UI 열기
+	// 제작 작업중에 자동 수령 X. 작업을 멈추고 다시 상호 작용할시 아이템 수령
 	if (!Player) return;
+	// 자동수령 방지: 최근 작업 직후에는 수령 금지, 홀드 중단 후 재상호작용으로 수령 허용
+	if (bHasActiveWork)
+	{
+		const float Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+		const bool bAllowManualCollect = (CompletedToCollect > 0) && (Now - LastWorkAddServerTime >= ManualCollectDelay);
+		if (bAllowManualCollect)
+		{
+			ServerCollectAll(Player);
+		}
+		else
+		{
+			ServerAddWork(ResolvePlayerWorkSpeed_Internal(Player), Player);
+		}
+		return;
+	}
 	if (CompletedToCollect > 0)
 	{
 		ServerCollectAll(Player);
 		return;
 	}
-	else if (bHasActiveWork)
-	{
-		// ToDo 위치
-		ServerAddWork(ResolvePlayerWorkSpeed_Internal(Player), Player);
-		return;
-	}
-	if (!bHasActiveWork) ServerRequestOpenUI(Player);
+	ServerRequestOpenUI(Player);
 }
 
 float ACraftingStation::GetCurrentProgress() const
@@ -228,12 +239,20 @@ float ACraftingStation::ResolvePlayerWorkSpeed_Internal(ASonheimPlayer* Player) 
 void ACraftingStation::OnRep_ActiveWork()
 {
 	OnWorkChanged.Broadcast();
+	if (bIsDetected)
+	{
+		UpdateDetectWidgetText();
+	}
 }
 
 void ACraftingStation::OnRep_CompletedToCollect()
 {
 	OnCompletedChanged.Broadcast();
 	OnWorkChanged.Broadcast();
+	if (bIsDetected)
+	{
+		UpdateDetectWidgetText();
+	}
 }
 
 void ACraftingStation::ServerStartWork_Implementation(ASonheimPlayer* Requestor, FName RecipeRow, int32 Units)
@@ -249,19 +268,31 @@ void ACraftingStation::ServerStartWork_Implementation(ASonheimPlayer* Requestor,
 	const int32 Max = ComputeMaxCraftable(Inv, *R);
 	const int32 ToMake = FMath::Clamp(Units, 0, Max);
 
+	int32 Made = 0;
 	for (int32 i = 0; i < ToMake; ++i)
 	{
-		if (!TryConsumeMaterialsForOne(Inv, *R)) break;
+		if (TryConsumeMaterialsForOne(Inv, *R))
+		{
+			++Made;
+		}
+		else
+		{
+			break;
+		}
+	}
+	if (Made <= 0)
+	{
+		return;
 	}
 
 	ActiveWork.RecipeRow = RecipeRow;
 	ActiveWork.ResultItemID = R->ResultItemID;
 	ActiveWork.ResultPerUnit = R->ResultCount;
 	ActiveWork.WorkPerUnit = R->WorkRequired;
-	ActiveWork.UnitsTotal = Units;
+	ActiveWork.UnitsTotal = Made;
 	ActiveWork.UnitsDone = 0;
 	ActiveWork.WorkAccumulated = 0.f;
-    bHasActiveWork = true;
+	bHasActiveWork = true;
 
     ForceNetUpdate();
     OnRep_ActiveWork();
@@ -279,6 +310,9 @@ void ACraftingStation::ServerAddWork_Implementation(float WorkDelta, class ASonh
             Multicast_PlayCraftSfx();
         }
     }
+
+    // 최근 작업 추가 시각 갱신(자동수령 쿨다운)
+    LastWorkAddServerTime = GetWorld() ? GetWorld()->GetTimeSeconds() : LastWorkAddServerTime;
 
 	ActiveWork.WorkAccumulated += WorkDelta;
 
@@ -311,8 +345,14 @@ void ACraftingStation::ServerCollectAll_Implementation(ASonheimPlayer* Player)
 	}
 
 	// 수령한만큼 아이템 차감
-	ActiveWork.UnitsDone = FMath::Max(0, ActiveWork.UnitsDone - CompletedToCollect);
-	ActiveWork.UnitsTotal = FMath::Max(0, ActiveWork.UnitsTotal - CompletedToCollect);
+	const int32 PerUnit = FMath::Max(1, ActiveWork.ResultPerUnit);
+	// 결과 수량 -> 작업 유닛 수로 환산
+	const int32 CompletedUnits = CompletedToCollect / PerUnit;
+	if (CompletedUnits > 0)
+	{
+		ActiveWork.UnitsDone = FMath::Max(0, ActiveWork.UnitsDone - CompletedUnits);
+		ActiveWork.UnitsTotal = FMath::Max(0, ActiveWork.UnitsTotal - CompletedUnits);
+	}
 
 	CompletedToCollect = 0;
 
@@ -399,15 +439,13 @@ void ACraftingStation::UpdateDetectWidgetText()
 	if (!DetectWidget) return;
 	if (UDetectWidget* DW = Cast<UDetectWidget>(DetectWidget->GetUserWidgetObject()))
 	{
-		const bool bHasCompleted = CompletedToCollect > 0;
-		const FString Action = bHasCompleted ? TEXT("획득") : TEXT("[길게 누르기] 작업");
-		DW->SetInteractionInfo(GetInteractionName_Implementation(), Action);
+		DW->SetInteractionInfo(GetInteractionName_Implementation(), "");
 
 		const bool bCancel = CanHoldCancel_Implementation();
 		DW->SetCancelVisible(bCancel);
 		if (bCancel)
 		{
-			DW->SetCancelInfo(FText::FromString(TEXT("[길게 누르기] 취소")), FText::FromString(TEXT("C")));
+			DW->SetCancelInfo(FText::FromString(TEXT("취소")), FText::FromString(TEXT("C")));
 			DW->UpdateCancelHoldProgress(0.f);
 		}
 	}

@@ -6,12 +6,11 @@
 #include "Components/VerticalBox.h"
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
-#include "Components/HorizontalBox.h"
 #include "Components/Image.h"
 #include "Components/SpinBox.h"
-#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
+#include "Sonheim/Utilities/InventoryResourceProvider.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
 #include "Engine/DataTable.h"
@@ -74,17 +73,7 @@ void UCraftingWidget::RefreshRecipes()
 	RecipeWrap->ClearChildren();
 	RecipeSlotMap.Empty();
 
-	UDataTable* Table = nullptr;
-
-	// Reflection: find UPROPERTY named RecipeTable (no explicit getter requirement)
-	for (TFieldIterator<FObjectProperty> It(ACraftingStation::StaticClass()); It; ++It)
-	{
-		if (It->GetName().Contains(TEXT("RecipeTable")))
-		{
-			Table = Cast<UDataTable>(It->GetObjectPropertyValue_InContainer(Station));
-			if (Table) break;
-		}
-	}
+    UDataTable* Table = Station->GetRecipeTable();
 	if (!Table) return;
 
 	for (const auto& Pair : Table->GetRowMap())
@@ -143,18 +132,9 @@ void UCraftingWidget::RefreshCraftability()
 		if (!slot) continue;
 
 		const FCraftingRecipe* R = GetRecipe(Row);
-		bool bCraftable = true;
-		if (R)
-		{
-			for (const auto& KVP : R->RequiredMaterials)
-			{
-				if (GetOwnedCount(KVP.Key) < KVP.Value)
-				{
-					bCraftable = false;
-					break;
-				}
-			}
-		}
+		bool bCraftable = (R && InventoryComp)
+			                  ? UInventoryResourceProvider::HasItems(InventoryComp, R->RequiredMaterials)
+			                  : false;
 		slot->SetIsEnabled(true);
 
 		slot->SetRenderOpacity(bCraftable ? 1.0f : 0.7f);
@@ -359,15 +339,7 @@ int32 UCraftingWidget::GetOwnedCount(int32 ItemID) const
 const FCraftingRecipe* UCraftingWidget::GetRecipe(FName Row) const
 {
 	if (!Station) return nullptr;
-	UDataTable* Table = nullptr;
-	for (TFieldIterator<FObjectProperty> It(ACraftingStation::StaticClass()); It; ++It)
-	{
-		if (It->GetName().Contains(TEXT("RecipeTable")))
-		{
-			Table = Cast<UDataTable>(It->GetObjectPropertyValue_InContainer(Station));
-			if (Table) break;
-		}
-	}
+    UDataTable* Table = Station->GetRecipeTable();
 	if (!Table) return nullptr;
 	return Table->FindRow<FCraftingRecipe>(Row, TEXT("CraftingWidget"));
 }
