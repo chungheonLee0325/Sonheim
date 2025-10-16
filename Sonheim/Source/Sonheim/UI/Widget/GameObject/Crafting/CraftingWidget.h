@@ -60,8 +60,6 @@ protected:
 	UFUNCTION()
 	void OnClickedClose();
 
-	int32 ComputeMaxCraftableForRow(FName Row) const;
-	int32 GetOwnedCount(int32 ItemID) const;
 	const struct FCraftingRecipe* GetRecipe(FName Row) const;
 	void SelectRow(FName NewRow);
 
@@ -70,7 +68,7 @@ private:
 	void RebuildStaticForRecipe(const struct FCraftingRecipe* R);
 	// 보유/필요 수량, 색, 버튼 상태만
 	void RefreshDynamicForRecipe(const struct FCraftingRecipe* R);
-	
+
 	UPROPERTY()
 	ACraftingStation* Station = nullptr;
 	UPROPERTY()

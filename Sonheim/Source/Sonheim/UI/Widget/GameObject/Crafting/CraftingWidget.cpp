@@ -73,7 +73,7 @@ void UCraftingWidget::RefreshRecipes()
 	RecipeWrap->ClearChildren();
 	RecipeSlotMap.Empty();
 
-    UDataTable* Table = Station->GetRecipeTable();
+	UDataTable* Table = Station->GetRecipeTable();
 	if (!Table) return;
 
 	for (const auto& Pair : Table->GetRowMap())
@@ -212,22 +212,25 @@ void UCraftingWidget::RefreshDynamicForRecipe(const struct FCraftingRecipe* R)
 	// 결과 아이템 보유 수량(동적)
 	if (OwnedCountText)
 	{
-		const int32 Owned = GetOwnedCount(R->ResultItemID);
+		const int32 Owned = InventoryComp ? InventoryComp->GetItemCount(R->ResultItemID) : 0;
 		OwnedCountText->SetText(FText::FromString(FString::Printf(TEXT("보유 수     %d"), Owned)));
 	}
 
 	if (!GameInstance || !RequiredList) return;
 
-	bool bAllOK = true;
 	const int32 Qty = GetCurrentQuantity();
-	int32 MaxCraftable = INT32_MAX;
+	// 인벤토리 기준 최대 제작 가능 수
+	const int32 MaxUnits = (InventoryComp)
+		                       ? UInventoryResourceProvider::ComputeMaxCraftable(InventoryComp, R->RequiredMaterials)
+		                       : 0;
+	bool bAllOK = Qty > 0 && Qty <= MaxUnits;
 
 	for (int32 i = 0; i < CachedMatIDs.Num(); ++i)
 	{
 		const int32 MatID = CachedMatIDs[i];
 		const int32 NeedPerOne = R->RequiredMaterials.FindRef(MatID);
 		const int32 Need = NeedPerOne * FMath::Max(1, Qty);
-		const int32 Have = GetOwnedCount(MatID);
+		const int32 Have = InventoryComp ? InventoryComp->GetItemCount(MatID) : 0;
 
 		if (RequiredRowPool.IsValidIndex(i))
 		{
@@ -236,11 +239,10 @@ void UCraftingWidget::RefreshDynamicForRecipe(const struct FCraftingRecipe* R)
 		}
 
 		if (Have < Need) bAllOK = false;
-		if (NeedPerOne > 0) MaxCraftable = FMath::Min(MaxCraftable, Have / NeedPerOne);
 	}
 
-	bCachedCanCraft = bAllOK && (Qty > 0);
-	CachedMaxCraftable = (MaxCraftable == INT32_MAX) ? 0 : MaxCraftable;
+	bCachedCanCraft = bAllOK;
+	CachedMaxCraftable = MaxUnits;
 
 	if (CraftButton) CraftButton->SetIsEnabled(bCachedCanCraft);
 	if (MaxButton) MaxButton->SetIsEnabled(CachedMaxCraftable > 0);
@@ -259,7 +261,6 @@ void UCraftingWidget::OnQuantityChanged(float NewValue)
 
 void UCraftingWidget::OnRecipeSlotClicked(USlotWidget* ClickedSlot, bool bRightClick)
 {
-	
 	for (const auto& P : RecipeSlotMap)
 	{
 		if (P.Value == ClickedSlot)
@@ -293,7 +294,15 @@ void UCraftingWidget::OnClickCraft()
 
 void UCraftingWidget::OnClickMax()
 {
-	if (QuantitySpin) QuantitySpin->SetValue(ComputeMaxCraftableForRow(SelectedRow));
+	if (!QuantitySpin) return;
+	const FCraftingRecipe* R = GetRecipe(SelectedRow);
+	if (!R || !InventoryComp)
+	{
+		QuantitySpin->SetValue(0);
+		return;
+	}
+	const int32 MaxUnits = UInventoryResourceProvider::ComputeMaxCraftable(InventoryComp, R->RequiredMaterials);
+	QuantitySpin->SetValue(MaxUnits);
 }
 
 void UCraftingWidget::OnClickMin()
@@ -316,30 +325,10 @@ void UCraftingWidget::OnClickedClose()
 	RemoveFromParent();
 }
 
-int32 UCraftingWidget::ComputeMaxCraftableForRow(FName Row) const
-{
-	const FCraftingRecipe* R = GetRecipe(Row);
-	if (!R || !InventoryComp) return 0;
-	int32 Max = INT32_MAX;
-	for (const auto& KVP : R->RequiredMaterials)
-	{
-		const int32 have = GetOwnedCount(KVP.Key);
-		const int32 byThis = have / FMath::Max(1, KVP.Value);
-		Max = FMath::Min(Max, byThis);
-	}
-	return FMath::Max(0, Max);
-}
-
-int32 UCraftingWidget::GetOwnedCount(int32 ItemID) const
-{
-	if (!InventoryComp) return 0;
-	return InventoryComp->GetItemCount(ItemID);
-}
-
 const FCraftingRecipe* UCraftingWidget::GetRecipe(FName Row) const
 {
 	if (!Station) return nullptr;
-    UDataTable* Table = Station->GetRecipeTable();
+	UDataTable* Table = Station->GetRecipeTable();
 	if (!Table) return nullptr;
 	return Table->FindRow<FCraftingRecipe>(Row, TEXT("CraftingWidget"));
 }

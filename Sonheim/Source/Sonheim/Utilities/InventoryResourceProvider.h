@@ -19,5 +19,8 @@ public:
 
     UFUNCTION(BlueprintCallable, Category="Inventory|Resource")
     static bool ConsumeItems(UInventoryComponent* Inv, const TMap<int32,int32>& Required);
-};
 
+    // 재료 맵 기준 최대 제작 가능 수량 계산
+    UFUNCTION(BlueprintPure, Category="Inventory|Resource")
+    static int32 ComputeMaxCraftable(UInventoryComponent* Inv, const TMap<int32,int32>& Required);
+};

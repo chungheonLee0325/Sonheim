@@ -24,3 +24,15 @@ bool UInventoryResourceProvider::ConsumeItems(UInventoryComponent* Inv, const TM
     return true;
 }
 
+int32 UInventoryResourceProvider::ComputeMaxCraftable(UInventoryComponent* Inv, const TMap<int32, int32>& Required)
+{
+    if (!Inv) return 0;
+    int32 Max = INT32_MAX;
+    for (const auto& Req : Required)
+    {
+        const int32 Have = Inv->GetItemCount(Req.Key);
+        const int32 Need = FMath::Max(1, Req.Value);
+        Max = FMath::Min(Max, Have / Need);
+    }
+    return FMath::Max(0, Max);
+}
