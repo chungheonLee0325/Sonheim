@@ -31,6 +31,14 @@ struct FCraftingRecipe : public FTableRowBase
 	int32 WorkRequired = 100;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TMap<int32, int32> RequiredMaterials;
+
+	// Build
+	// 최종 액터 클래스. 설정 시 현장 액터가 공사 중/완료 상태 전환에 사용.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Build|Product")
+	TSoftClassPtr<AActor> ProductActorClass;
+	// 공사용 머티리얼. 설정 시 공사 중에 최종 액터 메시에 적용.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Build|Product")
+	TSoftObjectPtr<UMaterialInterface> ConstructionMaterial;
 };
 
 // 단일 작업 상태(레시피 한 종류만 N개)
@@ -77,7 +85,7 @@ DECLARE_MULTICAST_DELEGATE(FOnCompletedChanged);
 UCLASS()
 class SONHEIM_API ACraftingStation : public AActor, public IInteractableInterface
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
     ACraftingStation();
@@ -130,8 +138,11 @@ public:
 	UFUNCTION(BlueprintPure)
 	ASonheimPlayer* GetUIOwner() const { return UIOwner; }
 
-	UFUNCTION(BlueprintCallable)
-	float GetCurrentProgress() const;
+    UFUNCTION(BlueprintCallable)
+    float GetCurrentProgress() const;
+
+    // 인터페이스: 상호작용 모드 코드
+    virtual int32 GetInteractionModeCode_Implementation() const override;
 
 	UFUNCTION(BlueprintPure, Category="Crafting|Data")
 	UDataTable* GetRecipeTable() const { return RecipeTable; }
@@ -159,11 +170,7 @@ protected:
 	// === Detect Widget ===
 	void UpdateDetectWidgetText();
 	UDetectWidget* GetDetectWidget() const;
-
-	// 인벤토리로부터 제작 재료 소비
-	static bool TryConsumeMaterialsForOne(UInventoryComponent* Inv, const FCraftingRecipe& R);
-	// 최대 제작 가능 갯수 점검(서버 권위 검증용)
-	static int32 ComputeMaxCraftable(UInventoryComponent* Inv, const FCraftingRecipe& R);
+	
 	// 테이블로부터 레시피 조회
 	const FCraftingRecipe* FindRecipe(FName Row) const;
 	// 플레이어 작업속도 가져오기
@@ -226,10 +233,16 @@ private:
     void Multicast_PlayCraftSfx();
     void PlayCraftSfxOnce();
 
-	// 자동수령 방지용: 최근 작업 추가 서버시간
-	float LastWorkAddServerTime = -1000.f;
+    // 자동수령 방지용: 최근 작업 추가 서버시간
+    float LastWorkAddServerTime = -1000.f;
 
-	// 최근 작업 직후 수령 허용까지의 최소 지연(초) — 홀드 중 자동수령 방지
-	UPROPERTY(EditDefaultsOnly, Category="Crafting|Interaction", meta=(ClampMin="0.0", ClampMax="2.0"))
-	float ManualCollectDelay = 0.35f;
+    // 최근 작업 직후 수령 허용까지의 최소 지연(초) — 홀드 중 자동수령 방지
+    UPROPERTY(EditDefaultsOnly, Category="Crafting|Interaction", meta=(ClampMin="0.0", ClampMax="2.0"))
+    float ManualCollectDelay = 0.35f;
+
+    // 최근 수령 직후 UI 오픈까지의 최소 지연(초) — 수령→UI 같은 틱 연쇄 방지
+    UPROPERTY(EditDefaultsOnly, Category="Crafting|Interaction", meta=(ClampMin="0.0", ClampMax="1.0"))
+    float ManualOpenUIDelay = 0.1f;
+    // 최근 수령 서버 시간
+    float LastCollectServerTime = -1000.f;
 };

@@ -1346,6 +1346,14 @@ void ASonheimPlayer::Interaction_Released(EHoldPurpose Purpose) const
 	InteractionComponent->StopHoldInteraction(Purpose);
 }
 
+void ASonheimPlayer::Client_StopInteractionHold_Implementation(EHoldPurpose Purpose)
+{
+	if (UInteractionComponent* IC = GetInteractionComponent())
+	{
+		IC->StopHoldInteraction(Purpose);
+	}
+}
+
 void ASonheimPlayer::SetWeaponVisible(bool bNew, bool bLocalPreview)
 {
 	// 1) 체감용 로컬 미리보기 (소유 클라만)

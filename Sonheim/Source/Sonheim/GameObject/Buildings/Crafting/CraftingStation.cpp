@@ -12,6 +12,7 @@
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "Sonheim/UI/Widget/GameObject/Crafting/CraftingQueueWidget.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sonheim/Utilities/InventoryResourceProvider.h"
 
 ACraftingStation::ACraftingStation()
 {
@@ -58,7 +59,7 @@ ACraftingStation::ACraftingStation()
 
 void ACraftingStation::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
 
 	if (DetectWidget && DetectWidgetClass)
 	{
@@ -179,8 +180,9 @@ void ACraftingStation::Interact_Implementation(ASonheimPlayer* Player)
 	if (bHasActiveWork)
 	{
 		const float Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
-		const bool bAllowManualCollect = (CompletedToCollect > 0) && (Now - LastWorkAddServerTime >= ManualCollectDelay);
-		if (bAllowManualCollect)
+		 const bool bAllowManualCollect = (CompletedToCollect > 0) && (Now - LastWorkAddServerTime >=
+		 	ManualCollectDelay);
+		 if (bAllowManualCollect)
 		{
 			ServerCollectAll(Player);
 		}
@@ -195,6 +197,14 @@ void ACraftingStation::Interact_Implementation(ASonheimPlayer* Player)
 		ServerCollectAll(Player);
 		return;
 	}
+	// 수령 직후 즉시 UI 오픈 방지(같은 틱 연쇄 방지)
+	{
+		const float Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+		if (Now - LastCollectServerTime < ManualOpenUIDelay)
+		{
+			return;
+		}
+	}
 	ServerRequestOpenUI(Player);
 }
 
@@ -205,25 +215,14 @@ float ACraftingStation::GetCurrentProgress() const
 		       : 0.f;
 }
 
-int32 ACraftingStation::ComputeMaxCraftable(UInventoryComponent* Inv, const FCraftingRecipe& R)
+int32 ACraftingStation::GetInteractionModeCode_Implementation() const
 {
-	int32 Max = INT32_MAX;
-	auto GetCount = [&](int32 ItemID)-> int32 { return Inv ? Inv->GetItemCount(ItemID) : 0; };
-	for (auto& Req : R.RequiredMaterials)
-	{
-		const int32 have = GetCount(Req.Key);
-		const int32 canByThis = have / FMath::Max(1, Req.Value);
-		Max = FMath::Min(Max, canByThis);
-	}
-	return FMath::Max(0, Max);
-}
-
-bool ACraftingStation::TryConsumeMaterialsForOne(UInventoryComponent* Inv, const FCraftingRecipe& R)
-{
-	if (!Inv) return false;
-	for (auto& P : R.RequiredMaterials) if (!Inv->HasItem(P.Key, P.Value)) return false;
-	for (auto& P : R.RequiredMaterials) Inv->RemoveItem(P.Key, P.Value);
-	return true;
+	// 작업 중
+	if (bHasActiveWork) return 1;
+	// 수령 가능
+	if (CompletedToCollect > 0) return 2;
+	// 레시피 선택/대기
+	return 3;
 }
 
 float ACraftingStation::ResolvePlayerWorkSpeed_Internal(ASonheimPlayer* Player) const
@@ -265,13 +264,13 @@ void ACraftingStation::ServerStartWork_Implementation(ASonheimPlayer* Requestor,
 	UInventoryComponent* Inv = Requestor->GetInventoryComponent();
 	if (!Inv) return;
 
-	const int32 Max = ComputeMaxCraftable(Inv, *R);
+	const int32 Max = UInventoryResourceProvider::ComputeMaxCraftable(Inv, R->RequiredMaterials);
 	const int32 ToMake = FMath::Clamp(Units, 0, Max);
 
 	int32 Made = 0;
 	for (int32 i = 0; i < ToMake; ++i)
 	{
-		if (TryConsumeMaterialsForOne(Inv, *R))
+		if (UInventoryResourceProvider::ConsumeItems(Inv, R->RequiredMaterials))
 		{
 			++Made;
 		}
@@ -294,25 +293,25 @@ void ACraftingStation::ServerStartWork_Implementation(ASonheimPlayer* Requestor,
 	ActiveWork.WorkAccumulated = 0.f;
 	bHasActiveWork = true;
 
-    ForceNetUpdate();
-    OnRep_ActiveWork();
+	ForceNetUpdate();
+	OnRep_ActiveWork();
 }
 
 void ACraftingStation::ServerAddWork_Implementation(float WorkDelta, class ASonheimPlayer* Worker)
 {
-    // 작업 입력마다 SFX 재생(서버 시간 기준 최소 간격으로 스로틀링)
-    if (CraftWorkSFX)
-    {
-        const float Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
-        if (Now - LastCraftSfxServerTime >= CraftSFXInterval)
-        {
-            LastCraftSfxServerTime = Now;
-            Multicast_PlayCraftSfx();
-        }
-    }
+	// 작업 입력마다 SFX 재생(서버 시간 기준 최소 간격으로 스로틀링)
+	if (CraftWorkSFX)
+	{
+		const float Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+		if (Now - LastCraftSfxServerTime >= CraftSFXInterval)
+		{
+			LastCraftSfxServerTime = Now;
+			Multicast_PlayCraftSfx();
+		}
+	}
 
-    // 최근 작업 추가 시각 갱신(자동수령 쿨다운)
-    LastWorkAddServerTime = GetWorld() ? GetWorld()->GetTimeSeconds() : LastWorkAddServerTime;
+	// 최근 작업 추가 시각 갱신(자동수령 쿨다운)
+	LastWorkAddServerTime = GetWorld() ? GetWorld()->GetTimeSeconds() : LastWorkAddServerTime;
 
 	ActiveWork.WorkAccumulated += WorkDelta;
 
@@ -369,6 +368,12 @@ void ACraftingStation::ServerCollectAll_Implementation(ASonheimPlayer* Player)
 
 	ForceNetUpdate();
 	OnCompletedChanged.Broadcast();
+
+	// 수령 직후에는 홀드 연쇄를 막기 위해 클라 홀드 중단 요청
+	Player->Client_StopInteractionHold(EHoldPurpose::Interact);
+
+	// 최근 수령 시간 기록(동틱 UI 오픈 방지)
+	LastCollectServerTime = GetWorld() ? GetWorld()->GetTimeSeconds() : LastCollectServerTime;
 }
 
 void ACraftingStation::ServerCancelUnfinished_Implementation(class ASonheimPlayer* Requestor)
@@ -409,6 +414,7 @@ void ACraftingStation::ServerRequestOpenUI_Implementation(ASonheimPlayer* Player
 	{
 		PC->Client_OpenCraftingUI(this);
 	}
+	Player->Client_StopInteractionHold(EHoldPurpose::Interact);
 }
 
 void ACraftingStation::ServerReleaseUI_Implementation(ASonheimPlayer* Player)
@@ -461,19 +467,19 @@ UDetectWidget* ACraftingStation::GetDetectWidget() const
 
 const FCraftingRecipe* ACraftingStation::FindRecipe(FName Row) const
 {
-    if (!RecipeTable) return nullptr;
-    return RecipeTable->FindRow<FCraftingRecipe>(Row, TEXT("CraftingStation"));
+	if (!RecipeTable) return nullptr;
+	return RecipeTable->FindRow<FCraftingRecipe>(Row, TEXT("CraftingStation"));
 }
 
 // ===== SFX Helpers =====
 void ACraftingStation::PlayCraftSfxOnce()
 {
-    if (!CraftWorkSFX) return;
-    if (GetNetMode() == NM_DedicatedServer) return;
-    UGameplayStatics::PlaySoundAtLocation(this, CraftWorkSFX, GetActorLocation());
+	if (!CraftWorkSFX) return;
+	if (GetNetMode() == NM_DedicatedServer) return;
+	UGameplayStatics::PlaySoundAtLocation(this, CraftWorkSFX, GetActorLocation());
 }
 
 void ACraftingStation::Multicast_PlayCraftSfx_Implementation()
 {
-    PlayCraftSfxOnce();
+	PlayCraftSfxOnce();
 }

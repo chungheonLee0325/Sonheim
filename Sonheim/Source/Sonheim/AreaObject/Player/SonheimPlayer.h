@@ -411,6 +411,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	bool IsThrowingPalSphere() { return PalCaptureComponent->IsThrowingPalSphere(); };
+	
+    UFUNCTION(Client, Reliable)
+    void Client_StopInteractionHold(EHoldPurpose Purpose);
 
 private:
 	void UpdateSelectedPal();

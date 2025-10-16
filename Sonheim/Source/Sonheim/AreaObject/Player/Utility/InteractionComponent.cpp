@@ -290,6 +290,9 @@ void UInteractionComponent::StartHoldInteraction(EHoldPurpose Purpose)
 	bIsHolding = true;
 	HoldProgress = 0.f;
 
+	// 현재 상호작용 모드를 기록: 모드가 바뀌면 홀드를 중단
+	HoldInitialModeCode = IInteractableInterface::Execute_GetInteractionModeCode(CurrentInteractable);
+
 	const float HoldDuration = bIsCancel
 		                           ? IInteractableInterface::Execute_GetCancelHoldDuration(CurrentInteractable)
 		                           : IInteractableInterface::Execute_GetHoldDuration(CurrentInteractable);
@@ -298,31 +301,69 @@ void UInteractionComponent::StartHoldInteraction(EHoldPurpose Purpose)
 	{
 		// 즉시 실행
 		if (bIsCancel)
+		{
 			IInteractableInterface::Execute_ExecuteCancel(CurrentInteractable, OwnerPlayer);
+			StopHoldInteraction(Purpose);
+		}
 		else
+		{
 			TryInteract();
+			// 즉시 상호작용 후 자동 연쇄 방지: 키를 떼기 전까진 억제
+			StopHoldInteraction(Purpose);
+		}
 		return;
 	}
 
 	GetWorld()->GetTimerManager().SetTimer(HoldTimerHandle, [this, HoldDuration, Purpose]()
 	{
+		// 타겟 무효 시 종료
 		if (!IsValid(CurrentInteractable))
 		{
 			StopHoldInteraction(Purpose);
 			return;
 		}
 
-		HoldProgress = FMath::Min(HoldProgress + (0.01f / HoldDuration), 1.0f);
+		// 상호작용 모드 변경 감지 시 즉시 홀드 중단
+		const int32 CurrentMode = IInteractableInterface::Execute_GetInteractionModeCode(CurrentInteractable);
+		if (CurrentMode != HoldInitialModeCode)
+		{
+			StopHoldInteraction(Purpose);
+			return;
+		}
 
-		// 인터페이스로 진행률 브로드캐스트
+		// 진행도 업데이트 및 UI 반영
+		if (HoldProgress < 1.0f)
+		{
+			HoldProgress = FMath::Min(HoldProgress + (0.01f / HoldDuration), 1.0f);
+		}
 		IInteractableInterface::Execute_UpdateHoldProgressUI(CurrentInteractable, HoldProgress, Purpose);
 
 		if (HoldProgress >= 1.0f)
 		{
 			if (Purpose == EHoldPurpose::Cancel)
+			{
 				IInteractableInterface::Execute_ExecuteCancel(CurrentInteractable, OwnerPlayer);
+				StopHoldInteraction(Purpose);
+				return;
+			}
 			else
+			{
+				// 진행이 완료된 상태에서 연속 상호작용은 "현재 모드가 홀드 시작 모드와 동일"할 때만 허용
+				if (CurrentMode != HoldInitialModeCode)
+				{
+					// 모드가 변했으면 자동 연쇄 중단(예: 수령/레시피)
+					StopHoldInteraction(Purpose);
+					return;
+				}
+
+				// 동일 모드(예: 제작)인 경우에만 작업 가산
 				TryInteract();
+				if (!IsValid(CurrentInteractable))
+				{
+					StopHoldInteraction(Purpose);
+					return;
+				}
+			}
 		}
 	}, 0.01f, true);
 }
@@ -332,6 +373,7 @@ void UInteractionComponent::StopHoldInteraction(EHoldPurpose Purpose)
 	bIsHolding = false;
 	HoldProgress = 0.f;
 	GetWorld()->GetTimerManager().ClearTimer(HoldTimerHandle);
+	HoldInitialModeCode = 0;
 
 	if (IsValid(CurrentInteractable) &&
 		CurrentInteractable->GetClass()->ImplementsInterface(UInteractableInterface::StaticClass()))

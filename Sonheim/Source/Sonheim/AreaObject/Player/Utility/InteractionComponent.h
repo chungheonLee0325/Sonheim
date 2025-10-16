@@ -109,5 +109,9 @@ private:
 	void UpdateDetectedMonster(ABaseMonster* NewMonster);
 
 	// 모든 타이머 정리
-	void ClearAllTimers();
+    void ClearAllTimers();
+
+    // === Hold tracking ===
+    int32 HoldInitialModeCode = 0;
+    
 };

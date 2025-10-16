@@ -75,4 +75,10 @@ public:
 	// 취소 홀드 길이(미구현 시 기본값 사용)
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction|UI")
 	float GetCancelHoldDuration() const;
+
+	// 홀드 중 상호작용 모드 식별자(기본 0)
+	// InteractionComponent는 이 값이 변하면 홀드를 중단한다.
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction")
+	int32 GetInteractionModeCode() const;
+	virtual int32 GetInteractionModeCode_Implementation() const { return 0; }
 };
