@@ -6,6 +6,7 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/GameObject/Buildings/Storage/BaseContainer.h"
+#include "Sonheim/UI/System/UIStackSubsystem.h"
 
 void UContainerInteractionWidget::NativeConstruct()
 {
@@ -80,8 +81,22 @@ void UContainerInteractionWidget::CloseContainer()
 		CurrentContainer = nullptr;
 	}
     
-	// UI 제거
-	RemoveFromParent();
+	bool bClosedByStack = false;
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		if (ULocalPlayer* LP = PC->GetLocalPlayer())
+		{
+			if (UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(LP))
+			{
+				UI->CloseScreenWidget(this);
+				bClosedByStack = true;
+			}
+		}
+	}
+	if (!bClosedByStack)
+	{
+		RemoveFromParent();
+	}
     
 	// 마우스 커서 숨기기
 	if (APlayerController* PC = GetOwningPlayer())

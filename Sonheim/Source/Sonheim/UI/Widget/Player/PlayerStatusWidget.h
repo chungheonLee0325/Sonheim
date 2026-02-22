@@ -14,6 +14,7 @@ class ABaseMonster;
 class UInventoryComponent;
 class UPalInventoryComponent;
 class UPalPartnerSkillComponent;
+class UQuestTrackerWidget;
 
 UENUM(BlueprintType)
 enum class EUIKeyGuide : uint8
@@ -161,6 +162,9 @@ protected:
 	class UImage* SummonBG_3;
 	UPROPERTY(meta = (BindWidget))
 	class UImage* SummonBG_4;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	UQuestTrackerWidget* QuestTrackerWidget = nullptr;
 
 	// Pal 획득 연출용 애니메이션
 	UPROPERTY(meta = (BindWidgetAnim), Transient)

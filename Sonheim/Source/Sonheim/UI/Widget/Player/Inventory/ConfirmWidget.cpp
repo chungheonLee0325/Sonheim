@@ -6,6 +6,7 @@
 #include "Components/Button.h"
 #include "InputCoreTypes.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/UI/System/UIStackSubsystem.h"
 
 void UConfirmWidget::NativeOnInitialized()
 {
@@ -42,7 +43,7 @@ void UConfirmWidget::SetItemVisual(int32 InItemID, int32 InMaxCount) const
 	auto ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(InItemID);
 	if (ItemData)
 	{
-		ImgIcon->SetBrushFromTexture(ItemData->ItemIcon);
+		ImgIcon->SetBrushFromTexture(ItemData->ItemIcon.LoadSynchronous());
 		TxtName->SetText(ItemData->ItemName);
 	}
 }
@@ -55,11 +56,33 @@ void UConfirmWidget::OnClickedConfirm()
 		FinalCount = FMath::Clamp((int32)FMath::RoundHalfFromZero(SpinCount->GetValue()), 1, MaxCount);
 	}
 	OnConfirm.Broadcast(FinalCount, bDiscardMode);
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		if (ULocalPlayer* LP = PC->GetLocalPlayer())
+		{
+			if (UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(LP))
+			{
+				UI->CloseModalWidget(this);
+				return;
+			}
+		}
+	}
 	RemoveFromParent();
 }
 
 void UConfirmWidget::OnClickedCancel()
 {
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		if (ULocalPlayer* LP = PC->GetLocalPlayer())
+		{
+			if (UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(LP))
+			{
+				UI->CloseModalWidget(this);
+				return;
+			}
+		}
+	}
 	RemoveFromParent();
 }
 

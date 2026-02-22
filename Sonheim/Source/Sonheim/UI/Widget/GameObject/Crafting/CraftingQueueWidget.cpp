@@ -53,7 +53,7 @@ void UCraftingQueueWidget::Refresh()
 		{
 			if (ItemName) ItemName->SetText(ItemData->ItemName);
 			if (ItemIcon) ItemIcon->SetVisibility(ESlateVisibility::Visible);
-			if (ItemIcon) ItemIcon->SetBrushFromTexture(ItemData->ItemIcon);
+			if (ItemIcon) ItemIcon->SetBrushFromTexture(ItemData->ItemIcon.LoadSynchronous());
             if (PerUnitText)
             {
                 if (Station->ActiveWork.ResultPerUnit > 1)

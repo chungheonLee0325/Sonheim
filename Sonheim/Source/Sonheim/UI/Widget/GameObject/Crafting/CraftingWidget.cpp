@@ -15,6 +15,32 @@
 #include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
 #include "Engine/DataTable.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
+#include "Sonheim/UI/System/UIStackSubsystem.h"
+
+namespace
+{
+	void CloseWidgetViaUIStack(UUserWidget* Widget)
+	{
+		if (!Widget)
+		{
+			return;
+		}
+
+		if (APlayerController* PC = Widget->GetOwningPlayer())
+		{
+			if (ULocalPlayer* LP = PC->GetLocalPlayer())
+			{
+				if (UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(LP))
+				{
+					UI->CloseScreenWidget(Widget);
+					return;
+				}
+			}
+		}
+
+		Widget->RemoveFromParent();
+	}
+}
 
 void UCraftingWidget::Initialise(ACraftingStation* InStation)
 {
@@ -152,7 +178,7 @@ void UCraftingWidget::RebuildStaticForRecipe(const struct FCraftingRecipe* R)
 		if (const FItemData* RD = GameInstance->GetDataItem(R->ResultItemID))
 		{
 			if (ItemName) ItemName->SetText(RD->ItemName);
-			if (ItemIcon) ItemIcon->SetBrushFromTexture(RD->ItemIcon);
+			if (ItemIcon) ItemIcon->SetBrushFromTexture(RD->ItemIcon.LoadSynchronous());
 			if (ItemResultQuantity)
 				ItemResultQuantity->SetText(
 					FText::FromString(FString::Printf(TEXT(" x %d"), R->ResultCount)));
@@ -287,7 +313,7 @@ void UCraftingWidget::OnClickCraft()
 			SPC->ServerStartWork(Station, SelectedRow, Qty);
 
 			// 제작 UI 종료
-			RemoveFromParent();
+			CloseWidgetViaUIStack(this);
 		}
 	}
 }
@@ -322,7 +348,7 @@ void UCraftingWidget::OnClickSub()
 
 void UCraftingWidget::OnClickedClose()
 {
-	RemoveFromParent();
+	CloseWidgetViaUIStack(this);
 }
 
 const FCraftingRecipe* UCraftingWidget::GetRecipe(FName Row) const

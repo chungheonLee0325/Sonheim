@@ -13,6 +13,8 @@
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
 #include "Sonheim/UI/Widget/GameObject/ContainerWidget.h"
+#include "Sonheim/UI/System/UIStackSubsystem.h"
+#include "Sonheim/UI/System/UIIds.h"
 
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 
@@ -403,9 +405,33 @@ void UInventoryWidget::HandleTrashDrop(USlotWidget* FromSlot, bool bDiscardMode)
 {
 	if (!FromSlot || !InventoryComponent) return;
 
-	// 팝업 생성
+	// Modal
 	if (!ConfirmClass) return;
-	UConfirmWidget* W = CreateWidget<UConfirmWidget>(this, ConfirmClass);
+
+	UConfirmWidget* W = nullptr;
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		if (ULocalPlayer* LP = PC->GetLocalPlayer())
+		{
+			if (UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(LP))
+			{
+				UUserWidget* Modal = UI->ShowModalClass(
+					SonheimUI::ConfirmModal,
+					ConfirmClass,
+					50,
+					EUIStackInputMode::UIOnly,
+					true,
+					true);
+				W = Cast<UConfirmWidget>(Modal);
+			}
+		}
+	}
+	if (!W)
+	{
+		// Fallback
+		W = CreateWidget<UConfirmWidget>(this, ConfirmClass);
+		if (W) W->AddToViewport(50);
+	}
 	if (!W) return;
 
 	PendingFromSlot = FromSlot;
@@ -414,7 +440,6 @@ void UInventoryWidget::HandleTrashDrop(USlotWidget* FromSlot, bool bDiscardMode)
 	// 수량 선택 필요(스택형)는 팝업에서 판단하도록 MaxCount=슬롯 수량 전달
 	W->Setup(FromSlot->ItemID, FromSlot->Quantity, bDiscardMode);
 	W->OnConfirm.AddDynamic(this, &UInventoryWidget::OnConfirmTrashAction);
-	W->AddToViewport();
 }
 
 void UInventoryWidget::SetContainerMode(bool bEnabled, class ABaseContainer* Container, ASonheimPlayerController* PC)

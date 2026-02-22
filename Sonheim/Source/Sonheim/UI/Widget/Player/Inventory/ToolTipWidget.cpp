@@ -22,7 +22,7 @@ void UToolTipWidget::InitToolTip(const FItemData* ItemData, int32 Quantity)
 	// 아이템 아이콘 설정
 	if (IMG_ItemIcon)
 	{
-		IMG_ItemIcon->SetBrushFromTexture(ItemData->ItemIcon);
+		IMG_ItemIcon->SetBrushFromTexture(ItemData->ItemIcon.LoadSynchronous());
 	}
 
 	// 아이템 배경색 설정

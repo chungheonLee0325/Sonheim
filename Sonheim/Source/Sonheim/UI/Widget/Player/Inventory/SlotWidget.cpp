@@ -50,7 +50,7 @@ void USlotWidget::SetItemData(const FItemData* ItemData, int32 NewQuantity)
 		IMG_BackGround->SetVisibility(ESlateVisibility::Visible);
 	}
 
-	IMG_Item->SetBrushFromTexture(ItemData->ItemIcon);
+	IMG_Item->SetBrushFromTexture(ItemData->ItemIcon.LoadSynchronous());
 	IMG_Item->SetVisibility(ESlateVisibility::Visible);
 
 	ItemID = ItemData->ItemID;

@@ -8,6 +8,10 @@
 #include "SonheimPlayerController.generated.h"
 
 struct FInputActionValue;
+class UQuestAcceptWidget;
+class UQuestJournalWidget;
+class UQuestToastWidget;
+class UMonsterDexWidget;
 //DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCurrencyChangeDelegate, ECurrencyType, CurrencyType, int,
 //                                               CurrencyValue, int, Delta);
 
@@ -37,16 +41,53 @@ public:
 	class UPlayerStatusWidget* GetPlayerStatusWidget() const;
 
 	// 상태 조회
-	bool GetIsMenuActivate() { return IsMenuActivate; }
+	bool GetIsMenuActivate();
 
 	UFUNCTION(Client, Unreliable)
 	void Client_DisplayItemPopup(int32 ItemID, int32 Delta);
+
+	// ===== Quest =====
+	UFUNCTION(BlueprintCallable, Category="Quest")
+	void RequestAcceptQuest(int32 QuestID);
+
+	UFUNCTION(BlueprintCallable, Category="Quest")
+	void ShowQuestToastLocal(const FText& Text, float DurationSeconds = 2.0f);
+
+	UFUNCTION(BlueprintCallable, Category="Quest")
+	void OpenQuestJournal();
+
+	UFUNCTION(BlueprintCallable, Category="Quest")
+	void ToggleQuestJournal();
+
+	// ===== MonsterDex =====
+	UFUNCTION(BlueprintCallable, Category="MonsterDex")
+	void OpenMonsterDex();
+
+	UFUNCTION(BlueprintCallable, Category="MonsterDex")
+	void ToggleMonsterDex();
+
+	UFUNCTION(Client, Reliable)
+	void Client_ShowQuestAcceptUI(int32 QuestID);
+
+	UFUNCTION(Client, Reliable)
+	void Client_ShowQuestAcceptedToast(int32 QuestID);
+
+	UFUNCTION(Client, Reliable)
+	void Client_OpenQuestJournal();
+
+	UFUNCTION(BlueprintImplementableEvent, Category="Quest")
+	void BP_ShowQuestAcceptUI(int32 QuestID, const FText& Title, const FText& Description);
+
+	UFUNCTION(BlueprintImplementableEvent, Category="Quest")
+	void BP_ShowQuestToast(const FText& Text, float DurationSeconds);
 
 protected:
 	// 입력 설정
 	virtual void SetupInputComponent() override;
 
 private:
+	bool IsUIBlockingGameplay() const;
+
 	// Input Action
 	/** Called for movement input */
 	void OnMove(const FInputActionValue& Value);
@@ -132,6 +173,18 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UUserWidget> MissionFailClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Quest")
+	TSubclassOf<class UQuestAcceptWidget> QuestAcceptWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Quest")
+	TSubclassOf<class UQuestJournalWidget> QuestJournalWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Quest")
+	TSubclassOf<class UQuestToastWidget> QuestToastWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|MonsterDex")
+	TSubclassOf<class UMonsterDexWidget> MonsterDexWidgetClass;
 
 	// Input Setting
 	/** MappingContext */

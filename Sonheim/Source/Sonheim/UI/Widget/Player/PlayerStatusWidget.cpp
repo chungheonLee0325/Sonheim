@@ -13,6 +13,7 @@
 #include "Sonheim/AreaObject/Player/Utility/PalCaptureComponent.h"
 #include "Sonheim/AreaObject/Player/Utility/PalInventoryComponent.h"
 #include "Sonheim/AreaObject/Player/Utility/PalPartnerSkillComponent.h"
+#include "Sonheim/UI/Widget/Quest/QuestTrackerWidget.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/Utilities/SonheimUtility.h"
 
@@ -241,10 +242,12 @@ void UPlayerStatusWidget::AddOwnedPal(int MonsterID, int Index)
 	{
 		return;
 	}
-	gameInstance->GetDataAreaObject(MonsterID);
-
-	PalSlots[Index]->SetBrushFromTexture(gameInstance->GetDataAreaObject(MonsterID)->AreaObjectIcon);
-	PalSlots[Index]->SetRenderOpacity(1.0f);
+	if (FAreaObjectData* Data = gameInstance->GetDataAreaObject(MonsterID))
+	{
+		UTexture2D* Icon = Data->AreaObjectIcon.LoadSynchronous();
+		PalSlots[Index]->SetBrushFromTexture(Icon);
+		PalSlots[Index]->SetRenderOpacity(1.0f);
+	}
 }
 
 void UPlayerStatusWidget::SwitchSelectedPalIndex(int Index)
@@ -312,6 +315,10 @@ void UPlayerStatusWidget::BindToPlayerComponents()
 	{
 		CachedInventoryComponent = PS->m_InventoryComponent;
 		CachedPalInventory = PS->m_PalInventoryComponent;
+		if (QuestTrackerWidget && PS->m_QuestComponent)
+		{
+			QuestTrackerWidget->BindQuestComponent(PS->m_QuestComponent);
+		}
 	}
 	CachedPartnerSkill = Player->FindComponentByClass<UPalPartnerSkillComponent>();
 
@@ -367,6 +374,11 @@ void UPlayerStatusWidget::UnbindFromPlayerComponents()
 		CachedPartnerSkill->OnPalDismissed.RemoveDynamic(this, &UPlayerStatusWidget::HandlePalDismissed);
 		CachedPartnerSkill = nullptr;
 	}
+
+	if (QuestTrackerWidget)
+	{
+		QuestTrackerWidget->BindQuestComponent(nullptr);
+	}
 }
 
 void UPlayerStatusWidget::SyncInitialPalUI()
@@ -393,7 +405,8 @@ void UPlayerStatusWidget::SyncInitialPalUI()
 			{
 				if (FAreaObjectData* Data = GI->GetDataAreaObject(Pals[i]->m_AreaObjectID))
 				{
-					PalSlots.FindChecked(i)->SetBrushFromTexture(Data->AreaObjectIcon);
+					UTexture2D* Icon = Data->AreaObjectIcon.LoadSynchronous();
+					PalSlots.FindChecked(i)->SetBrushFromTexture(Icon);
 					PalSlots.FindChecked(i)->SetRenderOpacity(1.0f);
 				}
 			}
@@ -420,7 +433,8 @@ void UPlayerStatusWidget::DisplayItemPopup(int ItemID, int Count)
 	FItemData* ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(ItemID);
 	if (ItemData && Count != 0)
 	{
-		OnItemPopupDisplay(ItemData->ItemIcon, ItemData->ItemName, Count,
+		UTexture2D* Icon = ItemData->ItemIcon.LoadSynchronous();
+		OnItemPopupDisplay(Icon, ItemData->ItemName, Count,
 		                   USonheimUtility::GetRarityColor(ItemData->ItemRarity));
 	}
 }
@@ -442,7 +456,7 @@ void UPlayerStatusWidget::HandleWeaponChanged(EEquipmentSlotType EquipmentSlotTy
 	FText ItemName = FText::GetEmpty();
 	if (ItemData)
 	{
-		Icon = ItemData->ItemIcon;
+		Icon = ItemData->ItemIcon.LoadSynchronous();
 		ItemName = ItemData->ItemName;
 	}
 	BP_DisplayWeaponInfo(ItemName, Icon);
@@ -464,7 +478,7 @@ void UPlayerStatusWidget::UpdateUIItemCounts()
 	FText ItemName = FText::GetEmpty();
 	if (ItemData)
 	{
-		Icon = ItemData->ItemIcon;
+		Icon = ItemData->ItemIcon.LoadSynchronous();
 		ItemName = ItemData->ItemName;
 	}
 	BP_DisplayWeaponAmmoInfo(ItemName, Icon, CurrentAmmo, MaxAmmo);
