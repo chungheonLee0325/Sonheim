@@ -9,7 +9,7 @@
 #include "BaseResourceObject.generated.h"
 
 
-class USonheimGameInstance;
+class USonheimTableManagerSubsystem;
 class UBoxComponent;class ASonheimGameMode;
 // damage 비율마다 item spawn
 UCLASS()
@@ -37,6 +37,8 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	void TryInitializeFromData();
+	void HandleRuntimeDataReady();
 
 	
 	
@@ -52,14 +54,17 @@ private:
 	UPROPERTY()
 	UHealthComponent* HealthComponent;
 
-	FResourceObjectData* dt_ResourceObject;
+	const FResourceObjectData* dt_ResourceObject = nullptr;
 
 	bool CanHarvest = true;
 
 	UPROPERTY()
-	USonheimGameInstance* m_GameInstance;
+	USonheimTableManagerSubsystem* m_TableManager = nullptr;
 	UPROPERTY()
 	ASonheimGameMode* m_GameMode;
+
+	bool bRuntimeDataInitialized = false;
+	FDelegateHandle RuntimeDataReadyHandle;
 
 	
 	// GameJam으로 추가

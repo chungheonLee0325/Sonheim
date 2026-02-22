@@ -9,8 +9,13 @@
 #include "Components/TextBlock.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 
-void UMonsterStatusWidget::InitMonsterStatusWidget(FAreaObjectData* AreaObjectData, bool Gender, int Level)
+void UMonsterStatusWidget::InitMonsterStatusWidget(const FAreaObjectData* AreaObjectData, bool Gender, int Level)
 {
+	if (!AreaObjectData)
+	{
+		return;
+	}
+
 	// Set Name
 	this->MonsterNameText->SetText(FText::FromName(AreaObjectData->Name));
 

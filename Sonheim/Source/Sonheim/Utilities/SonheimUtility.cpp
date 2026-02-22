@@ -4,8 +4,9 @@
 #include "SonheimUtility.h"
 
 #include "Sonheim/AreaObject/Base/AreaObject.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Sonheim/GameObject/Items/BaseItem.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 static UWorld* GetAuthWorld(const UObject* WorldContextObject) {
 	UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull);
@@ -15,10 +16,11 @@ static UWorld* GetAuthWorld(const UObject* WorldContextObject) {
 	return World;
 }
 
-static FItemData* ResolveItemData(UWorld* World, int32 ItemID) {
+static const FItemData* ResolveItemData(UWorld* World, int32 ItemID) {
 	if (!World) return nullptr;
-	if (auto* GI = Cast<USonheimGameInstance>(World->GetGameInstance())) {
-		return GI->GetDataItem(ItemID);
+	if (USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(World)) {
+		if (!TableManager->IsReady()) return nullptr;
+		return TableManager->FindItem(ItemID);
 	}
 	return nullptr;
 }

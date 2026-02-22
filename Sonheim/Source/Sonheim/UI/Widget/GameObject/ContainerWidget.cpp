@@ -2,9 +2,9 @@
 #include "Components/UniformGridPanel.h"
 #include "Components/TextBlock.h"
 #include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 void UContainerWidget::NativePreConstruct()
 {
@@ -21,7 +21,7 @@ void UContainerWidget::NativeConstruct()
 {
     Super::NativeConstruct();
     
-    GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
+    TableManager = Sonheim::TableManager::Get(this);
 
 	// 슬롯 이벤트 바인딩
 	for (USlotWidget* SlotWidget : SlotWidgets)
@@ -139,7 +139,7 @@ void UContainerWidget::UpdateContainerInventory(const TArray<FInventoryItem>& It
 		const FInventoryItem& Item = Items[i];
 		if (Item.ItemID > 0)
 		{
-			FItemData* ItemData = GameInstance->GetDataItem(Item.ItemID);
+			const FItemData* ItemData = (TableManager && TableManager->IsReady()) ? TableManager->FindItem(Item.ItemID) : nullptr;
 			if (ItemData && SlotWidgets[i])
 			{
 				SlotWidgets[i]->SetItemData(ItemData, Item.Count);

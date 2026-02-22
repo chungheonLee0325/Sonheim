@@ -8,13 +8,13 @@
 #include "Components/UniformGridPanel.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
 #include "Sonheim/UI/Widget/GameObject/ContainerWidget.h"
 #include "Sonheim/UI/System/UIStackSubsystem.h"
 #include "Sonheim/UI/System/UIIds.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 
@@ -54,7 +54,8 @@ void UInventoryWidget::NativeConstruct()
 	Super::NativeConstruct();
 
 	// 데이터 초기화
-	m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
+	m_TableManager = Sonheim::TableManager::Get(this);
+	BindTableManagerReady();
 	InitializeSlotWidgetMap();
 
 	// 모든 슬롯에 이벤트 바인딩
@@ -89,6 +90,17 @@ void UInventoryWidget::NativeConstruct()
 	}
 }
 
+void UInventoryWidget::NativeDestruct()
+{
+	if (m_TableManager && TableReadyHandle.IsValid())
+	{
+		m_TableManager->OnReady().Remove(TableReadyHandle);
+		TableReadyHandle.Reset();
+	}
+
+	Super::NativeDestruct();
+}
+
 void UInventoryWidget::UpdateInventoryFromData(const TArray<FInventoryItem>& InventoryData)
 {
 	// 슬롯 위젯 배열이 비어있지 않은지 확인
@@ -106,10 +118,12 @@ void UInventoryWidget::UpdateInventoryFromData(const TArray<FInventoryItem>& Inv
 		// 인벤토리 데이터로 슬롯 업데이트
 		for (int32 i = 0; i < InventoryData.Num() && i < SlotWidgets.Num(); i++)
 		{
-			const FItemData* ItemData = m_GameInstance->GetDataItem(InventoryData[i].ItemID);
+			const FItemData* ItemData = (m_TableManager && m_TableManager->IsReady())
+				? m_TableManager->FindItem(InventoryData[i].ItemID)
+				: nullptr;
 			if (ItemData == nullptr)
 			{
-				return;
+				continue;
 			}
 
 			SlotWidgets[i]->SetItemData(ItemData, InventoryData[i].Count);
@@ -119,7 +133,9 @@ void UInventoryWidget::UpdateInventoryFromData(const TArray<FInventoryItem>& Inv
 
 void UInventoryWidget::UpdateEquipmentFromData(EEquipmentSlotType EquipSlot, FInventoryItem InventoryItem)
 {
-	const FItemData* ItemData = m_GameInstance->GetDataItem(InventoryItem.ItemID);
+	const FItemData* ItemData = (m_TableManager && m_TableManager->IsReady())
+		? m_TableManager->FindItem(InventoryItem.ItemID)
+		: nullptr;
 
 	if (EquipSlot == EEquipmentSlotType::None || EquipSlot == EEquipmentSlotType::Max)
 	{
@@ -163,18 +179,62 @@ void UInventoryWidget::InitializeSlotWidgetMap()
 void UInventoryWidget::SetInventoryComponent(UInventoryComponent* InInventoryComponent)
 {
 	InventoryComponent = InInventoryComponent;
+	BindTableManagerReady();
 
 	if (InventoryComponent)
 	{
-		// 초기 인벤토리 데이터로 UI 업데이트
-		UpdateInventoryFromData(InventoryComponent->GetInventory());
+		RefreshFromBoundInventory();
+	}
+}
 
-		// 초기 장비 슬롯 업데이트
-		TMap<EEquipmentSlotType, FInventoryItem> EquippedItems = InventoryComponent->GetEquippedItems();
-		for (const TPair<EEquipmentSlotType, FInventoryItem>& Pair : EquippedItems)
+void UInventoryWidget::BindTableManagerReady()
+{
+	USonheimTableManagerSubsystem* NewTableManager = Sonheim::TableManager::Get(this);
+	if (m_TableManager != NewTableManager)
+	{
+		if (m_TableManager && TableReadyHandle.IsValid())
 		{
-			UpdateEquipmentFromData(Pair.Key, Pair.Value);
+			m_TableManager->OnReady().Remove(TableReadyHandle);
 		}
+
+		m_TableManager = NewTableManager;
+		TableReadyHandle.Reset();
+	}
+
+	if (!m_TableManager || m_TableManager->IsReady() || TableReadyHandle.IsValid())
+	{
+		return;
+	}
+
+	TableReadyHandle = m_TableManager->OnReady().AddUObject(this, &UInventoryWidget::HandleTableManagerReady);
+}
+
+void UInventoryWidget::HandleTableManagerReady()
+{
+	if (m_TableManager && TableReadyHandle.IsValid())
+	{
+		m_TableManager->OnReady().Remove(TableReadyHandle);
+		TableReadyHandle.Reset();
+	}
+
+	RefreshFromBoundInventory();
+}
+
+void UInventoryWidget::RefreshFromBoundInventory()
+{
+	if (!InventoryComponent)
+	{
+		return;
+	}
+
+	// 초기 인벤토리 데이터로 UI 업데이트
+	UpdateInventoryFromData(InventoryComponent->GetInventory());
+
+	// 초기 장비 슬롯 업데이트
+	TMap<EEquipmentSlotType, FInventoryItem> EquippedItems = InventoryComponent->GetEquippedItems();
+	for (const TPair<EEquipmentSlotType, FInventoryItem>& Pair : EquippedItems)
+	{
+		UpdateEquipmentFromData(Pair.Key, Pair.Value);
 	}
 }
 
@@ -322,14 +382,16 @@ void UInventoryWidget::HandleInventorySlotInteraction(USlotWidget* SlotWidget, b
 			}
 
 			// 우클릭으로 아이템 장착 시도
-			const FItemData* ItemData = m_GameInstance->GetDataItem(SlotWidget->ItemID);
+			const FItemData* ItemData = (m_TableManager && m_TableManager->IsReady())
+				? m_TableManager->FindItem(SlotWidget->ItemID)
+				: nullptr;
 			if (ItemData && (ItemData->ItemCategory == EItemCategory::Equipment ||
 				ItemData->ItemCategory == EItemCategory::Weapon))
 			{
 				InventoryComponent->EquipItemByIndex(SlotWidget->SlotIndex);
 			}
 			// ToDo : 임시코드 - 베타 발표용
-			else if (ItemData->ItemID == 1 || ItemData->ItemID == 5 || ItemData->ItemID == 10 || ItemData->ItemID == 15)
+			else if (ItemData && (ItemData->ItemID == 1 || ItemData->ItemID == 5 || ItemData->ItemID == 10 || ItemData->ItemID == 15))
 			{
 				int itemCount = InventoryComponent->GetItemCount(ItemData->ItemID);
 				InventoryComponent->RemoveItem(ItemData->ItemID, itemCount);

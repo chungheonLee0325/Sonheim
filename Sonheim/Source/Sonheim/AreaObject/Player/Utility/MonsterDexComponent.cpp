@@ -4,8 +4,9 @@
 
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Sonheim/Rewards/RewardService.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 UMonsterDexComponent::UMonsterDexComponent()
 {
@@ -144,8 +145,9 @@ void UMonsterDexComponent::NotifyKilled(int32 MonsterID)
 	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
 	if (MonsterID <= 0) return;
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
-	const FMonsterDexData* Def = GI ? GI->GetDataMonsterDex(MonsterID) : nullptr;
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	checkf(TableManager, TEXT("UMonsterDexComponent requires USonheimTableManagerSubsystem."));
+	const FMonsterDexData* Def = TableManager->FindMonsterDex(MonsterID);
 
 	FMonsterDexEntry* Entry = FindOrAddEntry(MonsterID);
 	if (!Entry) return;
@@ -172,8 +174,9 @@ void UMonsterDexComponent::NotifyCaptured(int32 MonsterID)
 	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
 	if (MonsterID <= 0) return;
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
-	const FMonsterDexData* Def = GI ? GI->GetDataMonsterDex(MonsterID) : nullptr;
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	checkf(TableManager, TEXT("UMonsterDexComponent requires USonheimTableManagerSubsystem."));
+	const FMonsterDexData* Def = TableManager->FindMonsterDex(MonsterID);
 
 	FMonsterDexEntry* Entry = FindOrAddEntry(MonsterID);
 	if (!Entry) return;
@@ -201,8 +204,9 @@ bool UMonsterDexComponent::CanClaimReward(int32 MonsterID, int32 TierIndex) cons
 	if (!Entry) return false;
 	if (Entry->IsRewardClaimed(TierIndex)) return false;
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
-	const FMonsterDexData* Def = GI ? GI->GetDataMonsterDex(MonsterID) : nullptr;
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	checkf(TableManager, TEXT("UMonsterDexComponent requires USonheimTableManagerSubsystem."));
+	const FMonsterDexData* Def = TableManager->FindMonsterDex(MonsterID);
 	if (!Def) return false;
 	if (!Def->RewardTiers.IsValidIndex(TierIndex)) return false;
 
@@ -213,8 +217,9 @@ void UMonsterDexComponent::ServerClaimReward_Implementation(int32 MonsterID, int
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
-	const FMonsterDexData* Def = GI ? GI->GetDataMonsterDex(MonsterID) : nullptr;
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	checkf(TableManager, TEXT("UMonsterDexComponent requires USonheimTableManagerSubsystem."));
+	const FMonsterDexData* Def = TableManager->FindMonsterDex(MonsterID);
 	if (!Def) return;
 	if (!Def->RewardTiers.IsValidIndex(TierIndex)) return;
 

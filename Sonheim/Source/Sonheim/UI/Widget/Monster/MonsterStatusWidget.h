@@ -20,7 +20,7 @@ class SONHEIM_API UMonsterStatusWidget : public UBaseStatusWidget
 public:
 	GENERATED_BODY()
 	
-	void InitMonsterStatusWidget(FAreaObjectData* AreaObjectData,bool Gender , int Level);
+	void InitMonsterStatusWidget(const FAreaObjectData* AreaObjectData, bool Gender, int Level);
 	void SetPartnerPalHPWidget();
 
 	UPROPERTY(meta = (BindWidget))

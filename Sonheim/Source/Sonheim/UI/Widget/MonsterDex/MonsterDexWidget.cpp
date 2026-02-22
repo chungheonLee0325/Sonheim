@@ -2,11 +2,33 @@
 
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/MonsterDex/MonsterDexData.h"
 #include "Sonheim/AreaObject/Player/Utility/MonsterDexComponent.h"
 #include "Sonheim/UI/Widget/MonsterDex/MonsterDexEntryWidget.h"
 #include "Sonheim/UI/Widget/MonsterDex/MonsterDexRewardWidget.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
+
+void UMonsterDexWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+	BindTableManagerReady();
+}
+
+void UMonsterDexWidget::NativeDestruct()
+{
+	if (TableManager.IsValid() && TableReadyHandle.IsValid())
+	{
+		TableManager->OnReady().Remove(TableReadyHandle);
+		TableReadyHandle.Reset();
+	}
+
+	if (DexComponent.IsValid())
+	{
+		DexComponent->OnDexChanged.RemoveDynamic(this, &UMonsterDexWidget::HandleDexChanged);
+	}
+
+	Super::NativeDestruct();
+}
 
 void UMonsterDexWidget::BindDexComponent(UMonsterDexComponent* InDexComponent)
 {
@@ -27,8 +49,43 @@ void UMonsterDexWidget::BindDexComponent(UMonsterDexComponent* InDexComponent)
 	HandleDexChanged();
 }
 
+void UMonsterDexWidget::BindTableManagerReady()
+{
+	USonheimTableManagerSubsystem* NewTableManager = Sonheim::TableManager::Get(this);
+	if (TableManager.Get() != NewTableManager)
+	{
+		if (TableManager.IsValid() && TableReadyHandle.IsValid())
+		{
+			TableManager->OnReady().Remove(TableReadyHandle);
+		}
+
+		TableManager = NewTableManager;
+		TableReadyHandle.Reset();
+	}
+
+	if (!TableManager.IsValid() || TableManager->IsReady() || TableReadyHandle.IsValid())
+	{
+		return;
+	}
+
+	TableReadyHandle = TableManager->OnReady().AddUObject(this, &UMonsterDexWidget::HandleTableManagerReady);
+}
+
+void UMonsterDexWidget::HandleTableManagerReady()
+{
+	if (TableManager.IsValid() && TableReadyHandle.IsValid())
+	{
+		TableManager->OnReady().Remove(TableReadyHandle);
+		TableReadyHandle.Reset();
+	}
+
+	HandleDexChanged();
+}
+
 void UMonsterDexWidget::HandleDexChanged()
 {
+	BindTableManagerReady();
+
 	OnDexDataChanged();
 	RebuildMonsterList();
 	if (SelectedMonsterID != 0)
@@ -49,7 +106,12 @@ void UMonsterDexWidget::RebuildMonsterList()
 	int32 FirstId = 0;
 	bool bHasSelected = false;
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
+	BindTableManagerReady();
+	USonheimTableManagerSubsystem* ActiveTableManager = TableManager.Get();
+	if (!ActiveTableManager || !ActiveTableManager->IsReady())
+	{
+		return;
+	}
 
 	const TArray<FMonsterDexEntry>& Entries = DexComponent->GetDexEntries();
 	auto FindEntryById = [&Entries](int32 Id) -> const FMonsterDexEntry*
@@ -61,7 +123,7 @@ void UMonsterDexWidget::RebuildMonsterList()
 		return nullptr;
 	};
 
-	const TMap<int32, FMonsterDexData>* DexMap = GI ? &GI->GetMonsterDexDataMap() : nullptr;
+	const TMap<int32, FMonsterDexData>* DexMap = ActiveTableManager ? &ActiveTableManager->GetMonsterDexDataMap() : nullptr;
 	if (DexMap && DexMap->Num() > 0)
 	{
 		for (const TPair<int32, FMonsterDexData>& Pair : *DexMap)
@@ -117,9 +179,9 @@ void UMonsterDexWidget::RebuildMonsterList()
 			FText Name = FText::FromString(TEXT("Unknown"));
 			bool bDiscovered = (Entry.KillCount > 0 || Entry.CaptureCount > 0);
 
-			if (GI)
+			if (ActiveTableManager)
 			{
-				if (const FMonsterDexData* Def = GI->GetDataMonsterDex(Entry.MonsterID))
+				if (const FMonsterDexData* Def = ActiveTableManager->FindMonsterDex(Entry.MonsterID))
 				{
 					if (!Def->bHiddenUntilDiscovered || bDiscovered)
 					{
@@ -193,8 +255,13 @@ void UMonsterDexWidget::UpdateDetailPanel(int32 MonsterID)
 	}
 	if (!Entry) return;
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
-	const FMonsterDexData* Def = GI ? GI->GetDataMonsterDex(MonsterID) : nullptr;
+	BindTableManagerReady();
+	USonheimTableManagerSubsystem* ActiveTableManager = TableManager.Get();
+	if (!ActiveTableManager || !ActiveTableManager->IsReady())
+	{
+		return;
+	}
+	const FMonsterDexData* Def = ActiveTableManager ? ActiveTableManager->FindMonsterDex(MonsterID) : nullptr;
 
 	if (TxtDetailTitle)
 	{
@@ -217,9 +284,9 @@ void UMonsterDexWidget::UpdateDetailPanel(int32 MonsterID)
 		{
 			const FMonsterDexRewardTier& Tier = Def->RewardTiers[i];
 			const FRewardDef* RewardDef = nullptr;
-			if (Tier.RewardTableID > 0 && GI)
+			if (Tier.RewardTableID > 0 && ActiveTableManager)
 			{
-				RewardDef = GI->GetRewardDef(Tier.RewardTableID);
+				RewardDef = ActiveTableManager->FindReward(Tier.RewardTableID);
 			}
 			if (!RewardDef)
 			{
@@ -244,8 +311,13 @@ void UMonsterDexWidget::RebuildRewardList(int32 MonsterID)
 
 	RewardListBox->ClearChildren();
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
-	const FMonsterDexData* Def = GI ? GI->GetDataMonsterDex(MonsterID) : nullptr;
+	BindTableManagerReady();
+	USonheimTableManagerSubsystem* ActiveTableManager = TableManager.Get();
+	if (!ActiveTableManager || !ActiveTableManager->IsReady())
+	{
+		return;
+	}
+	const FMonsterDexData* Def = ActiveTableManager ? ActiveTableManager->FindMonsterDex(MonsterID) : nullptr;
 	if (!Def) return;
 
 	const FMonsterDexEntry* Entry = nullptr;
@@ -266,9 +338,9 @@ void UMonsterDexWidget::RebuildRewardList(int32 MonsterID)
 		const bool bCanClaim = DexComponent->CanClaimReward(MonsterID, i);
 
 		const FRewardDef* RewardDef = nullptr;
-		if (Tier.RewardTableID > 0 && GI)
+		if (Tier.RewardTableID > 0 && ActiveTableManager)
 		{
-			RewardDef = GI->GetRewardDef(Tier.RewardTableID);
+			RewardDef = ActiveTableManager->FindReward(Tier.RewardTableID);
 		}
 		if (!RewardDef)
 		{

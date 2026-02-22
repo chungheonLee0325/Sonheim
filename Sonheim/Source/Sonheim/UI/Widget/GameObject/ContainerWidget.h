@@ -80,7 +80,7 @@ public:
 
 private:
 	UPROPERTY()
-	class USonheimGameInstance* GameInstance;
+	class USonheimTableManagerSubsystem* TableManager = nullptr;
 	UPROPERTY()
 	class ABaseContainer* OwningContainer;
 	

@@ -1,8 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "StatBonusComponent.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Sonheim/Utilities/LogMacro.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 UStatBonusComponent::UStatBonusComponent()
 {
@@ -14,8 +15,9 @@ void UStatBonusComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	// 게임 인스턴스 참조 캐싱
-	GameInstance = Cast<USonheimGameInstance>(GetWorld()->GetGameInstance());
+	// 런타임 테이블 매니저 참조 캐싱
+	TableManager = Sonheim::TableManager::Get(this);
+	checkf(TableManager, TEXT("UStatBonusComponent requires USonheimTableManagerSubsystem."));
 }
 
 void UStatBonusComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -24,7 +26,7 @@ void UStatBonusComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	ClearAllBonuses();
 	OnStatBonusChangedDelegate.Unbind();
 	
-	GameInstance = nullptr;
+	TableManager = nullptr;
 	
 	Super::EndPlay(EndPlayReason);
 }
@@ -105,12 +107,12 @@ void UStatBonusComponent::RemoveStatBonus(EAreaObjectStatType StatType, float Va
 void UStatBonusComponent::ApplyItemStatBonuses(int ItemID, bool bApply)
 {
 	// 게임 인스턴스에서 아이템 데이터 가져오기
-	if (!GameInstance)
+	if (!TableManager)
 	{
 		return;
 	}
 	
-	FItemData* ItemData = GameInstance->GetDataItem(ItemID);
+	const FItemData* ItemData = TableManager->FindItem(ItemID);
 	if (!ItemData)
 	{
 		return;
@@ -183,13 +185,13 @@ void UStatBonusComponent::RegisterEquippedItem(EEquipmentSlotType SlotType, int 
 						 SlotType == EEquipmentSlotType::Weapon4);
 	
 	// 게임 인스턴스 가져오기
-	if (!GameInstance)
+	if (!TableManager)
 	{
 		return;
 	}
 	
 	// 아이템 데이터 가져오기
-	FItemData* ItemData = GameInstance->GetDataItem(ItemID);
+	const FItemData* ItemData = TableManager->FindItem(ItemID);
 	if (!ItemData)
 	{
 		return;

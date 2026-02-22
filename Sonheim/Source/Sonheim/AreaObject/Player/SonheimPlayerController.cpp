@@ -25,9 +25,10 @@
 #include "Utility/InventoryComponent.h"
 #include "Sonheim/UI/System/UIStackSubsystem.h"
 #include "Sonheim/UI/System/UIIds.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "InputCoreTypes.h"
 #include "Utility/QuestComponent.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 ASonheimPlayerController::ASonheimPlayerController()
 {
@@ -1538,9 +1539,9 @@ void ASonheimPlayerController::Client_ShowQuestAcceptUI_Implementation(int32 Que
 
 	FText Title = FText::GetEmpty();
 	FText Description = FText::GetEmpty();
-	if (USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld()))
+	if (USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this))
 	{
-		if (const FQuestData* Def = GI->GetDataQuest(QuestID))
+		if (const FQuestData* Def = TableManager->FindQuest(QuestID))
 		{
 			Title = Def->Title;
 			Description = Def->Description;
@@ -1575,9 +1576,9 @@ void ASonheimPlayerController::Client_ShowQuestAcceptedToast_Implementation(int3
 	if (!IsLocalController()) return;
 
 	FText Text = FText::FromString(TEXT("퀘스트 수락"));
-	if (USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld()))
+	if (USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this))
 	{
-		if (const FQuestData* Def = GI->GetDataQuest(QuestID))
+		if (const FQuestData* Def = TableManager->FindQuest(QuestID))
 		{
 			Text = FText::Format(FText::FromString(TEXT("퀘스트 수락: {0}")), Def->Title);
 		}

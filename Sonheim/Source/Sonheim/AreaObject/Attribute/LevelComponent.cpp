@@ -6,8 +6,9 @@
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Sonheim/Utilities/LogMacro.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 ULevelComponent::ULevelComponent()
 {
@@ -50,37 +51,37 @@ void ULevelComponent::InitLevel(AAreaObject* Parent)
 
 int32 ULevelComponent::RewardHuntExp() const
 {
-    if (!dt_Level)
-    {
-        return 0;
-    }
-    if (auto levelData = dt_Level->Find(CurrentLevel))
-    {
-        return levelData->HuntExp;
-    }
-    
-    return 0;
+    checkf(TableManager && TableManager->IsReady(), TEXT("LevelComponent runtime data is not ready."));
+    const FLevelData* LevelData = TableManager->FindLevel(CurrentLevel);
+    checkf(LevelData, TEXT("Missing level data. Level=%d"), CurrentLevel);
+    return LevelData->HuntExp;
 }
 
 void ULevelComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    // 레벨 데이터 테이블 로드
-    if (!dt_Level)
+    TableManager = Sonheim::TableManager::Get(this);
+    checkf(TableManager, TEXT("ULevelComponent requires USonheimTableManagerSubsystem."));
+    TryInitializeRuntimeData();
+    if (!bRuntimeDataInitialized)
     {
-        if (USonheimGameInstance* gameInstance = Cast<USonheimGameInstance>(GetOwner()->GetGameInstance()))
-        {
-            dt_Level = gameInstance->GetDataLevel();
-            if (!dt_Level || dt_Level->IsEmpty())
-            {
-                UE_LOG(LogTemp, Error, TEXT("LevelComponent: LevelDataTable is not set!"));
-            }
-        }
+        RuntimeDataReadyHandle = TableManager->OnReady().AddUObject(this, &ULevelComponent::HandleRuntimeDataReady);
     }
 
     // 클라이언트용 초기값 설정
     ClientPreviousLevel = CurrentLevel;
+}
+
+void ULevelComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    if (TableManager && RuntimeDataReadyHandle.IsValid())
+    {
+        TableManager->OnReady().Remove(RuntimeDataReadyHandle);
+        RuntimeDataReadyHandle.Reset();
+    }
+
+    Super::EndPlay(EndPlayReason);
 }
 
 void ULevelComponent::AddExp(int32 ExpAmount)
@@ -185,19 +186,9 @@ void ULevelComponent::UseStatPoints(int32 Points)
 
 int32 ULevelComponent::GetExpForLevel(int32 Level) const
 {
-    if (!dt_Level)
-    {
-        UE_LOG(LogTemp, Error, TEXT("LevelComponent: LevelDataTable is not set!"));
-        return 100 * Level; // 폴백 값
-    }
-
-    // 레벨 데이터 검색
-    FLevelData* LevelData = dt_Level->Find(Level);
-    if (!LevelData)
-    {
-        UE_LOG(LogTemp, Error, TEXT("LevelComponent: Failed to find data for level %d"), Level);
-        return 100 * Level; // 폴백 값
-    }
+    checkf(TableManager && TableManager->IsReady(), TEXT("LevelComponent runtime data is not ready."));
+    const FLevelData* LevelData = TableManager->FindLevel(Level);
+    checkf(LevelData, TEXT("Missing level data. Level=%d"), Level);
 
     // 타입에 따른 경험치 반환
     if (m_Owner && m_Owner->dt_AreaObject)
@@ -208,6 +199,32 @@ int32 ULevelComponent::GetExpForLevel(int32 Level) const
     }
 
     return LevelData->PlayerExp; // 기본값
+}
+
+void ULevelComponent::TryInitializeRuntimeData()
+{
+    if (bRuntimeDataInitialized)
+    {
+        return;
+    }
+
+    if (!TableManager || !TableManager->IsReady())
+    {
+        return;
+    }
+
+    checkf(TableManager->FindLevel(CurrentLevel), TEXT("Missing level data for CurrentLevel=%d"), CurrentLevel);
+    bRuntimeDataInitialized = true;
+}
+
+void ULevelComponent::HandleRuntimeDataReady()
+{
+    TryInitializeRuntimeData();
+    if (bRuntimeDataInitialized && TableManager && RuntimeDataReadyHandle.IsValid())
+    {
+        TableManager->OnReady().Remove(RuntimeDataReadyHandle);
+        RuntimeDataReadyHandle.Reset();
+    }
 }
 
 void ULevelComponent::HandleLevelUp()

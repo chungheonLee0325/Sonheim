@@ -9,6 +9,7 @@
 
 class UNiagaraComponent;
 class USphereComponent;
+class USonheimTableManagerSubsystem;
 
 // 아이템 상호작용 타입
 UENUM(BlueprintType)
@@ -131,7 +132,7 @@ public:
 	float HoldDuration = 1.0f;
 
 	// 데이터 테이블 참조
-	FItemData* dt_ItemData = nullptr;
+	const FItemData* dt_ItemData = nullptr;
 
 protected:
 	virtual void BeginPlay() override;
@@ -207,11 +208,16 @@ private:
 	FTimerHandle AutoPickupTimerHandle;
 	FTimerHandle LifeTimeTimerHandle;
 
-	UPROPERTY()
-	USonheimGameInstance* m_GameInstance;
-
 	// 초기화 헬퍼 함수
 	void SetupComponents();
+	void TryInitializeItemData();
+	void HandleRuntimeDataReady();
 
 	void ApplyRarityVFX();
+
+	bool bRuntimeDataInitialized = false;
+	FDelegateHandle RuntimeDataReadyHandle;
+
+	UPROPERTY()
+	USonheimTableManagerSubsystem* m_TableManager = nullptr;
 };

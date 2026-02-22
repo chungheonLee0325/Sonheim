@@ -5,9 +5,10 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Sonheim/GameObject/Items/BaseItem.h"
 #include "Sonheim/Utilities/SonheimUtility.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 namespace
 {
@@ -141,16 +142,25 @@ const FRewardDef* FRewardService::ResolveRewardDef(const UObject* WorldContextOb
 {
 	if (RewardTableID > 0)
 	{
-		if (UWorld* World = WorldContextObject ? WorldContextObject->GetWorld() : nullptr)
+		USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(WorldContextObject);
+		checkf(TableManager, TEXT("[RewardService] Missing TableManager for RewardTableID=%d"), RewardTableID);
+		if (!TableManager)
 		{
-			if (const USonheimGameInstance* GI = USonheimGameInstance::Get(World))
-			{
-				if (const FRewardDef* Found = GI->GetRewardDef(RewardTableID))
-				{
-					return Found;
-				}
-			}
+			return nullptr;
 		}
+
+		const bool bReady = TableManager->IsReady();
+		ensureAlwaysMsgf(bReady, TEXT("[RewardService] RewardTable lookup before TableManager ready. RewardTableID=%d"), RewardTableID);
+		checkf(bReady, TEXT("[RewardService] RewardTable lookup requires ready TableManager. RewardTableID=%d"), RewardTableID);
+		if (!bReady)
+		{
+			return nullptr;
+		}
+
+		const FRewardDef* Found = TableManager->FindReward(RewardTableID);
+		ensureAlwaysMsgf(Found, TEXT("[RewardService] Missing reward definition. RewardTableID=%d"), RewardTableID);
+		checkf(Found, TEXT("[RewardService] Missing reward definition. RewardTableID=%d"), RewardTableID);
+		return Found;
 	}
 
 	return &InlineReward;

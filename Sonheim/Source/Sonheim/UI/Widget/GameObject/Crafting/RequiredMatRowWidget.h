@@ -6,7 +6,7 @@ class USlotWidget;
 class USizeBox;
 class UBorder;
 class UTextBlock;
-class USonheimGameInstance;
+class USonheimTableManagerSubsystem;
 
 UCLASS()
 class SONHEIM_API URequiredMatRowWidget : public UUserWidget
@@ -18,7 +18,7 @@ public:
 	TSubclassOf<USlotWidget> SlotWidgetClass;
 
 	void SetupOnce();
-	void UpdateRow(USonheimGameInstance* GI, int32 MatID, int32 Need, int32 Have);
+	void UpdateRow(USonheimTableManagerSubsystem* TableManager, int32 MatID, int32 Need, int32 Have);
 
 protected:
 	virtual void NativeConstruct() override

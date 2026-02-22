@@ -17,7 +17,7 @@
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/AreaObject/Skill/SonheimSkillComponent.h"
 #include "Sonheim/AreaObject/Utility/GhostTrail.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Sonheim/GameObject/Items/BaseItem.h"
 #include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 #include "Sonheim/Utilities/LogMacro.h"
@@ -210,9 +210,9 @@ UBaseSkill* ASonheimPlayer::GetWeaponAttack()
 {
 	// 현재 선택 무기 아이템의 SkillID → 스킬 인스턴스 조회
 	int32 SkillId = 0;
-	if (CurrentWeaponItemID > 0 && m_GameInstance)
+	if (CurrentWeaponItemID > 0 && m_TableManager && m_TableManager->IsReady())
 	{
-		if (FItemData* ItemData = m_GameInstance->GetDataItem(CurrentWeaponItemID))
+		if (const FItemData* ItemData = m_TableManager->FindItem(CurrentWeaponItemID))
 		{
 			SkillId = ItemData->EquipmentData.SkillID;
 		}
@@ -338,9 +338,9 @@ void ASonheimPlayer::OnRep_SelectedWeapon()
 
 void ASonheimPlayer::UpdateWeaponMesh(int ItemID)
 {
-	if (!m_GameInstance) return;
+	if (!m_TableManager || !m_TableManager->IsReady()) return;
 
-	FItemData* ItemData = m_GameInstance->GetDataItem(ItemID);
+	const FItemData* ItemData = m_TableManager->FindItem(ItemID);
 	if (ItemData)
 	{
 		if (USkeletalMesh* NewMesh = ItemData->EquipmentData.EquipmentMesh.LoadSynchronous())

@@ -59,11 +59,14 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	//플레이어 캐릭터가 죽으면 호출.
 	UFUNCTION()
 	virtual void PlayerDied(ACharacter* Character);
 	void PlayBGM(int SoundID);
+	void TryInitializeSoundData();
+	void HandleRuntimeDataReady();
 
 	//델리게이트를 바인딩할 시그니처.
 	UPROPERTY()
@@ -83,4 +86,6 @@ private:
 
 	UPROPERTY()
 	FTimerHandle SwitchBGMHandle;
+
+	FDelegateHandle RuntimeDataReadyHandle;
 };

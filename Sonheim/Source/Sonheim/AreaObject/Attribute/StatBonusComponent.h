@@ -130,5 +130,5 @@ private:
 
 	// 게임 인스턴스 참조
 	UPROPERTY()
-	class USonheimGameInstance* GameInstance;
+	class USonheimTableManagerSubsystem* TableManager = nullptr;
 };

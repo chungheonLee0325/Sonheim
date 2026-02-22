@@ -11,17 +11,17 @@
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Components/SizeBox.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "Sonheim/UI/Widget/GameObject/ContainerWidget.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
 #include "Sonheim/Utilities/SonheimUtility.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 void USlotWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	m_GameInstance = Cast<USonheimGameInstance>(GetWorld()->GetGameInstance());
+	m_TableManager = Sonheim::TableManager::Get(this);
 }
 
 void USlotWidget::Init(int Index)
@@ -460,8 +460,8 @@ bool USlotWidget::IsDropValidFrom(USlotWidget* FromSlot) const
 		if (IsEmpty()) return true;
 
 		// 차있다면 Swap 조건 검사
-		if (!m_GameInstance) return false;
-		const FItemData* ItemData = m_GameInstance->GetDataItem(ItemID);
+		if (!m_TableManager || !m_TableManager->IsReady()) return false;
+		const FItemData* ItemData = m_TableManager->FindItem(ItemID);
 		if (!ItemData) return false;
 
 		// if (!(ItemData->ItemCategory == EItemCategory::Equipment || ItemData->ItemCategory == EItemCategory::Weapon))

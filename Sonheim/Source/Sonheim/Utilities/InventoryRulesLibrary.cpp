@@ -1,7 +1,8 @@
 // InventoryRulesLibrary.cpp
 
 #include "InventoryRulesLibrary.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 bool UInventoryRulesLibrary::AcceptsSlotByKind(EEquipmentSlotType SlotType, EEquipmentKindType EquipKind)
 {
@@ -30,9 +31,14 @@ bool UInventoryRulesLibrary::IsItemCompatibleWithSlot(const UObject* WorldContex
 
 	if (UWorld* World = WorldContextObject->GetWorld())
 	{
-		if (USonheimGameInstance* GI = World->GetGameInstance<USonheimGameInstance>())
+		if (USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(World))
 		{
-			if (FItemData* ItemData = GI->GetDataItem(ItemID))
+			if (!TableManager->IsReady())
+			{
+				return false;
+			}
+
+			if (const FItemData* ItemData = TableManager->FindItem(ItemID))
 			{
 				if (!(ItemData->ItemCategory == EItemCategory::Equipment || ItemData->ItemCategory ==
 					EItemCategory::Weapon))

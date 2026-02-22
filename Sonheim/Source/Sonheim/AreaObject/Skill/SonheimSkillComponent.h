@@ -10,7 +10,6 @@
 
 class UBaseSkill;
 class AAreaObject;
-class USonheimGameInstance;
 
 USTRUCT(BlueprintType)
 struct FSonheimSkillSpecItem : public FFastArraySerializerItem

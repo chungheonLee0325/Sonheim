@@ -14,8 +14,8 @@
 #include "Sonheim/AreaObject/Player/Utility/PalInventoryComponent.h"
 #include "Sonheim/AreaObject/Player/Utility/PalPartnerSkillComponent.h"
 #include "Sonheim/UI/Widget/Quest/QuestTrackerWidget.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/Utilities/SonheimUtility.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 void UPlayerStatusWidget::NativeConstruct()
 {
@@ -237,12 +237,12 @@ void UPlayerStatusWidget::SetEnableCrossHair(bool IsActive)
 
 void UPlayerStatusWidget::AddOwnedPal(int MonsterID, int Index)
 {
-	USonheimGameInstance* gameInstance = Cast<USonheimGameInstance>(GetGameInstance());
-	if (gameInstance == nullptr)
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	if (!TableManager || !TableManager->IsReady())
 	{
 		return;
 	}
-	if (FAreaObjectData* Data = gameInstance->GetDataAreaObject(MonsterID))
+	if (const FAreaObjectData* Data = TableManager->FindAreaObject(MonsterID))
 	{
 		UTexture2D* Icon = Data->AreaObjectIcon.LoadSynchronous();
 		PalSlots[Index]->SetBrushFromTexture(Icon);
@@ -398,12 +398,16 @@ void UPlayerStatusWidget::SyncInitialPalUI()
 	if (CachedPalInventory)
 	{
 		const TArray<ABaseMonster*> Pals = CachedPalInventory->GetAllOwnedPals();
-		USonheimGameInstance* GI = Cast<USonheimGameInstance>(GetGameInstance());
+		USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+		if (!TableManager || !TableManager->IsReady())
+		{
+			return;
+		}
 		for (int32 i = 0; i < Pals.Num(); ++i)
 		{
-			if (Pals[i] && GI)
+			if (Pals[i] && TableManager)
 			{
-				if (FAreaObjectData* Data = GI->GetDataAreaObject(Pals[i]->m_AreaObjectID))
+				if (const FAreaObjectData* Data = TableManager->FindAreaObject(Pals[i]->m_AreaObjectID))
 				{
 					UTexture2D* Icon = Data->AreaObjectIcon.LoadSynchronous();
 					PalSlots.FindChecked(i)->SetBrushFromTexture(Icon);
@@ -430,7 +434,8 @@ void UPlayerStatusWidget::HandleSkillFailed(int32 SkillId, ESkillFailCase Reason
 
 void UPlayerStatusWidget::DisplayItemPopup(int ItemID, int Count)
 {
-	FItemData* ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(ItemID);
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	const FItemData* ItemData = (TableManager && TableManager->IsReady()) ? TableManager->FindItem(ItemID) : nullptr;
 	if (ItemData && Count != 0)
 	{
 		UTexture2D* Icon = ItemData->ItemIcon.LoadSynchronous();
@@ -451,7 +456,8 @@ void UPlayerStatusWidget::HandleWeaponChanged(EEquipmentSlotType EquipmentSlotTy
 {
 	UpdateUIItemCounts();
 
-	FItemData* ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(ItemID);
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	const FItemData* ItemData = (TableManager && TableManager->IsReady()) ? TableManager->FindItem(ItemID) : nullptr;
 	UTexture2D* Icon = nullptr;
 	FText ItemName = FText::GetEmpty();
 	if (ItemData)
@@ -473,7 +479,8 @@ void UPlayerStatusWidget::UpdateUIItemCounts()
 
 	int32 ItemID, CurrentAmmo, MaxAmmo;
 	CachedInventoryComponent->GetCurrentWeaponAmmoInfo(ItemID, CurrentAmmo, MaxAmmo);
-	FItemData* ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(ItemID);
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	const FItemData* ItemData = (TableManager && TableManager->IsReady()) ? TableManager->FindItem(ItemID) : nullptr;
 	UTexture2D* Icon = nullptr;
 	FText ItemName = FText::GetEmpty();
 	if (ItemData)

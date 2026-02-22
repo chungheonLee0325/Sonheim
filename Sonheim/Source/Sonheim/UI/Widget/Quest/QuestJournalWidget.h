@@ -9,6 +9,7 @@ class UQuestComponent;
 class UTextBlock;
 class UVerticalBox;
 class UQuestJournalEntryWidget;
+class USonheimTableManagerSubsystem;
 
 UCLASS()
 class SONHEIM_API UQuestJournalWidget : public UUserWidget
@@ -29,6 +30,9 @@ public:
 	int32 GetSelectedQuest() const { return SelectedQuestID; }
 
 protected:
+	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
+
 	UFUNCTION(BlueprintImplementableEvent, Category="Quest")
 	void OnQuestDataChanged();
 
@@ -64,12 +68,17 @@ private:
 	void RebuildQuestList();
 	void UpdateDetailPanel(int32 QuestID);
 	void SelectQuestInternal(int32 QuestID);
+	void BindTableManagerReady();
+	void HandleTableManagerReady();
 
 	UFUNCTION()
 	void HandleEntryClicked(int32 QuestID);
 
 	UPROPERTY()
 	TWeakObjectPtr<UQuestComponent> QuestComponent;
+
+	TWeakObjectPtr<USonheimTableManagerSubsystem> TableManager;
+	FDelegateHandle TableReadyHandle;
 
 	int32 SelectedQuestID = 0;
 };

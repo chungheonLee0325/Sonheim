@@ -12,6 +12,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "OnlineSubsystemTypes.h"
 #include "Sonheim/Utilities/SessionUtil.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 ASonheimGameMode::ASonheimGameMode()
 {
@@ -132,15 +133,51 @@ void ASonheimGameMode::BeginPlay()
 	{
 		OnPlayerDied.AddDynamic(this, &ASonheimGameMode::PlayerDied);
 	}
-	auto gameInstance = Cast<USonheimGameInstance>(GetGameInstance());
-	if (nullptr == gameInstance)
+	TryInitializeSoundData();
+}
+
+void ASonheimGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this))
 	{
+		if (RuntimeDataReadyHandle.IsValid())
+		{
+			TableManager->OnReady().Remove(RuntimeDataReadyHandle);
+			RuntimeDataReadyHandle.Reset();
+		}
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
+void ASonheimGameMode::TryInitializeSoundData()
+{
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	checkf(TableManager, TEXT("ASonheimGameMode requires USonheimTableManagerSubsystem."));
+
+	if (TableManager->IsReady())
+	{
+		SoundDataMap = TableManager->GetSoundDataMap();
 		return;
 	}
-	SoundDataMap = gameInstance->SoundDataMap;
 
-	//PlayBGM(BGMID, true);
-	
+	if (!RuntimeDataReadyHandle.IsValid())
+	{
+		RuntimeDataReadyHandle = TableManager->OnReady().AddUObject(this, &ASonheimGameMode::HandleRuntimeDataReady);
+	}
+}
+
+void ASonheimGameMode::HandleRuntimeDataReady()
+{
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	checkf(TableManager, TEXT("ASonheimGameMode requires USonheimTableManagerSubsystem."));
+
+	SoundDataMap = TableManager->GetSoundDataMap();
+	if (RuntimeDataReadyHandle.IsValid())
+	{
+		TableManager->OnReady().Remove(RuntimeDataReadyHandle);
+		RuntimeDataReadyHandle.Reset();
+	}
 }
 
 

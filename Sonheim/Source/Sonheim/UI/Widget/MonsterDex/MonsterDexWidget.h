@@ -10,6 +10,7 @@ class UMonsterDexEntryWidget;
 class UMonsterDexRewardWidget;
 class UVerticalBox;
 class UTextBlock;
+class USonheimTableManagerSubsystem;
 
 UCLASS()
 class SONHEIM_API UMonsterDexWidget : public UUserWidget
@@ -24,6 +25,9 @@ public:
 	UMonsterDexComponent* GetDexComponent() const { return DexComponent.Get(); }
 
 protected:
+	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
+
 	UFUNCTION(BlueprintImplementableEvent, Category="MonsterDex")
 	void OnDexDataChanged();
 
@@ -62,12 +66,17 @@ private:
 	void UpdateDetailPanel(int32 MonsterID);
 	void SelectMonsterInternal(int32 MonsterID);
 	void RebuildRewardList(int32 MonsterID);
+	void BindTableManagerReady();
+	void HandleTableManagerReady();
 
 	UFUNCTION()
 	void HandleEntryClicked(int32 MonsterID);
 
 	UPROPERTY()
 	TWeakObjectPtr<UMonsterDexComponent> DexComponent;
+
+	TWeakObjectPtr<USonheimTableManagerSubsystem> TableManager;
+	FDelegateHandle TableReadyHandle;
 
 	int32 SelectedMonsterID = 0;
 };

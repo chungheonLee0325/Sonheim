@@ -1,0 +1,445 @@
+#include "SonheimTableManagerSubsystem.h"
+
+#include "Sonheim/Quest/QuestData.h"
+#include "Sonheim/MonsterDex/MonsterDexData.h"
+#include "Sonheim/Rewards/RewardTypes.h"
+#include "Sonheim/Utilities/LogMacro.h"
+
+namespace
+{
+	template <typename TRowType>
+	void CopyRowsToMapByIntKey(UDataTable* Table, TMap<int32, TRowType>& OutMap, TFunctionRef<int32(const TRowType&)> KeySelector)
+	{
+		check(Table);
+		TArray<FName> RowNames = Table->GetRowNames();
+		OutMap.Reserve(RowNames.Num());
+		for (const FName& RowName : RowNames)
+		{
+			const TRowType* Row = Table->FindRow<TRowType>(RowName, TEXT("TableManager.Load"));
+			checkf(Row, TEXT("[TableManager] Failed to read row '%s' in table '%s'."), *RowName.ToString(), *Table->GetName());
+			OutMap.Add(KeySelector(*Row), *Row);
+		}
+	}
+
+	template <typename TObjectType>
+	void AddSoftPathIfValid(const TSoftObjectPtr<TObjectType>& SoftPtr, TSet<FSoftObjectPath>& UniquePaths)
+	{
+		if (!SoftPtr.IsNull())
+		{
+			UniquePaths.Add(SoftPtr.ToSoftObjectPath());
+		}
+	}
+}
+
+void USonheimTableManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+
+	DT_AreaObject = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_AreaObject.dt_AreaObject'")));
+	DT_Skill = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_Skill.dt_Skill'")));
+	DT_SkillBag = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_SkillBag.dt_SkillBag'")));
+	DT_ResourceObject = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_ResourceObject.dt_ResourceObject'")));
+	DT_Item = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_Item.dt_Item'")));
+	DT_Level = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_Level.dt_Level'")));
+	DT_Sound = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_Sound.dt_Sound'")));
+	DT_Container = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_Container.dt_Container'")));
+	DT_Quest = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_Quest.dt_Quest'")));
+	DT_QuestReward = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_QuestReward.dt_QuestReward'")));
+	DT_MonsterDex = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_MonsterDex.dt_MonsterDex'")));
+	DT_MonsterDexReward = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_MonsterDexReward.dt_MonsterDexReward'")));
+	DT_Reward = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_Reward.dt_Reward'")));
+	DT_DropTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_DropTable.dt_DropTable'")));
+	DT_UIWidgetDef = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_UIWidgetDef.dt_UIWidgetDef'")));
+	DT_UIPreset = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_UIPreset.dt_UIPreset'")));
+
+	RequestDataTablesAsyncLoad();
+}
+
+void USonheimTableManagerSubsystem::Deinitialize()
+{
+	RuntimeDataLoadHandle.Reset();
+	SelectedAssetPreloadHandle.Reset();
+	OnRuntimeDataReady.Clear();
+	ResetRuntimeData();
+
+	Super::Deinitialize();
+}
+
+void USonheimTableManagerSubsystem::ResetRuntimeData()
+{
+	bIsReady = false;
+	bHasFailed = false;
+	bSelectedAssetPreloadComplete = false;
+	PreReadyAccessCount = 0;
+	PreReadyWarningContexts.Reset();
+
+	AreaObjectDataMap.Reset();
+	SkillDataMap.Reset();
+	SkillBagDataMap.Reset();
+	ResourceObjectDataMap.Reset();
+	ItemDataMap.Reset();
+	LevelDataMap.Reset();
+	ContainerDataMap.Reset();
+	QuestDataMap.Reset();
+	RewardDataMap.Reset();
+	MonsterDexDataMap.Reset();
+	DropTableDataMap.Reset();
+	SoundDataMap.Reset();
+	UIWidgetDefMap.Reset();
+	UIPresetMap.Reset();
+}
+
+void USonheimTableManagerSubsystem::RequestDataTablesAsyncLoad()
+{
+	ResetRuntimeData();
+
+	TArray<FSoftObjectPath> Paths;
+	Paths.Reserve(16);
+
+	auto AddPath = [&Paths](const TSoftObjectPtr<UDataTable>& TablePtr)
+	{
+		if (!TablePtr.IsNull())
+		{
+			Paths.Add(TablePtr.ToSoftObjectPath());
+		}
+	};
+
+	AddPath(DT_AreaObject);
+	AddPath(DT_Skill);
+	AddPath(DT_SkillBag);
+	AddPath(DT_ResourceObject);
+	AddPath(DT_Item);
+	AddPath(DT_Level);
+	AddPath(DT_Sound);
+	AddPath(DT_Container);
+	AddPath(DT_Quest);
+	AddPath(DT_QuestReward);
+	AddPath(DT_MonsterDex);
+	AddPath(DT_MonsterDexReward);
+	AddPath(DT_Reward);
+	AddPath(DT_DropTable);
+	AddPath(DT_UIWidgetDef);
+	AddPath(DT_UIPreset);
+
+	if (Paths.IsEmpty())
+	{
+		bHasFailed = true;
+		ensureAlwaysMsgf(false, TEXT("[TableManager] DataTable path registry is empty."));
+		checkf(false, TEXT("[TableManager] DataTable path registry is empty."));
+		return;
+	}
+
+	RuntimeDataLoadHandle = RuntimeDataStreamableManager.RequestAsyncLoad(
+		Paths,
+		FStreamableDelegate::CreateUObject(this, &USonheimTableManagerSubsystem::OnDataTablesLoaded),
+		FStreamableManager::AsyncLoadHighPriority);
+
+	if (!RuntimeDataLoadHandle.IsValid())
+	{
+		bHasFailed = true;
+		ensureAlwaysMsgf(false, TEXT("[TableManager] Failed to request async DataTable load handle."));
+		checkf(false, TEXT("[TableManager] Failed to request async DataTable load handle."));
+	}
+}
+
+void USonheimTableManagerSubsystem::OnDataTablesLoaded()
+{
+	UDataTable* AreaObjectTable = DT_AreaObject.Get();
+	UDataTable* SkillTable = DT_Skill.Get();
+	UDataTable* SkillBagTable = DT_SkillBag.Get();
+	UDataTable* ResourceTable = DT_ResourceObject.Get();
+	UDataTable* ItemTable = DT_Item.Get();
+	UDataTable* LevelTable = DT_Level.Get();
+	UDataTable* SoundTable = DT_Sound.Get();
+	UDataTable* ContainerTable = DT_Container.Get();
+	UDataTable* QuestTable = DT_Quest.Get();
+	UDataTable* QuestRewardTable = DT_QuestReward.Get();
+	UDataTable* MonsterDexTable = DT_MonsterDex.Get();
+	UDataTable* MonsterDexRewardTable = DT_MonsterDexReward.Get();
+	UDataTable* RewardTable = DT_Reward.Get();
+	UDataTable* DropTable = DT_DropTable.Get();
+	UDataTable* UIWidgetDefTable = DT_UIWidgetDef.Get();
+	UDataTable* UIPresetTable = DT_UIPreset.Get();
+
+	auto RequireTable = [this](UDataTable* Table, const TCHAR* TableName) -> bool
+	{
+		if (Table)
+		{
+			return true;
+		}
+
+		bHasFailed = true;
+		bIsReady = false;
+		ensureAlwaysMsgf(false, TEXT("[TableManager] Missing required table: %s"), TableName);
+		checkf(false, TEXT("[TableManager] Missing required table: %s"), TableName);
+		return false;
+	};
+
+	if (!RequireTable(AreaObjectTable, TEXT("dt_AreaObject"))) return;
+	if (!RequireTable(SkillTable, TEXT("dt_Skill"))) return;
+	if (!RequireTable(SkillBagTable, TEXT("dt_SkillBag"))) return;
+	if (!RequireTable(ResourceTable, TEXT("dt_ResourceObject"))) return;
+	if (!RequireTable(ItemTable, TEXT("dt_Item"))) return;
+	if (!RequireTable(LevelTable, TEXT("dt_Level"))) return;
+	if (!RequireTable(SoundTable, TEXT("dt_Sound"))) return;
+	if (!RequireTable(ContainerTable, TEXT("dt_Container"))) return;
+	if (!RequireTable(QuestTable, TEXT("dt_Quest"))) return;
+	if (!RequireTable(QuestRewardTable, TEXT("dt_QuestReward"))) return;
+	if (!RequireTable(MonsterDexTable, TEXT("dt_MonsterDex"))) return;
+	if (!RequireTable(MonsterDexRewardTable, TEXT("dt_MonsterDexReward"))) return;
+	if (!RequireTable(RewardTable, TEXT("dt_Reward"))) return;
+	if (!RequireTable(DropTable, TEXT("dt_DropTable"))) return;
+	if (!RequireTable(UIWidgetDefTable, TEXT("dt_UIWidgetDef"))) return;
+	if (!RequireTable(UIPresetTable, TEXT("dt_UIPreset"))) return;
+
+	CopyRowsToMapByIntKey<FAreaObjectData>(AreaObjectTable, AreaObjectDataMap, [](const FAreaObjectData& Row) { return Row.AreaObjectID; });
+	CopyRowsToMapByIntKey<FSkillData>(SkillTable, SkillDataMap, [](const FSkillData& Row) { return Row.SkillID; });
+	CopyRowsToMapByIntKey<FSkillBagData>(SkillBagTable, SkillBagDataMap, [](const FSkillBagData& Row) { return Row.SkillBagID; });
+	CopyRowsToMapByIntKey<FResourceObjectData>(ResourceTable, ResourceObjectDataMap, [](const FResourceObjectData& Row) { return Row.ResourceObjectID; });
+	CopyRowsToMapByIntKey<FItemData>(ItemTable, ItemDataMap, [](const FItemData& Row) { return Row.ItemID; });
+	CopyRowsToMapByIntKey<FLevelData>(LevelTable, LevelDataMap, [](const FLevelData& Row) { return Row.Level; });
+	CopyRowsToMapByIntKey<FContainerData>(ContainerTable, ContainerDataMap, [](const FContainerData& Row) { return Row.ContainerID; });
+	CopyRowsToMapByIntKey<FQuestData>(QuestTable, QuestDataMap, [](const FQuestData& Row) { return Row.QuestID; });
+	CopyRowsToMapByIntKey<FMonsterDexData>(MonsterDexTable, MonsterDexDataMap, [](const FMonsterDexData& Row) { return Row.MonsterID; });
+	CopyRowsToMapByIntKey<FDropTableRow>(DropTable, DropTableDataMap, [](const FDropTableRow& Row) { return Row.DropTableID; });
+
+	SoundDataMap.Reset();
+	{
+		TArray<FName> RowNames = SoundTable->GetRowNames();
+		SoundDataMap.Reserve(RowNames.Num());
+		for (const FName& RowName : RowNames)
+		{
+			const FSoundData* Row = SoundTable->FindRow<FSoundData>(RowName, TEXT("TableManager.LoadSound"));
+			checkf(Row, TEXT("[TableManager] Failed to read sound row '%s'."), *RowName.ToString());
+			SoundDataMap.Add(Row->SoundID, Row->Sound);
+		}
+	}
+
+	RewardDataMap.Reset();
+	{
+		TArray<FName> RowNames = QuestRewardTable->GetRowNames();
+		for (const FName& RowName : RowNames)
+		{
+			const FQuestRewardRow* Row = QuestRewardTable->FindRow<FQuestRewardRow>(RowName, TEXT("TableManager.LoadQuestReward"));
+			checkf(Row, TEXT("[TableManager] Failed to read quest reward row '%s'."), *RowName.ToString());
+			RewardDataMap.Add(Row->RewardID, Row->Reward);
+		}
+	}
+	{
+		TArray<FName> RowNames = MonsterDexRewardTable->GetRowNames();
+		for (const FName& RowName : RowNames)
+		{
+			const FMonsterDexRewardRow* Row = MonsterDexRewardTable->FindRow<FMonsterDexRewardRow>(RowName, TEXT("TableManager.LoadDexReward"));
+			checkf(Row, TEXT("[TableManager] Failed to read monster dex reward row '%s'."), *RowName.ToString());
+			RewardDataMap.Add(Row->RewardID, Row->Reward);
+		}
+	}
+	{
+		TArray<FName> RowNames = RewardTable->GetRowNames();
+		for (const FName& RowName : RowNames)
+		{
+			const FRewardRow* Row = RewardTable->FindRow<FRewardRow>(RowName, TEXT("TableManager.LoadReward"));
+			checkf(Row, TEXT("[TableManager] Failed to read reward row '%s'."), *RowName.ToString());
+			RewardDataMap.Add(Row->RewardID, Row->Reward);
+		}
+	}
+
+	UIWidgetDefMap.Reset();
+	{
+		TArray<FName> RowNames = UIWidgetDefTable->GetRowNames();
+		UIWidgetDefMap.Reserve(RowNames.Num());
+		for (const FName& RowName : RowNames)
+		{
+			const FUIWidgetDefRow* Row = UIWidgetDefTable->FindRow<FUIWidgetDefRow>(RowName, TEXT("TableManager.LoadUIWidgetDef"));
+			checkf(Row, TEXT("[TableManager] Failed to read UI widget def row '%s'."), *RowName.ToString());
+			UIWidgetDefMap.Add(Row->UIId, *Row);
+		}
+	}
+
+	UIPresetMap.Reset();
+	{
+		TArray<FName> RowNames = UIPresetTable->GetRowNames();
+		UIPresetMap.Reserve(RowNames.Num());
+		for (const FName& RowName : RowNames)
+		{
+			const FUIWidgetPresetRow* Row = UIPresetTable->FindRow<FUIWidgetPresetRow>(RowName, TEXT("TableManager.LoadUIPreset"));
+			checkf(Row, TEXT("[TableManager] Failed to read UI preset row '%s'."), *RowName.ToString());
+			UIPresetMap.Add(Row->PresetId, *Row);
+		}
+	}
+
+	bIsReady = true;
+	bHasFailed = false;
+	UE_LOG(SONHEIM, Log, TEXT("[TableManager] Runtime Data Ready. AreaObject=%d Skill=%d Item=%d Quest=%d"),
+		AreaObjectDataMap.Num(), SkillDataMap.Num(), ItemDataMap.Num(), QuestDataMap.Num());
+
+	OnRuntimeDataReady.Broadcast();
+	BuildSelectedAssetPreload();
+}
+
+void USonheimTableManagerSubsystem::BuildSelectedAssetPreload()
+{
+	TSet<FSoftObjectPath> UniquePaths;
+
+	for (const TPair<int32, FAreaObjectData>& Pair : AreaObjectDataMap)
+	{
+		AddSoftPathIfValid(Pair.Value.AreaObjectIcon, UniquePaths);
+	}
+
+	for (const TPair<int32, FMonsterDexData>& Pair : MonsterDexDataMap)
+	{
+		AddSoftPathIfValid(Pair.Value.Icon, UniquePaths);
+	}
+
+	for (const TPair<int32, FItemData>& Pair : ItemDataMap)
+	{
+		AddSoftPathIfValid(Pair.Value.ItemIcon, UniquePaths);
+	}
+
+	for (const TPair<int32, FContainerData>& Pair : ContainerDataMap)
+	{
+		AddSoftPathIfValid(Pair.Value.ContainerMesh, UniquePaths);
+	}
+
+	for (const TPair<int32, FResourceObjectData>& Pair : ResourceObjectDataMap)
+	{
+		AddSoftPathIfValid(Pair.Value.ResourceMesh, UniquePaths);
+	}
+
+	if (UniquePaths.IsEmpty())
+	{
+		bSelectedAssetPreloadComplete = true;
+		return;
+	}
+
+	TArray<FSoftObjectPath> Paths = UniquePaths.Array();
+	SelectedAssetPreloadHandle = RuntimeDataStreamableManager.RequestAsyncLoad(
+		Paths,
+		FStreamableDelegate::CreateUObject(this, &USonheimTableManagerSubsystem::OnSelectedAssetPreloadComplete),
+		FStreamableManager::AsyncLoadHighPriority);
+
+	if (!SelectedAssetPreloadHandle.IsValid())
+	{
+		UE_LOG(SONHEIM, Warning, TEXT("[TableManager] Selected asset preload handle is invalid."));
+		bSelectedAssetPreloadComplete = true;
+	}
+}
+
+void USonheimTableManagerSubsystem::OnSelectedAssetPreloadComplete()
+{
+	bSelectedAssetPreloadComplete = true;
+	UE_LOG(SONHEIM, Log, TEXT("[TableManager] Selected soft asset preload complete."));
+}
+
+void USonheimTableManagerSubsystem::MarkPreReadyAccess(const TCHAR* Context) const
+{
+	++PreReadyAccessCount;
+
+	const FName ContextName(Context);
+	if (!PreReadyWarningContexts.Contains(ContextName))
+	{
+		PreReadyWarningContexts.Add(ContextName);
+		ensureAlwaysMsgf(false, TEXT("[TableManager] Pre-ready access detected: %s"), Context);
+	}
+}
+
+bool USonheimTableManagerSubsystem::IsRuntimeDataAccessible(const TCHAR* Context) const
+{
+	if (bHasFailed)
+	{
+		checkf(false, TEXT("[TableManager] Runtime data is in failed state."));
+		return false;
+	}
+
+	if (!bIsReady)
+	{
+		MarkPreReadyAccess(Context);
+		return false;
+	}
+
+	return true;
+}
+
+const FAreaObjectData* USonheimTableManagerSubsystem::FindAreaObject(int32 Id) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindAreaObject"))) return nullptr;
+	return AreaObjectDataMap.Find(Id);
+}
+
+const FSkillData* USonheimTableManagerSubsystem::FindSkill(int32 Id) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindSkill"))) return nullptr;
+	return SkillDataMap.Find(Id);
+}
+
+const FSkillBagData* USonheimTableManagerSubsystem::FindSkillBag(int32 Id) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindSkillBag"))) return nullptr;
+	return SkillBagDataMap.Find(Id);
+}
+
+const FResourceObjectData* USonheimTableManagerSubsystem::FindResourceObject(int32 Id) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindResourceObject"))) return nullptr;
+	return ResourceObjectDataMap.Find(Id);
+}
+
+const FItemData* USonheimTableManagerSubsystem::FindItem(int32 Id) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindItem"))) return nullptr;
+	return ItemDataMap.Find(Id);
+}
+
+const FLevelData* USonheimTableManagerSubsystem::FindLevel(int32 Level) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindLevel"))) return nullptr;
+	return LevelDataMap.Find(Level);
+}
+
+const FContainerData* USonheimTableManagerSubsystem::FindContainer(int32 Id) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindContainer"))) return nullptr;
+	return ContainerDataMap.Find(Id);
+}
+
+const FQuestData* USonheimTableManagerSubsystem::FindQuest(int32 Id) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindQuest"))) return nullptr;
+	return QuestDataMap.Find(Id);
+}
+
+const FRewardDef* USonheimTableManagerSubsystem::FindReward(int32 Id) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindReward"))) return nullptr;
+	return RewardDataMap.Find(Id);
+}
+
+const FMonsterDexData* USonheimTableManagerSubsystem::FindMonsterDex(int32 Id) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindMonsterDex"))) return nullptr;
+	return MonsterDexDataMap.Find(Id);
+}
+
+const FDropTableRow* USonheimTableManagerSubsystem::FindDropTable(int32 Id) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindDropTable"))) return nullptr;
+	return DropTableDataMap.Find(Id);
+}
+
+const FUIWidgetDefRow* USonheimTableManagerSubsystem::FindUIWidgetDef(FName UIId) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindUIWidgetDef"))) return nullptr;
+	return UIWidgetDefMap.Find(UIId);
+}
+
+const FUIWidgetPresetRow* USonheimTableManagerSubsystem::FindUIPreset(FName PresetId) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindUIPreset"))) return nullptr;
+	return UIPresetMap.Find(PresetId);
+}
+
+const TSoftObjectPtr<USoundBase>* USonheimTableManagerSubsystem::FindSound(int32 SoundID) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindSound"))) return nullptr;
+	return SoundDataMap.Find(SoundID);
+}

@@ -1,18 +1,12 @@
 #include "UIStackSubsystem.h"
 
 #include "Blueprint/UserWidget.h"
-#include "Engine/DataTable.h"
 #include "GameFramework/PlayerController.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 void UUIStackSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-
-	// DataTable is optional in v1; if missing, the subsystem still works for code-driven widgets.
-	WidgetDefTable = LoadObject<UDataTable>(
-		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_UIWidgetDef.dt_UIWidgetDef'"));
-	PresetTable = LoadObject<UDataTable>(
-		nullptr, TEXT("/Script/Engine.DataTable'/Game/_BluePrint/_DataTable/dt_UIPreset.dt_UIPreset'"));
 
 	PreLoadMapHandle = FCoreUObjectDelegates::PreLoadMap.AddUObject(this, &UUIStackSubsystem::HandlePreLoadMap);
 }
@@ -40,16 +34,28 @@ void UUIStackSubsystem::Deinitialize()
 	ScreenStack.Empty();
 	ModalStack.Empty();
 	ToastStack.Empty();
-	WidgetDefTable = nullptr;
-	PresetTable = nullptr;
 
 	Super::Deinitialize();
 }
 
 const FUIWidgetDefRow* UUIStackSubsystem::FindWidgetDef(FName UIId) const
 {
-	if (!WidgetDefTable) return nullptr;
-	return WidgetDefTable->FindRow<FUIWidgetDefRow>(UIId, TEXT("UIStackSubsystem"));
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	if (!TableManager)
+	{
+		ensureAlwaysMsgf(false, TEXT("[UIStack] Missing TableManager while resolving UIId=%s"), *UIId.ToString());
+		return nullptr;
+	}
+
+	if (!TableManager->IsReady())
+	{
+		ensureAlwaysMsgf(false, TEXT("[UIStack] UI lookup before TableManager ready. UIId=%s"), *UIId.ToString());
+		return nullptr;
+	}
+
+	const FUIWidgetDefRow* Def = TableManager->FindUIWidgetDef(UIId);
+	ensureAlwaysMsgf(Def, TEXT("[UIStack] Missing UI widget definition. UIId=%s"), *UIId.ToString());
+	return Def;
 }
 
 UUserWidget* UUIStackSubsystem::CreateWidgetFromDef(const FUIWidgetDefRow& Def)

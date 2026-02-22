@@ -118,12 +118,6 @@ private:
 	void CloseToastWidget(UUserWidget* Widget);
 
 private:
-	UPROPERTY()
-	TObjectPtr<UDataTable> WidgetDefTable = nullptr;
-	UPROPERTY()
-	TObjectPtr<UDataTable> PresetTable = nullptr;
-
-	UPROPERTY()
 	TArray<FUIStackEntry> ScreenStack;
 	UPROPERTY()
 	TArray<FUIStackEntry> ModalStack;

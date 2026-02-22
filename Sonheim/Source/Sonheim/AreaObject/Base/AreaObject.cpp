@@ -7,7 +7,7 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Sonheim/AreaObject/Attribute/HealthComponent.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
@@ -30,6 +30,7 @@
 #include "Sonheim/AreaObject/Skill/SonheimSkillComponent.h"
 #include "Engine/ActorChannel.h"
 #include "Sonheim/AreaObject/Player/Utility/MonsterDexComponent.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 // Sets default values
 AAreaObject::AAreaObject()
@@ -149,31 +150,51 @@ void AAreaObject::BeginPlay()
 		return;
 	}
 
-	// 데이터 초기화
-	m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
-	dt_AreaObject = m_GameInstance->GetDataAreaObject(m_AreaObjectID);
+	m_TableManager = Sonheim::TableManager::Get(this);
+	checkf(m_TableManager, TEXT("AAreaObject requires USonheimTableManagerSubsystem."));
 
-	// Init Attribute By Data
-	float hpMax = 1.0f;
-	float maxStamina = 100.0f; // Assuming a default value, actual implementation needed
-	float staminaRecoveryRate = 20.f;
-	float groggyDuration = 5.f;
-	float walkSpeed = 400.0f;
-
-	if (dt_AreaObject != nullptr)
+	TryInitializeFromData();
+	if (!bAreaObjectDataReady)
 	{
-		hpMax = dt_AreaObject->HPMax;
-		m_OwnSkillIDSet = dt_AreaObject->SkillList;
-		maxStamina = dt_AreaObject->StaminaMax;
-		staminaRecoveryRate = dt_AreaObject->StaminaRecoveryRate;
-		groggyDuration = dt_AreaObject->GroggyDuration;
-		walkSpeed = dt_AreaObject->WalkSpeed;
+		RuntimeDataReadyHandle = m_TableManager->OnReady().AddUObject(this, &AAreaObject::HandleRuntimeDataReady);
 	}
 
-	// 서버에서만 초기화
-	if (HasAuthority() && dt_AreaObject)
+	// GameMode Setting
+	m_GameMode = Cast<ASonheimGameMode>(GetWorld()->GetAuthGameMode());
+
+	// AnimInstance Setting
+	m_AnimInstance = Cast<UBaseAnimInstance>(GetMesh()->GetAnimInstance());
+}
+
+void AAreaObject::OnAreaObjectDataReady()
+{
+}
+
+void AAreaObject::TryInitializeFromData()
+{
+	if (bAreaObjectDataReady)
 	{
-		// Component 초기화
+		return;
+	}
+
+	if (!m_TableManager)
+	{
+		m_TableManager = Sonheim::TableManager::Get(this);
+	}
+	checkf(m_TableManager, TEXT("AAreaObject requires USonheimTableManagerSubsystem."));
+
+	if (!m_TableManager->IsReady())
+	{
+		return;
+	}
+
+	dt_AreaObject = m_TableManager->FindAreaObject(m_AreaObjectID);
+	checkf(dt_AreaObject, TEXT("AreaObject data missing. AreaObjectID=%d"), m_AreaObjectID);
+
+	m_OwnSkillIDSet = dt_AreaObject->SkillList;
+
+	if (HasAuthority())
+	{
 		m_HealthComponent->InitHealth(dt_AreaObject->HPMax);
 		m_StaminaComponent->InitStamina(
 			dt_AreaObject->StaminaMax,
@@ -185,25 +206,23 @@ void AAreaObject::BeginPlay()
 		GetCharacterMovement()->MaxWalkSpeed = dt_AreaObject->WalkSpeed;
 	}
 
-	// 스킬 인스턴스 생성
-	for (auto& skill : m_OwnSkillIDSet)
+	for (const int SkillID : m_OwnSkillIDSet)
 	{
-		if (m_SkillComponent)
+		if (m_SkillComponent && !m_SkillComponent->EnsureSkillInstance(SkillID))
 		{
-			if (!m_SkillComponent->EnsureSkillInstance(skill))
-			{
-				LOG_SCREEN_MY(4.0f, FColor::Red, "%d 해당 아이디의 스킬이 존재하지 않습니다.", skill);
-				UE_LOG(LogTemp, Error, TEXT("Skill ID is 0!!!"));
-			}
+			LOG_SCREEN_MY(4.0f, FColor::Red, "%d 해당 아이디의 스킬이 존재하지 않습니다.", SkillID);
+			UE_LOG(LogTemp, Error, TEXT("Invalid Skill ID on area object data. ID=%d"), SkillID);
 		}
 	}
 
-	// 소유 스킬 셋 전달(서버/클라 공통; 서버는 FastArray도 초기화)
 	if (m_SkillComponent)
 	{
 		TSet<int32> OwnedSkillIds;
-		for (const int& Id : m_OwnSkillIDSet) { OwnedSkillIds.Add(Id); }
-		// 플레이어의 경우 기본공격(10) 보장
+		for (const int Id : m_OwnSkillIDSet)
+		{
+			OwnedSkillIds.Add(Id);
+		}
+
 		if (Cast<ASonheimPlayer>(this))
 		{
 			OwnedSkillIds.Add(10);
@@ -211,11 +230,19 @@ void AAreaObject::BeginPlay()
 		m_SkillComponent->InitializeOwnedSkills(OwnedSkillIds);
 	}
 
-	// GameMode Setting
-	m_GameMode = Cast<ASonheimGameMode>(GetWorld()->GetAuthGameMode());
+	bAreaObjectDataReady = true;
+	OnAreaObjectDataReady();
+}
 
-	// AnimInstance Setting
-	m_AnimInstance = Cast<UBaseAnimInstance>(GetMesh()->GetAnimInstance());
+void AAreaObject::HandleRuntimeDataReady()
+{
+	TryInitializeFromData();
+
+	if (bAreaObjectDataReady && m_TableManager && RuntimeDataReadyHandle.IsValid())
+	{
+		m_TableManager->OnReady().Remove(RuntimeDataReadyHandle);
+		RuntimeDataReadyHandle.Reset();
+	}
 }
 
 void AAreaObject::PostInitializeComponents()
@@ -281,6 +308,8 @@ void AAreaObject::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 
 void AAreaObject::CalcDamage(FAttackData& AttackData, AActor* Caster, AActor* Target, FHitResult& HitInfo)
 {
+	checkf(dt_AreaObject, TEXT("AAreaObject::CalcDamage called before data is ready."));
+
 	// IFF 확인후 공격 가능
 	if (!CanAttack(Target))
 		return;
@@ -327,6 +356,8 @@ void AAreaObject::Server_CalcDamage_Implementation(FAttackData AttackData, AActo
 float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, AController* EventInstigator,
                               AActor* DamageCauser)
 {
+	checkf(dt_AreaObject, TEXT("AAreaObject::TakeDamage called before data is ready."));
+
 	// 서버에서만 처리
 	if (!HasAuthority())
 		return 0.0f;
@@ -507,6 +538,8 @@ void AAreaObject::OnKill(AAreaObject* Killer)
 
 void AAreaObject::OnRevival()
 {
+	checkf(dt_AreaObject, TEXT("AAreaObject::OnRevival called before data is ready."));
+
 	// Die Montage 종료
 	StopAnimMontage();
 
@@ -634,9 +667,9 @@ void AAreaObject::Server_CastSkill_Implementation(int SkillID, AAreaObject* Targ
 
 void AAreaObject::MultiCast_CastSkill_Implementation(int SkillID, AAreaObject* Target)
 {
-	if (m_GameInstance == nullptr) return;
+	if (!m_TableManager) return;
 	UBaseSkill* Skill = GetSkillByID(SkillID);
-	FSkillData* SkillData = m_GameInstance->GetDataSkill(SkillID);
+	const FSkillData* SkillData = m_TableManager->FindSkill(SkillID);
 
 	if (m_AnimInstance && SkillData)
 	{

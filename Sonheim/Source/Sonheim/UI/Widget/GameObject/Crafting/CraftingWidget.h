@@ -14,7 +14,7 @@ class UButton;
 class UProgressBar;
 class USpinBox;
 class UInventoryComponent;
-class USonheimGameInstance;
+class USonheimTableManagerSubsystem;
 
 UCLASS()
 class SONHEIM_API UCraftingWidget : public UUserWidget
@@ -72,7 +72,7 @@ private:
 	UPROPERTY()
 	ACraftingStation* Station = nullptr;
 	UPROPERTY()
-	USonheimGameInstance* GameInstance = nullptr;
+	USonheimTableManagerSubsystem* TableManager = nullptr;
 	UPROPERTY()
 	UInventoryComponent* InventoryComp = nullptr;
 	UPROPERTY()

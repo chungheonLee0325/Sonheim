@@ -6,13 +6,14 @@
 #include "NiagaraFunctionLibrary.h"
 #include "Components/BoxComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Sonheim/GameManager/SonheimGameMode.h"
 #include "Sonheim/GameObject/Items/BaseItem.h"
 #include "Sonheim/UI/FloatingDamageActor.h"
 #include "Sonheim/UI/FloatingDamagePool.h"
 #include "Sonheim/UI/Widget/FloatingDamageWidget.h"
 #include "Sonheim/Utilities/SonheimUtility.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 
 // Sets default values
@@ -44,28 +45,52 @@ void ABaseResourceObject::BeginPlay()
 	{
 		return;
 	}
-	// 데이터 초기화 & Game Instance Setting
-	m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
-	dt_ResourceObject = m_GameInstance->GetDataResourceObject(m_ResourceObjectID);
-	if (!dt_ResourceObject)
+	// GameMode Setting
+	m_GameMode = Cast<ASonheimGameMode>(GetWorld()->GetAuthGameMode());
+
+	m_TableManager = Sonheim::TableManager::Get(this);
+	checkf(m_TableManager, TEXT("ABaseResourceObject requires USonheimTableManagerSubsystem."));
+
+	TryInitializeFromData();
+	if (!bRuntimeDataInitialized)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ResourceObject data missing. ID=%d"), m_ResourceObjectID);
+		RuntimeDataReadyHandle = m_TableManager->OnReady().AddUObject(this, &ABaseResourceObject::HandleRuntimeDataReady);
+	}
+}
+
+void ABaseResourceObject::TryInitializeFromData()
+{
+	if (bRuntimeDataInitialized)
+	{
 		return;
 	}
 
-	if (dt_ResourceObject)
+	if (!m_TableManager || !m_TableManager->IsReady())
 	{
-		if (UStaticMesh* Mesh = dt_ResourceObject->ResourceMesh.LoadSynchronous())
-		{
-			m_StaticMeshComponent->SetStaticMesh(Mesh);
-			m_StaticMeshComponent->SetRelativeScale3D(dt_ResourceObject->MeshScale);
-		}
+		return;
+	}
+
+	dt_ResourceObject = m_TableManager->FindResourceObject(m_ResourceObjectID);
+	checkf(dt_ResourceObject, TEXT("ResourceObject data missing. ID=%d"), m_ResourceObjectID);
+
+	if (UStaticMesh* Mesh = dt_ResourceObject->ResourceMesh.LoadSynchronous())
+	{
+		m_StaticMeshComponent->SetStaticMesh(Mesh);
+		m_StaticMeshComponent->SetRelativeScale3D(dt_ResourceObject->MeshScale);
 	}
 
 	HealthComponent->InitHealth(dt_ResourceObject->HPMax);
-	
-	// GameMode Setting
-	m_GameMode = Cast<ASonheimGameMode>(GetWorld()->GetAuthGameMode());
+	bRuntimeDataInitialized = true;
+}
+
+void ABaseResourceObject::HandleRuntimeDataReady()
+{
+	TryInitializeFromData();
+	if (bRuntimeDataInitialized && m_TableManager && RuntimeDataReadyHandle.IsValid())
+	{
+		m_TableManager->OnReady().Remove(RuntimeDataReadyHandle);
+		RuntimeDataReadyHandle.Reset();
+	}
 }
 
 float ABaseResourceObject::GetWeaknessModifier(EAttackType AttackType) const

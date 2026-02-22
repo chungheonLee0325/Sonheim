@@ -6,11 +6,11 @@
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "Blueprint/DragDropOperation.h"
 #include "Blueprint/UserWidget.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "SlotWidget.generated.h"
 
 class UToolTipWidget;
 class UDragDropSlotOperation;
+class USonheimTableManagerSubsystem;
 
 /**
  * 
@@ -131,7 +131,7 @@ private:
 	UPROPERTY()
 	UToolTipWidget* ToolTipInstance;
 	UPROPERTY()
-	USonheimGameInstance* m_GameInstance;
+	USonheimTableManagerSubsystem* m_TableManager = nullptr;
 
 	bool IsDragging = false;
 

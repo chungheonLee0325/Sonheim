@@ -7,7 +7,6 @@
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/AreaObject/Skill/SonheimSkillComponent.h"
 
 UBaseSkill::UBaseSkill() : m_TargetPos(), m_SkillData(nullptr)

@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "TrashDropZone.h"
 #include "Blueprint/UserWidget.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "InventoryWidget.generated.h"
 
@@ -26,6 +25,7 @@ class SONHEIM_API UInventoryWidget : public UUserWidget
 protected:
 	virtual void NativePreConstruct() override;
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 	UPROPERTY(meta = (BindWidget))
 	UUniformGridPanel* SlotGrid;
@@ -120,7 +120,7 @@ private:
 	void InitializeSlotWidgetMap();
 
 	UPROPERTY()
-	USonheimGameInstance* m_GameInstance;
+	class USonheimTableManagerSubsystem* m_TableManager = nullptr;
 
 	UPROPERTY()
 	ASonheimPlayerController* m_PlayerController;
@@ -145,6 +145,9 @@ private:
 
 	// 인벤토리 슬롯 아이템 처리
 	void HandleInventorySlotInteraction(USlotWidget* SlotWidget, bool bIsRightClick);
+	void BindTableManagerReady();
+	void HandleTableManagerReady();
+	void RefreshFromBoundInventory();
 
 	UPROPERTY()
 	TWeakObjectPtr<USlotWidget> PendingFromSlot;
@@ -153,4 +156,6 @@ private:
 
 	UFUNCTION()
 	void OnConfirmTrashAction(int32 Count, bool bDiscardMode);
+
+	FDelegateHandle TableReadyHandle;
 };

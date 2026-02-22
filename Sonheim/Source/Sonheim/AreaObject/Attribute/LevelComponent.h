@@ -7,6 +7,7 @@
 #include "LevelComponent.generated.h"
 
 class AAreaObject;
+class USonheimTableManagerSubsystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnLevelChanged, int32, OldLevel, int32, NewLevel, bool, bLevelUp);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnExperienceChanged, int32, CurrentExp, int32, MaxExp, int32, Delta);
@@ -77,6 +78,7 @@ public:
     int32 RewardHuntExp() const;
 protected:
     virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
     // 레벨업 처리 - 서버에서만
     void HandleLevelUp();
@@ -119,10 +121,16 @@ protected:
     int32 StatPointsPerLevel;
     
 private:
-    TMap<int32, FLevelData>* dt_Level;
-    
     UPROPERTY()
     AAreaObject* m_Owner;
+
+    UPROPERTY()
+    USonheimTableManagerSubsystem* TableManager = nullptr;
+
+    bool bRuntimeDataInitialized = false;
+    FDelegateHandle RuntimeDataReadyHandle;
+    void TryInitializeRuntimeData();
+    void HandleRuntimeDataReady();
 
     // 클라이언트 전용 변수 - 레벨업 애니메이션용
     int32 ClientPreviousLevel;

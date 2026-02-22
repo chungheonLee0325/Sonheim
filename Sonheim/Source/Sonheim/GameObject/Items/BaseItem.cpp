@@ -8,12 +8,13 @@
 #include "Components/StaticMeshComponent.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Kismet/GameplayStatics.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/UI/Widget/DetectWidget.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 ABaseItem::ABaseItem()
 {
@@ -123,10 +124,13 @@ void ABaseItem::BeginPlay()
 {
 	Super::BeginPlay();
 
-	m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
-	if (m_ItemID > 0)
+	m_TableManager = Sonheim::TableManager::Get(this);
+	checkf(m_TableManager, TEXT("ABaseItem requires USonheimTableManagerSubsystem."));
+
+	TryInitializeItemData();
+	if (!bRuntimeDataInitialized)
 	{
-		dt_ItemData = m_GameInstance->GetDataItem(m_ItemID);
+		RuntimeDataReadyHandle = m_TableManager->OnReady().AddUObject(this, &ABaseItem::HandleRuntimeDataReady);
 	}
 
 	SetupComponents();
@@ -141,6 +145,12 @@ void ABaseItem::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		GetWorld()->GetTimerManager().ClearTimer(AutoPickupTimerHandle);
 		GetWorld()->GetTimerManager().ClearTimer(LifeTimeTimerHandle);
 	}
+
+	if (m_TableManager && RuntimeDataReadyHandle.IsValid())
+	{
+		m_TableManager->OnReady().Remove(RuntimeDataReadyHandle);
+		RuntimeDataReadyHandle.Reset();
+	}
 	
 	Super::EndPlay(EndPlayReason);
 }
@@ -153,11 +163,7 @@ void ABaseItem::InitializeItem(int32 InItemID, const FItemSpawnOptions& Options)
 	InteractionType = Options.InteractionType;
 	HoldDuration = Options.HoldDuration;
 
-	// 데이터 테이블 로드
-	if (m_GameInstance)
-	{
-		dt_ItemData = m_GameInstance->GetDataItem(m_ItemID);
-	}
+	TryInitializeItemData();
 
 	ApplyRarityVFX();
 
@@ -272,14 +278,45 @@ void ABaseItem::SetupComponents()
 
 void ABaseItem::OnRep_ItemID()
 {
-	if (!m_GameInstance) m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
-	if (m_GameInstance)
-		dt_ItemData = m_GameInstance->GetDataItem(m_ItemID);
+	TryInitializeItemData();
 
 	// 메시 등 외형도 갱신
 	SetupComponents();
 	// 희귀도 VFX 반영
 	ApplyRarityVFX();
+}
+
+void ABaseItem::TryInitializeItemData()
+{
+	if (!m_TableManager)
+	{
+		m_TableManager = Sonheim::TableManager::Get(this);
+	}
+	if (!m_TableManager || !m_TableManager->IsReady())
+	{
+		return;
+	}
+
+	if (m_ItemID > 0)
+	{
+		dt_ItemData = m_TableManager->FindItem(m_ItemID);
+		checkf(dt_ItemData, TEXT("Item data missing. ItemID=%d"), m_ItemID);
+	}
+
+	bRuntimeDataInitialized = true;
+}
+
+void ABaseItem::HandleRuntimeDataReady()
+{
+	TryInitializeItemData();
+	SetupComponents();
+	ApplyRarityVFX();
+
+	if (bRuntimeDataInitialized && m_TableManager && RuntimeDataReadyHandle.IsValid())
+	{
+		m_TableManager->OnReady().Remove(RuntimeDataReadyHandle);
+		RuntimeDataReadyHandle.Reset();
+	}
 }
 
 void ABaseItem::EnableAutoPickup()

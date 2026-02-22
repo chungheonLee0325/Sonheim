@@ -15,6 +15,8 @@
 #include "Net/Serialization/FastArraySerializer.h"
 #include "ContainerComponent.generated.h"
 
+class USonheimTableManagerSubsystem;
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnContainerInventoryChanged, const TArray<FInventoryItem>&, Items);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnContainerItemAdded, int32, ItemID, int32, Count);
@@ -159,14 +161,14 @@ protected:
 
 private:
 	UPROPERTY()
-	class USonheimGameInstance* GameInstance;
+	class USonheimTableManagerSubsystem* TableManager = nullptr;
 
-	FContainerData* ContainerData;
+	const FContainerData* ContainerData = nullptr;
 
 	// 헬퍼 함수들
 	int32 FindItemIndex(int32 ItemID) const;
 	bool IsValidItemID(int32 ItemID) const;
-	FItemData* GetItemData(int32 ItemID) const;
+	const FItemData* GetItemData(int32 ItemID) const;
 	void BroadcastInventoryChanged();
 
 	// Rebuild local mirror array from FastArray (sorted by SlotIndex)

@@ -4,11 +4,12 @@
 #include "Components/WidgetComponent.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Sonheim/UI/Widget/DetectWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 ABaseContainer::ABaseContainer()
 {
@@ -48,32 +49,13 @@ void ABaseContainer::BeginPlay()
 {
 	Super::BeginPlay();
 
-	GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
-	
-	if (GameInstance)
+	TableManager = Sonheim::TableManager::Get(this);
+	checkf(TableManager, TEXT("ABaseContainer requires USonheimTableManagerSubsystem."));
+
+	TryInitializeFromData();
+	if (!bRuntimeDataInitialized)
 	{
-		ContainerData = GameInstance->GetDataContainer(ContainerDataID);
-		if (ContainerData)
-		{
-			// 메시 설정
-			if (ContainerMesh)
-			{
-				if (UStaticMesh* Mesh = ContainerData->ContainerMesh.LoadSynchronous())
-				{
-					ContainerMesh->SetStaticMesh(Mesh);
-				}
-			}
-            
-			// 컨테이너 컴포넌트 초기화
-			if (ContainerComponent)
-			{
-				ContainerComponent->InitializeContainer(ContainerDataID);
-                
-				// 슬롯 수 설정
-				int32 SlotCount = OverrideSlotCount > 0 ? OverrideSlotCount : ContainerData->SlotCount;
-				ContainerComponent->SetMaxSlots(SlotCount);
-			}
-		}
+		RuntimeDataReadyHandle = TableManager->OnReady().AddUObject(this, &ABaseContainer::HandleRuntimeDataReady);
 	}
 	
 	// 위젯 설정
@@ -262,5 +244,49 @@ void ABaseContainer::OnRep_IsOpen()
 		{
 			DetectWidgetComponent->SetVisibility(true);
 		}
+	}
+}
+
+void ABaseContainer::TryInitializeFromData()
+{
+	if (bRuntimeDataInitialized)
+	{
+		return;
+	}
+
+	if (!TableManager || !TableManager->IsReady())
+	{
+		return;
+	}
+
+	ContainerData = TableManager->FindContainer(ContainerDataID);
+	checkf(ContainerData, TEXT("Container data missing. ContainerDataID=%d"), ContainerDataID);
+
+	if (ContainerMesh)
+	{
+		if (UStaticMesh* Mesh = ContainerData->ContainerMesh.LoadSynchronous())
+		{
+			ContainerMesh->SetStaticMesh(Mesh);
+		}
+	}
+
+	if (ContainerComponent)
+	{
+		ContainerComponent->InitializeContainer(ContainerDataID);
+
+		const int32 SlotCount = OverrideSlotCount > 0 ? OverrideSlotCount : ContainerData->SlotCount;
+		ContainerComponent->SetMaxSlots(SlotCount);
+	}
+
+	bRuntimeDataInitialized = true;
+}
+
+void ABaseContainer::HandleRuntimeDataReady()
+{
+	TryInitializeFromData();
+	if (bRuntimeDataInitialized && TableManager && RuntimeDataReadyHandle.IsValid())
+	{
+		TableManager->OnReady().Remove(RuntimeDataReadyHandle);
+		RuntimeDataReadyHandle.Reset();
 	}
 }

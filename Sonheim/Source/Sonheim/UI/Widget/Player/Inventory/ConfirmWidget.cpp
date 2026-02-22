@@ -5,8 +5,8 @@
 #include "Components/SpinBox.h"
 #include "Components/Button.h"
 #include "InputCoreTypes.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/UI/System/UIStackSubsystem.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 void UConfirmWidget::NativeOnInitialized()
 {
@@ -40,7 +40,8 @@ void UConfirmWidget::Setup(int32 InItemID, int32 InMaxCount, bool bInDiscardMode
 
 void UConfirmWidget::SetItemVisual(int32 InItemID, int32 InMaxCount) const
 {
-	auto ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(InItemID);
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	const FItemData* ItemData = (TableManager && TableManager->IsReady()) ? TableManager->FindItem(InItemID) : nullptr;
 	if (ItemData)
 	{
 		ImgIcon->SetBrushFromTexture(ItemData->ItemIcon.LoadSynchronous());

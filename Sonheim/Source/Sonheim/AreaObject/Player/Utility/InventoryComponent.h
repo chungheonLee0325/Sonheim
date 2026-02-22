@@ -19,7 +19,7 @@
 #include "InventoryComponent.generated.h"
 
 class ASonheimPlayerState;
-class USonheimGameInstance;
+class USonheimTableManagerSubsystem;
 class ASonheimPlayer;
 
 // 델리게이트 선언
@@ -372,7 +372,7 @@ private:
 	void PerformClientPrediction_SwitchWeaponSlot(int Index);
 
 	UPROPERTY()
-	USonheimGameInstance* m_GameInstance = nullptr;
+	USonheimTableManagerSubsystem* m_TableManager = nullptr;
 
 	UPROPERTY()
 	ASonheimPlayerState* m_PlayerState = nullptr;

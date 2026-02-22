@@ -2,13 +2,14 @@
 
 #include "InventoryComponent.h"
 #include "Sonheim/AreaObject/Attribute/StatBonusComponent.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/Utilities/SonheimUtility.h"
 #include "Sonheim/Utilities/InventoryRulesLibrary.h"
 #include "Sonheim/Utilities/Net/FastArraySlotUtils.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 #include "Sonheim/AreaObject/Skill/SonheimSkillComponent.h"
 
 UInventoryComponent::UInventoryComponent()
@@ -32,7 +33,8 @@ void UInventoryComponent::BeginPlay()
 	Super::BeginPlay();
 
 	// 게임 인스턴스와 플레이어 참조 얻기
-	m_GameInstance = Cast<USonheimGameInstance>(GetWorld()->GetGameInstance());
+	m_TableManager = Sonheim::TableManager::Get(this);
+	checkf(m_TableManager, TEXT("UInventoryComponent requires USonheimTableManagerSubsystem."));
 	m_PlayerState = Cast<ASonheimPlayerState>(GetOwner());
 
 	// 서버에서만 초기화
@@ -64,7 +66,7 @@ void UInventoryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	// 참조 정리
 	m_Player = nullptr;
 	m_PlayerState = nullptr;
-	m_GameInstance = nullptr;
+	m_TableManager = nullptr;
 
 	// 델리게이트 정리
 	OnInventoryChanged.Clear();
@@ -753,9 +755,9 @@ void UInventoryComponent::NotifyWeaponSlot(EEquipmentSlotType SlotType)
 				if (USonheimSkillComponent* Comp = Player->GetSkillComponent())
 				{
 					int32 SkillId = 0;
-					if (ItemID > 0 && m_GameInstance)
+					if (ItemID > 0 && m_TableManager)
 					{
-						if (FItemData* ItemData = m_GameInstance->GetDataItem(ItemID))
+						if (const FItemData* ItemData = m_TableManager->FindItem(ItemID))
 						{
 							SkillId = ItemData->EquipmentData.SkillID;
 						}
@@ -1074,12 +1076,40 @@ ASonheimPlayer* UInventoryComponent::GetSonheimPlayer()
 // 내부 헬퍼 함수들
 bool UInventoryComponent::IsValidItemID(int ItemID) const
 {
-	return m_GameInstance && m_GameInstance->GetDataItem(ItemID) != nullptr;
+	if (!m_TableManager)
+	{
+		ensureAlwaysMsgf(false, TEXT("[Inventory] Missing TableManager while validating ItemID=%d"), ItemID);
+		return false;
+	}
+
+	if (!m_TableManager->IsReady())
+	{
+		ensureAlwaysMsgf(false, TEXT("[Inventory] ValidateItemID before TableManager ready. Owner=%s ItemID=%d"),
+			GetOwner() ? *GetOwner()->GetName() : TEXT("None"),
+			ItemID);
+		return false;
+	}
+
+	return m_TableManager->FindItem(ItemID) != nullptr;
 }
 
 FItemData* UInventoryComponent::GetItemData(int ItemID) const
 {
-	return m_GameInstance ? m_GameInstance->GetDataItem(ItemID) : nullptr;
+	if (!m_TableManager)
+	{
+		ensureAlwaysMsgf(false, TEXT("[Inventory] Missing TableManager while resolving ItemID=%d"), ItemID);
+		return nullptr;
+	}
+
+	if (!m_TableManager->IsReady())
+	{
+		ensureAlwaysMsgf(false, TEXT("[Inventory] GetItemData before TableManager ready. Owner=%s ItemID=%d"),
+			GetOwner() ? *GetOwner()->GetName() : TEXT("None"),
+			ItemID);
+		return nullptr;
+	}
+
+	return const_cast<FItemData*>(m_TableManager->FindItem(ItemID));
 }
 
 void UInventoryComponent::ApplyEquipmentStats(int ItemID, bool bEquipping)

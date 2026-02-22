@@ -3,7 +3,6 @@
 #include "CoreMinimal.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Containers/Queue.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/Utilities/LogMacro.h"
 #include "BaseMonster.generated.h"
 
@@ -24,7 +23,7 @@ class SONHEIM_API ABaseMonster : public AAreaObject
 public:
 	ABaseMonster();
 	// Skill
-	FSkillBagData* dt_SkillBag;
+	const FSkillBagData* dt_SkillBag = nullptr;
 
 	UPROPERTY(BlueprintReadWrite)
 	UBaseSkill* NextSkill;
@@ -77,6 +76,7 @@ private:
 public:
 	// Core Functions
 	virtual void BeginPlay() override;
+	virtual void OnAreaObjectDataReady() override;
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 

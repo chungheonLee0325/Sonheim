@@ -13,12 +13,12 @@
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/GameObject/Items/BaseItem.h"
 #include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
 #include "Sonheim/Rewards/RewardService.h"
 #include "Sonheim/UI/Widget/BaseStatusWidget.h"
 #include "Sonheim/UI/Widget/Monster/MonsterStatusWidget.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 #include "Sonheim/Utilities/CommonUtil.h"
 #include "Sonheim/Utilities/SonheimUtility.h"
 
@@ -128,6 +128,11 @@ void ABaseMonster::BeginPlay()
 	Super::BeginPlay();
 
 	HPWidgetComponent->SetVisibility(false);
+}
+
+void ABaseMonster::OnAreaObjectDataReady()
+{
+	check(dt_AreaObject);
 
 	WalkSpeed = dt_AreaObject->WalkSpeed;
 	ForcedWalkSpeed = WalkSpeed * 5.f;
@@ -142,11 +147,11 @@ void ABaseMonster::BeginPlay()
 		//HPWidgetComponent->SetVisibility(false);
 	}
 
-	USonheimGameInstance* gameInstance = Cast<USonheimGameInstance>(GetGameInstance());
 	int skillbagID = dt_AreaObject->SkillBagID;
 	if (skillbagID != 0)
 	{
-		dt_SkillBag = gameInstance->GetDataSkillBag(skillbagID);
+		dt_SkillBag = m_TableManager ? m_TableManager->FindSkillBag(skillbagID) : nullptr;
+		checkf(dt_SkillBag, TEXT("Missing skill bag data. SkillBagID=%d"), skillbagID);
 		if (m_SkillRoulette != nullptr)
 		{
 			m_SkillRoulette->InitFromSkillBag(dt_SkillBag);
@@ -257,7 +262,8 @@ void ABaseMonster::OnDie_Implementation()
 
 	if (HasAuthority())
 	{
-		const USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
+		const USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+		checkf(TableManager, TEXT("ABaseMonster requires USonheimTableManagerSubsystem."));
 		const int32 DropTableID = dt_AreaObject ? dt_AreaObject->DropTableID : 0;
 
 		// Resolve reward target (player or partner owner)
@@ -286,9 +292,9 @@ void ABaseMonster::OnDie_Implementation()
 		DropGrantOptions.DropForce = 1500.f;
 		DropGrantOptions.DropLifeTime = 300.f;
 
-		if (GI && DropTableID > 0)
+		if (DropTableID > 0)
 		{
-			if (const FDropTableRow* DropRow = GI->GetDropTable(DropTableID))
+			if (const FDropTableRow* DropRow = TableManager->FindDropTable(DropTableID))
 			{
 				TArray<int32> RewardIDs;
 				FRewardService::RollDropTable(*DropRow, RewardIDs);
@@ -300,7 +306,7 @@ void ABaseMonster::OnDie_Implementation()
 						continue;
 					}
 
-					const FRewardDef* RewardDef = GI->GetRewardDef(RewardID);
+					const FRewardDef* RewardDef = TableManager->FindReward(RewardID);
 					if (!RewardDef)
 					{
 						continue;

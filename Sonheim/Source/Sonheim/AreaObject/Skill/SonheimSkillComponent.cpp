@@ -6,7 +6,8 @@
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 USonheimSkillComponent::USonheimSkillComponent()
 {
@@ -237,15 +238,15 @@ UBaseSkill* USonheimSkillComponent::EnsureSkillInstance(int32 SkillId)
 
 	AAreaObject* OwnerArea = Cast<AAreaObject>(GetOwner());
 	if (!OwnerArea) return nullptr;
-	if (USonheimGameInstance* GI = Cast<USonheimGameInstance>(OwnerArea->GetGameInstance()))
+	if (USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(OwnerArea))
 	{
-		if (FSkillData* Data = GI->GetDataSkill(SkillId))
+		if (const FSkillData* Data = TableManager->FindSkill(SkillId))
 		{
 			const FString NameStr = FString::Printf(TEXT("BaseSkill_%d"), SkillId);
 			UBaseSkill* NewSkill = NewObject<UBaseSkill>(OwnerArea, Data->SkillClass, *NameStr);
 			if (NewSkill)
 			{
-				NewSkill->InitSkill(Data);
+				NewSkill->InitSkill(const_cast<FSkillData*>(Data));
 				SkillInstances.Add(SkillId, NewSkill);
 				return NewSkill;
 			}

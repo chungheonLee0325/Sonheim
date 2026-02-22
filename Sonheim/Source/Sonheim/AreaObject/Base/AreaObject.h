@@ -13,7 +13,7 @@
 
 enum class ESkillFailCase : uint8;
 class UBaseAnimInstance;
-class USonheimGameInstance;
+class USonheimTableManagerSubsystem;
 class UMoveUtilComponent;
 class ASonheimGameMode;
 class USonheimSkillComponent;
@@ -50,11 +50,18 @@ public:
 	                                 FReplicationFlags* RepFlags) override;
 
 	UFUNCTION(BlueprintCallable, Category = "AreaObject")
-	FAreaObjectData GetAreaObjectData() const { return *dt_AreaObject; };
+	FAreaObjectData GetAreaObjectData() const
+	{
+		checkf(dt_AreaObject, TEXT("AAreaObject::GetAreaObjectData called before runtime data is ready."));
+		return *dt_AreaObject;
+	};
 
 protected:
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
+	virtual void OnAreaObjectDataReady();
+	void TryInitializeFromData();
+	void HandleRuntimeDataReady();
 
 public:
 	// === Facade Pattern ===
@@ -221,7 +228,7 @@ protected:
 	UPROPERTY()
 	class UBaseAnimInstance* m_AnimInstance;
 	UPROPERTY()
-	USonheimGameInstance* m_GameInstance = nullptr;
+	USonheimTableManagerSubsystem* m_TableManager = nullptr;
 	UPROPERTY()
 	ASonheimGameMode* m_GameMode = nullptr;
 
@@ -306,7 +313,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Audio")
 	void StopBGM();
 
-	FAreaObjectData* dt_AreaObject;
+	const FAreaObjectData* dt_AreaObject = nullptr;
+
+	bool bAreaObjectDataReady = false;
+	FDelegateHandle RuntimeDataReadyHandle;
 
 	float SprintSpeedRatio = 2.0f;
 

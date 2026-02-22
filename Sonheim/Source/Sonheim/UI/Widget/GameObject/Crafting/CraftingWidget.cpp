@@ -11,11 +11,11 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/Utilities/InventoryResourceProvider.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
 #include "Engine/DataTable.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/UI/System/UIStackSubsystem.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 namespace
 {
@@ -52,7 +52,7 @@ void UCraftingWidget::Initialise(ACraftingStation* InStation)
 			InventoryComp = PlayerState->m_InventoryComponent;
 		}
 	}
-	GameInstance = GetGameInstance<USonheimGameInstance>();
+	TableManager = Sonheim::TableManager::Get(this);
 	RefreshRecipes();
 	RefreshDetail();
 	if (QuantitySpin) QuantitySpin->SetValue(1.f);
@@ -113,9 +113,9 @@ void UCraftingWidget::RefreshRecipes()
 		else slot = CreateWidget<USlotWidget>(this, USlotWidget::StaticClass());
 		if (!slot) continue;
 
-		if (GameInstance)
+		if (TableManager && TableManager->IsReady())
 		{
-			const FItemData* ItemData = GameInstance->GetDataItem(Recipe->ResultItemID);
+			const FItemData* ItemData = TableManager->FindItem(Recipe->ResultItemID);
 			if (ItemData) slot->SetItemData(ItemData, 1);
 			if (slot->TXT_Quantity) slot->TXT_Quantity->SetVisibility(ESlateVisibility::Hidden);
 			if (slot->TXT_Weight) slot->TXT_Weight->SetVisibility(ESlateVisibility::Hidden);
@@ -173,9 +173,9 @@ void UCraftingWidget::RebuildStaticForRecipe(const struct FCraftingRecipe* R)
 	if (!R) return;
 
 	// 결과 아이템 이름/아이콘 — 레시피 바뀔 때만
-	if (GameInstance)
+	if (TableManager && TableManager->IsReady())
 	{
-		if (const FItemData* RD = GameInstance->GetDataItem(R->ResultItemID))
+		if (const FItemData* RD = TableManager->FindItem(R->ResultItemID))
 		{
 			if (ItemName) ItemName->SetText(RD->ItemName);
 			if (ItemIcon) ItemIcon->SetBrushFromTexture(RD->ItemIcon.LoadSynchronous());
@@ -218,14 +218,14 @@ void UCraftingWidget::RebuildStaticForRecipe(const struct FCraftingRecipe* R)
 		const bool bVisible = (i < CachedMatIDs.Num());
 		RequiredRowPool[i]->SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 
-		if (bVisible && GameInstance)
+		if (bVisible && TableManager && TableManager->IsReady())
 		{
 			const int32 MatID = CachedMatIDs[i];
 			// Need/Have는 동적에서 채우므로 여기서는 아이콘만 준비해도 됨
-			if (const FItemData* MD = GameInstance->GetDataItem(MatID))
+			if (const FItemData* MD = TableManager->FindItem(MatID))
 			{
 				// Need=0/Have=0으로 1회 초기 채움
-				RequiredRowPool[i]->UpdateRow(GameInstance, MatID, 0, 0);
+				RequiredRowPool[i]->UpdateRow(TableManager, MatID, 0, 0);
 			}
 		}
 	}
@@ -242,7 +242,7 @@ void UCraftingWidget::RefreshDynamicForRecipe(const struct FCraftingRecipe* R)
 		OwnedCountText->SetText(FText::FromString(FString::Printf(TEXT("보유 수     %d"), Owned)));
 	}
 
-	if (!GameInstance || !RequiredList) return;
+	if (!TableManager || !TableManager->IsReady() || !RequiredList) return;
 
 	const int32 Qty = GetCurrentQuantity();
 	// 인벤토리 기준 최대 제작 가능 수
@@ -261,7 +261,7 @@ void UCraftingWidget::RefreshDynamicForRecipe(const struct FCraftingRecipe* R)
 		if (RequiredRowPool.IsValidIndex(i))
 		{
 			// 숫자/색만 갱신 — 아이콘/레이아웃은 건드리지 않음
-			RequiredRowPool[i]->UpdateRow(GameInstance, MatID, Need, Have);
+			RequiredRowPool[i]->UpdateRow(TableManager, MatID, Need, Have);
 		}
 
 		if (Have < Need) bAllOK = false;

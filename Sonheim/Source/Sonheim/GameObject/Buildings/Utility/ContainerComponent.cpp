@@ -1,8 +1,9 @@
 // ContainerComponent.cpp
 #include "ContainerComponent.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/Utilities/Net/FastArraySlotUtils.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 UContainerComponent::UContainerComponent()
 {
@@ -30,7 +31,8 @@ void UContainerComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	GameInstance = Cast<USonheimGameInstance>(GetWorld()->GetGameInstance());
+	TableManager = Sonheim::TableManager::Get(this);
+	checkf(TableManager, TEXT("UContainerComponent requires USonheimTableManagerSubsystem."));
 	RepContainerItems.Owner = this;
 
 	if (GetOwnerRole() == ROLE_Authority)
@@ -43,9 +45,10 @@ void UContainerComponent::BeginPlay()
 
 void UContainerComponent::InitializeContainer(int32 InContainerID)
 {
-	if (GameInstance)
+	if (TableManager)
 	{
-		ContainerData = GameInstance->GetDataContainer(InContainerID);
+		ContainerData = TableManager->FindContainer(InContainerID);
+		checkf(ContainerData, TEXT("Container data missing. ContainerID=%d"), InContainerID);
 		if (ContainerData)
 		{
 			MaxSlots = ContainerData->SlotCount;
@@ -60,7 +63,7 @@ bool UContainerComponent::AddItem(int32 ItemID, int32 ItemCount)
 
 	if (GetOwnerRole() == ROLE_Authority)
 	{
-		FItemData* ItemData = GetItemData(ItemID);
+		const FItemData* ItemData = GetItemData(ItemID);
 		if (!ItemData)
 			return false;
 
@@ -259,12 +262,40 @@ int32 UContainerComponent::FindItemIndex(int32 ItemID) const
 
 bool UContainerComponent::IsValidItemID(int32 ItemID) const
 {
-	return GameInstance && GameInstance->GetDataItem(ItemID) != nullptr;
+	if (!TableManager)
+	{
+		ensureAlwaysMsgf(false, TEXT("[Container] Missing TableManager while validating ItemID=%d"), ItemID);
+		return false;
+	}
+
+	if (!TableManager->IsReady())
+	{
+		ensureAlwaysMsgf(false, TEXT("[Container] ValidateItemID before TableManager ready. Owner=%s ItemID=%d"),
+			GetOwner() ? *GetOwner()->GetName() : TEXT("None"),
+			ItemID);
+		return false;
+	}
+
+	return TableManager->FindItem(ItemID) != nullptr;
 }
 
-FItemData* UContainerComponent::GetItemData(int32 ItemID) const
+const FItemData* UContainerComponent::GetItemData(int32 ItemID) const
 {
-	return GameInstance ? GameInstance->GetDataItem(ItemID) : nullptr;
+	if (!TableManager)
+	{
+		ensureAlwaysMsgf(false, TEXT("[Container] Missing TableManager while resolving ItemID=%d"), ItemID);
+		return nullptr;
+	}
+
+	if (!TableManager->IsReady())
+	{
+		ensureAlwaysMsgf(false, TEXT("[Container] GetItemData before TableManager ready. Owner=%s ItemID=%d"),
+			GetOwner() ? *GetOwner()->GetName() : TEXT("None"),
+			ItemID);
+		return nullptr;
+	}
+
+	return TableManager->FindItem(ItemID);
 }
 
 void UContainerComponent::BroadcastInventoryChanged()

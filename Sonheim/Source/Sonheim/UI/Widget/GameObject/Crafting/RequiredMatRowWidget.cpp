@@ -3,7 +3,7 @@
 #include "Components/SizeBox.h"
 #include "Components/Border.h"
 #include "Components/TextBlock.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 void URequiredMatRowWidget::SetupOnce()
 {
@@ -19,11 +19,11 @@ void URequiredMatRowWidget::SetupOnce()
 	}
 }
 
-void URequiredMatRowWidget::UpdateRow(USonheimGameInstance* GI, int32 MatID, int32 Need, int32 Have)
+void URequiredMatRowWidget::UpdateRow(USonheimTableManagerSubsystem* TableManager, int32 MatID, int32 Need, int32 Have)
 {
-	if (GI && CachedSlotWidget)
+	if (TableManager && TableManager->IsReady() && CachedSlotWidget)
 	{
-		if (const FItemData* Data = GI->GetDataItem(MatID))
+		if (const FItemData* Data = TableManager->FindItem(MatID))
 		{
 			// 좌측 슬롯은 필요수량으로 표시
 			CachedSlotWidget->SetItemData(Data, Need);

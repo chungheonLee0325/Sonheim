@@ -7,8 +7,9 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Sonheim/Rewards/RewardService.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 namespace
 {
@@ -504,10 +505,10 @@ void UQuestComponent::ServerAcceptQuest_Implementation(int32 QuestID)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
-	if (!GI) return;
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	checkf(TableManager, TEXT("UQuestComponent requires USonheimTableManagerSubsystem."));
 
-	FQuestData* Def = GI->GetDataQuest(QuestID);
+	const FQuestData* Def = TableManager->FindQuest(QuestID);
 	if (!Def) return;
 
 	if (!ValidateAcceptRequest(QuestID, *Def))
@@ -572,10 +573,10 @@ void UQuestComponent::ServerTryTurnIn_Implementation(int32 QuestID)
 	FQuestInstance* Inst = FindQuest(QuestID);
 	if (!Inst || Inst->State != EQuestState::Active) return;
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
-	if (!GI) return;
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	checkf(TableManager, TEXT("UQuestComponent requires USonheimTableManagerSubsystem."));
 
-	FQuestData* Def = GI->GetDataQuest(QuestID);
+	const FQuestData* Def = TableManager->FindQuest(QuestID);
 	if (!Def) return;
 
 	if (!ValidateTurnInRequest(QuestID, *Def))
@@ -634,15 +635,15 @@ void UQuestComponent::NotifyKilled(int32 VictimAreaObjectID)
 	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
 	if (VictimAreaObjectID <= 0) return;
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
-	if (!GI) return;
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	checkf(TableManager, TEXT("UQuestComponent requires USonheimTableManagerSubsystem."));
 
 	bool bListDirty = false;
 
 	for (FQuestInstance& Inst : RepQuests.Items)
 	{
 		if (Inst.State != EQuestState::Active) continue;
-		FQuestData* Def = GI->GetDataQuest(Inst.QuestID);
+		const FQuestData* Def = TableManager->FindQuest(Inst.QuestID);
 		if (!Def) continue;
 
 		bool bDirty = false;
@@ -676,15 +677,15 @@ void UQuestComponent::NotifyItemDelta(int32 ItemID, int32 Delta, EItemChangeReas
 	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
 	if (ItemID <= 0 || Delta <= 0) return;
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
-	if (!GI) return;
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	checkf(TableManager, TEXT("UQuestComponent requires USonheimTableManagerSubsystem."));
 
 	bool bListDirty = false;
 
 	for (FQuestInstance& Inst : RepQuests.Items)
 	{
 		if (Inst.State != EQuestState::Active) continue;
-		FQuestData* Def = GI->GetDataQuest(Inst.QuestID);
+		const FQuestData* Def = TableManager->FindQuest(Inst.QuestID);
 		if (!Def) continue;
 
 		bool bDirty = false;
@@ -777,12 +778,12 @@ void UQuestComponent::ApplySnapshot(const FQuestPlayerSnapshot& Snapshot)
 	}
 
 	// Recompute possess objectives for the currently active step (inventory snapshot may differ).
-	if (USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld()))
+	if (USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this))
 	{
 		for (FQuestInstance& Inst : RepQuests.Items)
 		{
 			if (Inst.State != EQuestState::Active) continue;
-			if (FQuestData* Def = GI->GetDataQuest(Inst.QuestID))
+			if (const FQuestData* Def = TableManager->FindQuest(Inst.QuestID))
 			{
 				bool bDirty = false;
 				bDirty |= RecomputePossessObjectives(Inst, *Def);
@@ -800,15 +801,15 @@ void UQuestComponent::OnInventoryChanged_Internal(const TArray<FInventoryItem>& 
 	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
 	(void)Inventory;
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
-	if (!GI) return;
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	checkf(TableManager, TEXT("UQuestComponent requires USonheimTableManagerSubsystem."));
 
 	bool bListDirty = false;
 
 	for (FQuestInstance& Inst : RepQuests.Items)
 	{
 		if (Inst.State != EQuestState::Active) continue;
-		if (FQuestData* Def = GI->GetDataQuest(Inst.QuestID))
+		if (const FQuestData* Def = TableManager->FindQuest(Inst.QuestID))
 		{
 			bool bDirty = false;
 			bDirty |= RecomputePossessObjectives(Inst, *Def);

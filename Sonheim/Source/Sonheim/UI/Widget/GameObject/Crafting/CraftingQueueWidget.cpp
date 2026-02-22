@@ -1,6 +1,5 @@
 #include "CraftingQueueWidget.h"
 #include "Sonheim/GameObject/Buildings/Crafting/CraftingStation.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
@@ -8,6 +7,7 @@
 #include "Components/TextBlock.h"
 #include "Components/WidgetComponent.h"
 #include "Sonheim/Utilities/LogMacro.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
 
 void UCraftingQueueWidget::NativeConstruct()
 {
@@ -17,7 +17,7 @@ void UCraftingQueueWidget::NativeConstruct()
 void UCraftingQueueWidget::Initialise(ACraftingStation* InStation)
 {
 	Station = InStation;
-	m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
+	TableManager = Sonheim::TableManager::Get(this);
 
 	if (UnitProgress)
 	{
@@ -48,7 +48,9 @@ void UCraftingQueueWidget::Refresh()
 	// ToDo : 이름/아이콘은 레시피가 바뀌었을 때만 다시 가져오기
 	if (Station->bHasActiveWork)
 	{
-		auto ItemData = m_GameInstance->GetDataItem(Station->ActiveWork.ResultItemID);
+		const FItemData* ItemData = (TableManager && TableManager->IsReady())
+			? TableManager->FindItem(Station->ActiveWork.ResultItemID)
+			: nullptr;
 		if (ItemData)
 		{
 			if (ItemName) ItemName->SetText(ItemData->ItemName);

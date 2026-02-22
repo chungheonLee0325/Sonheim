@@ -3,8 +3,30 @@
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Sonheim/UI/Widget/Quest/QuestJournalEntryWidget.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/AreaObject/Player/Utility/QuestComponent.h"
+#include "Sonheim/Utilities/TableManagerHelper.h"
+
+void UQuestJournalWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+	BindTableManagerReady();
+}
+
+void UQuestJournalWidget::NativeDestruct()
+{
+	if (TableManager.IsValid() && TableReadyHandle.IsValid())
+	{
+		TableManager->OnReady().Remove(TableReadyHandle);
+		TableReadyHandle.Reset();
+	}
+
+	if (QuestComponent.IsValid())
+	{
+		QuestComponent->OnQuestListChanged.RemoveDynamic(this, &UQuestJournalWidget::HandleQuestListChanged);
+	}
+
+	Super::NativeDestruct();
+}
 
 void UQuestJournalWidget::BindQuestComponent(UQuestComponent* InQuestComponent)
 {
@@ -25,8 +47,43 @@ void UQuestJournalWidget::BindQuestComponent(UQuestComponent* InQuestComponent)
 	HandleQuestListChanged();
 }
 
+void UQuestJournalWidget::BindTableManagerReady()
+{
+	USonheimTableManagerSubsystem* NewTableManager = Sonheim::TableManager::Get(this);
+	if (TableManager.Get() != NewTableManager)
+	{
+		if (TableManager.IsValid() && TableReadyHandle.IsValid())
+		{
+			TableManager->OnReady().Remove(TableReadyHandle);
+		}
+
+		TableManager = NewTableManager;
+		TableReadyHandle.Reset();
+	}
+
+	if (!TableManager.IsValid() || TableManager->IsReady() || TableReadyHandle.IsValid())
+	{
+		return;
+	}
+
+	TableReadyHandle = TableManager->OnReady().AddUObject(this, &UQuestJournalWidget::HandleTableManagerReady);
+}
+
+void UQuestJournalWidget::HandleTableManagerReady()
+{
+	if (TableManager.IsValid() && TableReadyHandle.IsValid())
+	{
+		TableManager->OnReady().Remove(TableReadyHandle);
+		TableReadyHandle.Reset();
+	}
+
+	HandleQuestListChanged();
+}
+
 void UQuestJournalWidget::HandleQuestListChanged()
 {
+	BindTableManagerReady();
+
 	OnQuestDataChanged();
 	RebuildQuestList();
 	UpdateQuestListFallback();
@@ -50,16 +107,18 @@ void UQuestJournalWidget::UpdateQuestListFallback()
 		return;
 	}
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
+	BindTableManagerReady();
+	USonheimTableManagerSubsystem* ActiveTableManager = TableManager.Get();
+	const bool bCanLookupQuest = ActiveTableManager && ActiveTableManager->IsReady();
 	const TArray<FQuestInstance>& Quests = QuestComponent->GetQuestInstances();
 
 	FString Lines;
 	for (const FQuestInstance& Inst : Quests)
 	{
 		FText Title = FText::FromString(TEXT("Unknown Quest"));
-		if (GI)
+		if (bCanLookupQuest)
 		{
-			if (const FQuestData* Def = GI->GetDataQuest(Inst.QuestID))
+			if (const FQuestData* Def = ActiveTableManager->FindQuest(Inst.QuestID))
 			{
 				Title = Def->Title;
 			}
@@ -87,7 +146,9 @@ void UQuestJournalWidget::RebuildQuestList()
 		return;
 	}
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
+	BindTableManagerReady();
+	USonheimTableManagerSubsystem* ActiveTableManager = TableManager.Get();
+	const bool bCanLookupQuest = ActiveTableManager && ActiveTableManager->IsReady();
 	const TArray<FQuestInstance>& Quests = QuestComponent->GetQuestInstances();
 
 	int32 FirstQuestId = 0;
@@ -106,9 +167,9 @@ void UQuestJournalWidget::RebuildQuestList()
 		Data.CurrentStepIndex = Inst.CurrentStepIndex;
 		Data.bTracked = Inst.bTracked;
 		Data.Title = FText::FromString(TEXT("Unknown Quest"));
-		if (GI)
+		if (bCanLookupQuest)
 		{
-			if (const FQuestData* Def = GI->GetDataQuest(Inst.QuestID))
+			if (const FQuestData* Def = ActiveTableManager->FindQuest(Inst.QuestID))
 			{
 				Data.Title = Def->Title;
 			}
@@ -186,8 +247,9 @@ void UQuestJournalWidget::UpdateDetailPanel(int32 QuestID)
 		return;
 	}
 
-	USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
-	const FQuestData* Def = GI ? GI->GetDataQuest(QuestID) : nullptr;
+	BindTableManagerReady();
+	USonheimTableManagerSubsystem* ActiveTableManager = TableManager.Get();
+	const FQuestData* Def = (ActiveTableManager && ActiveTableManager->IsReady()) ? ActiveTableManager->FindQuest(QuestID) : nullptr;
 
 	if (TxtDetailTitle)
 	{

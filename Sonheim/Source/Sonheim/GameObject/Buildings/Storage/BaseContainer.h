@@ -7,6 +7,8 @@
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "BaseContainer.generated.h"
 
+class USonheimTableManagerSubsystem;
+
 UCLASS()
 class SONHEIM_API ABaseContainer : public AActor, public IInteractableInterface
 {
@@ -68,9 +70,14 @@ protected:
 
 private:
 	UPROPERTY()
-	class USonheimGameInstance* GameInstance;
+	class USonheimTableManagerSubsystem* TableManager = nullptr;
 
-	FContainerData* ContainerData;
+	const FContainerData* ContainerData = nullptr;
+
+	void TryInitializeFromData();
+	void HandleRuntimeDataReady();
+	bool bRuntimeDataInitialized = false;
+	FDelegateHandle RuntimeDataReadyHandle;
 
 	// 감지 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
