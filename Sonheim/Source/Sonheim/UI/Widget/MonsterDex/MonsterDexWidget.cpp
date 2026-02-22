@@ -6,6 +6,7 @@
 #include "Sonheim/AreaObject/Player/Utility/MonsterDexComponent.h"
 #include "Sonheim/UI/Widget/MonsterDex/MonsterDexEntryWidget.h"
 #include "Sonheim/UI/Widget/MonsterDex/MonsterDexRewardWidget.h"
+#include "Sonheim/Utilities/LogMacro.h"
 #include "Sonheim/Utilities/TableManagerHelper.h"
 
 void UMonsterDexWidget::NativeConstruct()
@@ -96,6 +97,17 @@ void UMonsterDexWidget::HandleDexChanged()
 
 void UMonsterDexWidget::RebuildMonsterList()
 {
+	if (!EntryWidgetClass)
+	{
+		EntryWidgetClass = LoadClass<UMonsterDexEntryWidget>(
+			nullptr,
+			TEXT("/Game/_BluePrint/Widget/MonsterDex/WBP_MonsterDexEntry.WBP_MonsterDexEntry_C"));
+		if (!EntryWidgetClass)
+		{
+			UE_LOG(SONHEIM, Warning, TEXT("MonsterDexWidget: failed to resolve default entry widget class."));
+		}
+	}
+
 	if (!MonsterListBox || !EntryWidgetClass || !DexComponent.IsValid())
 	{
 		return;
@@ -304,6 +316,17 @@ void UMonsterDexWidget::UpdateDetailPanel(int32 MonsterID)
 
 void UMonsterDexWidget::RebuildRewardList(int32 MonsterID)
 {
+	if (!RewardWidgetClass)
+	{
+		RewardWidgetClass = LoadClass<UMonsterDexRewardWidget>(
+			nullptr,
+			TEXT("/Game/_BluePrint/Widget/MonsterDex/WBP_MonsterDexReward.WBP_MonsterDexReward_C"));
+		if (!RewardWidgetClass)
+		{
+			UE_LOG(SONHEIM, Warning, TEXT("MonsterDexWidget: failed to resolve default reward widget class."));
+		}
+	}
+
 	if (!RewardListBox || !RewardWidgetClass || !DexComponent.IsValid())
 	{
 		return;

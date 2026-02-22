@@ -6,6 +6,7 @@
 #include "QuestTrackerWidget.generated.h"
 
 class UQuestComponent;
+class UTextBlock;
 
 UCLASS()
 class SONHEIM_API UQuestTrackerWidget : public UUserWidget
@@ -20,6 +21,12 @@ public:
 	UQuestComponent* GetQuestComponent() const { return QuestComponent.Get(); }
 
 protected:
+	UPROPERTY(meta=(BindWidgetOptional))
+	UTextBlock* TxtTrackerTitle = nullptr;
+
+	UPROPERTY(meta=(BindWidgetOptional))
+	UTextBlock* TxtTrackerObjectives = nullptr;
+
 	UFUNCTION(BlueprintImplementableEvent, Category="Quest")
 	void OnQuestDataChanged();
 

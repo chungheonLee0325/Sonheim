@@ -3,6 +3,7 @@
 #include "Blueprint/UserWidget.h"
 #include "GameFramework/PlayerController.h"
 #include "Internationalization/StringTable.h"
+#include "Internationalization/StringTableCore.h"
 #include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Sonheim/Utilities/TableManagerHelper.h"
 #include "Sonheim/Utilities/LogMacro.h"
@@ -542,10 +543,12 @@ FText UUIStackSubsystem::ResolvePresetTextField(FName PresetId, const FText& Fal
 		const FName TableId = StringTable->GetStringTableId();
 		if (!TableId.IsNone())
 		{
-			FText TableText;
-			if (FText::FindText(TableId.ToString(), Key.ToString(), TableText) && !TableText.IsEmpty())
+			const FString KeyString = Key.ToString();
+			const FTextKey TextKey(KeyString);
+			const FStringTableConstRef TableRef = StringTable->GetStringTable();
+			if (TableRef->FindEntry(TextKey).IsValid())
 			{
-				return TableText;
+				return FText::FromStringTable(TableId, TextKey);
 			}
 		}
 	}

@@ -4,6 +4,7 @@
 #include "Components/VerticalBox.h"
 #include "Sonheim/UI/Widget/Quest/QuestJournalEntryWidget.h"
 #include "Sonheim/AreaObject/Player/Utility/QuestComponent.h"
+#include "Sonheim/Utilities/LogMacro.h"
 #include "Sonheim/Utilities/TableManagerHelper.h"
 
 void UQuestJournalWidget::NativeConstruct()
@@ -134,6 +135,17 @@ void UQuestJournalWidget::UpdateQuestListFallback()
 
 void UQuestJournalWidget::RebuildQuestList()
 {
+	if (!EntryWidgetClass)
+	{
+		EntryWidgetClass = LoadClass<UQuestJournalEntryWidget>(
+			nullptr,
+			TEXT("/Game/_BluePrint/Widget/Quest/WBP_QuestJournalEntry.WBP_QuestJournalEntry_C"));
+		if (!EntryWidgetClass)
+		{
+			UE_LOG(SONHEIM, Warning, TEXT("QuestJournalWidget: failed to resolve default entry widget class."));
+		}
+	}
+
 	if (!QuestListBox || !EntryWidgetClass)
 	{
 		return;
