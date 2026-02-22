@@ -1,5 +1,7 @@
 #include "SonheimTableManagerSubsystem.h"
 
+#include "Engine/AssetManager.h"
+
 #include "Sonheim/Quest/QuestData.h"
 #include "Sonheim/MonsterDex/MonsterDexData.h"
 #include "Sonheim/Rewards/RewardTypes.h"
@@ -7,6 +9,12 @@
 
 namespace
 {
+	static const FPrimaryAssetType AreaObjectVariantAssetType(TEXT("AreaObjectVariant"));
+	static const FPrimaryAssetType ItemVariantAssetType(TEXT("ItemVariant"));
+	static const FPrimaryAssetType ResourceObjectVariantAssetType(TEXT("ResourceObjectVariant"));
+	static const FPrimaryAssetType ContainerVariantAssetType(TEXT("ContainerVariant"));
+	static const FPrimaryAssetType MonsterDexVariantAssetType(TEXT("MonsterDexVariant"));
+
 	template <typename TRowType>
 	void CopyRowsToMapByIntKey(UDataTable* Table, TMap<int32, TRowType>& OutMap, TFunctionRef<int32(const TRowType&)> KeySelector)
 	{
@@ -17,7 +25,13 @@ namespace
 		{
 			const TRowType* Row = Table->FindRow<TRowType>(RowName, TEXT("TableManager.Load"));
 			checkf(Row, TEXT("[TableManager] Failed to read row '%s' in table '%s'."), *RowName.ToString(), *Table->GetName());
-			OutMap.Add(KeySelector(*Row), *Row);
+			const int32 Key = KeySelector(*Row);
+			checkf(!OutMap.Contains(Key),
+				TEXT("[TableManager] Duplicate key detected while loading table '%s'. Key=%d Row=%s"),
+				*Table->GetName(),
+				Key,
+				*RowName.ToString());
+			OutMap.Add(Key, *Row);
 		}
 	}
 
@@ -28,6 +42,67 @@ namespace
 		{
 			UniquePaths.Add(SoftPtr.ToSoftObjectPath());
 		}
+	}
+
+	template <typename TRowType>
+	void CollectVariantAssetPaths(
+		const UAssetManager& AssetManager,
+		const TCHAR* DomainName,
+		const FPrimaryAssetType& AssetType,
+		const TMap<int32, TRowType>& SourceMap,
+		TFunctionRef<FName(const TRowType&)> VariantIdSelector,
+		TMap<int32, FSoftObjectPath>& OutVariantPathMap,
+		TSet<FSoftObjectPath>& OutUniqueVariantPaths)
+	{
+		TSet<FName> UniqueVariantIds;
+		OutVariantPathMap.Reserve(SourceMap.Num());
+
+		for (const TPair<int32, TRowType>& Pair : SourceMap)
+		{
+			const int32 DomainId = Pair.Key;
+			const FName VariantId = VariantIdSelector(Pair.Value);
+			checkf(!VariantId.IsNone(),
+				TEXT("[TableManager] Missing VariantId in %s row. DomainId=%d"),
+				DomainName,
+				DomainId);
+
+			checkf(!UniqueVariantIds.Contains(VariantId),
+				TEXT("[TableManager] Duplicate VariantId in %s rows. VariantId=%s"),
+				DomainName,
+				*VariantId.ToString());
+			UniqueVariantIds.Add(VariantId);
+
+			const FPrimaryAssetId PrimaryAssetId(AssetType, VariantId);
+			const FSoftObjectPath AssetPath = AssetManager.GetPrimaryAssetPath(PrimaryAssetId);
+			checkf(AssetPath.IsValid(),
+				TEXT("[TableManager] Failed to resolve primary asset path. Domain=%s DomainId=%d VariantId=%s PrimaryAssetType=%s"),
+				DomainName,
+				DomainId,
+				*VariantId.ToString(),
+				*AssetType.ToString());
+
+			OutVariantPathMap.Add(DomainId, AssetPath);
+			OutUniqueVariantPaths.Add(AssetPath);
+		}
+	}
+
+	template <typename TVariantType>
+	TVariantType* ResolveVariantAsset(const FSoftObjectPath& AssetPath, const TCHAR* DomainName, int32 DomainId)
+	{
+		UObject* LoadedObject = AssetPath.ResolveObject();
+		if (!LoadedObject)
+		{
+			LoadedObject = AssetPath.TryLoad();
+		}
+
+		TVariantType* Variant = Cast<TVariantType>(LoadedObject);
+		checkf(Variant,
+			TEXT("[TableManager] Failed to load variant asset for %s row. DomainId=%d AssetPath=%s ExpectedClass=%s"),
+			DomainName,
+			DomainId,
+			*AssetPath.ToString(),
+			*TVariantType::StaticClass()->GetName());
+		return Variant;
 	}
 }
 
@@ -58,6 +133,7 @@ void USonheimTableManagerSubsystem::Initialize(FSubsystemCollectionBase& Collect
 void USonheimTableManagerSubsystem::Deinitialize()
 {
 	RuntimeDataLoadHandle.Reset();
+	CoreVariantLoadHandle.Reset();
 	SelectedAssetPreloadHandle.Reset();
 	OnRuntimeDataReady.Clear();
 	ResetRuntimeData();
@@ -87,6 +163,12 @@ void USonheimTableManagerSubsystem::ResetRuntimeData()
 	SoundDataMap.Reset();
 	UIWidgetDefMap.Reset();
 	UIPresetMap.Reset();
+
+	AreaObjectVariantPathMap.Reset();
+	ItemVariantPathMap.Reset();
+	ResourceObjectVariantPathMap.Reset();
+	ContainerVariantPathMap.Reset();
+	MonsterDexVariantPathMap.Reset();
 }
 
 void USonheimTableManagerSubsystem::RequestDataTablesAsyncLoad()
@@ -268,10 +350,175 @@ void USonheimTableManagerSubsystem::OnDataTablesLoaded()
 		}
 	}
 
+	RequestCoreVariantsAsyncLoad();
+}
+
+void USonheimTableManagerSubsystem::RequestCoreVariantsAsyncLoad()
+{
+	AreaObjectVariantPathMap.Reset();
+	ItemVariantPathMap.Reset();
+	ResourceObjectVariantPathMap.Reset();
+	ContainerVariantPathMap.Reset();
+	MonsterDexVariantPathMap.Reset();
+
+	// Core5 이관 필드는 Variant 에셋에서만 반영한다.
+	for (TPair<int32, FAreaObjectData>& Pair : AreaObjectDataMap)
+	{
+		Pair.Value.AreaObjectIcon = nullptr;
+	}
+
+	for (TPair<int32, FItemData>& Pair : ItemDataMap)
+	{
+		Pair.Value.ItemIcon = nullptr;
+		Pair.Value.ItemMesh = nullptr;
+		Pair.Value.MeshScale = FVector(1.0f);
+	}
+
+	for (TPair<int32, FResourceObjectData>& Pair : ResourceObjectDataMap)
+	{
+		Pair.Value.HarvestEffect = nullptr;
+		Pair.Value.DestroyEffect = nullptr;
+		Pair.Value.ResourceMesh = nullptr;
+		Pair.Value.MeshScale = FVector(1.0f);
+	}
+
+	for (TPair<int32, FContainerData>& Pair : ContainerDataMap)
+	{
+		Pair.Value.ContainerMesh = nullptr;
+		Pair.Value.OpenSound = nullptr;
+		Pair.Value.CloseSound = nullptr;
+	}
+
+	for (TPair<int32, FMonsterDexData>& Pair : MonsterDexDataMap)
+	{
+		Pair.Value.Icon = nullptr;
+	}
+
+	const UAssetManager& AssetManager = UAssetManager::Get();
+	TSet<FSoftObjectPath> UniqueVariantPaths;
+
+	CollectVariantAssetPaths<FAreaObjectData>(
+		AssetManager,
+		TEXT("AreaObject"),
+		AreaObjectVariantAssetType,
+		AreaObjectDataMap,
+		[](const FAreaObjectData& Row) { return Row.VariantId; },
+		AreaObjectVariantPathMap,
+		UniqueVariantPaths);
+
+	CollectVariantAssetPaths<FItemData>(
+		AssetManager,
+		TEXT("Item"),
+		ItemVariantAssetType,
+		ItemDataMap,
+		[](const FItemData& Row) { return Row.VariantId; },
+		ItemVariantPathMap,
+		UniqueVariantPaths);
+
+	CollectVariantAssetPaths<FResourceObjectData>(
+		AssetManager,
+		TEXT("ResourceObject"),
+		ResourceObjectVariantAssetType,
+		ResourceObjectDataMap,
+		[](const FResourceObjectData& Row) { return Row.VariantId; },
+		ResourceObjectVariantPathMap,
+		UniqueVariantPaths);
+
+	CollectVariantAssetPaths<FContainerData>(
+		AssetManager,
+		TEXT("Container"),
+		ContainerVariantAssetType,
+		ContainerDataMap,
+		[](const FContainerData& Row) { return Row.VariantId; },
+		ContainerVariantPathMap,
+		UniqueVariantPaths);
+
+	CollectVariantAssetPaths<FMonsterDexData>(
+		AssetManager,
+		TEXT("MonsterDex"),
+		MonsterDexVariantAssetType,
+		MonsterDexDataMap,
+		[](const FMonsterDexData& Row) { return Row.VariantId; },
+		MonsterDexVariantPathMap,
+		UniqueVariantPaths);
+
+	checkf(!UniqueVariantPaths.IsEmpty(), TEXT("[TableManager] Core variant path registry is empty."));
+
+	TArray<FSoftObjectPath> Paths = UniqueVariantPaths.Array();
+	CoreVariantLoadHandle = RuntimeDataStreamableManager.RequestAsyncLoad(
+		Paths,
+		FStreamableDelegate::CreateUObject(this, &USonheimTableManagerSubsystem::OnCoreVariantsLoaded),
+		FStreamableManager::AsyncLoadHighPriority);
+
+	if (!CoreVariantLoadHandle.IsValid())
+	{
+		bHasFailed = true;
+		ensureAlwaysMsgf(false, TEXT("[TableManager] Failed to request async core variant load handle."));
+		checkf(false, TEXT("[TableManager] Failed to request async core variant load handle."));
+	}
+}
+
+void USonheimTableManagerSubsystem::OnCoreVariantsLoaded()
+{
+	for (TPair<int32, FAreaObjectData>& Pair : AreaObjectDataMap)
+	{
+		const FSoftObjectPath* VariantPath = AreaObjectVariantPathMap.Find(Pair.Key);
+		checkf(VariantPath, TEXT("[TableManager] Missing AreaObject variant path. DomainId=%d"), Pair.Key);
+		USonheimAreaObjectVariantData* Variant = ResolveVariantAsset<USonheimAreaObjectVariantData>(*VariantPath, TEXT("AreaObject"), Pair.Key);
+		Pair.Value.AreaObjectIcon = Variant->AreaObjectIcon;
+	}
+
+	for (TPair<int32, FItemData>& Pair : ItemDataMap)
+	{
+		const FSoftObjectPath* VariantPath = ItemVariantPathMap.Find(Pair.Key);
+		checkf(VariantPath, TEXT("[TableManager] Missing Item variant path. DomainId=%d"), Pair.Key);
+		USonheimItemVariantData* Variant = ResolveVariantAsset<USonheimItemVariantData>(*VariantPath, TEXT("Item"), Pair.Key);
+		Pair.Value.ItemIcon = Variant->ItemIcon;
+		Pair.Value.ItemMesh = Variant->ItemMesh;
+		Pair.Value.MeshScale = Variant->MeshScale;
+	}
+
+	for (TPair<int32, FResourceObjectData>& Pair : ResourceObjectDataMap)
+	{
+		const FSoftObjectPath* VariantPath = ResourceObjectVariantPathMap.Find(Pair.Key);
+		checkf(VariantPath, TEXT("[TableManager] Missing ResourceObject variant path. DomainId=%d"), Pair.Key);
+		USonheimResourceObjectVariantData* Variant = ResolveVariantAsset<USonheimResourceObjectVariantData>(*VariantPath, TEXT("ResourceObject"), Pair.Key);
+		Pair.Value.HarvestEffect = Variant->HarvestEffect;
+		Pair.Value.DestroyEffect = Variant->DestroyEffect;
+		Pair.Value.ResourceMesh = Variant->ResourceMesh;
+		Pair.Value.MeshScale = Variant->MeshScale;
+	}
+
+	for (TPair<int32, FContainerData>& Pair : ContainerDataMap)
+	{
+		const FSoftObjectPath* VariantPath = ContainerVariantPathMap.Find(Pair.Key);
+		checkf(VariantPath, TEXT("[TableManager] Missing Container variant path. DomainId=%d"), Pair.Key);
+		USonheimContainerVariantData* Variant = ResolveVariantAsset<USonheimContainerVariantData>(*VariantPath, TEXT("Container"), Pair.Key);
+		Pair.Value.ContainerMesh = Variant->ContainerMesh;
+		Pair.Value.OpenSound = Variant->OpenSound;
+		Pair.Value.CloseSound = Variant->CloseSound;
+	}
+
+	for (TPair<int32, FMonsterDexData>& Pair : MonsterDexDataMap)
+	{
+		const FSoftObjectPath* VariantPath = MonsterDexVariantPathMap.Find(Pair.Key);
+		checkf(VariantPath, TEXT("[TableManager] Missing MonsterDex variant path. DomainId=%d"), Pair.Key);
+		USonheimMonsterDexVariantData* Variant = ResolveVariantAsset<USonheimMonsterDexVariantData>(*VariantPath, TEXT("MonsterDex"), Pair.Key);
+		Pair.Value.Icon = Variant->Icon;
+	}
+
 	bIsReady = true;
 	bHasFailed = false;
-	UE_LOG(SONHEIM, Log, TEXT("[TableManager] Runtime Data Ready. AreaObject=%d Skill=%d Item=%d Quest=%d"),
-		AreaObjectDataMap.Num(), SkillDataMap.Num(), ItemDataMap.Num(), QuestDataMap.Num());
+
+	UE_LOG(
+		SONHEIM,
+		Log,
+		TEXT("[TableManager] Runtime Data Ready. CoreVariants: AreaObject=%d Item=%d Resource=%d Container=%d MonsterDex=%d"),
+		AreaObjectVariantPathMap.Num(),
+		ItemVariantPathMap.Num(),
+		ResourceObjectVariantPathMap.Num(),
+		ContainerVariantPathMap.Num(),
+		MonsterDexVariantPathMap.Num());
 
 	OnRuntimeDataReady.Broadcast();
 	BuildSelectedAssetPreload();

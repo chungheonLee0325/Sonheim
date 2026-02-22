@@ -35,6 +35,10 @@ struct FUIWidgetDefRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
+	// E02 동결 계약:
+	// UIId, WidgetClass, Layer, InputMode, StackPolicy
+	// 추가 필드는 임시이며 E03+에서 변경될 수 있다.
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FName UIId = NAME_None;
 
@@ -70,6 +74,9 @@ USTRUCT(BlueprintType)
 struct FUIWidgetPresetRow : public FTableRowBase
 {
 	GENERATED_BODY()
+
+	// E02 동결 계약: PresetId, TemplateUIId
+	// 추가 필드는 임시이며 E03+에서 변경될 수 있다.
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FName PresetId = NAME_None;

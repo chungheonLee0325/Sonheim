@@ -32,6 +32,9 @@ struct FQuestRewardRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
+	// E02 동결 계약: RewardID만 고정한다.
+	// 추가 필드는 임시이며 E03+에서 변경될 수 있다.
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 RewardID = 0;
 
@@ -79,6 +82,10 @@ USTRUCT(BlueprintType)
 struct FQuestData : public FTableRowBase
 {
 	GENERATED_BODY()
+
+	// E02 동결 계약:
+	// QuestID, Title, Objectives, RewardTableID
+	// 추가 필드는 임시이며 E03+에서 변경될 수 있다.
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 QuestID = 0;

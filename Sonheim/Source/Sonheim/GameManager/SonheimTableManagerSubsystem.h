@@ -5,6 +5,7 @@
 #include "Engine/StreamableManager.h"
 
 #include "Sonheim/ResourceManager/SonheimGameType.h"
+#include "Sonheim/ResourceManager/SonheimVariantData.h"
 #include "Sonheim/Quest/QuestData.h"
 #include "Sonheim/MonsterDex/MonsterDexData.h"
 #include "Sonheim/Rewards/RewardTypes.h"
@@ -49,6 +50,8 @@ public:
 private:
 	void RequestDataTablesAsyncLoad();
 	void OnDataTablesLoaded();
+	void RequestCoreVariantsAsyncLoad();
+	void OnCoreVariantsLoaded();
 	void OnSelectedAssetPreloadComplete();
 	void BuildSelectedAssetPreload();
 	void MarkPreReadyAccess(const TCHAR* Context) const;
@@ -88,8 +91,15 @@ private:
 	TMap<FName, FUIWidgetDefRow> UIWidgetDefMap;
 	TMap<FName, FUIWidgetPresetRow> UIPresetMap;
 
+	TMap<int32, FSoftObjectPath> AreaObjectVariantPathMap;
+	TMap<int32, FSoftObjectPath> ItemVariantPathMap;
+	TMap<int32, FSoftObjectPath> ResourceObjectVariantPathMap;
+	TMap<int32, FSoftObjectPath> ContainerVariantPathMap;
+	TMap<int32, FSoftObjectPath> MonsterDexVariantPathMap;
+
 	FStreamableManager RuntimeDataStreamableManager;
 	TSharedPtr<FStreamableHandle> RuntimeDataLoadHandle;
+	TSharedPtr<FStreamableHandle> CoreVariantLoadHandle;
 	TSharedPtr<FStreamableHandle> SelectedAssetPreloadHandle;
 	FOnSonheimRuntimeDataReady OnRuntimeDataReady;
 

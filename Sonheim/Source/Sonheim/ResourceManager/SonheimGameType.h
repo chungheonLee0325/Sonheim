@@ -118,6 +118,9 @@ struct FContainerData : public FTableRowBase
 	int ContainerID = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	FName VariantId = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	FText ContainerName = FText::FromString("Container");
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
@@ -392,6 +395,9 @@ struct FAreaObjectData : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	int AreaObjectID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	FName VariantId = NAME_None;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	FName Name = "";
@@ -803,6 +809,9 @@ struct FItemData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	int ItemID = 0;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	FName VariantId = NAME_None;
+
 	// Looting Class
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	TSubclassOf<ABaseItem> ItemClass = nullptr;
@@ -891,6 +900,9 @@ struct FResourceObjectData : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	int ResourceObjectID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	FName VariantId = NAME_None;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	FName Name = "";

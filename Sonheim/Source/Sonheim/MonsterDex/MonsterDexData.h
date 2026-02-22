@@ -52,6 +52,9 @@ struct FMonsterDexData : public FTableRowBase
 	int32 MonsterID = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FName VariantId = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FText Name;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
