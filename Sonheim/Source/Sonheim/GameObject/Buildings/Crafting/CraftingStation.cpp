@@ -340,7 +340,10 @@ void ACraftingStation::ServerCollectAll_Implementation(ASonheimPlayer* Player)
 	if (CompletedToCollect <= 0) return;
 	if (UInventoryComponent* Inv = Player->GetInventoryComponent())
 	{
-		if (CompletedToCollect > 0) Inv->AddItem(ActiveWork.ResultItemID, CompletedToCollect);
+		if (CompletedToCollect > 0)
+		{
+			Inv->AddItemDetailed(ActiveWork.ResultItemID, CompletedToCollect, EItemChangeReason::CraftCollect, this);
+		}
 	}
 
 	// 수령한만큼 아이템 차감
@@ -392,7 +395,10 @@ void ACraftingStation::ServerCancelUnfinished_Implementation(class ASonheimPlaye
 				const int32 RefundCount = P.Value * RemainUnits;
 				if (UInventoryComponent* Inv = Requestor->GetInventoryComponent())
 				{
-					if (RefundCount > 0) Inv->AddItem(MatID, RefundCount);
+					if (RefundCount > 0)
+					{
+						Inv->AddItemDetailed(MatID, RefundCount, EItemChangeReason::RefundOrCancel, this, false);
+					}
 				}
 			}
 		}

@@ -16,6 +16,7 @@
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/GameObject/Items/BaseItem.h"
 #include "Sonheim/GameObject/ResourceObject/BaseResourceObject.h"
+#include "Sonheim/Rewards/RewardService.h"
 #include "Sonheim/UI/Widget/BaseStatusWidget.h"
 #include "Sonheim/UI/Widget/Monster/MonsterStatusWidget.h"
 #include "Sonheim/Utilities/CommonUtil.h"
@@ -256,7 +257,60 @@ void ABaseMonster::OnDie_Implementation()
 
 	if (HasAuthority())
 	{
-		if (dt_AreaObject && dt_AreaObject->PossibleDropItemID.Num() > 0)
+		const USonheimGameInstance* GI = USonheimGameInstance::Get(GetWorld());
+		const int32 DropTableID = dt_AreaObject ? dt_AreaObject->DropTableID : 0;
+
+		// Resolve reward target (player or partner owner)
+		ASonheimPlayer* RewardTarget = nullptr;
+		if (AAreaObject* Killer = Cast<AAreaObject>(GetInstigator()))
+		{
+			RewardTarget = Cast<ASonheimPlayer>(Killer);
+			if (!RewardTarget)
+			{
+				if (ABaseMonster* MonsterKiller = Cast<ABaseMonster>(Killer))
+				{
+					RewardTarget = MonsterKiller->PartnerOwner;
+				}
+			}
+		}
+
+		FRewardGrantOptions DropGrantOptions;
+		DropGrantOptions.bGrantExpImmediately = true;
+		DropGrantOptions.bGrantItemsToInventory = false;
+		DropGrantOptions.bDropItemsToWorld = true;
+		DropGrantOptions.WorldContextObject = this;
+		DropGrantOptions.DropOrigin = GetActorLocation();
+		DropGrantOptions.DropScatterRadius = 150.f;
+		DropGrantOptions.DropAutoPickupDelay = 1.5f;
+		DropGrantOptions.bDropUsePhysics = true;
+		DropGrantOptions.DropForce = 1500.f;
+		DropGrantOptions.DropLifeTime = 300.f;
+
+		if (GI && DropTableID > 0)
+		{
+			if (const FDropTableRow* DropRow = GI->GetDropTable(DropTableID))
+			{
+				TArray<int32> RewardIDs;
+				FRewardService::RollDropTable(*DropRow, RewardIDs);
+
+				for (const int32 RewardID : RewardIDs)
+				{
+					if (RewardID <= 0)
+					{
+						continue;
+					}
+
+					const FRewardDef* RewardDef = GI->GetRewardDef(RewardID);
+					if (!RewardDef)
+					{
+						continue;
+					}
+
+					FRewardService::GrantToPlayer(RewardTarget, *RewardDef, DropGrantOptions);
+				}
+			}
+		}
+		else if (dt_AreaObject && dt_AreaObject->PossibleDropItemID.Num() > 0)
 		{
 			FItemSpawnOptions Opt;
 			Opt.bRequireInteraction = false;

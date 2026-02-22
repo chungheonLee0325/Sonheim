@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DamageEvents.h"
 #include "UObject/ObjectMacros.h"
+#include "UObject/SoftObjectPtr.h"
 #include "SonheimGameType.generated.h"
 
 
@@ -132,13 +133,13 @@ struct FContainerData : public FTableRowBase
 	int32 GridRows = 4;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	UStaticMesh* ContainerMesh = nullptr;
+	TSoftObjectPtr<UStaticMesh> ContainerMesh = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	USoundBase* OpenSound = nullptr;
+	TSoftObjectPtr<USoundBase> OpenSound = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	USoundBase* CloseSound = nullptr;
+	TSoftObjectPtr<USoundBase> CloseSound = nullptr;
 
 	// 상호작용 설정
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
@@ -416,16 +417,16 @@ struct FAreaObjectData : public FTableRowBase
 	float WalkSpeed = 400.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	UAnimMontage* Die_AnimMontage = nullptr;
+	TSoftObjectPtr<UAnimMontage> Die_AnimMontage = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	UAnimMontage* Stagger_AnimMontage = nullptr;
+	TSoftObjectPtr<UAnimMontage> Stagger_AnimMontage = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	TSet<int> SkillList;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	UTexture2D* AreaObjectIcon = nullptr;
+	TSoftObjectPtr<UTexture2D> AreaObjectIcon = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	float StaminaMax = 100.0f;
@@ -457,6 +458,10 @@ struct FAreaObjectData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Capture", meta=(ClampMin="0.0", ClampMax="0.95"))
 	float CaptureResist = 0.0f;
     
+	// Drop table reference (0 = use PossibleDropItemID)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Drop")
+	int32 DropTableID = 0;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
 	TMap<int, int> PossibleDropItemID;
 };
@@ -582,27 +587,27 @@ struct FAttackData
 
 	// Attack이 Fire했을때 VFX - NiagaraSystem
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UNiagaraSystem* FireVFX_N = nullptr;
+	TSoftObjectPtr<UNiagaraSystem> FireVFX_N = nullptr;
 
 	// Attack이 Fire했을때 VFX2 - NiagaraSystem
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UNiagaraSystem* FireVFX2_N = nullptr;
+	TSoftObjectPtr<UNiagaraSystem> FireVFX2_N = nullptr;
 
 	// Attack이 FireFire했을때 SFX
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	USoundBase* FireSFX = nullptr;
+	TSoftObjectPtr<USoundBase> FireSFX = nullptr;
 
 	// Attack이 Hit했을때 SFX
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	USoundBase* HitSFX = nullptr;
+	TSoftObjectPtr<USoundBase> HitSFX = nullptr;
 
 	// Attack이 Hit했을때 VFX - ParticleSystem
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UParticleSystem* HitVFX_P = nullptr;
+	TSoftObjectPtr<UParticleSystem> HitVFX_P = nullptr;
 
 	// Attack이 Hit했을때 VFX - NiagaraSystem
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UNiagaraSystem* HitVFX_N = nullptr;
+	TSoftObjectPtr<UNiagaraSystem> HitVFX_N = nullptr;
 	
 	// VFX 스케일 배율 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -646,7 +651,7 @@ struct FSkillData : public FTableRowBase
 
 	// 사용 스킬의 애님 몽타주
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* Montage = nullptr;
+	TSoftObjectPtr<UAnimMontage> Montage = nullptr;
 
 	// 데미지 관련 데이터
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -770,7 +775,7 @@ struct FEquipmentData : public FTableRowBase
 	int SkillID = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
-	USkeletalMesh* EquipmentMesh = nullptr;
+	TSoftObjectPtr<USkeletalMesh> EquipmentMesh = nullptr;
 
 	// Weapon ABP
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
@@ -833,11 +838,11 @@ struct FItemData : public FTableRowBase
 	FText ItemDescription = FText::FromString("");
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	UTexture2D* ItemIcon = nullptr;
+	TSoftObjectPtr<UTexture2D> ItemIcon = nullptr;
 
 	// 시각적 표현을 위한 메시
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Visual")
-	UStaticMesh* ItemMesh = nullptr;
+	TSoftObjectPtr<UStaticMesh> ItemMesh = nullptr;
 
 	// 메시 스케일
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
@@ -926,15 +931,15 @@ struct FResourceObjectData : public FTableRowBase
 
 	// 자원 채집 시 이펙트
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	UParticleSystem* HarvestEffect = nullptr;
+	TSoftObjectPtr<UParticleSystem> HarvestEffect = nullptr;
 
 	// 자원 파괴 시 이펙트
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	UParticleSystem* DestroyEffect = nullptr;
+	TSoftObjectPtr<UParticleSystem> DestroyEffect = nullptr;
 
 	// 시각적 표현을 위한 메시
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Visual")
-	UStaticMesh* ResourceMesh = nullptr;
+	TSoftObjectPtr<UStaticMesh> ResourceMesh = nullptr;
 
 	// 메시 스케일
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual")
@@ -996,7 +1001,7 @@ struct FVfxData : public FTableRowBase
 	int VfxID = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	UParticleSystem* Vfx = nullptr;
+	TSoftObjectPtr<UParticleSystem> Vfx = nullptr;
 };
 
 // SoundDataTable 데이터, GameMode에서 관리
@@ -1011,7 +1016,7 @@ public:
 	int SoundID = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
-	USoundBase* Sound = nullptr;
+	TSoftObjectPtr<USoundBase> Sound = nullptr;
 };
 
 // 몬스터가 확률에의해 사용하는 Skill목록 - Weight는 가중치

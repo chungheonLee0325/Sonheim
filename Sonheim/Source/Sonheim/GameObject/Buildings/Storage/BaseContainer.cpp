@@ -56,9 +56,12 @@ void ABaseContainer::BeginPlay()
 		if (ContainerData)
 		{
 			// 메시 설정
-			if (ContainerData->ContainerMesh && ContainerMesh)
+			if (ContainerMesh)
 			{
-				ContainerMesh->SetStaticMesh(ContainerData->ContainerMesh);
+				if (UStaticMesh* Mesh = ContainerData->ContainerMesh.LoadSynchronous())
+				{
+					ContainerMesh->SetStaticMesh(Mesh);
+				}
 			}
             
 			// 컨테이너 컴포넌트 초기화

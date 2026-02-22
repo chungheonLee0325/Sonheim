@@ -10,6 +10,8 @@
 
 class UStatBonusComponent;
 class UInventoryComponent;
+class UQuestComponent;
+class UMonsterDexComponent;
 class ASonheimPlayer;
 class USonheimGameInstance;
 
@@ -80,6 +82,12 @@ protected:
 public:
 	UPROPERTY(BlueprintReadWrite, Category="Inventory")
 	UInventoryComponent* m_InventoryComponent;
+
+	UPROPERTY(BlueprintReadWrite, Category="Quest")
+	UQuestComponent* m_QuestComponent;
+
+	UPROPERTY(BlueprintReadWrite, Category="MonsterDex")
+	UMonsterDexComponent* m_MonsterDexComponent;
 
 	UPROPERTY(BlueprintReadWrite, Category="Stats")
 	UStatBonusComponent* m_StatBonusComponent;

@@ -6,17 +6,23 @@
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/Utilities/LogMacro.h"
 #include "Utility/InventoryComponent.h"
+#include "Utility/QuestComponent.h"
+#include "Utility/MonsterDexComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Utility/PalInventoryComponent.h"
 
 ASonheimPlayerState::ASonheimPlayerState()
 {
 	m_InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
+	m_QuestComponent = CreateDefaultSubobject<UQuestComponent>(TEXT("Quest"));
+	m_MonsterDexComponent = CreateDefaultSubobject<UMonsterDexComponent>(TEXT("MonsterDex"));
 	m_StatBonusComponent = CreateDefaultSubobject<UStatBonusComponent>(TEXT("StatBonus"));
 	m_PalInventoryComponent = CreateDefaultSubobject<UPalInventoryComponent>(TEXT("PalInventory"));
 	
 	// 컴포넌트 복제 설정
 	m_InventoryComponent->SetIsReplicated(true);
+	m_QuestComponent->SetIsReplicated(true);
+	m_MonsterDexComponent->SetIsReplicated(true);
 	m_StatBonusComponent->SetIsReplicated(true);
 }
 

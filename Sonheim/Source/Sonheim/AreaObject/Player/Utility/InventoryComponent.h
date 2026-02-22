@@ -12,6 +12,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
+#include "Sonheim/Utilities/ItemChangeReason.h"
 #include "Net/UnrealNetwork.h"
 #include "Engine/NetSerialization.h"
 #include "Net/Serialization/FastArraySerializer.h"
@@ -32,6 +33,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWeaponChanged, EEquipmentSlotTyp
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemAdded, int, ItemID, int, Count);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemRemoved, int, ItemID, int, Count);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnItemDeltaDetailed, int32, ItemID, int32, Delta, EItemChangeReason, Reason);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnItemUseFailed, int, ItemID);
 
@@ -194,6 +197,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool AddItem(int ItemID, int ItemCount, bool IsDirectAcquisition = true);
 
+	// Adds item and emits detailed delta event for systems like quests.
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool AddItemDetailed(int ItemID, int ItemCount, EItemChangeReason Reason, AActor* Source = nullptr,
+	                    bool IsDirectAcquisition = true);
+
 	bool AddItemByInventoryItem(const FInventoryItem& InventoryItem);
 
 	UFUNCTION(BlueprintCallable, Category="Inventory")
@@ -292,6 +300,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category="Events")
 	FOnItemRemoved OnItemRemoved;
+
+	UPROPERTY(BlueprintAssignable, Category="Events")
+	FOnItemDeltaDetailed OnItemDeltaDetailed;
 
 	UPROPERTY(BlueprintAssignable, Category="Events")
 	FOnItemUseFailed OnItemUseFailed;

@@ -415,7 +415,8 @@ void UBaseSkill::OnRep_SkillState()
 
 void UBaseSkill::OnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
-	if (!m_SkillData || Montage != m_SkillData->Montage) return;
+	if (!m_SkillData) return;
+	if (Montage != m_SkillData->Montage.Get()) return;
 	if (bInterrupted)
 	{
 		Cancel();

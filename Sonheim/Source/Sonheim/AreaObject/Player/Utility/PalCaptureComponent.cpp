@@ -4,6 +4,7 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
+#include "Sonheim/AreaObject/Player/Utility/MonsterDexComponent.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/Animation/Player/PlayerAniminstance.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
@@ -212,6 +213,14 @@ void UPalCaptureComponent::Server_ApplyCaptureOutcome_Implementation(ABaseMonste
 		{
 			TargetPal->SetPartnerOwner(OwnerPlayer);
 			PalInventory->AddPal(TargetPal);
+
+			if (ASonheimPlayerState* PS = OwnerPlayer->GetPlayerState<ASonheimPlayerState>())
+			{
+				if (PS->m_MonsterDexComponent)
+				{
+					PS->m_MonsterDexComponent->NotifyCaptured(TargetPal->m_AreaObjectID);
+				}
+			}
 		}
 		else
 		{

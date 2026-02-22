@@ -72,6 +72,7 @@ void UInventoryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	OnWeaponChanged.Clear();
 	OnItemAdded.Clear();
 	OnItemRemoved.Clear();
+	OnItemDeltaDetailed.Clear();
 
 	Super::EndPlay(EndPlayReason);
 }
@@ -349,6 +350,24 @@ bool UInventoryComponent::AddItem(int ItemID, int ItemCount, bool IsDirectAcquis
 		ServerAddItem(ItemID, ItemCount);
 		return true;
 	}
+}
+
+bool UInventoryComponent::AddItemDetailed(int ItemID, int ItemCount, EItemChangeReason Reason, AActor* Source,
+	bool IsDirectAcquisition)
+{
+	// Reason is only reliable when called on the server.
+	const int32 Before = (GetOwnerRole() == ROLE_Authority) ? GetItemCount(ItemID) : 0;
+	const bool bOk = AddItem(ItemID, ItemCount, IsDirectAcquisition);
+	if (GetOwnerRole() == ROLE_Authority)
+	{
+		const int32 After = GetItemCount(ItemID);
+		const int32 Delta = After - Before;
+		if (Delta > 0)
+		{
+			OnItemDeltaDetailed.Broadcast(ItemID, Delta, Reason);
+		}
+	}
+	return bOk;
 }
 
 bool UInventoryComponent::AddItemByInventoryItem(const FInventoryItem& InventoryItem)

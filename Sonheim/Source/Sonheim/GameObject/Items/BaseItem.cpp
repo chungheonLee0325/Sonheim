@@ -222,13 +222,16 @@ void ABaseItem::InitializeItem(int32 InItemID, const FItemSpawnOptions& Options)
 void ABaseItem::SetupComponents()
 {
 	// 메쉬 설정
-	if (dt_ItemData && dt_ItemData->ItemMesh)
+	if (dt_ItemData)
 	{
-		// 동일 메쉬면 교체 생략 (중복 호출 방지)
-		if (ItemMesh->GetStaticMesh() != dt_ItemData->ItemMesh)
+		if (UStaticMesh* Mesh = dt_ItemData->ItemMesh.LoadSynchronous())
 		{
-			ItemMesh->SetStaticMesh(dt_ItemData->ItemMesh);
-			ItemMesh->SetRelativeScale3D(dt_ItemData->MeshScale);
+			// 동일 메쉬면 교체 생략 (중복 호출 방지)
+			if (ItemMesh->GetStaticMesh() != Mesh)
+			{
+				ItemMesh->SetStaticMesh(Mesh);
+				ItemMesh->SetRelativeScale3D(dt_ItemData->MeshScale);
+			}
 		}
 	}
 	
