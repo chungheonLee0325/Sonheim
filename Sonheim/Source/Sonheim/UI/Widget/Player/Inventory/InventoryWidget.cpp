@@ -477,23 +477,12 @@ void UInventoryWidget::HandleTrashDrop(USlotWidget* FromSlot, bool bDiscardMode)
 		{
 			if (UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(LP))
 			{
-				UUserWidget* Modal = UI->ShowModalClass(
-					SonheimUI::ConfirmModal,
-					ConfirmClass,
-					50,
-					EUIStackInputMode::UIOnly,
-					true,
-					true);
+				UUserWidget* Modal = UI->ShowModal(SonheimUI::ConfirmModal);
 				W = Cast<UConfirmWidget>(Modal);
 			}
 		}
 	}
-	if (!W)
-	{
-		// Fallback
-		W = CreateWidget<UConfirmWidget>(this, ConfirmClass);
-		if (W) W->AddToViewport(50);
-	}
+	ensureAlwaysMsgf(W, TEXT("[E03] Failed to resolve ConfirmModal via UIId path."));
 	if (!W) return;
 
 	PendingFromSlot = FromSlot;

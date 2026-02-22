@@ -71,6 +71,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category="UI")
 	UUserWidget* ShowModal(FName UIId);
 
+	UFUNCTION(BlueprintCallable, Category="UI")
+	UUserWidget* ShowToast(FName UIId, float DurationSeconds = 0.f);
+
 	UUserWidget* ShowModalClass(FName UIId, TSubclassOf<UUserWidget> WidgetClass, int32 ZOrder,
 	                           EUIStackInputMode InputMode, bool bShowMouse, bool bBlockGameInput,
 	                           EUIStackPolicy StackPolicy = EUIStackPolicy::SingleInstance,
@@ -105,10 +108,14 @@ public:
 	UFUNCTION(BlueprintPure, Category="UI")
 	bool IsWidgetManaged(const UUserWidget* Widget) const;
 
+	bool ResolvePresetTexts(FName PresetId, FText& OutTitle, FText& OutBody, FText& OutPrimary, FText& OutSecondary) const;
+
 private:
 	const FUIWidgetDefRow* FindWidgetDef(FName UIId) const;
 	UUserWidget* CreateWidgetFromDef(const FUIWidgetDefRow& Def);
 	UUserWidget* CreateWidgetFromClass(TSubclassOf<UUserWidget> WidgetClass) const;
+	FText ResolvePresetTextField(FName PresetId, const FText& FallbackText, const class UStringTable* StringTable,
+		FName Key, const TCHAR* FieldName) const;
 	UUserWidget* HandleExistingPolicy(TArray<FUIStackEntry>& Stack, FName UIId, EUIStackPolicy Policy);
 	UUserWidget* AddEntry(TArray<FUIStackEntry>& Stack, const FUIStackEntry& Entry);
 	bool RemoveEntryByWidget(TArray<FUIStackEntry>& Stack, UUserWidget* Widget);
@@ -125,4 +132,5 @@ private:
 	TArray<FUIStackEntry> ToastStack;
 
 	FDelegateHandle PreLoadMapHandle;
+	mutable TSet<FString> PresetFallbackWarnings;
 };

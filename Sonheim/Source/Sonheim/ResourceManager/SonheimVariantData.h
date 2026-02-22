@@ -7,7 +7,9 @@
 class UParticleSystem;
 class USoundBase;
 class UStaticMesh;
+class UStringTable;
 class UTexture2D;
+class UUserWidget;
 
 UCLASS(BlueprintType)
 class SONHEIM_API USonheimAreaObjectVariantData : public UPrimaryDataAsset
@@ -88,4 +90,43 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant")
 	TSoftObjectPtr<UTexture2D> Icon = nullptr;
+};
+
+UCLASS(BlueprintType)
+class SONHEIM_API USonheimUIWidgetDefVariantData : public UPrimaryDataAsset
+{
+	GENERATED_BODY()
+
+public:
+	virtual FPrimaryAssetId GetPrimaryAssetId() const override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant")
+	TSoftClassPtr<UUserWidget> WidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant")
+	bool bPreloadWidgetClass = false;
+};
+
+UCLASS(BlueprintType)
+class SONHEIM_API USonheimUIPresetVariantData : public UPrimaryDataAsset
+{
+	GENERATED_BODY()
+
+public:
+	virtual FPrimaryAssetId GetPrimaryAssetId() const override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant")
+	TSoftObjectPtr<UStringTable> StringTableAsset = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant")
+	FName DefaultTitleKey = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant")
+	FName DefaultBodyKey = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant")
+	FName PrimaryButtonKey = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant")
+	FName SecondaryButtonKey = NAME_None;
 };

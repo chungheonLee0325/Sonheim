@@ -42,6 +42,8 @@ public:
 	const FDropTableRow* FindDropTable(int32 Id) const;
 	const FUIWidgetDefRow* FindUIWidgetDef(FName UIId) const;
 	const FUIWidgetPresetRow* FindUIPreset(FName PresetId) const;
+	const USonheimUIPresetVariantData* FindUIPresetVariant(FName PresetId) const;
+	const USonheimUIWidgetDefVariantData* FindUIWidgetDefVariant(FName UIId) const;
 	const TSoftObjectPtr<USoundBase>* FindSound(int32 SoundID) const;
 
 	const TMap<int32, FMonsterDexData>& GetMonsterDexDataMap() const { return MonsterDexDataMap; }
@@ -52,6 +54,8 @@ private:
 	void OnDataTablesLoaded();
 	void RequestCoreVariantsAsyncLoad();
 	void OnCoreVariantsLoaded();
+	void RequestUIVariantsAsyncLoad();
+	void OnUIVariantsLoaded();
 	void OnSelectedAssetPreloadComplete();
 	void BuildSelectedAssetPreload();
 	void MarkPreReadyAccess(const TCHAR* Context) const;
@@ -96,10 +100,16 @@ private:
 	TMap<int32, FSoftObjectPath> ResourceObjectVariantPathMap;
 	TMap<int32, FSoftObjectPath> ContainerVariantPathMap;
 	TMap<int32, FSoftObjectPath> MonsterDexVariantPathMap;
+	TMap<FName, FSoftObjectPath> UIWidgetDefVariantPathMap;
+	TMap<FName, FSoftObjectPath> UIPresetVariantPathMap;
+
+	TMap<FName, TObjectPtr<USonheimUIWidgetDefVariantData>> UIWidgetDefVariantMap;
+	TMap<FName, TObjectPtr<USonheimUIPresetVariantData>> UIPresetVariantMap;
 
 	FStreamableManager RuntimeDataStreamableManager;
 	TSharedPtr<FStreamableHandle> RuntimeDataLoadHandle;
 	TSharedPtr<FStreamableHandle> CoreVariantLoadHandle;
+	TSharedPtr<FStreamableHandle> UIVariantLoadHandle;
 	TSharedPtr<FStreamableHandle> SelectedAssetPreloadHandle;
 	FOnSonheimRuntimeDataReady OnRuntimeDataReady;
 

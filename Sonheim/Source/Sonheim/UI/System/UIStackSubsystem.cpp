@@ -2,7 +2,10 @@
 
 #include "Blueprint/UserWidget.h"
 #include "GameFramework/PlayerController.h"
+#include "Internationalization/StringTable.h"
+#include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "Sonheim/Utilities/TableManagerHelper.h"
+#include "Sonheim/Utilities/LogMacro.h"
 
 void UUIStackSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -34,6 +37,7 @@ void UUIStackSubsystem::Deinitialize()
 	ScreenStack.Empty();
 	ModalStack.Empty();
 	ToastStack.Empty();
+	PresetFallbackWarnings.Reset();
 
 	Super::Deinitialize();
 }
@@ -65,7 +69,9 @@ UUserWidget* UUIStackSubsystem::CreateWidgetFromDef(const FUIWidgetDefRow& Def)
 	APlayerController* PC = GetLocalPlayer() ? GetLocalPlayer()->GetPlayerController(World) : nullptr;
 	if (!PC) return nullptr;
 
+	checkf(!Def.WidgetClass.IsNull(), TEXT("[UIStack] WidgetClass is null for UIId=%s"), *Def.UIId.ToString());
 	UClass* WidgetClass = Def.WidgetClass.LoadSynchronous();
+	checkf(WidgetClass, TEXT("[UIStack] Failed to load WidgetClass for UIId=%s"), *Def.UIId.ToString());
 	if (!WidgetClass) return nullptr;
 
 	return CreateWidget<UUserWidget>(PC, WidgetClass);
@@ -278,6 +284,59 @@ UUserWidget* UUIStackSubsystem::ShowModal(FName UIId)
 	return AddEntry(ModalStack, E);
 }
 
+UUserWidget* UUIStackSubsystem::ShowToast(FName UIId, float DurationSeconds)
+{
+	const FUIWidgetDefRow* Def = FindWidgetDef(UIId);
+	if (!Def) return nullptr;
+
+	if (UUserWidget* Existing = HandleExistingPolicy(ToastStack, UIId, Def->StackPolicy))
+	{
+		return Existing;
+	}
+
+	UUserWidget* W = CreateWidgetFromDef(*Def);
+	if (!W) return nullptr;
+
+	W->AddToViewport(Def->ZOrder);
+
+	FUIStackEntry E;
+	E.UIId = Def->UIId;
+	E.Layer = Def->Layer;
+	E.ZOrder = Def->ZOrder;
+	E.Widget = W;
+	E.InputMode = Def->InputMode;
+	E.bShowMouse = Def->bShowMouse;
+	E.bBlockGameInput = Def->bBlockGameInput;
+	E.bPersistAcrossMaps = Def->bPersistAcrossMaps;
+	E.bCloseOnMapLoad = Def->bCloseOnMapLoad;
+	ToastStack.Add(E);
+
+	if (DurationSeconds > 0.f)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			FTimerHandle Handle;
+			TWeakObjectPtr<UUIStackSubsystem> WeakThis(this);
+			TWeakObjectPtr<UUserWidget> WeakWidget(W);
+			World->GetTimerManager().SetTimer(
+				Handle,
+				[WeakThis, WeakWidget]()
+				{
+					if (WeakThis.IsValid())
+					{
+						WeakThis->CloseToastWidget(WeakWidget.Get());
+					}
+				},
+				DurationSeconds,
+				false);
+
+			ToastStack.Last().AutoCloseHandle = Handle;
+		}
+	}
+
+	return W;
+}
+
 UUserWidget* UUIStackSubsystem::ShowModalClass(FName UIId, TSubclassOf<UUserWidget> WidgetClass, int32 ZOrder,
 	EUIStackInputMode InputMode, bool bShowMouse, bool bBlockGameInput, EUIStackPolicy StackPolicy,
 	bool bCloseOnMapLoad, bool bPersistAcrossMaps)
@@ -473,6 +532,78 @@ bool UUIStackSubsystem::IsWidgetManaged(const UUserWidget* Widget) const
 	}
 
 	return false;
+}
+
+FText UUIStackSubsystem::ResolvePresetTextField(FName PresetId, const FText& FallbackText, const UStringTable* StringTable,
+	FName Key, const TCHAR* FieldName) const
+{
+	if (StringTable && !Key.IsNone())
+	{
+		const FName TableId = StringTable->GetStringTableId();
+		if (!TableId.IsNone())
+		{
+			FText TableText;
+			if (FText::FindText(TableId.ToString(), Key.ToString(), TableText) && !TableText.IsEmpty())
+			{
+				return TableText;
+			}
+		}
+	}
+
+	const FString WarningToken = FString::Printf(TEXT("%s|%s"), *PresetId.ToString(), FieldName);
+	if (!PresetFallbackWarnings.Contains(WarningToken))
+	{
+		PresetFallbackWarnings.Add(WarningToken);
+		UE_LOG(
+			SONHEIM,
+			Warning,
+			TEXT("[UIStack] Preset StringTable resolve failed. PresetId=%s Field=%s. Falling back to DT FText."),
+			*PresetId.ToString(),
+			FieldName);
+	}
+
+	return FallbackText;
+}
+
+bool UUIStackSubsystem::ResolvePresetTexts(FName PresetId, FText& OutTitle, FText& OutBody, FText& OutPrimary, FText& OutSecondary) const
+{
+	OutTitle = FText::GetEmpty();
+	OutBody = FText::GetEmpty();
+	OutPrimary = FText::GetEmpty();
+	OutSecondary = FText::GetEmpty();
+
+	USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this);
+	if (!TableManager || !TableManager->IsReady())
+	{
+		ensureAlwaysMsgf(false, TEXT("[UIStack] Preset resolve before TableManager ready. PresetId=%s"), *PresetId.ToString());
+		return false;
+	}
+
+	const FUIWidgetPresetRow* Preset = TableManager->FindUIPreset(PresetId);
+	ensureAlwaysMsgf(Preset, TEXT("[UIStack] Missing UI preset definition. PresetId=%s"), *PresetId.ToString());
+	if (!Preset)
+	{
+		return false;
+	}
+
+	const USonheimUIPresetVariantData* Variant = TableManager->FindUIPresetVariant(PresetId);
+	checkf(Variant, TEXT("[UIStack] Missing UI preset variant. PresetId=%s"), *PresetId.ToString());
+	if (!Variant)
+	{
+		return false;
+	}
+
+	UStringTable* StringTable = nullptr;
+	if (!Variant->StringTableAsset.IsNull())
+	{
+		StringTable = Variant->StringTableAsset.LoadSynchronous();
+	}
+
+	OutTitle = ResolvePresetTextField(PresetId, Preset->DefaultTitle, StringTable, Variant->DefaultTitleKey, TEXT("DefaultTitle"));
+	OutBody = ResolvePresetTextField(PresetId, Preset->DefaultBody, StringTable, Variant->DefaultBodyKey, TEXT("DefaultBody"));
+	OutPrimary = ResolvePresetTextField(PresetId, Preset->PrimaryButtonText, StringTable, Variant->PrimaryButtonKey, TEXT("PrimaryButtonText"));
+	OutSecondary = ResolvePresetTextField(PresetId, Preset->SecondaryButtonText, StringTable, Variant->SecondaryButtonKey, TEXT("SecondaryButtonText"));
+	return true;
 }
 
 void UUIStackSubsystem::ApplyInputState()

@@ -28,6 +28,7 @@
 #include "Sonheim/GameManager/SonheimTableManagerSubsystem.h"
 #include "InputCoreTypes.h"
 #include "Utility/QuestComponent.h"
+#include "Utility/MonsterDexComponent.h"
 #include "Sonheim/Utilities/TableManagerHelper.h"
 
 ASonheimPlayerController::ASonheimPlayerController()
@@ -683,38 +684,7 @@ void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 	UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(GetLocalPlayer());
 	if (!UI)
 	{
-		// Legacy fallback
-		if (IsContainerActivate) return;
-		if (!IsMenuActivate)
-		{
-			IsMenuActivate = true;
-			m_Player->Menu_Pressed();
-			InventoryWidget = CreateWidget<UInventoryWidget>(this, InventoryWidgetClass);
-			InventoryWidget->AddToViewport(0);
-			InventoryWidget->SetInventoryComponent(m_PlayerState->m_InventoryComponent);
-			m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(
-				InventoryWidget, &UInventoryWidget::UpdateInventoryFromData);
-			m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(
-				InventoryWidget, &UInventoryWidget::UpdateEquipmentFromData);
-			PlayerStatWidget = CreateWidget<UPlayerStatWidget>(this, PlayerStatWidgetClass);
-			PlayerStatWidget->AddToViewport(0);
-			PlayerStatWidget->InitializePlayerStatWidget(m_PlayerState);
-			SetShowMouseCursor(true);
-		}
-		else
-		{
-			IsMenuActivate = false;
-			SetShowMouseCursor(false);
-
-			m_PlayerState->m_InventoryComponent->OnInventoryChanged.RemoveDynamic(
-				InventoryWidget, &UInventoryWidget::UpdateInventoryFromData);
-			m_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(
-				InventoryWidget, &UInventoryWidget::UpdateEquipmentFromData);
-			InventoryWidget->RemoveFromParent();
-			PlayerStatWidget->RemoveFromParent();
-			InventoryWidget = nullptr;
-			PlayerStatWidget = nullptr;
-		}
+		ensureAlwaysMsgf(false, TEXT("[E03] Missing UIStackSubsystem in On_Menu_Pressed."));
 		return;
 	}
 
@@ -728,13 +698,7 @@ void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 	{
 		m_Player->Menu_Pressed();
 
-		UUserWidget* InvW = UI->PushScreenClass(
-			SonheimUI::InventoryScreen,
-			InventoryWidgetClass,
-			0,
-			EUIStackInputMode::GameAndUI,
-			true,
-			true);
+		UUserWidget* InvW = UI->PushScreen(SonheimUI::InventoryScreen);
 		InventoryWidget = Cast<UInventoryWidget>(InvW);
 		if (InventoryWidget && m_PlayerState && m_PlayerState->m_InventoryComponent)
 		{
@@ -745,13 +709,7 @@ void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 				InventoryWidget, &UInventoryWidget::UpdateEquipmentFromData);
 		}
 
-		UUserWidget* StatW = UI->PushScreenClass(
-			SonheimUI::PlayerStatScreen,
-			PlayerStatWidgetClass,
-			0,
-			EUIStackInputMode::GameAndUI,
-			true,
-			true);
+		UUserWidget* StatW = UI->PushScreen(SonheimUI::PlayerStatScreen);
 		PlayerStatWidget = Cast<UPlayerStatWidget>(StatW);
 		if (PlayerStatWidget && m_PlayerState)
 		{
@@ -853,34 +811,13 @@ void ASonheimPlayerController::OnRep_PlayerState()
 
 void ASonheimPlayerController::Client_OpenContainerUI_Implementation(ABaseContainer* Container)
 {
-	if (!IsLocalController() || !Container || !ContainerInteractionWidgetClass)
+	if (!IsLocalController() || !Container)
 		return;
 
 	UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(GetLocalPlayer());
 	if (!UI)
 	{
-		// Legacy fallback
-		// 기존 상자 UI가 열려있으면 닫기
-		if (ContainerInteractionWidget)
-		{
-			ContainerInteractionWidget->CloseContainer();
-			ContainerInteractionWidget = nullptr;
-		}
-
-		// 새 상자 UI 생성
-		ContainerInteractionWidget = CreateWidget<UContainerInteractionWidget>(this, ContainerInteractionWidgetClass);
-		if (ContainerInteractionWidget)
-		{
-			ContainerInteractionWidget->AddToViewport(1); // 다른 UI보다 위에 표시
-			m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(
-				ContainerInteractionWidget->GetPlayerInventoryWidget(),
-				&UInventoryWidget::UpdateInventoryFromData);
-			m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(
-				ContainerInteractionWidget->GetPlayerInventoryWidget(),
-				&UInventoryWidget::UpdateEquipmentFromData);
-			ContainerInteractionWidget->OpenContainer(Container);
-			IsContainerActivate = true;
-		}
+		ensureAlwaysMsgf(false, TEXT("[E03] Missing UIStackSubsystem in Client_OpenContainerUI."));
 		return;
 	}
 
@@ -902,14 +839,7 @@ void ASonheimPlayerController::Client_OpenContainerUI_Implementation(ABaseContai
 		IsMenuActivate = false;
 	}
 
-	UUserWidget* W = UI->PushScreenClass(
-		SonheimUI::ContainerScreen,
-		ContainerInteractionWidgetClass,
-		1,
-		EUIStackInputMode::UIOnly,
-		true,
-		true,
-		EUIStackPolicy::ReplaceSameId);
+	UUserWidget* W = UI->PushScreen(SonheimUI::ContainerScreen);
 
 	ContainerInteractionWidget = Cast<UContainerInteractionWidget>(W);
 	if (ContainerInteractionWidget)
@@ -932,18 +862,7 @@ void ASonheimPlayerController::Client_CloseContainerUI_Implementation()
 	UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(GetLocalPlayer());
 	if (!UI)
 	{
-		if (ContainerInteractionWidget)
-		{
-			ContainerInteractionWidget->CloseContainer();
-			m_PlayerState->m_InventoryComponent->OnInventoryChanged.RemoveDynamic(
-				ContainerInteractionWidget->GetPlayerInventoryWidget(),
-				&UInventoryWidget::UpdateInventoryFromData);
-			m_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(
-				ContainerInteractionWidget->GetPlayerInventoryWidget(),
-				&UInventoryWidget::UpdateEquipmentFromData);
-			ContainerInteractionWidget = nullptr;
-			IsContainerActivate = false;
-		}
+		ensureAlwaysMsgf(false, TEXT("[E03] Missing UIStackSubsystem in Client_CloseContainerUI."));
 		return;
 	}
 
@@ -1324,32 +1243,11 @@ void ASonheimPlayerController::Client_OpenCraftingUI_Implementation(ACraftingSta
 	UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(GetLocalPlayer());
 	if (!UI)
 	{
-		// Legacy fallback
-		if (!CraftingWidget)
-		{
-			if (CraftingWidgetClass)
-			{
-				CraftingWidget = CreateWidget<UCraftingWidget>(this, CraftingWidgetClass);
-			}
-		}
-		if (CraftingWidget && !CraftingWidget->IsInViewport())
-		{
-			CraftingWidget->AddToViewport();
-			CraftingWidget->Initialise(Station);
-			bShowMouseCursor = true;
-			SetInputMode(FInputModeUIOnly());
-		}
+		ensureAlwaysMsgf(false, TEXT("[E03] Missing UIStackSubsystem in Client_OpenCraftingUI."));
 		return;
 	}
 
-	UUserWidget* W = UI->PushScreenClass(
-		SonheimUI::CraftingScreen,
-		CraftingWidgetClass,
-		2,
-		EUIStackInputMode::UIOnly,
-		true,
-		true,
-		EUIStackPolicy::ReplaceSameId);
+	UUserWidget* W = UI->PushScreen(SonheimUI::CraftingScreen);
 	CraftingWidget = Cast<UCraftingWidget>(W);
 	if (CraftingWidget)
 	{
@@ -1364,13 +1262,7 @@ void ASonheimPlayerController::Client_CloseCraftingUI_Implementation()
 	UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(GetLocalPlayer());
 	if (!UI)
 	{
-		if (CraftingWidget)
-		{
-			CraftingWidget->RemoveFromParent();
-			CraftingWidget = nullptr;
-		}
-		bShowMouseCursor = false;
-		SetInputMode(FInputModeGameOnly());
+		ensureAlwaysMsgf(false, TEXT("[E03] Missing UIStackSubsystem in Client_CloseCraftingUI."));
 		return;
 	}
 
@@ -1389,22 +1281,18 @@ void ASonheimPlayerController::ShowQuestToastLocal(const FText& Text, float Dura
 {
 	if (!IsLocalController()) return;
 
-	if (QuestToastWidgetClass)
+	if (UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(GetLocalPlayer()))
 	{
-		if (UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(GetLocalPlayer()))
+		if (UUserWidget* W = UI->ShowToast(SonheimUI::QuestToast, DurationSeconds))
 		{
-			if (UUserWidget* W = UI->ShowToastClass(SonheimUI::QuestToast, QuestToastWidgetClass, 100, DurationSeconds))
+			if (UQuestToastWidget* TW = Cast<UQuestToastWidget>(W))
 			{
-				if (UQuestToastWidget* TW = Cast<UQuestToastWidget>(W))
-				{
-					TW->Setup(Text);
-				}
-				return;
+				TW->Setup(Text);
 			}
+			return;
 		}
 	}
-
-	BP_ShowQuestToast(Text, DurationSeconds);
+	ensureAlwaysMsgf(false, TEXT("[E03] Failed to show quest toast via UIId path."));
 }
 
 void ASonheimPlayerController::OpenQuestJournal()
@@ -1430,17 +1318,6 @@ void ASonheimPlayerController::OpenQuestJournal()
 	}
 
 	UUserWidget* W = UI->PushScreen(SonheimUI::QuestJournalScreen);
-	if (!W && QuestJournalWidgetClass)
-	{
-		W = UI->PushScreenClass(
-			SonheimUI::QuestJournalScreen,
-			QuestJournalWidgetClass,
-			0,
-			EUIStackInputMode::GameAndUI,
-			true,
-			true,
-			EUIStackPolicy::ReplaceSameId);
-	}
 
 	if (UQuestJournalWidget* QW = Cast<UQuestJournalWidget>(W))
 	{
@@ -1493,17 +1370,6 @@ void ASonheimPlayerController::OpenMonsterDex()
 	}
 
 	UUserWidget* W = UI->PushScreen(SonheimUI::MonsterDexScreen);
-	if (!W && MonsterDexWidgetClass)
-	{
-		W = UI->PushScreenClass(
-			SonheimUI::MonsterDexScreen,
-			MonsterDexWidgetClass,
-			0,
-			EUIStackInputMode::GameAndUI,
-			true,
-			true,
-			EUIStackPolicy::ReplaceSameId);
-	}
 
 	if (UMonsterDexWidget* DW = Cast<UMonsterDexWidget>(W))
 	{
@@ -1548,27 +1414,17 @@ void ASonheimPlayerController::Client_ShowQuestAcceptUI_Implementation(int32 Que
 		}
 	}
 
-	if (QuestAcceptWidgetClass)
+	if (UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(GetLocalPlayer()))
 	{
-		if (UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(GetLocalPlayer()))
+		UUserWidget* Modal = UI->ShowModal(SonheimUI::QuestAcceptModal);
+		if (UQuestAcceptWidget* QW = Cast<UQuestAcceptWidget>(Modal))
 		{
-			UUserWidget* Modal = UI->ShowModalClass(
-				SonheimUI::QuestAcceptModal,
-				QuestAcceptWidgetClass,
-				50,
-				EUIStackInputMode::UIOnly,
-				true,
-				true,
-				EUIStackPolicy::ReplaceSameId);
-			if (UQuestAcceptWidget* QW = Cast<UQuestAcceptWidget>(Modal))
-			{
-				QW->Setup(QuestID, Title, Description);
-				return;
-			}
+			QW->Setup(QuestID, Title, Description);
+			return;
 		}
 	}
 
-	BP_ShowQuestAcceptUI(QuestID, Title, Description);
+	ensureAlwaysMsgf(false, TEXT("[E03] Failed to show quest accept modal via UIId path."));
 }
 
 void ASonheimPlayerController::Client_ShowQuestAcceptedToast_Implementation(int32 QuestID)
@@ -1576,11 +1432,34 @@ void ASonheimPlayerController::Client_ShowQuestAcceptedToast_Implementation(int3
 	if (!IsLocalController()) return;
 
 	FText Text = FText::FromString(TEXT("퀘스트 수락"));
+	FText QuestTitle = FText::GetEmpty();
 	if (USonheimTableManagerSubsystem* TableManager = Sonheim::TableManager::Get(this))
 	{
 		if (const FQuestData* Def = TableManager->FindQuest(QuestID))
 		{
+			QuestTitle = Def->Title;
 			Text = FText::Format(FText::FromString(TEXT("퀘스트 수락: {0}")), Def->Title);
+		}
+	}
+
+	if (UUIStackSubsystem* UI = ULocalPlayer::GetSubsystem<UUIStackSubsystem>(GetLocalPlayer()))
+	{
+		FText PresetTitle;
+		FText PresetBody;
+		FText PresetPrimary;
+		FText PresetSecondary;
+		if (UI->ResolvePresetTexts(FName(TEXT("Quest.Accepted")), PresetTitle, PresetBody, PresetPrimary, PresetSecondary))
+		{
+			FText BaseText = !PresetBody.IsEmpty() ? PresetBody : PresetTitle;
+			if (!BaseText.IsEmpty())
+			{
+				FString Composed = BaseText.ToString();
+				if (!QuestTitle.IsEmpty())
+				{
+					Composed = Composed.Replace(TEXT("{QuestTitle}"), *QuestTitle.ToString());
+				}
+				Text = FText::FromString(Composed);
+			}
 		}
 	}
 
@@ -1635,4 +1514,175 @@ void ASonheimPlayerController::Server_Crafting_CancelUnfinished_Implementation(c
 	{
 		Station->ServerCancelUnfinished(Cast<ASonheimPlayer>(GetPawn()));
 	}
+}
+
+void ASonheimPlayerController::E03Debug_QuestAccept(int32 QuestID)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[E03Debug] QuestAccept requires authority. QuestID=%d"), QuestID);
+		return;
+	}
+
+	ASonheimPlayerState* PS = m_PlayerState ? m_PlayerState : GetPlayerState<ASonheimPlayerState>();
+	if (!PS || !PS->m_QuestComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[E03Debug] Missing QuestComponent."));
+		return;
+	}
+
+	AActor* OfferActor = GetPawn() ? Cast<AActor>(GetPawn()) : this;
+	PS->m_QuestComponent->RegisterQuestOffer(QuestID, 0, OfferActor, 30.f);
+	PS->m_QuestComponent->ServerAcceptQuest(QuestID);
+#endif
+}
+
+void ASonheimPlayerController::E03Debug_QuestKill(int32 TargetAreaObjectID, int32 Count)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[E03Debug] QuestKill requires authority."));
+		return;
+	}
+
+	ASonheimPlayerState* PS = m_PlayerState ? m_PlayerState : GetPlayerState<ASonheimPlayerState>();
+	if (!PS || !PS->m_QuestComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[E03Debug] Missing QuestComponent."));
+		return;
+	}
+
+	const int32 SafeCount = FMath::Max(1, Count);
+	for (int32 i = 0; i < SafeCount; ++i)
+	{
+		PS->m_QuestComponent->NotifyKilled(TargetAreaObjectID);
+	}
+#endif
+}
+
+void ASonheimPlayerController::E03Debug_QuestItemDelta(int32 ItemID, int32 Delta, int32 Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[E03Debug] QuestItemDelta requires authority."));
+		return;
+	}
+
+	ASonheimPlayerState* PS = m_PlayerState ? m_PlayerState : GetPlayerState<ASonheimPlayerState>();
+	if (!PS || !PS->m_QuestComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[E03Debug] Missing QuestComponent."));
+		return;
+	}
+
+	PS->m_QuestComponent->NotifyItemDelta(ItemID, Delta, static_cast<EItemChangeReason>(Reason));
+#endif
+}
+
+void ASonheimPlayerController::E03Debug_GiveItem(int32 ItemID, int32 Count)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[E03Debug] GiveItem requires authority."));
+		return;
+	}
+
+	ASonheimPlayerState* PS = m_PlayerState ? m_PlayerState : GetPlayerState<ASonheimPlayerState>();
+	if (!PS || !PS->m_InventoryComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[E03Debug] Missing InventoryComponent."));
+		return;
+	}
+
+	const int32 SafeCount = FMath::Max(1, Count);
+	PS->m_InventoryComponent->AddItemDetailed(ItemID, SafeCount, EItemChangeReason::Unknown, this, true);
+#endif
+}
+
+void ASonheimPlayerController::E03Debug_QuestTurnIn(int32 QuestID)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[E03Debug] QuestTurnIn requires authority."));
+		return;
+	}
+
+	ASonheimPlayerState* PS = m_PlayerState ? m_PlayerState : GetPlayerState<ASonheimPlayerState>();
+	if (!PS || !PS->m_QuestComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[E03Debug] Missing QuestComponent."));
+		return;
+	}
+
+	AActor* OfferActor = GetPawn() ? Cast<AActor>(GetPawn()) : this;
+	PS->m_QuestComponent->RegisterQuestTurnIn(QuestID, 0, OfferActor, 30.f);
+	PS->m_QuestComponent->ServerTryTurnIn(QuestID);
+#endif
+}
+
+void ASonheimPlayerController::E03Debug_DexKill(int32 MonsterID, int32 Count)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[E03Debug] DexKill requires authority."));
+		return;
+	}
+
+	ASonheimPlayerState* PS = m_PlayerState ? m_PlayerState : GetPlayerState<ASonheimPlayerState>();
+	if (!PS || !PS->m_MonsterDexComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[E03Debug] Missing MonsterDexComponent."));
+		return;
+	}
+
+	const int32 SafeCount = FMath::Max(1, Count);
+	for (int32 i = 0; i < SafeCount; ++i)
+	{
+		PS->m_MonsterDexComponent->NotifyKilled(MonsterID);
+	}
+#endif
+}
+
+void ASonheimPlayerController::E03Debug_DexCapture(int32 MonsterID, int32 Count)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[E03Debug] DexCapture requires authority."));
+		return;
+	}
+
+	ASonheimPlayerState* PS = m_PlayerState ? m_PlayerState : GetPlayerState<ASonheimPlayerState>();
+	if (!PS || !PS->m_MonsterDexComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[E03Debug] Missing MonsterDexComponent."));
+		return;
+	}
+
+	const int32 SafeCount = FMath::Max(1, Count);
+	for (int32 i = 0; i < SafeCount; ++i)
+	{
+		PS->m_MonsterDexComponent->NotifyCaptured(MonsterID);
+	}
+#endif
 }

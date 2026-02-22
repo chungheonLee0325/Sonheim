@@ -7,6 +7,8 @@ namespace Sonheim::Variant
 	static const FPrimaryAssetType ResourceObjectType(TEXT("ResourceObjectVariant"));
 	static const FPrimaryAssetType ContainerType(TEXT("ContainerVariant"));
 	static const FPrimaryAssetType MonsterDexType(TEXT("MonsterDexVariant"));
+	static const FPrimaryAssetType UIWidgetDefType(TEXT("UIWidgetDefVariant"));
+	static const FPrimaryAssetType UIPresetType(TEXT("UIPresetVariant"));
 }
 
 FPrimaryAssetId USonheimAreaObjectVariantData::GetPrimaryAssetId() const
@@ -32,4 +34,14 @@ FPrimaryAssetId USonheimContainerVariantData::GetPrimaryAssetId() const
 FPrimaryAssetId USonheimMonsterDexVariantData::GetPrimaryAssetId() const
 {
 	return FPrimaryAssetId(Sonheim::Variant::MonsterDexType, GetFName());
+}
+
+FPrimaryAssetId USonheimUIWidgetDefVariantData::GetPrimaryAssetId() const
+{
+	return FPrimaryAssetId(Sonheim::Variant::UIWidgetDefType, GetFName());
+}
+
+FPrimaryAssetId USonheimUIPresetVariantData::GetPrimaryAssetId() const
+{
+	return FPrimaryAssetId(Sonheim::Variant::UIPresetType, GetFName());
 }

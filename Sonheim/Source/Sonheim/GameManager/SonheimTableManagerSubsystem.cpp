@@ -14,6 +14,8 @@ namespace
 	static const FPrimaryAssetType ResourceObjectVariantAssetType(TEXT("ResourceObjectVariant"));
 	static const FPrimaryAssetType ContainerVariantAssetType(TEXT("ContainerVariant"));
 	static const FPrimaryAssetType MonsterDexVariantAssetType(TEXT("MonsterDexVariant"));
+	static const FPrimaryAssetType UIWidgetDefVariantAssetType(TEXT("UIWidgetDefVariant"));
+	static const FPrimaryAssetType UIPresetVariantAssetType(TEXT("UIPresetVariant"));
 
 	template <typename TRowType>
 	void CopyRowsToMapByIntKey(UDataTable* Table, TMap<int32, TRowType>& OutMap, TFunctionRef<int32(const TRowType&)> KeySelector)
@@ -37,6 +39,15 @@ namespace
 
 	template <typename TObjectType>
 	void AddSoftPathIfValid(const TSoftObjectPtr<TObjectType>& SoftPtr, TSet<FSoftObjectPath>& UniquePaths)
+	{
+		if (!SoftPtr.IsNull())
+		{
+			UniquePaths.Add(SoftPtr.ToSoftObjectPath());
+		}
+	}
+
+	template <typename TObjectType>
+	void AddSoftClassPathIfValid(const TSoftClassPtr<TObjectType>& SoftPtr, TSet<FSoftObjectPath>& UniquePaths)
 	{
 		if (!SoftPtr.IsNull())
 		{
@@ -104,6 +115,67 @@ namespace
 			*TVariantType::StaticClass()->GetName());
 		return Variant;
 	}
+
+	template <typename TVariantType>
+	TVariantType* ResolveVariantAsset(const FSoftObjectPath& AssetPath, const TCHAR* DomainName, FName DomainKey)
+	{
+		UObject* LoadedObject = AssetPath.ResolveObject();
+		if (!LoadedObject)
+		{
+			LoadedObject = AssetPath.TryLoad();
+		}
+
+		TVariantType* Variant = Cast<TVariantType>(LoadedObject);
+		checkf(Variant,
+			TEXT("[TableManager] Failed to load variant asset for %s row. DomainKey=%s AssetPath=%s ExpectedClass=%s"),
+			DomainName,
+			*DomainKey.ToString(),
+			*AssetPath.ToString(),
+			*TVariantType::StaticClass()->GetName());
+		return Variant;
+	}
+
+	template <typename TRowType>
+	void CollectVariantAssetPathsByName(
+		const UAssetManager& AssetManager,
+		const TCHAR* DomainName,
+		const FPrimaryAssetType& AssetType,
+		const TMap<FName, TRowType>& SourceMap,
+		TFunctionRef<FName(const TRowType&)> VariantIdSelector,
+		TMap<FName, FSoftObjectPath>& OutVariantPathMap,
+		TSet<FSoftObjectPath>& OutUniqueVariantPaths)
+	{
+		TSet<FName> UniqueVariantIds;
+		OutVariantPathMap.Reserve(SourceMap.Num());
+
+		for (const TPair<FName, TRowType>& Pair : SourceMap)
+		{
+			const FName DomainKey = Pair.Key;
+			const FName VariantId = VariantIdSelector(Pair.Value);
+			checkf(!VariantId.IsNone(),
+				TEXT("[TableManager] Missing VariantId in %s row. DomainKey=%s"),
+				DomainName,
+				*DomainKey.ToString());
+
+			checkf(!UniqueVariantIds.Contains(VariantId),
+				TEXT("[TableManager] Duplicate VariantId in %s rows. VariantId=%s"),
+				DomainName,
+				*VariantId.ToString());
+			UniqueVariantIds.Add(VariantId);
+
+			const FPrimaryAssetId PrimaryAssetId(AssetType, VariantId);
+			const FSoftObjectPath AssetPath = AssetManager.GetPrimaryAssetPath(PrimaryAssetId);
+			checkf(AssetPath.IsValid(),
+				TEXT("[TableManager] Failed to resolve primary asset path. Domain=%s DomainKey=%s VariantId=%s PrimaryAssetType=%s"),
+				DomainName,
+				*DomainKey.ToString(),
+				*VariantId.ToString(),
+				*AssetType.ToString());
+
+			OutVariantPathMap.Add(DomainKey, AssetPath);
+			OutUniqueVariantPaths.Add(AssetPath);
+		}
+	}
 }
 
 void USonheimTableManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -134,6 +206,7 @@ void USonheimTableManagerSubsystem::Deinitialize()
 {
 	RuntimeDataLoadHandle.Reset();
 	CoreVariantLoadHandle.Reset();
+	UIVariantLoadHandle.Reset();
 	SelectedAssetPreloadHandle.Reset();
 	OnRuntimeDataReady.Clear();
 	ResetRuntimeData();
@@ -169,6 +242,11 @@ void USonheimTableManagerSubsystem::ResetRuntimeData()
 	ResourceObjectVariantPathMap.Reset();
 	ContainerVariantPathMap.Reset();
 	MonsterDexVariantPathMap.Reset();
+	UIWidgetDefVariantPathMap.Reset();
+	UIPresetVariantPathMap.Reset();
+
+	UIWidgetDefVariantMap.Reset();
+	UIPresetVariantMap.Reset();
 }
 
 void USonheimTableManagerSubsystem::RequestDataTablesAsyncLoad()
@@ -507,18 +585,108 @@ void USonheimTableManagerSubsystem::OnCoreVariantsLoaded()
 		Pair.Value.Icon = Variant->Icon;
 	}
 
+	RequestUIVariantsAsyncLoad();
+}
+
+void USonheimTableManagerSubsystem::RequestUIVariantsAsyncLoad()
+{
+	UIWidgetDefVariantPathMap.Reset();
+	UIPresetVariantPathMap.Reset();
+	UIWidgetDefVariantMap.Reset();
+	UIPresetVariantMap.Reset();
+
+	// E03 hard cutover: UI class reference is hydrated from variant only.
+	for (TPair<FName, FUIWidgetDefRow>& Pair : UIWidgetDefMap)
+	{
+		Pair.Value.WidgetClass = nullptr;
+	}
+
+	const UAssetManager& AssetManager = UAssetManager::Get();
+	TSet<FSoftObjectPath> UniqueVariantPaths;
+
+	CollectVariantAssetPathsByName<FUIWidgetDefRow>(
+		AssetManager,
+		TEXT("UIWidgetDef"),
+		UIWidgetDefVariantAssetType,
+		UIWidgetDefMap,
+		[](const FUIWidgetDefRow& Row) { return Row.VariantId; },
+		UIWidgetDefVariantPathMap,
+		UniqueVariantPaths);
+
+	CollectVariantAssetPathsByName<FUIWidgetPresetRow>(
+		AssetManager,
+		TEXT("UIPreset"),
+		UIPresetVariantAssetType,
+		UIPresetMap,
+		[](const FUIWidgetPresetRow& Row) { return Row.VariantId; },
+		UIPresetVariantPathMap,
+		UniqueVariantPaths);
+
+	if (UniqueVariantPaths.IsEmpty())
+	{
+		OnUIVariantsLoaded();
+		return;
+	}
+
+	TArray<FSoftObjectPath> Paths = UniqueVariantPaths.Array();
+	UIVariantLoadHandle = RuntimeDataStreamableManager.RequestAsyncLoad(
+		Paths,
+		FStreamableDelegate::CreateUObject(this, &USonheimTableManagerSubsystem::OnUIVariantsLoaded),
+		FStreamableManager::AsyncLoadHighPriority);
+
+	if (!UIVariantLoadHandle.IsValid())
+	{
+		bHasFailed = true;
+		ensureAlwaysMsgf(false, TEXT("[TableManager] Failed to request async UI variant load handle."));
+		checkf(false, TEXT("[TableManager] Failed to request async UI variant load handle."));
+	}
+}
+
+void USonheimTableManagerSubsystem::OnUIVariantsLoaded()
+{
+	for (TPair<FName, FUIWidgetDefRow>& Pair : UIWidgetDefMap)
+	{
+		const FSoftObjectPath* VariantPath = UIWidgetDefVariantPathMap.Find(Pair.Key);
+		checkf(VariantPath, TEXT("[TableManager] Missing UIWidgetDef variant path. UIId=%s"), *Pair.Key.ToString());
+
+		USonheimUIWidgetDefVariantData* Variant = ResolveVariantAsset<USonheimUIWidgetDefVariantData>(
+			*VariantPath,
+			TEXT("UIWidgetDef"),
+			Pair.Key);
+		UIWidgetDefVariantMap.Add(Pair.Key, Variant);
+		Pair.Value.WidgetClass = Variant->WidgetClass;
+		checkf(!Pair.Value.WidgetClass.IsNull(),
+			TEXT("[TableManager] UIWidgetDef variant has null WidgetClass. UIId=%s VariantId=%s"),
+			*Pair.Key.ToString(),
+			*Pair.Value.VariantId.ToString());
+	}
+
+	for (TPair<FName, FUIWidgetPresetRow>& Pair : UIPresetMap)
+	{
+		const FSoftObjectPath* VariantPath = UIPresetVariantPathMap.Find(Pair.Key);
+		checkf(VariantPath, TEXT("[TableManager] Missing UIPreset variant path. PresetId=%s"), *Pair.Key.ToString());
+
+		USonheimUIPresetVariantData* Variant = ResolveVariantAsset<USonheimUIPresetVariantData>(
+			*VariantPath,
+			TEXT("UIPreset"),
+			Pair.Key);
+		UIPresetVariantMap.Add(Pair.Key, Variant);
+	}
+
 	bIsReady = true;
 	bHasFailed = false;
 
 	UE_LOG(
 		SONHEIM,
 		Log,
-		TEXT("[TableManager] Runtime Data Ready. CoreVariants: AreaObject=%d Item=%d Resource=%d Container=%d MonsterDex=%d"),
+		TEXT("[TableManager] Runtime Data Ready. LoadOrder=DataTable->CoreVariant->UIVariant->Ready. CoreVariants: AreaObject=%d Item=%d Resource=%d Container=%d MonsterDex=%d UIVariants: WidgetDef=%d UIPreset=%d"),
 		AreaObjectVariantPathMap.Num(),
 		ItemVariantPathMap.Num(),
 		ResourceObjectVariantPathMap.Num(),
 		ContainerVariantPathMap.Num(),
-		MonsterDexVariantPathMap.Num());
+		MonsterDexVariantPathMap.Num(),
+		UIWidgetDefVariantPathMap.Num(),
+		UIPresetVariantPathMap.Num());
 
 	OnRuntimeDataReady.Broadcast();
 	BuildSelectedAssetPreload();
@@ -553,6 +721,19 @@ void USonheimTableManagerSubsystem::BuildSelectedAssetPreload()
 		AddSoftPathIfValid(Pair.Value.ResourceMesh, UniquePaths);
 	}
 
+	int32 UIWidgetPreloadCount = 0;
+	for (const TPair<FName, TObjectPtr<USonheimUIWidgetDefVariantData>>& Pair : UIWidgetDefVariantMap)
+	{
+		const USonheimUIWidgetDefVariantData* Variant = Pair.Value;
+		if (!Variant || !Variant->bPreloadWidgetClass)
+		{
+			continue;
+		}
+
+		AddSoftClassPathIfValid(Variant->WidgetClass, UniquePaths);
+		++UIWidgetPreloadCount;
+	}
+
 	if (UniquePaths.IsEmpty())
 	{
 		bSelectedAssetPreloadComplete = true;
@@ -569,7 +750,10 @@ void USonheimTableManagerSubsystem::BuildSelectedAssetPreload()
 	{
 		UE_LOG(SONHEIM, Warning, TEXT("[TableManager] Selected asset preload handle is invalid."));
 		bSelectedAssetPreloadComplete = true;
+		return;
 	}
+
+	UE_LOG(SONHEIM, Log, TEXT("[TableManager] Selected preload requested. UIWidgetClass=%d"), UIWidgetPreloadCount);
 }
 
 void USonheimTableManagerSubsystem::OnSelectedAssetPreloadComplete()
@@ -683,6 +867,20 @@ const FUIWidgetPresetRow* USonheimTableManagerSubsystem::FindUIPreset(FName Pres
 {
 	if (!IsRuntimeDataAccessible(TEXT("FindUIPreset"))) return nullptr;
 	return UIPresetMap.Find(PresetId);
+}
+
+const USonheimUIPresetVariantData* USonheimTableManagerSubsystem::FindUIPresetVariant(FName PresetId) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindUIPresetVariant"))) return nullptr;
+	const TObjectPtr<USonheimUIPresetVariantData>* Variant = UIPresetVariantMap.Find(PresetId);
+	return Variant ? Variant->Get() : nullptr;
+}
+
+const USonheimUIWidgetDefVariantData* USonheimTableManagerSubsystem::FindUIWidgetDefVariant(FName UIId) const
+{
+	if (!IsRuntimeDataAccessible(TEXT("FindUIWidgetDefVariant"))) return nullptr;
+	const TObjectPtr<USonheimUIWidgetDefVariantData>* Variant = UIWidgetDefVariantMap.Find(UIId);
+	return Variant ? Variant->Get() : nullptr;
 }
 
 const TSoftObjectPtr<USoundBase>* USonheimTableManagerSubsystem::FindSound(int32 SoundID) const

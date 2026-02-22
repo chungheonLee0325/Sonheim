@@ -35,12 +35,14 @@ struct FUIWidgetDefRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
-	// E02 동결 계약:
-	// UIId, WidgetClass, Layer, InputMode, StackPolicy
-	// 추가 필드는 임시이며 E03+에서 변경될 수 있다.
+	// E03 계약:
+	// DT에는 동작 정책만 유지하고, 위젯 클래스는 VariantId 경유로 hydrate한다.
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FName UIId = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FName VariantId = NAME_None;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSoftClassPtr<class UUserWidget> WidgetClass;
@@ -75,11 +77,14 @@ struct FUIWidgetPresetRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
-	// E02 동결 계약: PresetId, TemplateUIId
-	// 추가 필드는 임시이며 E03+에서 변경될 수 있다.
+	// E03 계약:
+	// DT에는 동작/기본 fallback 텍스트를 유지하고, StringTable 참조/키는 VariantId 경유로 hydrate한다.
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FName PresetId = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FName VariantId = NAME_None;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FName TemplateUIId = NAME_None;

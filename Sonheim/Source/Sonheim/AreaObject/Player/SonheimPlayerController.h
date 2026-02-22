@@ -81,6 +81,28 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category="Quest")
 	void BP_ShowQuestToast(const FText& Text, float DurationSeconds);
 
+	// ===== E03 Dev Exec (host/authority only) =====
+	UFUNCTION(Exec)
+	void E03Debug_QuestAccept(int32 QuestID);
+
+	UFUNCTION(Exec)
+	void E03Debug_QuestKill(int32 TargetAreaObjectID, int32 Count = 1);
+
+	UFUNCTION(Exec)
+	void E03Debug_QuestItemDelta(int32 ItemID, int32 Delta, int32 Reason = 1);
+
+	UFUNCTION(Exec)
+	void E03Debug_GiveItem(int32 ItemID, int32 Count = 1);
+
+	UFUNCTION(Exec)
+	void E03Debug_QuestTurnIn(int32 QuestID);
+
+	UFUNCTION(Exec)
+	void E03Debug_DexKill(int32 MonsterID, int32 Count = 1);
+
+	UFUNCTION(Exec)
+	void E03Debug_DexCapture(int32 MonsterID, int32 Count = 1);
+
 protected:
 	// 입력 설정
 	virtual void SetupInputComponent() override;
