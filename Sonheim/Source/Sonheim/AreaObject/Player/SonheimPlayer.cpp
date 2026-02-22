@@ -304,7 +304,7 @@ void ASonheimPlayer::Reward(int ItemID, int ItemValue)
 {
 	if (S_PlayerState && S_PlayerState->m_InventoryComponent)
 	{
-		S_PlayerState->m_InventoryComponent->AddItem(ItemID, ItemValue);
+		S_PlayerState->m_InventoryComponent->AddItemDetailed(ItemID, ItemValue, EItemChangeReason::LootPickup, nullptr, true);
 	}
 }
 
@@ -341,29 +341,31 @@ void ASonheimPlayer::UpdateWeaponMesh(int ItemID)
 	if (!m_GameInstance) return;
 
 	FItemData* ItemData = m_GameInstance->GetDataItem(ItemID);
-	if (ItemData && ItemData->EquipmentData.EquipmentMesh)
+	if (ItemData)
 	{
-		WeaponComponent->SetSkeletalMesh(ItemData->EquipmentData.EquipmentMesh);
-		if (ItemData->EquipmentData.EquipmentAnim)
+		if (USkeletalMesh* NewMesh = ItemData->EquipmentData.EquipmentMesh.LoadSynchronous())
 		{
-			WeaponComponent->SetAnimInstanceClass(ItemData->EquipmentData.EquipmentAnim->GetClass());
-		}
+			WeaponComponent->SetSkeletalMesh(NewMesh);
+			if (UAnimBlueprint* AnimBP = ItemData->EquipmentData.EquipmentAnim.LoadSynchronous())
+			{
+				WeaponComponent->SetAnimInstanceClass(AnimBP->GetClass());
+			}
 
-		if (S_PlayerAnimInstance)
-		{
-			S_PlayerAnimInstance->bIsMelee = (ItemData->EquipmentData.WeaponType == EWeaponType::Melee);
-			S_PlayerAnimInstance->bIsShotgun = (ItemData->EquipmentData.WeaponType == EWeaponType::ShotGun);
-		}
+			if (S_PlayerAnimInstance)
+			{
+				S_PlayerAnimInstance->bIsMelee = (ItemData->EquipmentData.WeaponType == EWeaponType::Melee);
+				S_PlayerAnimInstance->bIsShotgun = (ItemData->EquipmentData.WeaponType == EWeaponType::ShotGun);
+			}
 
-		CurrentWeaponType = ItemData->EquipmentData.WeaponType;
-		OnRep_CurrentWeaponType();
+			CurrentWeaponType = ItemData->EquipmentData.WeaponType;
+			OnRep_CurrentWeaponType();
+		}
 	}
 }
 
 void ASonheimPlayer::ClearWeaponMesh()
 {
 	WeaponComponent->SetSkeletalMesh(nullptr);
-
 	if (S_PlayerAnimInstance)
 	{
 		S_PlayerAnimInstance->bIsMelee = false;

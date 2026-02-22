@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "UObject/SoftObjectPtr.h"
 #include "SonheimGameMode.generated.h"
 
 
@@ -19,6 +20,9 @@ class SONHEIM_API ASonheimGameMode : public AGameModeBase
 
 public:
 	ASonheimGameMode();
+
+	virtual void PostLogin(APlayerController* NewPlayer) override;
+	virtual void Logout(AController* Exiting) override;
 
 	const FOnPlayerDiedSignature& GetOnPlayerDied() const { return OnPlayerDied; }
 
@@ -51,7 +55,7 @@ public:
 	void SetBGMVolume(float Volume);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "SoundManager")
-	TMap<int, USoundBase*> SoundDataMap;
+	TMap<int, TSoftObjectPtr<USoundBase>> SoundDataMap;
 
 protected:
 	virtual void BeginPlay() override;

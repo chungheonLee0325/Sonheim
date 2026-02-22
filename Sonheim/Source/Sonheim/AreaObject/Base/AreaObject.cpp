@@ -12,6 +12,10 @@
 #include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/Utilities/LogMacro.h"
+#include "Sonheim/AreaObject/Monster/BaseMonster.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
+#include "Sonheim/AreaObject/Player/Utility/QuestComponent.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Utility/MoveUtilComponent.h"
@@ -25,6 +29,7 @@
 #include "NiagaraComponent.h"
 #include "Sonheim/AreaObject/Skill/SonheimSkillComponent.h"
 #include "Engine/ActorChannel.h"
+#include "Sonheim/AreaObject/Player/Utility/MonsterDexComponent.h"
 
 // Sets default values
 AAreaObject::AAreaObject()
@@ -328,7 +333,7 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 
 	// IFF 및 상태 체크
 	AAreaObject* damageCauser = Cast<AAreaObject>(DamageCauser);
-	if (damageCauser->CanAttack(this) == false)
+	if (!damageCauser || damageCauser->CanAttack(this) == false)
 	{
 		return 0.0f;
 	}
@@ -337,7 +342,10 @@ float AAreaObject::TakeDamage(float Damage, const FDamageEvent& DamageEvent, ACo
 		return 0.0f;
 
 	// Instigator 설정 - 경험치 보상에 사용 -> Aggro System으로 확장시 변경 예정
-	SetInstigator(EventInstigator->GetPawn());
+	if (EventInstigator)
+	{
+		SetInstigator(EventInstigator->GetPawn());
+	}
 
 	// 데미지 계산
 	float ActualDamage = HandleDefenceDamageCalculation(Damage);
@@ -445,9 +453,12 @@ void AAreaObject::OnDie_Implementation()
 	if (UAnimInstance* AnimInst = GetMesh()->GetAnimInstance())
 	{
 		AnimInst->StopAllMontages(0.1f);
-		if (dt_AreaObject->Die_AnimMontage)
+		if (dt_AreaObject)
 		{
-			AnimInst->Montage_Play(dt_AreaObject->Die_AnimMontage);
+			if (UAnimMontage* DieMontage = dt_AreaObject->Die_AnimMontage.Get())
+			{
+				AnimInst->Montage_Play(DieMontage);
+			}
 		}
 	}
 
@@ -464,6 +475,33 @@ void AAreaObject::OnKill(AAreaObject* Killer)
 	if (Killer)
 	{
 		Killer->m_LevelComponent->AddExp(this->m_LevelComponent->RewardHuntExp());
+
+		// Quest progress (server)
+		if (HasAuthority())
+		{
+			ASonheimPlayer* PlayerKiller = Cast<ASonheimPlayer>(Killer);
+			if (!PlayerKiller)
+			{
+				if (ABaseMonster* MonsterKiller = Cast<ABaseMonster>(Killer))
+				{
+					PlayerKiller = MonsterKiller->PartnerOwner;
+				}
+			}
+			if (PlayerKiller)
+			{
+				if (ASonheimPlayerState* PS = PlayerKiller->GetPlayerState<ASonheimPlayerState>())
+				{
+					if (PS->m_QuestComponent)
+					{
+						PS->m_QuestComponent->NotifyKilled(m_AreaObjectID);
+					}
+					if (PS->m_MonsterDexComponent && dt_AreaObject && dt_AreaObject->AreaObjectType == EAreaObjectType::Enemy)
+					{
+						PS->m_MonsterDexComponent->NotifyKilled(m_AreaObjectID);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -600,12 +638,15 @@ void AAreaObject::MultiCast_CastSkill_Implementation(int SkillID, AAreaObject* T
 	UBaseSkill* Skill = GetSkillByID(SkillID);
 	FSkillData* SkillData = m_GameInstance->GetDataSkill(SkillID);
 
-	if (m_AnimInstance && SkillData && SkillData->Montage)
+	if (m_AnimInstance && SkillData)
 	{
-		m_AnimInstance->Montage_Play(SkillData->Montage);
-		if (Skill)
+		if (UAnimMontage* Montage = SkillData->Montage.Get())
 		{
-			Skill->BindMontageDelegates(m_AnimInstance, SkillData->Montage);
+			m_AnimInstance->Montage_Play(Montage);
+			if (Skill)
+			{
+				Skill->BindMontageDelegates(m_AnimInstance, Montage);
+			}
 		}
 	}
 	UpdateCurrentSkill(Skill);
@@ -809,6 +850,7 @@ void AAreaObject::PlayGlobalSound(int SoundID)
 	if (m_GameMode == nullptr)
 	{
 		LOG_PRINT(TEXT("GameMode nullptr"));
+		return;
 	}
 	m_GameMode->PlayGlobalSound(SoundID);
 }
@@ -818,6 +860,7 @@ void AAreaObject::PlayPositionalSound(int SoundID, FVector Position)
 	if (m_GameMode == nullptr)
 	{
 		LOG_PRINT(TEXT("GameMode nullptr"));
+		return;
 	}
 	m_GameMode->PlayPositionalSound(SoundID, Position);
 }
@@ -827,6 +870,7 @@ void AAreaObject::PlayBGM(int SoundID, bool bLoop)
 	if (m_GameMode == nullptr)
 	{
 		LOG_PRINT(TEXT("GameMode nullptr"));
+		return;
 	}
 	m_GameMode->PlayBGM(SoundID, bLoop);
 }
@@ -836,6 +880,7 @@ void AAreaObject::StopBGM()
 	if (m_GameMode == nullptr)
 	{
 		LOG_PRINT(TEXT("GameMode nullptr"));
+		return;
 	}
 	m_GameMode->StopBGM();
 }
@@ -892,26 +937,26 @@ void AAreaObject::MulticastDamageEffect_Implementation(float Damage, FVector Hit
 	// === 사운드 및 VFX는 기존과 동일 ===
 
 	// Spawn Hit SFX
-	if (dt_AreaObject->HitSoundID != 0)
+	if (dt_AreaObject && dt_AreaObject->HitSoundID != 0)
 	{
 		PlayPositionalSound(dt_AreaObject->HitSoundID, HitLocation);
 	}
 
 	// Spawn Hit SFX
-	if (AttackData.HitSFX != nullptr)
+	if (USoundBase* HitSfx = AttackData.HitSFX.Get())
 	{
-		UGameplayStatics::PlaySoundAtLocation(GetWorld(), AttackData.HitSFX, HitLocation);
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), HitSfx, HitLocation);
 	}
 
 	// Spawn Hit VFX
-	if (AttackData.HitVFX_N != nullptr)
+	if (UNiagaraSystem* HitVfxN = AttackData.HitVFX_N.Get())
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), AttackData.HitVFX_N, HitLocation,
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), HitVfxN, HitLocation,
 		                                               FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
 	}
-	else if (AttackData.HitVFX_P != nullptr)
+	else if (UParticleSystem* HitVfxP = AttackData.HitVFX_P.Get())
 	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), AttackData.HitVFX_P, HitLocation,
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitVfxP, HitLocation,
 		                                         FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
 	}
 }

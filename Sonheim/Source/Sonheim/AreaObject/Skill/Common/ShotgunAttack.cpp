@@ -82,19 +82,21 @@ bool UShotgunAttack::Fire()
 
     // APlayerController에 내장된 반동 함수들
     float RecoilAmount = FMath::RandRange(0.5f, 1.f);
-    APlayerController* PlayerController = Cast<APlayerController>(m_Caster->GetController());
-    PlayerController->AddPitchInput(-RecoilAmount);
-    PlayerController->AddYawInput(FMath::RandRange(-0.5f, 0.5f) * RecoilAmount);
-    
-    // 발사 효과 재생
-    if (m_SkillData->AttackData[0].FireSFX)
+    if (APlayerController* PlayerController = Cast<APlayerController>(m_Caster->GetController()))
     {
-        m_Caster->Multicast_PlaySoundAtLocation(StartLocation, m_SkillData->AttackData[0].FireSFX);
+        PlayerController->AddPitchInput(-RecoilAmount);
+        PlayerController->AddYawInput(FMath::RandRange(-0.5f, 0.5f) * RecoilAmount);
     }
     
-    if (m_SkillData->AttackData[0].FireVFX_N)
+    // 발사 효과 재생
+    if (USoundBase* FireSfx = m_SkillData->AttackData[0].FireSFX.Get())
     {
-        m_Caster->Multicast_PlayNiagaraEffectAtLocation(StartLocation, m_SkillData->AttackData[0].FireVFX_N, BaseDirection.Rotation());
+        m_Caster->Multicast_PlaySoundAtLocation(StartLocation, FireSfx);
+    }
+    
+    if (UNiagaraSystem* FireVfx = m_SkillData->AttackData[0].FireVFX_N.Get())
+    {
+        m_Caster->Multicast_PlayNiagaraEffectAtLocation(StartLocation, FireVfx, BaseDirection.Rotation());
     }
     
     return true;
@@ -145,10 +147,10 @@ void UShotgunAttack::FirePellet(const FVector& StartLocation, const FVector& Dir
     }
     
     // 트레일 효과 생성
-    if (m_SkillData->AttackData[0].FireVFX2_N)
+    if (UNiagaraSystem* TrailVfx = m_SkillData->AttackData[0].FireVFX2_N.Get())
     {
         FVector TrailEnd = bHit ? HitResult.Location : EndLocation;
-        m_Caster->Multicast_PlayNiagaraEffectAtLocation(StartLocation, m_SkillData->AttackData[0].FireVFX2_N, (TrailEnd - StartLocation).Rotation());
+        m_Caster->Multicast_PlayNiagaraEffectAtLocation(StartLocation, TrailVfx, (TrailEnd - StartLocation).Rotation());
 
     }
     

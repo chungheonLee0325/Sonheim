@@ -47,11 +47,19 @@ void ABaseResourceObject::BeginPlay()
 	// 데이터 초기화 & Game Instance Setting
 	m_GameInstance = Cast<USonheimGameInstance>(GetGameInstance());
 	dt_ResourceObject = m_GameInstance->GetDataResourceObject(m_ResourceObjectID);
-
-	if (dt_ResourceObject && dt_ResourceObject->ResourceMesh)
+	if (!dt_ResourceObject)
 	{
-		m_StaticMeshComponent->SetStaticMesh(dt_ResourceObject->ResourceMesh);
-		m_StaticMeshComponent->SetRelativeScale3D(dt_ResourceObject->MeshScale);
+		UE_LOG(LogTemp, Warning, TEXT("ResourceObject data missing. ID=%d"), m_ResourceObjectID);
+		return;
+	}
+
+	if (dt_ResourceObject)
+	{
+		if (UStaticMesh* Mesh = dt_ResourceObject->ResourceMesh.LoadSynchronous())
+		{
+			m_StaticMeshComponent->SetStaticMesh(Mesh);
+			m_StaticMeshComponent->SetRelativeScale3D(dt_ResourceObject->MeshScale);
+		}
 	}
 
 	HealthComponent->InitHealth(dt_ResourceObject->HPMax);
@@ -62,6 +70,11 @@ void ABaseResourceObject::BeginPlay()
 
 float ABaseResourceObject::GetWeaknessModifier(EAttackType AttackType) const
 {
+	if (!dt_ResourceObject)
+	{
+		return 1.0f;
+	}
+
 	if (dt_ResourceObject->WeaknessAttackMap.Contains(AttackType))
 	{
 		return dt_ResourceObject->WeaknessAttackMap.FindRef(AttackType);
@@ -78,6 +91,7 @@ void ABaseResourceObject::Tick(float DeltaTime)
 void ABaseResourceObject::OnDestroy()
 {
 	if (!HasAuthority()) return;
+	if (!dt_ResourceObject) return;
 	
 	CanHarvest = false;
 
@@ -90,7 +104,10 @@ void ABaseResourceObject::OnDestroy()
 
 	if (dt_ResourceObject->DestroySoundID != 0)
 	{
-		m_GameMode->PlayPositionalSound(dt_ResourceObject->DestroySoundID, GetActorLocation());
+		if (m_GameMode)
+		{
+			m_GameMode->PlayPositionalSound(dt_ResourceObject->DestroySoundID, GetActorLocation());
+		}
 	}
 
 	Destroy();
@@ -100,6 +117,7 @@ void ABaseResourceObject::OnDestroy()
 void ABaseResourceObject::SpawnPartialResources(int32 SegmentsLost) const
 {
 	if (!HasAuthority()) return;
+	if (!dt_ResourceObject) return;
 
 	FItemSpawnOptions Opt;
 	Opt.bRequireInteraction = false;
@@ -131,6 +149,8 @@ float ABaseResourceObject::TakeDamage(float Damage, const FDamageEvent& DamageEv
 	}
 	
 	if (!CanHarvest)
+		return 0.0f;
+	if (!dt_ResourceObject)
 		return 0.0f;
 
 	FHitResult hitResult;
@@ -195,6 +215,11 @@ float ABaseResourceObject::TakeDamage(float Damage, const FDamageEvent& DamageEv
 void ABaseResourceObject::MulticastDamageEffect_Implementation(float Damage, FVector HitLocation, AActor* DamageCauser,
                                                                float DamageCoefficient,const FAttackData& AttackData)
 {
+	if (!dt_ResourceObject)
+	{
+		return;
+	}
+
 	// Spawn floating damage
 	FVector SpawnLocation = HitLocation;
 
@@ -223,43 +248,54 @@ void ABaseResourceObject::MulticastDamageEffect_Implementation(float Damage, FVe
 	// Spawn Harvest SFX
 	if (dt_ResourceObject->HarvestSoundID != 0)
 	{
-		m_GameMode->PlayPositionalSound(dt_ResourceObject->HarvestSoundID, GetActorLocation());
+		if (m_GameMode)
+		{
+			m_GameMode->PlayPositionalSound(dt_ResourceObject->HarvestSoundID, GetActorLocation());
+		}
 	}
 	// Spawn Harvest VFX
-	if (dt_ResourceObject->HarvestEffect != nullptr)
+	if (UParticleSystem* HarvestEffect = dt_ResourceObject->HarvestEffect.Get())
 	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), dt_ResourceObject->HarvestEffect, SpawnLocation);
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HarvestEffect, SpawnLocation);
 	}
 
 	// Spawn Hit SFX
-	if (AttackData.HitSFX != nullptr)
+	if (USoundBase* HitSfx = AttackData.HitSFX.Get())
 	{
-		UGameplayStatics::PlaySoundAtLocation(GetWorld(), AttackData.HitSFX, HitLocation);
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), HitSfx, HitLocation);
 	}
 
 	// Spawn Hit VFX
-	if (AttackData.HitVFX_N != nullptr)
+	if (UNiagaraSystem* HitVfxN = AttackData.HitVFX_N.Get())
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), AttackData.HitVFX_N, HitLocation,
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), HitVfxN, HitLocation,
 													   FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
 	}
-	else if (AttackData.HitVFX_P != nullptr)
+	else if (UParticleSystem* HitVfxP = AttackData.HitVFX_P.Get())
 	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), AttackData.HitVFX_P, HitLocation,
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitVfxP, HitLocation,
 												 FRotator::ZeroRotator, FVector(1.f) * AttackData.VFXScale);
 	}
 }
 
 void ABaseResourceObject::MulticastDestroyEffect_Implementation()
 {
+	if (!dt_ResourceObject)
+	{
+		return;
+	}
+
 	// Spawn Destroy SFX
 	if (dt_ResourceObject->DestroySoundID != 0)
 	{
-		m_GameMode->PlayPositionalSound(dt_ResourceObject->DestroySoundID, GetActorLocation());
+		if (m_GameMode)
+		{
+			m_GameMode->PlayPositionalSound(dt_ResourceObject->DestroySoundID, GetActorLocation());
+		}
 	}
 	// Spawn Harvest VFX
-	if (dt_ResourceObject->DestroyEffect != nullptr)
+	if (UParticleSystem* DestroyEffect = dt_ResourceObject->DestroyEffect.Get())
 	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), dt_ResourceObject->DestroyEffect, GetActorLocation());
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DestroyEffect, GetActorLocation());
 	}
 }
