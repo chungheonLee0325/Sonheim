@@ -7,6 +7,8 @@
 #include "Sonheim/Utilities/LogMacro.h"
 #include "BaseMonster.generated.h"
 
+class ABaseMonster;
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnMonsterDeathConfirmed, ABaseMonster*);
 class UNiagaraSystem;
 class UNiagaraEmitter;
 class UWidgetComponent;
@@ -23,6 +25,9 @@ class SONHEIM_API ABaseMonster : public AAreaObject
 
 public:
 	ABaseMonster();
+	// Server-only confirmed combat death. Capture/despawn/EndPlay do not broadcast this.
+	FOnMonsterDeathConfirmed OnMonsterDeathConfirmed;
+	FOnMonsterDeathConfirmed OnMonsterBecamePartner;
 	// Skill
 	FSkillBagData* dt_SkillBag;
 

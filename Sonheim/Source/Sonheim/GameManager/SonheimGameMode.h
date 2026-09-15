@@ -24,6 +24,7 @@ public:
 
 	//플레이어의 폰을 스폰 시도.
 	virtual void RestartPlayer(AController* NewPlayer) override;
+	virtual void Logout(AController* Exiting) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Audio")
 	void PlayGlobalSound(int SoundID);

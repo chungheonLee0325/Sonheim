@@ -12,7 +12,7 @@ public class Sonheim : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			"Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "UMG", "NavigationSystem", "OnlineSubsystem",
-			"OnlineSubsystemSteam", "OnlineSubsystemNull", "OnlineSubsystemUtils", "Niagara", "NetCore"
+			"OnlineSubsystemSteam", "OnlineSubsystemNull", "OnlineSubsystemUtils", "Niagara", "NetCore", "GameplayTags", "Slate", "SlateCore"
 		});
 	}
 }

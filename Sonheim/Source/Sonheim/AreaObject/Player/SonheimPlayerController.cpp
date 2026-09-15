@@ -19,9 +19,11 @@
 #include "Sonheim/UI/Widget/Player/Inventory/InventoryWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/PlayerStatWidget.h"
 #include "Utility/InventoryComponent.h"
+#include "Utility/DungeonClientBridgeComponent.h"
 
 ASonheimPlayerController::ASonheimPlayerController()
 {
+	CreateDefaultSubobject<UDungeonClientBridgeComponent>(TEXT("DungeonClientBridge"));
 	// Enhanced Input Setting
 	static ConstructorHelpers::FObjectFinder<UInputMappingContext> tempInputMapping(
 		TEXT(

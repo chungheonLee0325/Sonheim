@@ -4,6 +4,8 @@
 #include "SonheimGameMode.h"
 
 #include "SonheimGameInstance.h"
+#include "SonheimGameState.h"
+#include "Dungeon/DungeonStageRuntimeSubsystem.h"
 #include "Components/AudioComponent.h"
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/Character.h"
@@ -12,6 +14,7 @@
 
 ASonheimGameMode::ASonheimGameMode()
 {
+	GameStateClass = ASonheimGameState::StaticClass();
 	AudioComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("BGMAudioComponennt"));
 	AudioComponent->bAutoDestroy = false;
 	AudioComponent->bAutoManageAttachment = false;
@@ -64,8 +67,16 @@ void ASonheimGameMode::RestartPlayer(AController* NewPlayer)
 	Super::RestartPlayer(NewPlayer);
 }
 
+void ASonheimGameMode::Logout(AController* Exiting)
+{
+	if (auto* Runtime = GetWorld()->GetSubsystem<UDungeonStageRuntimeSubsystem>()) Runtime->AbortForOwner(Exiting);
+	Super::Logout(Exiting);
+}
+
 void ASonheimGameMode::PlayerDied(ACharacter* Character)
 {
+	if (Character)
+		if (auto* Runtime = GetWorld()->GetSubsystem<UDungeonStageRuntimeSubsystem>()) Runtime->AbortForOwner(Character->GetController());
 	//캐릭터의 플레이어 컨트롤러에 대한 레퍼런스 구하기
 	AController* CharacterController = Character->GetController();
 	RestartPlayer(CharacterController);

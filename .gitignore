@@ -2,3 +2,15 @@ Sonheim/Source/.vscode/
 Sonheim/Sonheim.uproject.DotSettings.user
 Sonheim/.idea/
 .idea/
+
+# Unreal generated outputs and local editor tooling
+Sonheim/Binaries/
+Sonheim/Intermediate/
+Sonheim/Saved/
+Sonheim/DerivedDataCache/
+Sonheim/Plugins/NeoStackAI/
+Sonheim/.vs/
+Sonheim/*.sln
+Sonheim/.agents/
+Sonheim/.claude/
+Sonheim/.neostack/

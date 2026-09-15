@@ -249,6 +249,7 @@ ABaseResourceObject* ABaseMonster::GetResourceTarget() const
 
 void ABaseMonster::OnDie_Implementation()
 {
+	const bool bFirstDeath = !IsDead;
 	Super::OnDie_Implementation();
 	// 죽는 애니메이션 하고
 	IsDead = true;
@@ -281,7 +282,10 @@ void ABaseMonster::OnDie_Implementation()
 	GetCapsuleComponent()->SetSimulatePhysics(true);
 
 	// UI Disable
-	StatusWidget->RemoveFromParent();
+	if (StatusWidget)
+	{
+		StatusWidget->RemoveFromParent();
+	}
 
 	// TWeakObjectPtr<AAreaObject> weakThis = this;
 	// GetWorld()->GetTimerManager().SetTimer(DeathTimerHandle, [weakThis]()
@@ -298,6 +302,10 @@ void ABaseMonster::OnDie_Implementation()
 		m_AiFSM->StopFSM();
 	// 움직임 정지
 	StopAll();
+	if (bFirstDeath && HasAuthority() && IsDie() && GetHP() <= 0.0f && !PartnerOwner)
+	{
+		OnMonsterDeathConfirmed.Broadcast(this);
+	}
 }
 
 
@@ -462,7 +470,8 @@ void ABaseMonster::SetPartnerOwner(ASonheimPlayer* NewOwner)
 {
 	PartnerOwner = NewOwner;
  	IncreaseHP(10000);
-	StatusWidget->SetPartnerPalHPWidget();
+	if (StatusWidget) StatusWidget->SetPartnerPalHPWidget();
+	if (HasAuthority() && NewOwner) OnMonsterBecamePartner.Broadcast(this);
 	//DeactivateMonster();
 }
 
