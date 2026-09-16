@@ -49,6 +49,7 @@ bool UDungeonDefinitionDataAsset::ValidateDefinition(TArray<FString>& Errors, TA
 				if ((Action.Type == EDungeonStageAction::SetRunTag || Action.Type == EDungeonStageAction::ClearRunTag) && !Action.RunTag.IsValid()) Errors.Add(Stage.StageId.ToString() + TEXT(": invalid RunTag action."));
 				if (Action.Type == EDungeonStageAction::EmitEvent && Action.Event != EDungeonStageEvent::StageEntered) Errors.Add(TEXT("EmitEvent only permits StageEntered. Combat/interaction facts require trusted producers."));
 				if (Action.Type == EDungeonStageAction::EmitEvent && Rule.Event == Action.Event && Rule.SourceId == Action.EventSourceId) Errors.Add(TEXT("Immediate event self-loop."));
+				if (Action.Type == EDungeonStageAction::GrantReward && (Action.RewardItemId <= 0 || Action.RewardCount < 1 || Action.RewardCount > 99)) Errors.Add(Stage.StageId.ToString() + TEXT(": invalid reward action."));
 			}
 			for (int32 Index = 0; Index < Rule.Transitions.Num(); ++Index)
 			{

@@ -5,6 +5,7 @@
 #include "DungeonStageConditionEvaluator.h"
 #include "Sonheim/GameObject/Dungeon/DungeonTestArea.h"
 #include "Sonheim/GameObject/Dungeon/DungeonDefinitionDataAsset.h"
+#include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/GameManager/SonheimGameState.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
@@ -122,6 +123,17 @@ bool UDungeonStageRuntimeSubsystem::ExecuteAction(const FDungeonStageAction& Act
 	// The tags are part of the published state, so the world can react to them as soon as a rule sets one.
 	case EDungeonStageAction::SetRunTag: RunTags.AddTag(Action.RunTag); State.RunTags = RunTags; return true;
 	case EDungeonStageAction::ClearRunTag: RunTags.RemoveTag(Action.RunTag); State.RunTags = RunTags; return true;
+	case EDungeonStageAction::GrantReward:
+		{
+			// The run owner is the player who started it; the inventory itself decides stacking and replication.
+			auto* Inventory = RunOwner.IsValid() ? RunOwner->GetInventoryComponent() : nullptr;
+			if (!Inventory) return false;
+			const bool bAdded = Inventory->AddItem(Action.RewardItemId, Action.RewardCount);
+			// A full inventory loses the reward but must not fail the run.
+			UE_CLOG(!bAdded, SONHEIM, Warning, TEXT("[DungeonReward] Run=%s Item=%d Count=%d was not added"), *State.RunId.ToString(), Action.RewardItemId, Action.RewardCount);
+			UE_CLOG(bAdded, SONHEIM, Log, TEXT("[DungeonReward] Run=%s Item=%d Count=%d"), *State.RunId.ToString(), Action.RewardItemId, Action.RewardCount);
+			return true;
+		}
 	case EDungeonStageAction::EmitEvent:
 		if (Action.Event != EDungeonStageEvent::StageEntered) return false;
 		Queue.Add({State.RunId, Action.Event, Action.EventSourceId}); return true;

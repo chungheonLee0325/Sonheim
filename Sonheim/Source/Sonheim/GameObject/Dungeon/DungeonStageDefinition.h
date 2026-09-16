@@ -11,7 +11,7 @@ enum class EDungeonStageEvent : uint8 { StageEntered, WaveCompleted, BossDefeate
 UENUM(BlueprintType)
 enum class EDungeonStageCondition : uint8 { Always, HasRunTag, SpawnGroupCompleted };
 UENUM(BlueprintType)
-enum class EDungeonStageAction : uint8 { SpawnGroup, SetRunTag, ClearRunTag, EmitEvent };
+enum class EDungeonStageAction : uint8 { SpawnGroup, SetRunTag, ClearRunTag, EmitEvent, GrantReward };
 UENUM(BlueprintType)
 enum class EDungeonTerminalOutcome : uint8 { None, Success, Failure };
 
@@ -37,6 +37,9 @@ struct FDungeonStageAction
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FGameplayTag RunTag;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) EDungeonStageEvent Event = EDungeonStageEvent::StageEntered;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName EventSourceId;
+	// GrantReward only: the item row id and how many the run gives to the player who started it.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 RewardItemId = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 RewardCount = 0;
 };
 
 USTRUCT(BlueprintType)
