@@ -59,17 +59,19 @@ void UDungeonStagePresenter::Present()
 	if (!Router) return;
 	FDungeonStageViewData View;
 	View.Status = Latest.RunStatus; View.Revision = Latest.Revision;
-	View.Title = FText::FromName(Latest.StageId);
-	View.Objective = FText::FromString(Latest.RunStatus == EDungeonRunStatus::Loading ? TEXT("Loading dungeon...") : TEXT("Defeat the tracked enemies."));
+	// A run has no stage while it loads and no branch before the branch point; FText::FromName would show "None" for both.
+	View.Title = Latest.StageId.IsNone() ? FText::GetEmpty() : FText::FromName(Latest.StageId);
+	View.Objective = FText::FromString(Latest.RunStatus == EDungeonRunStatus::Loading ? TEXT("던전을 불러오는 중") : TEXT("추적 중인 적을 처치하세요."));
 	View.CountText = FText::FromString(FString::Printf(TEXT("%d / %d"), Latest.CurrentCount, Latest.RequiredCount));
 	View.Progress = Latest.RequiredCount > 0 ? float(Latest.CurrentCount) / Latest.RequiredCount : 0.f;
-	View.BranchText = FText::FromName(Latest.SelectedBranchId);
+	View.BranchText = Latest.SelectedBranchId.IsNone() ? FText::GetEmpty() : FText::FromName(Latest.SelectedBranchId);
 	if (const auto* Presentation = Definition ? Definition->Presentation.Get() : nullptr)
 	{
+		if (Latest.StageId.IsNone()) View.Title = Presentation->DungeonTitle;
 		if (const auto* Stage = Presentation->Stages.FindByPredicate([this](const auto& Item) { return Item.StageId == Latest.StageId; }))
 		{ View.Title = Stage->Title; View.Objective = Stage->Objective; }
 		if (const FText* Branch = Presentation->BranchLabels.Find(Latest.SelectedBranchId)) View.BranchText = *Branch;
 	}
-	if (Latest.RunStatus == EDungeonRunStatus::Failed) { View.Title = FText::FromString(TEXT("Dungeon failed")); View.Objective = FText::FromString(TEXT("Return to the entrance to restart.")); }
+	if (Latest.RunStatus == EDungeonRunStatus::Failed) { View.Title = FText::FromString(TEXT("던전 실패")); View.Objective = FText::FromString(TEXT("입구로 돌아가 다시 시작하세요.")); }
 	Router->ApplyView(View);
 }
