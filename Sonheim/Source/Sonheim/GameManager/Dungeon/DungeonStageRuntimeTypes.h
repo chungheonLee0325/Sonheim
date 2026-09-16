@@ -1,5 +1,6 @@
 #pragma once
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "UObject/PrimaryAssetId.h"
 #include "DungeonStageRuntimeTypes.generated.h"
 UENUM(BlueprintType)
@@ -18,11 +19,14 @@ struct FDungeonStageRuntimeState
 	UPROPERTY(BlueprintReadOnly) int32 CurrentCount = 0;
 	UPROPERTY(BlueprintReadOnly) int32 RequiredCount = 0;
 	UPROPERTY(BlueprintReadOnly) FName SelectedBranchId;
+	/** Run flags the stage rules have set, such as the unlocked shortcut. The world reads them; conditions are still evaluated on the server. */
+	UPROPERTY(BlueprintReadOnly) FGameplayTagContainer RunTags;
 	UPROPERTY(BlueprintReadOnly) double StageStartedServerTime = 0;
 	bool SamePresentationState(const FDungeonStageRuntimeState& Other) const
 	{
 		return RunId == Other.RunId && DefinitionAssetId == Other.DefinitionAssetId && StageId == Other.StageId &&
 			RunStatus == Other.RunStatus && ObjectiveGroupId == Other.ObjectiveGroupId && CurrentCount == Other.CurrentCount &&
-			RequiredCount == Other.RequiredCount && SelectedBranchId == Other.SelectedBranchId && StageStartedServerTime == Other.StageStartedServerTime;
+			RequiredCount == Other.RequiredCount && SelectedBranchId == Other.SelectedBranchId && StageStartedServerTime == Other.StageStartedServerTime &&
+			RunTags == Other.RunTags;
 	}
 };

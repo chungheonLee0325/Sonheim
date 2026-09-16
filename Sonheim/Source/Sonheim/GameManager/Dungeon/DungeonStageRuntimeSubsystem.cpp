@@ -119,8 +119,9 @@ bool UDungeonStageRuntimeSubsystem::ExecuteAction(const FDungeonStageAction& Act
 {
 	switch (Action.Type)
 	{
-	case EDungeonStageAction::SetRunTag: RunTags.AddTag(Action.RunTag); return true;
-	case EDungeonStageAction::ClearRunTag: RunTags.RemoveTag(Action.RunTag); return true;
+	// The tags are part of the published state, so the world can react to them as soon as a rule sets one.
+	case EDungeonStageAction::SetRunTag: RunTags.AddTag(Action.RunTag); State.RunTags = RunTags; return true;
+	case EDungeonStageAction::ClearRunTag: RunTags.RemoveTag(Action.RunTag); State.RunTags = RunTags; return true;
 	case EDungeonStageAction::EmitEvent:
 		if (Action.Event != EDungeonStageEvent::StageEntered) return false;
 		Queue.Add({State.RunId, Action.Event, Action.EventSourceId}); return true;
