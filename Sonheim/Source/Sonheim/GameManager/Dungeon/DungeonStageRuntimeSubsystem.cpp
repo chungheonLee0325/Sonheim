@@ -10,6 +10,7 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Attribute/HealthComponent.h"
+#include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
 bool UDungeonStageRuntimeSubsystem::IsAuthority() const { return GetWorld() && GetWorld()->GetNetMode() != NM_Client; }
@@ -23,6 +24,12 @@ bool UDungeonStageRuntimeSubsystem::TryStart(ADungeonTestArea* Area, ASonheimPla
 	if (!Catalog || Catalog->GetRowStruct() != FDungeonCatalogRow::StaticStruct()) return false;
 	const auto* Row = Catalog->FindRow<FDungeonCatalogRow>(Area->CatalogRow, TEXT("Dungeon.Entry"));
 	if (!Row || !Row->DefinitionAssetId.IsValid()) return false;
+	const int32 Level = Player->m_LevelComponent ? Player->m_LevelComponent->GetCurrentLevel() : 0;
+	if (Level < Row->RequiredLevel)
+	{
+		UE_LOG(SONHEIM, Log, TEXT("[DungeonEntry] %s is level %d, %s needs %d"), *Player->GetName(), Level, *Area->CatalogRow.ToString(), Row->RequiredLevel);
+		return false;
+	}
 	if (Objectives) Objectives->Reset(true);
 	ReleaseAssets();
 	RunTags.Reset(); Queue.Empty();

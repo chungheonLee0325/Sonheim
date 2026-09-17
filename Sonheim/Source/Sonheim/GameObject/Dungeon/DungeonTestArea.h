@@ -42,6 +42,9 @@ protected:
 private:
 	/** Start or restart while no run is active; hidden while a run loads or runs, when the server refuses a start. */
 	void RefreshPrompt();
+	/** The catalog row's RequiredLevel, read locally so the prompt can tell the player before they press F. */
+	int32 GetRequiredLevel() const;
+	int32 GetLocalPlayerLevel() const;
 	void HandleStageState(const FDungeonStageRuntimeState& State);
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UBoxComponent> InteractionBox;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UTextRenderComponent> Label;

@@ -7,6 +7,9 @@
 #include "Sonheim/GameManager/SonheimGameState.h"
 #include "Sonheim/GameManager/Dungeon/DungeonStageRuntimeSubsystem.h"
 #include "Sonheim/UI/Widget/DetectWidget.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Attribute/LevelComponent.h"
+#include "Sonheim/GameObject/Dungeon/DungeonDefinitionDataAsset.h"
 ADungeonTestArea::ADungeonTestArea()
 {
 	bReplicates = true;
@@ -77,9 +80,29 @@ void ADungeonTestArea::RefreshPrompt()
 	const EDungeonRunStatus Status = GameState ? GameState->GetDungeonStageState().RunStatus : EDungeonRunStatus::Idle;
 	const bool bRunActive = Status == EDungeonRunStatus::Loading || Status == EDungeonRunStatus::Running;
 	// WBP_Detect puts the action right after the name, so the action starts with a space, as the widget's own default text does.
+	const int32 Required = GetRequiredLevel();
+	const bool bLevelReached = GetLocalPlayerLevel() >= Required;
 	if (auto* Widget = Cast<UDetectWidget>(DetectWidgetComponent->GetUserWidgetObject()))
-		Widget->SetInteractionInfo(DisplayName.ToString(), Status == EDungeonRunStatus::Idle ? TEXT(" 던전 시작") : TEXT(" 다시 시작"));
+	{
+		const FString Action = bLevelReached
+			? FString(Status == EDungeonRunStatus::Idle ? TEXT(" 던전 시작") : TEXT(" 다시 시작"))
+			: FString::Printf(TEXT(" Lv %d 필요"), Required);
+		Widget->SetInteractionInfo(DisplayName.ToString(), Action);
+	}
 	DetectWidgetComponent->SetVisibility(bDetected && !bRunActive);
+}
+int32 ADungeonTestArea::GetRequiredLevel() const
+{
+	const UDataTable* Table = Catalog.LoadSynchronous();
+	if (!Table || Table->GetRowStruct() != FDungeonCatalogRow::StaticStruct()) return 1;
+	const auto* Row = Table->FindRow<FDungeonCatalogRow>(CatalogRow, TEXT("Dungeon.Prompt"));
+	return Row ? Row->RequiredLevel : 1;
+}
+int32 ADungeonTestArea::GetLocalPlayerLevel() const
+{
+	const auto* Controller = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	const auto* Player = Controller ? Cast<ASonheimPlayer>(Controller->GetPawn()) : nullptr;
+	return Player && Player->m_LevelComponent ? Player->m_LevelComponent->GetCurrentLevel() : 0;
 }
 void ADungeonTestArea::HandleStageState(const FDungeonStageRuntimeState& State)
 {

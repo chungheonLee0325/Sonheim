@@ -12,7 +12,8 @@ struct FDungeonCatalogRow : public FTableRowBase
 	GENERATED_BODY()
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName DungeonId;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FPrimaryAssetId DefinitionAssetId;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(ClampMin="1")) int32 RecommendedLevel = 1;
+	/** The level a player needs to start this dungeon. The entrance refuses below it and says so. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(ClampMin="1")) int32 RequiredLevel = 1;
 };
 
 UCLASS(BlueprintType)
