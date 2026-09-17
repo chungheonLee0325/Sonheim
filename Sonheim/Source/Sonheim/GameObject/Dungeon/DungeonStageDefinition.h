@@ -20,8 +20,8 @@ struct FDungeonStageCondition
 {
 	GENERATED_BODY()
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) EDungeonStageCondition Type = EDungeonStageCondition::Always;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) FGameplayTag RunTag;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName GroupId;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageCondition::HasRunTag", EditConditionHides)) FGameplayTag RunTag;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageCondition::SpawnGroupCompleted", EditConditionHides)) FName GroupId;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) bool bNegate = false;
 };
 
@@ -30,16 +30,16 @@ struct FDungeonStageAction
 {
 	GENERATED_BODY()
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) EDungeonStageAction Type = EDungeonStageAction::SpawnGroup;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName GroupId;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName PointSetId;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) TSoftObjectPtr<UDungeonSpawnRuleDataAsset> SpawnRule;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) bool bBossGroup = false;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) FGameplayTag RunTag;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) EDungeonStageEvent Event = EDungeonStageEvent::StageEntered;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName EventSourceId;
-	// GrantReward only: the item row id and how many the run gives to the player who started it.
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 RewardItemId = 0;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 RewardCount = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageAction::SpawnGroup", EditConditionHides)) FName GroupId;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageAction::SpawnGroup", EditConditionHides)) FName PointSetId;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageAction::SpawnGroup", EditConditionHides)) TSoftObjectPtr<UDungeonSpawnRuleDataAsset> SpawnRule;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageAction::SpawnGroup", EditConditionHides)) bool bBossGroup = false;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageAction::SetRunTag || Type == EDungeonStageAction::ClearRunTag", EditConditionHides)) FGameplayTag RunTag;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageAction::EmitEvent", EditConditionHides)) EDungeonStageEvent Event = EDungeonStageEvent::StageEntered;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageAction::EmitEvent", EditConditionHides)) FName EventSourceId;
+	// GrantReward only: the item row id and how many the run gives to the player who started it. The validation refuses anything else.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageAction::GrantReward", EditConditionHides, ClampMin="1")) int32 RewardItemId = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageAction::GrantReward", EditConditionHides, ClampMin="1", ClampMax="99")) int32 RewardCount = 0;
 };
 
 USTRUCT(BlueprintType)
@@ -47,7 +47,7 @@ struct FDungeonStageTransition
 {
 	GENERATED_BODY()
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName TransitionId;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) TArray<FDungeonStageCondition> Conditions;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(TitleProperty="Type")) TArray<FDungeonStageCondition> Conditions;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName NextStageId;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName BranchId;
 };
@@ -59,8 +59,8 @@ struct FDungeonStageEventRule
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) EDungeonStageEvent Event = EDungeonStageEvent::StageEntered;
 	// Exact source match. None is used for the internally generated StageEntered event.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName SourceId;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) TArray<FDungeonStageAction> Actions;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) TArray<FDungeonStageTransition> Transitions;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(TitleProperty="Type")) TArray<FDungeonStageAction> Actions;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(TitleProperty="TransitionId")) TArray<FDungeonStageTransition> Transitions;
 };
 
 USTRUCT(BlueprintType)
@@ -69,5 +69,5 @@ struct FDungeonStageDefinition
 	GENERATED_BODY()
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName StageId;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) EDungeonTerminalOutcome TerminalOutcome = EDungeonTerminalOutcome::None;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) TArray<FDungeonStageEventRule> EventRules;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(TitleProperty="Event")) TArray<FDungeonStageEventRule> EventRules;
 };

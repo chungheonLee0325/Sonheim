@@ -6,7 +6,7 @@ public class Sonheim : ModuleRules
 {
 	public Sonheim(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PrivateDependencyModuleNames.AddRange(new string[] { "Niagara", "AIModule", "LevelSequence", "MovieScene" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "Niagara", "AIModule", "LevelSequence", "MovieScene", "ApplicationCore" });
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PublicDependencyModuleNames.AddRange(new string[]

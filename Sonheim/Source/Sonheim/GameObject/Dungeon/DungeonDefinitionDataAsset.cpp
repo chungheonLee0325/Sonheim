@@ -1,8 +1,28 @@
 #include "DungeonDefinitionDataAsset.h"
 #include "DungeonSpawnRuleDataAsset.h"
+#include "Sonheim/Utilities/LogMacro.h"
 #if WITH_EDITOR
 #include "Misc/DataValidation.h"
+#include "HAL/PlatformApplicationMisc.h"
+#include "Framework/Notifications/NotificationManager.h"
+#include "Widgets/Notifications/SNotificationList.h"
 #endif
+
+namespace
+{
+	FString EnumName(const UEnum* Enum, int64 Value)
+	{
+		return Enum ? Enum->GetNameStringByValue(Value) : FString::FromInt(Value);
+	}
+
+	FString ConditionText(const FDungeonStageCondition& Condition)
+	{
+		FString Text = EnumName(StaticEnum<EDungeonStageCondition>(), int64(Condition.Type));
+		if (Condition.Type == EDungeonStageCondition::HasRunTag) Text += TEXT(" ") + Condition.RunTag.GetTagName().ToString();
+		if (Condition.Type == EDungeonStageCondition::SpawnGroupCompleted) Text += TEXT(" ") + Condition.GroupId.ToString();
+		return Condition.bNegate ? TEXT("not ") + Text : Text;
+	}
+}
 
 FPrimaryAssetId UDungeonDefinitionDataAsset::GetPrimaryAssetId() const
 {
@@ -151,5 +171,81 @@ EDataValidationResult UDungeonDefinitionDataAsset::IsDataValid(FDataValidationCo
 	for (const auto& Error : Errors) Context.AddError(FText::FromString(Error));
 	for (const auto& Warning : Warnings) Context.AddWarning(FText::FromString(Warning));
 	return Errors.IsEmpty() ? EDataValidationResult::Valid : EDataValidationResult::Invalid;
+}
+#endif
+
+FString UDungeonDefinitionDataAsset::BuildStageGraph() const
+{
+	// Mermaid, because it renders in the places a design document already lives and stays readable as plain text.
+	FString Text = FString::Printf(TEXT("flowchart TD\n  %%%% %s, start %s\n"), *DefinitionId.ToString(), *StartStageId.ToString());
+	for (const FDungeonStageDefinition& Stage : Stages)
+	{
+		const FString Id = Stage.StageId.ToString();
+		if (Stage.TerminalOutcome != EDungeonTerminalOutcome::None)
+		{
+			Text += FString::Printf(TEXT("  %s[[\"%s %s\"]]\n"), *Id, *Id,
+				Stage.TerminalOutcome == EDungeonTerminalOutcome::Success ? TEXT("성공") : TEXT("실패"));
+		}
+		for (const FDungeonStageEventRule& Rule : Stage.EventRules)
+		{
+			TArray<FString> Actions;
+			for (const FDungeonStageAction& Action : Rule.Actions)
+			{
+				FString Entry = EnumName(StaticEnum<EDungeonStageAction>(), int64(Action.Type));
+				if (Action.Type == EDungeonStageAction::SpawnGroup) Entry += TEXT(" ") + Action.GroupId.ToString();
+				if (Action.Type == EDungeonStageAction::SetRunTag || Action.Type == EDungeonStageAction::ClearRunTag) Entry += TEXT(" ") + Action.RunTag.GetTagName().ToString();
+				if (Action.Type == EDungeonStageAction::GrantReward) Entry += FString::Printf(TEXT(" %d x%d"), Action.RewardItemId, Action.RewardCount);
+				Actions.Add(Entry);
+			}
+			const FString Event = EnumName(StaticEnum<EDungeonStageEvent>(), int64(Rule.Event)) +
+				(Rule.SourceId.IsNone() ? FString() : TEXT(" ") + Rule.SourceId.ToString());
+			if (!Actions.IsEmpty()) Text += FString::Printf(TEXT("  %%%% %s on %s: %s\n"), *Id, *Event, *FString::Join(Actions, TEXT(", ")));
+			for (const FDungeonStageTransition& Transition : Rule.Transitions)
+			{
+				TArray<FString> Conditions;
+				for (const FDungeonStageCondition& Condition : Transition.Conditions) Conditions.Add(ConditionText(Condition));
+				FString Label = Event + TEXT(" / ") + FString::Join(Conditions, TEXT(" and "));
+				if (!Transition.BranchId.IsNone()) Label += TEXT(" => ") + Transition.BranchId.ToString();
+				Text += FString::Printf(TEXT("  %s -->|\"%s\"| %s\n"), *Id, *Label, *Transition.NextStageId.ToString());
+			}
+		}
+	}
+	TArray<FString> Errors, Warnings;
+	ValidateDefinition(Errors, Warnings);
+	Text += FString::Printf(TEXT("  %%%% 오류 %d, 경고 %d\n"), Errors.Num(), Warnings.Num());
+	return Text;
+}
+
+#if WITH_EDITOR
+namespace
+{
+	void Notify(const FString& Message, bool bSuccess)
+	{
+		FNotificationInfo Info(FText::FromString(Message));
+		Info.ExpireDuration = 6.f;
+		if (const TSharedPtr<SNotificationItem> Item = FSlateNotificationManager::Get().AddNotification(Info))
+		{
+			Item->SetCompletionState(bSuccess ? SNotificationItem::CS_Success : SNotificationItem::CS_Fail);
+		}
+	}
+}
+
+void UDungeonDefinitionDataAsset::ValidateNow()
+{
+	TArray<FString> Errors, Warnings;
+	const bool bValid = ValidateDefinition(Errors, Warnings);
+	for (const FString& Error : Errors) UE_LOG(SONHEIM, Error, TEXT("[DungeonDefinition] %s: %s"), *GetName(), *Error);
+	for (const FString& Warning : Warnings) UE_LOG(SONHEIM, Warning, TEXT("[DungeonDefinition] %s: %s"), *GetName(), *Warning);
+	// The counts go on screen; the lines themselves go to the output log, where they can be read and copied.
+	Notify(FString::Printf(TEXT("%s: 오류 %d, 경고 %d%s"), *GetName(), Errors.Num(), Warnings.Num(),
+		Errors.Num() + Warnings.Num() > 0 ? TEXT(" (Output Log 참고)") : TEXT("")), bValid);
+}
+
+void UDungeonDefinitionDataAsset::CopyStageGraph()
+{
+	const FString Graph = BuildStageGraph();
+	FPlatformApplicationMisc::ClipboardCopy(*Graph);
+	UE_LOG(SONHEIM, Log, TEXT("[DungeonDefinition] %s stage graph\n%s"), *GetName(), *Graph);
+	Notify(FString::Printf(TEXT("%s 스테이지 그래프를 클립보드에 복사했다 (%d자)"), *GetName(), Graph.Len()), true);
 }
 #endif

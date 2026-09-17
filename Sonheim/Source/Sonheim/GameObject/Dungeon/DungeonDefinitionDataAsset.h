@@ -28,7 +28,15 @@ public:
 	const FDungeonStageDefinition* FindStage(FName Id) const;
 	// The same structural checks gate editor authoring and runtime entry.
 	bool ValidateDefinition(TArray<FString>& Errors, TArray<FString>& Warnings) const;
+	/** The stage graph as Mermaid text, for a document or a review. */
+	UFUNCTION(BlueprintCallable, Category="Dungeon Tools")
+	FString BuildStageGraph() const;
 #if WITH_EDITOR
 	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+	/** Runs the same checks the save runs, without saving. */
+	UFUNCTION(BlueprintCallable, CallInEditor, Category="Dungeon Tools", meta=(DisplayName="정의 검사"))
+	void ValidateNow();
+	UFUNCTION(BlueprintCallable, CallInEditor, Category="Dungeon Tools", meta=(DisplayName="스테이지 그래프 복사"))
+	void CopyStageGraph();
 #endif
 };
