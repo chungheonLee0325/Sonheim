@@ -41,6 +41,7 @@ private:
 	void ScheduleCleanup();
 	UFUNCTION() void HandleOwnerHealth(float CurrentHP, float Delta, float MaxHP);
 	bool IsAuthority() const;
+	double ServerTime() const;
 	UPROPERTY(Transient) TObjectPtr<UDungeonDefinitionDataAsset> Definition;
 	UPROPERTY(Transient) TObjectPtr<UDungeonObjectiveTracker> Objectives;
 	UPROPERTY(Transient) TObjectPtr<UHealthComponent> OwnerHealth;
@@ -49,6 +50,7 @@ private:
 	TWeakObjectPtr<AController> RunOwnerController;
 	FDungeonStageRuntimeState State;
 	FGameplayTagContainer RunTags;
+	double RunStartedServerTime = 0;
 	FGuid AssetRequest;
 	TArray<FDungeonQueuedEvent> Queue;
 	bool bProcessing = false;

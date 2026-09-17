@@ -22,4 +22,7 @@ protected:
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UProgressBar> ObjectiveProgress;
 	// Frame around BranchText, such as a badge; it hides with an empty branch. Without it, BranchText hides alone.
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> BranchBadge;
+	// Result screen only. The HUD leaves both out and keeps working.
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> RewardText;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> SummaryText;
 };

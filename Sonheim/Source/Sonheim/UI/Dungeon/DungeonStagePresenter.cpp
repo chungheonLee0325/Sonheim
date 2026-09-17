@@ -4,6 +4,7 @@
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "Sonheim/GameManager/SonheimGameState.h"
+#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/GameManager/Dungeon/DungeonAssetSubsystem.h"
 #include "Sonheim/GameObject/Dungeon/DungeonDefinitionDataAsset.h"
 #include "Sonheim/GameObject/Dungeon/DungeonPresentationDataAsset.h"
@@ -73,5 +74,19 @@ void UDungeonStagePresenter::Present()
 		if (const FText* Branch = Presentation->BranchLabels.Find(Latest.SelectedBranchId)) View.BranchText = *Branch;
 	}
 	if (Latest.RunStatus == EDungeonRunStatus::Failed) { View.Title = FText::FromString(TEXT("던전 실패")); View.Objective = FText::FromString(TEXT("입구로 돌아가 다시 시작하세요.")); }
+	if (Latest.RunStatus == EDungeonRunStatus::Succeeded || Latest.RunStatus == EDungeonRunStatus::Failed)
+	{
+		auto* Instance = Owner.IsValid() ? Cast<USonheimGameInstance>(Owner->GetGameInstance()) : nullptr;
+		TArray<FString> Lines;
+		for (const FDungeonRunReward& Reward : Latest.Rewards)
+		{
+			const FItemData* Item = Instance ? Instance->GetDataItem(Reward.ItemId) : nullptr;
+			Lines.Add(FString::Printf(TEXT("%s ×%d"), Item ? *Item->ItemName.ToString() : *FString::Printf(TEXT("#%d"), Reward.ItemId), Reward.Count));
+		}
+		View.RewardText = Lines.IsEmpty() ? FText::FromString(TEXT("획득한 보상 없음")) : FText::FromString(FString::Join(Lines, TEXT("\n")));
+		const int32 Seconds = FMath::Max(0, FMath::RoundToInt(Latest.ElapsedSeconds));
+		const FString Time = Seconds >= 60 ? FString::Printf(TEXT("%d분 %d초"), Seconds / 60, Seconds % 60) : FString::Printf(TEXT("%d초"), Seconds);
+		View.SummaryText = FText::FromString(FString::Printf(TEXT("소요 %s · 처치 %d"), *Time, Latest.DefeatedCount));
+	}
 	Router->ApplyView(View);
 }

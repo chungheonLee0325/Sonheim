@@ -13,6 +13,7 @@
 #include "Sonheim/Utilities/LogMacro.h"
 
 bool UDungeonStageRuntimeSubsystem::IsAuthority() const { return GetWorld() && GetWorld()->GetNetMode() != NM_Client; }
+double UDungeonStageRuntimeSubsystem::ServerTime() const { return GetWorld()->GetGameState() ? GetWorld()->GetGameState()->GetServerWorldTimeSeconds() : GetWorld()->GetTimeSeconds(); }
 bool UDungeonStageRuntimeSubsystem::IsActive() const { return State.RunStatus == EDungeonRunStatus::Running || State.RunStatus == EDungeonRunStatus::Loading; }
 
 bool UDungeonStageRuntimeSubsystem::TryStart(ADungeonTestArea* Area, ASonheimPlayer* Player)
@@ -33,6 +34,7 @@ bool UDungeonStageRuntimeSubsystem::TryStart(ADungeonTestArea* Area, ASonheimPla
 	State.RunId = FGuid::NewGuid();
 	State.DefinitionAssetId = Row->DefinitionAssetId;
 	State.RunStatus = EDungeonRunStatus::Loading;
+	RunStartedServerTime = ServerTime();
 	Publish();
 	const FGuid RunId = State.RunId;
 	auto* Assets = GetWorld()->GetGameInstance()->GetSubsystem<UDungeonAssetSubsystem>();
@@ -105,10 +107,11 @@ void UDungeonStageRuntimeSubsystem::EnterStage(FName Id)
 	const auto* Stage = Definition ? Definition->FindStage(Id) : nullptr;
 	if (!Stage) { Fail(TEXT("Next stage is missing.")); return; }
 	State.StageId = Id;
-	State.StageStartedServerTime = GetWorld()->GetGameState() ? GetWorld()->GetGameState()->GetServerWorldTimeSeconds() : GetWorld()->GetTimeSeconds();
+	State.StageStartedServerTime = ServerTime();
 	if (Stage->TerminalOutcome != EDungeonTerminalOutcome::None)
 	{
 		State.RunStatus = Stage->TerminalOutcome == EDungeonTerminalOutcome::Success ? EDungeonRunStatus::Succeeded : EDungeonRunStatus::Failed;
+		State.ElapsedSeconds = float(ServerTime() - RunStartedServerTime);
 		Queue.Empty();
 		ScheduleCleanup();
 	}
@@ -132,6 +135,12 @@ bool UDungeonStageRuntimeSubsystem::ExecuteAction(const FDungeonStageAction& Act
 			// A full inventory loses the reward but must not fail the run.
 			UE_CLOG(!bAdded, SONHEIM, Warning, TEXT("[DungeonReward] Run=%s Item=%d Count=%d was not added"), *State.RunId.ToString(), Action.RewardItemId, Action.RewardCount);
 			UE_CLOG(bAdded, SONHEIM, Log, TEXT("[DungeonReward] Run=%s Item=%d Count=%d"), *State.RunId.ToString(), Action.RewardItemId, Action.RewardCount);
+			// The settlement lists what the player actually received, so a lost reward is left out.
+			if (bAdded)
+			{
+				if (auto* Existing = State.Rewards.FindByPredicate([&Action](const FDungeonRunReward& Value) { return Value.ItemId == Action.RewardItemId; })) Existing->Count += Action.RewardCount;
+				else State.Rewards.Add({Action.RewardItemId, Action.RewardCount});
+			}
 			return true;
 		}
 	case EDungeonStageAction::EmitEvent:
@@ -157,6 +166,7 @@ void UDungeonStageRuntimeSubsystem::HandleProgress(FName GroupId, int32 Count, i
 {
 	if (!IsAuthority() || State.RunStatus != EDungeonRunStatus::Running) return;
 	State.ObjectiveGroupId = GroupId; State.CurrentCount = Count; State.RequiredCount = Required;
+	State.DefeatedCount = Objectives ? Objectives->GetTotalDefeated() : 0;
 	Publish(); // Every count change publishes, including changes with no stage transition.
 }
 void UDungeonStageRuntimeSubsystem::HandleComplete(FName Id, bool bBoss) { QueueEvent(bBoss ? EDungeonStageEvent::BossDefeated : EDungeonStageEvent::WaveCompleted, Id); }
@@ -170,6 +180,7 @@ void UDungeonStageRuntimeSubsystem::Publish()
 void UDungeonStageRuntimeSubsystem::Fail(const FString& Reason)
 {
 	State.RunStatus = EDungeonRunStatus::Failed; Queue.Empty();
+	State.ElapsedSeconds = float(ServerTime() - RunStartedServerTime);
 	UE_LOG(SONHEIM, Warning, TEXT("[DungeonFailure] Run=%s Reason=%s"), *State.RunId.ToString(), *Reason);
 	Publish();
 	ScheduleCleanup();

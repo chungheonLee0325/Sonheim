@@ -20,6 +20,7 @@ class SONHEIM_API UDungeonObjectiveTracker : public UObject
 public:
 	bool RegisterGroup(FName Id, bool bBoss, const TArray<ABaseMonster*>& Monsters);
 	bool IsComplete(FName Id) const;
+	int32 GetTotalDefeated() const { return TotalDefeated; }
 	void Reset(bool bDestroyMonsters);
 	FOnDungeonGroupProgress OnProgress;
 	FOnDungeonGroupCompleted OnCompleted;
@@ -29,4 +30,5 @@ private:
 	void HandlePartner(ABaseMonster* Monster);
 	UFUNCTION() void HandleEndPlay(AActor* Actor, EEndPlayReason::Type Reason);
 	TMap<FName, FDungeonTrackedGroup> Groups;
+	int32 TotalDefeated = 0;
 };

@@ -26,6 +26,7 @@ void UDungeonObjectiveTracker::HandleDeath(ABaseMonster* Monster)
 		auto& Group = Pair.Value;
 		if (!Group.Monsters.Contains(Monster) || Group.Defeated.Contains(Monster)) continue;
 		Group.Defeated.Add(Monster);
+		++TotalDefeated;
 		const FName Id = Pair.Key;
 		const int32 Count = Group.Defeated.Num(), Required = Group.Monsters.Num();
 		const bool bBoss = Group.bBoss;
@@ -64,6 +65,7 @@ void UDungeonObjectiveTracker::Reset(bool bDestroyMonsters)
 {
 	auto OldGroups = MoveTemp(Groups);
 	Groups.Empty();
+	TotalDefeated = 0;
 	for (auto& Pair : OldGroups)
 		for (auto Weak : Pair.Value.Monsters)
 			if (auto* Monster = Weak.Get())

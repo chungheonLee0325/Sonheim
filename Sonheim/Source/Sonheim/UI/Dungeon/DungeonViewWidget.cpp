@@ -15,5 +15,15 @@ void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
 	if (BranchText) BranchText->SetText(Data.BranchText);
 	if (UWidget* BranchRow = BranchBadge ? BranchBadge.Get() : BranchText.Get())
 		BranchRow->SetVisibility(Data.BranchText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	if (RewardText)
+	{
+		RewardText->SetText(Data.RewardText);
+		RewardText->SetVisibility(Data.RewardText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+	if (SummaryText)
+	{
+		SummaryText->SetText(Data.SummaryText);
+		SummaryText->SetVisibility(Data.SummaryText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
 	if (ObjectiveProgress) ObjectiveProgress->SetPercent(Data.Progress);
 }
