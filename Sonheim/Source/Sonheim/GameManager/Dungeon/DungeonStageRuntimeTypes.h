@@ -39,11 +39,15 @@ struct FDungeonStageRuntimeState
 	UPROPERTY(BlueprintReadOnly) int32 DefeatedCount = 0;
 	/** Seconds from the start to the terminal stage. It stays 0 while the run is going. */
 	UPROPERTY(BlueprintReadOnly) float ElapsedSeconds = 0.f;
+	/** How often this dungeon has been finished, and the fastest of those runs. Filled from the saved record when a run ends. */
+	UPROPERTY(BlueprintReadOnly) int32 ClearCount = 0;
+	UPROPERTY(BlueprintReadOnly) float BestSeconds = 0.f;
 	bool SamePresentationState(const FDungeonStageRuntimeState& Other) const
 	{
 		return RunId == Other.RunId && DefinitionAssetId == Other.DefinitionAssetId && StageId == Other.StageId &&
 			RunStatus == Other.RunStatus && ObjectiveGroupId == Other.ObjectiveGroupId && CurrentCount == Other.CurrentCount &&
 			RequiredCount == Other.RequiredCount && SelectedBranchId == Other.SelectedBranchId && StageStartedServerTime == Other.StageStartedServerTime && StageDeadlineServerTime == Other.StageDeadlineServerTime &&
-			RunTags == Other.RunTags && Rewards == Other.Rewards && DefeatedCount == Other.DefeatedCount && ElapsedSeconds == Other.ElapsedSeconds;
+			RunTags == Other.RunTags && Rewards == Other.Rewards && DefeatedCount == Other.DefeatedCount && ElapsedSeconds == Other.ElapsedSeconds &&
+			ClearCount == Other.ClearCount && BestSeconds == Other.BestSeconds;
 	}
 };

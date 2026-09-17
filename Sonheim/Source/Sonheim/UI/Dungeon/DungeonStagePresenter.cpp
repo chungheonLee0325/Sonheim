@@ -54,6 +54,14 @@ void UDungeonStagePresenter::OnSnapshot(const FDungeonStageRuntimeState& Snapsho
 	}
 	Present();
 }
+namespace
+{
+	FString Spell(float Seconds)
+	{
+		const int32 Whole = FMath::Max(0, FMath::RoundToInt(Seconds));
+		return Whole >= 60 ? FString::Printf(TEXT("%d분 %d초"), Whole / 60, Whole % 60) : FString::Printf(TEXT("%d초"), Whole);
+	}
+}
 void UDungeonStagePresenter::Present()
 {
 	auto* Router = UIRouter.Get();
@@ -85,9 +93,13 @@ void UDungeonStagePresenter::Present()
 			Lines.Add(FString::Printf(TEXT("%s ×%d"), Item ? *Item->ItemName.ToString() : *FString::Printf(TEXT("#%d"), Reward.ItemId), Reward.Count));
 		}
 		View.RewardText = Lines.IsEmpty() ? FText::FromString(TEXT("획득한 보상 없음")) : FText::FromString(FString::Join(Lines, TEXT("\n")));
-		const int32 Seconds = FMath::Max(0, FMath::RoundToInt(Latest.ElapsedSeconds));
-		const FString Time = Seconds >= 60 ? FString::Printf(TEXT("%d분 %d초"), Seconds / 60, Seconds % 60) : FString::Printf(TEXT("%d초"), Seconds);
-		View.SummaryText = FText::FromString(FString::Printf(TEXT("소요 %s · 처치 %d"), *Time, Latest.DefeatedCount));
+		FString Summary = FString::Printf(TEXT("소요 %s · 처치 %d"), *Spell(Latest.ElapsedSeconds), Latest.DefeatedCount);
+		if (Latest.ClearCount > 0)
+		{
+			Summary += FString::Printf(TEXT(" · %d회 클리어"), Latest.ClearCount);
+			if (Latest.BestSeconds > 0.f) Summary += FString::Printf(TEXT(" (최고 %s)"), *Spell(Latest.BestSeconds));
+		}
+		View.SummaryText = FText::FromString(Summary);
 	}
 	Router->ApplyView(View);
 }

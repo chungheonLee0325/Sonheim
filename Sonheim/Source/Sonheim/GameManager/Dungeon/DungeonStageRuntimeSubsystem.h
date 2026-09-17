@@ -37,6 +37,8 @@ private:
 	void HandleInvalidated(FName GroupId);
 	void Publish();
 	void ClearStageTimer();
+	/** Writes the finished run into the saved progress and puts the record into the state that is about to be published. */
+	void RecordFinishedRun(bool bSuccess);
 	void Fail(const FString& Reason);
 	void ReleaseAssets();
 	void ScheduleCleanup();
@@ -52,6 +54,7 @@ private:
 	FDungeonStageRuntimeState State;
 	FGameplayTagContainer RunTags;
 	double RunStartedServerTime = 0;
+	FName DungeonId;
 	FGuid AssetRequest;
 	TArray<FDungeonQueuedEvent> Queue;
 	FTimerHandle StageTimer;

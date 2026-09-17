@@ -3,6 +3,7 @@
 #include "DungeonObjectiveTracker.h"
 #include "DungeonSpawnService.h"
 #include "DungeonStageConditionEvaluator.h"
+#include "DungeonProgressSubsystem.h"
 #include "Sonheim/GameObject/Dungeon/DungeonTestArea.h"
 #include "Sonheim/GameObject/Dungeon/DungeonDefinitionDataAsset.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
@@ -34,6 +35,7 @@ bool UDungeonStageRuntimeSubsystem::TryStart(ADungeonTestArea* Area, ASonheimPla
 	ReleaseAssets();
 	RunTags.Reset(); Queue.Empty();
 	TestArea = Area; RunOwner = Player;
+	DungeonId = Row->DungeonId;
 	RunOwnerController = Player->GetController();
 	OwnerHealth = Player->m_HealthComponent;
 	if (OwnerHealth) OwnerHealth->OnHealthChanged.AddUniqueDynamic(this, &UDungeonStageRuntimeSubsystem::HandleOwnerHealth);
@@ -121,6 +123,7 @@ void UDungeonStageRuntimeSubsystem::EnterStage(FName Id)
 	{
 		State.RunStatus = Stage->TerminalOutcome == EDungeonTerminalOutcome::Success ? EDungeonRunStatus::Succeeded : EDungeonRunStatus::Failed;
 		State.ElapsedSeconds = float(ServerTime() - RunStartedServerTime);
+		RecordFinishedRun(Stage->TerminalOutcome == EDungeonTerminalOutcome::Success);
 		Queue.Empty();
 		ScheduleCleanup();
 	}
@@ -201,6 +204,16 @@ void UDungeonStageRuntimeSubsystem::Publish()
 	if (auto* GS = GetWorld()->GetGameState<ASonheimGameState>()) { GS->PublishDungeonStageState(State); State.Revision = GS->GetDungeonStageState().Revision; }
 	else UE_LOG(SONHEIM, Error, TEXT("[Dungeon] SonheimGameState is required."));
 }
+void UDungeonStageRuntimeSubsystem::RecordFinishedRun(bool bSuccess)
+{
+	// A run that never reached a stage is not an attempt, so a failure during loading is not counted.
+	if (State.StageId.IsNone() || DungeonId.IsNone()) return;
+	auto* Progress = GetWorld() && GetWorld()->GetGameInstance() ? GetWorld()->GetGameInstance()->GetSubsystem<UDungeonProgressSubsystem>() : nullptr;
+	if (!Progress) return;
+	const FDungeonClearRecord& Record = Progress->RecordRun(DungeonId, State, bSuccess);
+	State.ClearCount = Record.ClearCount;
+	State.BestSeconds = Record.BestSeconds;
+}
 void UDungeonStageRuntimeSubsystem::ClearStageTimer()
 {
 	if (GetWorld()) GetWorld()->GetTimerManager().ClearTimer(StageTimer);
@@ -210,6 +223,8 @@ void UDungeonStageRuntimeSubsystem::Fail(const FString& Reason)
 	State.RunStatus = EDungeonRunStatus::Failed; Queue.Empty();
 	ClearStageTimer();
 	State.StageDeadlineServerTime = 0;
+	State.ElapsedSeconds = float(ServerTime() - RunStartedServerTime);
+	RecordFinishedRun(false);
 	State.ElapsedSeconds = float(ServerTime() - RunStartedServerTime);
 	UE_LOG(SONHEIM, Warning, TEXT("[DungeonFailure] Run=%s Reason=%s"), *State.RunId.ToString(), *Reason);
 	Publish();
