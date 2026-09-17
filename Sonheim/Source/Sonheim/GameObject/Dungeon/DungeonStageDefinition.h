@@ -7,7 +7,7 @@
 class UDungeonSpawnRuleDataAsset;
 
 UENUM(BlueprintType)
-enum class EDungeonStageEvent : uint8 { StageEntered, WaveCompleted, BossDefeated, ActorInteracted };
+enum class EDungeonStageEvent : uint8 { StageEntered, WaveCompleted, BossDefeated, ActorInteracted, StageTimeout };
 UENUM(BlueprintType)
 enum class EDungeonStageCondition : uint8 { Always, HasRunTag, SpawnGroupCompleted };
 UENUM(BlueprintType)
@@ -69,5 +69,7 @@ struct FDungeonStageDefinition
 	GENERATED_BODY()
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName StageId;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) EDungeonTerminalOutcome TerminalOutcome = EDungeonTerminalOutcome::None;
+	/** Seconds the stage may last before it raises StageTimeout. 0 is no limit, and a limit needs a rule that answers it. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(ClampMin="0")) float TimeLimitSeconds = 0.f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(TitleProperty="Event")) TArray<FDungeonStageEventRule> EventRules;
 };

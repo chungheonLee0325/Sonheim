@@ -36,6 +36,7 @@ private:
 	void HandleComplete(FName GroupId, bool bBoss);
 	void HandleInvalidated(FName GroupId);
 	void Publish();
+	void ClearStageTimer();
 	void Fail(const FString& Reason);
 	void ReleaseAssets();
 	void ScheduleCleanup();
@@ -53,5 +54,6 @@ private:
 	double RunStartedServerTime = 0;
 	FGuid AssetRequest;
 	TArray<FDungeonQueuedEvent> Queue;
+	FTimerHandle StageTimer;
 	bool bProcessing = false;
 };

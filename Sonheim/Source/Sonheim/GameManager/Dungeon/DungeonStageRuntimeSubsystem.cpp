@@ -115,6 +115,8 @@ void UDungeonStageRuntimeSubsystem::EnterStage(FName Id)
 	if (!Stage) { Fail(TEXT("Next stage is missing.")); return; }
 	State.StageId = Id;
 	State.StageStartedServerTime = ServerTime();
+	ClearStageTimer();
+	State.StageDeadlineServerTime = 0;
 	if (Stage->TerminalOutcome != EDungeonTerminalOutcome::None)
 	{
 		State.RunStatus = Stage->TerminalOutcome == EDungeonTerminalOutcome::Success ? EDungeonRunStatus::Succeeded : EDungeonRunStatus::Failed;
@@ -122,7 +124,22 @@ void UDungeonStageRuntimeSubsystem::EnterStage(FName Id)
 		Queue.Empty();
 		ScheduleCleanup();
 	}
-	else Queue.Add({State.RunId, EDungeonStageEvent::StageEntered, NAME_None});
+	else
+	{
+		if (Stage->TimeLimitSeconds > 0.f)
+		{
+			// The deadline is published so the screen counts down the same seconds the server will act on.
+			State.StageDeadlineServerTime = State.StageStartedServerTime + Stage->TimeLimitSeconds;
+			const FGuid RunId = State.RunId;
+			GetWorld()->GetTimerManager().SetTimer(StageTimer, FTimerDelegate::CreateWeakLambda(this, [this, RunId, Id]()
+			{
+				if (State.RunId != RunId || State.StageId != Id) return;
+				UE_LOG(SONHEIM, Log, TEXT("[DungeonTimeout] Run=%s Stage=%s"), *State.RunId.ToString(), *Id.ToString());
+				QueueEvent(EDungeonStageEvent::StageTimeout, NAME_None);
+			}), Stage->TimeLimitSeconds, false);
+		}
+		Queue.Add({State.RunId, EDungeonStageEvent::StageEntered, NAME_None});
+	}
 	Publish();
 }
 
@@ -184,9 +201,15 @@ void UDungeonStageRuntimeSubsystem::Publish()
 	if (auto* GS = GetWorld()->GetGameState<ASonheimGameState>()) { GS->PublishDungeonStageState(State); State.Revision = GS->GetDungeonStageState().Revision; }
 	else UE_LOG(SONHEIM, Error, TEXT("[Dungeon] SonheimGameState is required."));
 }
+void UDungeonStageRuntimeSubsystem::ClearStageTimer()
+{
+	if (GetWorld()) GetWorld()->GetTimerManager().ClearTimer(StageTimer);
+}
 void UDungeonStageRuntimeSubsystem::Fail(const FString& Reason)
 {
 	State.RunStatus = EDungeonRunStatus::Failed; Queue.Empty();
+	ClearStageTimer();
+	State.StageDeadlineServerTime = 0;
 	State.ElapsedSeconds = float(ServerTime() - RunStartedServerTime);
 	UE_LOG(SONHEIM, Warning, TEXT("[DungeonFailure] Run=%s Reason=%s"), *State.RunId.ToString(), *Reason);
 	Publish();
@@ -221,6 +244,7 @@ void UDungeonStageRuntimeSubsystem::ReleaseAssets()
 void UDungeonStageRuntimeSubsystem::Deinitialize()
 {
 	State.RunStatus = EDungeonRunStatus::Idle; Queue.Empty();
+	ClearStageTimer();
 	if (Objectives) Objectives->Reset(true);
 	ReleaseAssets();
 	Super::Deinitialize();

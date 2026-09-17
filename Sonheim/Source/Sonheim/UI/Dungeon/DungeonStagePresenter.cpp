@@ -60,6 +60,7 @@ void UDungeonStagePresenter::Present()
 	if (!Router) return;
 	FDungeonStageViewData View;
 	View.Status = Latest.RunStatus; View.Revision = Latest.Revision;
+	View.DeadlineServerTime = Latest.RunStatus == EDungeonRunStatus::Running ? Latest.StageDeadlineServerTime : 0;
 	// A run has no stage while it loads and no branch before the branch point; FText::FromName would show "None" for both.
 	View.Title = Latest.StageId.IsNone() ? FText::GetEmpty() : FText::FromName(Latest.StageId);
 	View.Objective = FText::FromString(Latest.RunStatus == EDungeonRunStatus::Loading ? TEXT("던전을 불러오는 중") : TEXT("추적 중인 적을 처치하세요."));

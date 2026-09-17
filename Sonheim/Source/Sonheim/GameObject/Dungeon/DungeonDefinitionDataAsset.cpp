@@ -50,10 +50,17 @@ bool UDungeonDefinitionDataAsset::ValidateDefinition(TArray<FString>& Errors, TA
 		Ids.Add(Stage.StageId);
 		TSet<FString> RuleKeys;
 		int32 TransitionCount = 0;
+		const bool bHasTimeout = Stage.EventRules.ContainsByPredicate([](const auto& Rule) { return Rule.Event == EDungeonStageEvent::StageTimeout; });
+		if (Stage.TimeLimitSeconds < 0.f) Errors.Add(Stage.StageId.ToString() + TEXT(": TimeLimitSeconds cannot be negative."));
+		if (Stage.TimeLimitSeconds > 0.f && !bHasTimeout) Errors.Add(Stage.StageId.ToString() + TEXT(": a time limit needs a StageTimeout rule."));
+		if (Stage.TimeLimitSeconds <= 0.f && bHasTimeout) Errors.Add(Stage.StageId.ToString() + TEXT(": a StageTimeout rule needs a time limit."));
 		for (const FDungeonStageEventRule& Rule : Stage.EventRules)
 		{
 			const FString Key = FString::Printf(TEXT("%d:%s"), int32(Rule.Event), *Rule.SourceId.ToString());
 			if (RuleKeys.Contains(Key)) Errors.Add(Stage.StageId.ToString() + TEXT(": conflicting event rules ") + Key);
+			// StageEntered and StageTimeout are raised by the stage itself, so a source on them would never match.
+			if ((Rule.Event == EDungeonStageEvent::StageEntered || Rule.Event == EDungeonStageEvent::StageTimeout) && !Rule.SourceId.IsNone())
+				Errors.Add(Stage.StageId.ToString() + TEXT(": ") + Key + TEXT(" must have no SourceId."));
 			RuleKeys.Add(Key);
 			for (const FDungeonStageAction& Action : Rule.Actions)
 			{
@@ -181,6 +188,7 @@ FString UDungeonDefinitionDataAsset::BuildStageGraph() const
 	for (const FDungeonStageDefinition& Stage : Stages)
 	{
 		const FString Id = Stage.StageId.ToString();
+		if (Stage.TimeLimitSeconds > 0.f) Text += FString::Printf(TEXT("  %%%% %s time limit %.0fs\n"), *Id, Stage.TimeLimitSeconds);
 		if (Stage.TerminalOutcome != EDungeonTerminalOutcome::None)
 		{
 			Text += FString::Printf(TEXT("  %s[[\"%s %s\"]]\n"), *Id, *Id,

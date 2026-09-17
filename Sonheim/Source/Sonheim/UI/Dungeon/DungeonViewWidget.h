@@ -15,6 +15,8 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category="Dungeon") FDungeonStageViewData ViewData;
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeTick(const FGeometry& Geometry, float DeltaTime) override;
+	void RefreshTime();
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> TitleText;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> ObjectiveText;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> CountText;
@@ -25,4 +27,6 @@ protected:
 	// Result screen only. The HUD leaves both out and keeps working.
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> RewardText;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> SummaryText;
+	// Counts the stage's time limit down. Screens without a limit never show it.
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> TimeText;
 };

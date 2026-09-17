@@ -14,6 +14,8 @@ struct FDungeonStageViewData
 	UPROPERTY(BlueprintReadOnly) FText RewardText;
 	/** Time taken and monsters defeated, only on a finished run. */
 	UPROPERTY(BlueprintReadOnly) FText SummaryText;
+	/** Server time the stage runs out at, or 0 when it has no limit. The widget counts down from it. */
+	UPROPERTY(BlueprintReadOnly) double DeadlineServerTime = 0;
 	UPROPERTY(BlueprintReadOnly) float Progress = 0.f;
 	UPROPERTY(BlueprintReadOnly) EDungeonRunStatus Status = EDungeonRunStatus::Idle;
 	UPROPERTY(BlueprintReadOnly) int32 Revision = 0;

@@ -31,6 +31,8 @@ struct FDungeonStageRuntimeState
 	/** Run flags the stage rules have set, such as the unlocked shortcut. The world reads them; conditions are still evaluated on the server. */
 	UPROPERTY(BlueprintReadOnly) FGameplayTagContainer RunTags;
 	UPROPERTY(BlueprintReadOnly) double StageStartedServerTime = 0;
+	/** Server time the current stage runs out at. 0 while the stage has no limit. */
+	UPROPERTY(BlueprintReadOnly) double StageDeadlineServerTime = 0;
 	/** What the run handed over, merged per item in the order the rules granted it. The result screen settles from this. */
 	UPROPERTY(BlueprintReadOnly) TArray<FDungeonRunReward> Rewards;
 	/** Monsters the run confirmed as defeated, across every group. */
@@ -41,7 +43,7 @@ struct FDungeonStageRuntimeState
 	{
 		return RunId == Other.RunId && DefinitionAssetId == Other.DefinitionAssetId && StageId == Other.StageId &&
 			RunStatus == Other.RunStatus && ObjectiveGroupId == Other.ObjectiveGroupId && CurrentCount == Other.CurrentCount &&
-			RequiredCount == Other.RequiredCount && SelectedBranchId == Other.SelectedBranchId && StageStartedServerTime == Other.StageStartedServerTime &&
+			RequiredCount == Other.RequiredCount && SelectedBranchId == Other.SelectedBranchId && StageStartedServerTime == Other.StageStartedServerTime && StageDeadlineServerTime == Other.StageDeadlineServerTime &&
 			RunTags == Other.RunTags && Rewards == Other.Rewards && DefeatedCount == Other.DefeatedCount && ElapsedSeconds == Other.ElapsedSeconds;
 	}
 };
