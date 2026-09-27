@@ -15,8 +15,10 @@ bool UMeleeAttack::Activate(class AAreaObject* Caster, AAreaObject* Target)
 bool UMeleeAttack::Complete()
 {
 	if (!Super::Complete()) return false;
-	// 완료 시에도 판정 창/LOD 흔적 정리
-	for (auto& Pair : NotifyStateMap) { ResetCollisionData(Pair.Key); }
+	// 완료 시에도 판정 창/LOD 흔적 정리 (ResetCollisionData가 Remove하므로 키 복사본으로 순회)
+	TArray<int> Keys;
+	NotifyStateMap.GetKeys(Keys);
+	for (int Key : Keys) { ResetCollisionData(Key); }
 	NotifyStateMap.Empty();
 	bIsHitOnce = false;
 	return true;
@@ -24,9 +26,10 @@ bool UMeleeAttack::Complete()
 
 void UMeleeAttack::Cancel()
 {
-	Super::Cancel();
-	// 중도 취소 시에도 확실한 정리(LOD 복원 포함)
-	for (auto& Pair : NotifyStateMap) { ResetCollisionData(Pair.Key); }
+	// 중도 취소 시에도 확실한 정리(LOD 복원 포함), 키 복사본으로 순회
+	TArray<int> Keys;
+	NotifyStateMap.GetKeys(Keys);
+	for (int Key : Keys) { ResetCollisionData(Key); }
 	NotifyStateMap.Empty();
 	bIsHitOnce = false;
 	Super::Cancel();
@@ -252,12 +255,8 @@ void UMeleeAttack::ResetCollisionData(int AttackDataIndex)
 		AttackCollision->OwnerSourceMesh->SetForcedLOD(AttackCollision->PrevForcedLodModel);
 		AttackCollision->bForcedLODApplied = false;
 	}
+	// Remove 후 AttackCollision은 파괴된 원소를 가리키므로 접근 금지
 	NotifyStateMap.Remove(AttackDataIndex);
-	AttackCollision->IsEnableHitDetection = false;
-	AttackCollision->HitActors.Empty();
-	AttackCollision->IndexedAttackData = nullptr;
-	AttackCollision->OwnerSourceMesh = nullptr;
-	AttackCollision->bHasPreviousPositions = false;
 }
 
 bool UMeleeAttack::PerformCollisionCheck(EHitDetectionType DetectionType, const FVector& StartLocation,
