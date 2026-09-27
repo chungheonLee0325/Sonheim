@@ -6,8 +6,9 @@
 
 class UDungeonSpawnRuleDataAsset;
 
+/** AreaEntered: a player of the run stepped into the trigger zone whose SourceId the rule names. */
 UENUM(BlueprintType)
-enum class EDungeonStageEvent : uint8 { StageEntered, WaveCompleted, BossDefeated, ActorInteracted, StageTimeout };
+enum class EDungeonStageEvent : uint8 { StageEntered, WaveCompleted, BossDefeated, ActorInteracted, StageTimeout, AreaEntered };
 UENUM(BlueprintType)
 enum class EDungeonStageCondition : uint8 { Always, HasRunTag, SpawnGroupCompleted };
 UENUM(BlueprintType)
@@ -37,7 +38,7 @@ struct FDungeonStageAction
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageAction::SetRunTag || Type == EDungeonStageAction::ClearRunTag", EditConditionHides)) FGameplayTag RunTag;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageAction::EmitEvent", EditConditionHides)) EDungeonStageEvent Event = EDungeonStageEvent::StageEntered;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageAction::EmitEvent", EditConditionHides)) FName EventSourceId;
-	// GrantReward only: the item row id and how many the run gives to the player who started it. The validation refuses anything else.
+	// GrantReward only: the item row id and how many the run gives to each player taking part. The validation refuses anything else.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageAction::GrantReward", EditConditionHides, ClampMin="1")) int32 RewardItemId = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Type == EDungeonStageAction::GrantReward", EditConditionHides, ClampMin="1", ClampMax="99")) int32 RewardCount = 0;
 };

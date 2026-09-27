@@ -16,7 +16,7 @@ void UDungeonClientBridgeComponent::EndPlay(const EEndPlayReason::Type Reason)
 		if (PC->GetLocalPlayer())
 			if (auto* Router = PC->GetLocalPlayer()->GetSubsystem<UDungeonUIRouterSubsystem>()) Router->Detach(PC);
 		if (PC->HasAuthority() && GetWorld())
-			if (auto* Runtime = GetWorld()->GetSubsystem<UDungeonStageRuntimeSubsystem>()) Runtime->AbortForOwner(PC);
+			if (auto* Runtime = GetWorld()->GetSubsystem<UDungeonStageRuntimeSubsystem>()) Runtime->AbortForOwner(PC, EDungeonFailReason::OwnerLeft);
 	}
 	Super::EndPlay(Reason);
 }

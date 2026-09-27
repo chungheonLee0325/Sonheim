@@ -18,5 +18,7 @@ struct FDungeonStageViewData
 	UPROPERTY(BlueprintReadOnly) double DeadlineServerTime = 0;
 	UPROPERTY(BlueprintReadOnly) float Progress = 0.f;
 	UPROPERTY(BlueprintReadOnly) EDungeonRunStatus Status = EDungeonRunStatus::Idle;
+	/** The local player takes part in the run. The run's screens stay hidden from players who do not. */
+	UPROPERTY(BlueprintReadOnly) bool bParticipant = true;
 	UPROPERTY(BlueprintReadOnly) int32 Revision = 0;
 };

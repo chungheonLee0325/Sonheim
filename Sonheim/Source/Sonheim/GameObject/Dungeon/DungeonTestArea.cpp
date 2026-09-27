@@ -10,6 +10,11 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/GameObject/Dungeon/DungeonDefinitionDataAsset.h"
+#include "NiagaraFunctionLibrary.h"
+#include "Components/AudioComponent.h"
+#include "GameFramework/PlayerState.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sonheim/GameManager/SonheimGameMode.h"
 ADungeonTestArea::ADungeonTestArea()
 {
 	bReplicates = true;
@@ -23,6 +28,7 @@ ADungeonTestArea::ADungeonTestArea()
 	Label->SetText(FText::FromString(TEXT("DUNGEON")));
 	Label->SetWorldSize(30.f);
 	Label->SetRelativeLocation(FVector(0, 0, 160));
+	Label->SetHiddenInGame(true);
 	DisplayName = NSLOCTEXT("CuratedDungeon", "EntranceName", "분기 던전");
 	// Same prompt as containers and crafting stations: a screen space WBP_Detect that the detecting local player shows.
 	DetectWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("DetectWidget"));
@@ -46,6 +52,7 @@ void ADungeonTestArea::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	if (auto* GameState = GetWorld() ? GetWorld()->GetGameState<ASonheimGameState>() : nullptr) GameState->OnDungeonStageStateChanged.Remove(StageStateHandle);
 	StageStateHandle.Reset();
+	RefreshBossMusic(FDungeonStageRuntimeState());
 	Super::EndPlay(EndPlayReason);
 }
 TArray<FTransform> ADungeonTestArea::GetSpawnTransforms(FName PointSetId) const
@@ -54,6 +61,11 @@ TArray<FTransform> ADungeonTestArea::GetSpawnTransforms(FName PointSetId) const
 	if (const auto* Set = PointSets.FindByPredicate([PointSetId](const auto& Value) { return Value.PointSetId == PointSetId; }))
 		for (const auto& Local : Set->LocalTransforms) Result.Add(Local * GetActorTransform());
 	return Result;
+}
+void ADungeonTestArea::MulticastSpawnBurst_Implementation(const TArray<FVector>& Points)
+{
+	if (!SpawnEffect || GetNetMode() == NM_DedicatedServer) return;
+	for (const FVector& Point : Points) UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, SpawnEffect, Point);
 }
 void ADungeonTestArea::Interact_Implementation(ASonheimPlayer* Player)
 {
@@ -107,4 +119,25 @@ int32 ADungeonTestArea::GetLocalPlayerLevel() const
 void ADungeonTestArea::HandleStageState(const FDungeonStageRuntimeState& State)
 {
 	RefreshPrompt();
+	RefreshBossMusic(State);
+}
+void ADungeonTestArea::RefreshBossMusic(const FDungeonStageRuntimeState& State)
+{
+	const APlayerController* Local = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	const bool bTakesPart = Local && Local->IsLocalController() && State.Participants.Contains(Local->PlayerState);
+	const bool bFight = BossMusic && bTakesPart && State.RunStatus == EDungeonRunStatus::Running && State.BossHealth > 0.f;
+	if (bFight == (BossMusicComponent != nullptr)) return;
+	// The level's music belongs to the host's game mode, so only the host has it to turn down.
+	auto* GameMode = GetWorld()->GetAuthGameMode<ASonheimGameMode>();
+	if (bFight)
+	{
+		BossMusicComponent = UGameplayStatics::SpawnSound2D(this, BossMusic, 1.f, 1.f, 0.f, nullptr, false, false);
+		if (GameMode) GameMode->SetBGMVolume(0.f);
+	}
+	else
+	{
+		BossMusicComponent->FadeOut(2.f, 0.f);
+		BossMusicComponent = nullptr;
+		if (GameMode) GameMode->SetBGMVolume(1.f);
+	}
 }

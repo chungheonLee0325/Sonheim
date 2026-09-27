@@ -4,6 +4,8 @@
 #include "Sonheim/GameObject/InteractableInterface.h"
 #include "DungeonPortal.generated.h"
 class UArrowComponent;
+class USoundBase;
+struct FDungeonStageRuntimeState;
 class UBoxComponent;
 class UStaticMeshComponent;
 class UUserWidget;
@@ -23,8 +25,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText ActionText;
 	/** The server refuses a player farther than this, as the dungeon entrance does; the interaction trace reaches 500 from the camera. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") float InteractionDistance = 350.f;
+	/** The portal leads into the dungeon. Going the other way takes a player out of a run, and ends it for the player who started it. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") bool bLeadsIntoDungeon = false;
+	/** Opens only once the run is won, as the way home from the treasure room; until then the portal and what hangs off it are
+	 * hidden, and F does nothing. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") bool bOpensOnClear = false;
+	/** Played to the player who travels, as the screen fades in at the other end. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TObjectPtr<USoundBase> TravelSound;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") float FadeSeconds = 0.6f;
 	FTransform GetArrivalTransform() const;
-	virtual bool CanInteract_Implementation() const override { return Destination != nullptr; }
+	bool IsOpen() const { return bOpen; }
+	virtual bool CanInteract_Implementation() const override { return Destination != nullptr && bOpen; }
 	virtual void Interact_Implementation(ASonheimPlayer* Player) override;
 	virtual void OnDetected_Implementation(bool bDetected) override;
 	virtual FString GetInteractionName_Implementation() const override { return DisplayName.ToString(); }
@@ -32,7 +43,14 @@ public:
 	virtual float GetHoldDuration_Implementation() const override { return 0.f; }
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 private:
+	void RefreshOpen();
+	void HandleStageState(const FDungeonStageRuntimeState& State);
+	void HandleGameStateSet(class AGameStateBase* GameState);
+	FDelegateHandle StageStateHandle;
+	FDelegateHandle WorldHandle;
+	bool bOpen = true;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UBoxComponent> InteractionBox;
 	/** The look of the portal; each placed portal sets its own mesh. */
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> Mesh;

@@ -3,6 +3,7 @@
 #include "GameFramework/Actor.h"
 #include "DungeonShortcutGate.generated.h"
 class UStaticMeshComponent;
+class UNavModifierComponent;
 struct FDungeonStageRuntimeState;
 /** Blocks the shortcut until the run unlocks it. Reads the replicated dungeon snapshot; it never calls the runtime and replicates nothing itself. */
 UCLASS()
@@ -28,6 +29,9 @@ private:
 	void HandleStageState(const FDungeonStageRuntimeState& State);
 	void HandleGameStateSet(class AGameStateBase* GameState);
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> Door;
+	/** Closes the doorway to navigation while the gate is shut, so monsters can follow a player through once it opens.
+	 * The door itself does not affect navigation; this needs the level's navigation mesh to update modifiers at runtime. */
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UNavModifierComponent> NavModifier;
 	FVector ClosedLocation = FVector::ZeroVector;
 	/** 0 closed, 1 open; only the moving gate ticks. */
 	float OpenAlpha = 0.f;

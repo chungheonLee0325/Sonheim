@@ -9,6 +9,8 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/UI/Widget/DetectWidget.h"
+#include "Sonheim/GameManager/Dungeon/DungeonStageRuntimeSubsystem.h"
+#include "Sonheim/GameManager/SonheimGameState.h"
 ADungeonPortal::ADungeonPortal()
 {
 	bReplicates = true;
@@ -43,6 +45,40 @@ void ADungeonPortal::BeginPlay()
 {
 	Super::BeginPlay();
 	if (DetectWidgetClass && DetectWidgetComponent) DetectWidgetComponent->SetWidgetClass(DetectWidgetClass);
+	if (!bOpensOnClear) return;
+	// A client's GameState can arrive after this actor's BeginPlay, so the subscription waits for it.
+	if (GetWorld() && !GetWorld()->GetGameState())
+		WorldHandle = GetWorld()->GameStateSetEvent.AddUObject(this, &ADungeonPortal::HandleGameStateSet);
+	RefreshOpen();
+}
+void ADungeonPortal::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (auto* GameState = GetWorld() ? GetWorld()->GetGameState<ASonheimGameState>() : nullptr) GameState->OnDungeonStageStateChanged.Remove(StageStateHandle);
+	if (GetWorld()) GetWorld()->GameStateSetEvent.Remove(WorldHandle);
+	StageStateHandle.Reset(); WorldHandle.Reset();
+	Super::EndPlay(EndPlayReason);
+}
+void ADungeonPortal::RefreshOpen()
+{
+	auto* GameState = GetWorld() ? GetWorld()->GetGameState<ASonheimGameState>() : nullptr;
+	if (GameState && !StageStateHandle.IsValid())
+		StageStateHandle = GameState->OnDungeonStageStateChanged.AddUObject(this, &ADungeonPortal::HandleStageState);
+	bOpen = GameState && GameState->GetDungeonStageState().RunStatus == EDungeonRunStatus::Succeeded;
+	// The ring and its lights hang off the portal as their own actor; they appear with it.
+	SetActorHiddenInGame(!bOpen);
+	TArray<AActor*> Attached;
+	GetAttachedActors(Attached);
+	for (AActor* Child : Attached) Child->SetActorHiddenInGame(!bOpen);
+	InteractionBox->SetCollisionEnabled(bOpen ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+	if (!bOpen && DetectWidgetComponent) DetectWidgetComponent->SetVisibility(false);
+}
+void ADungeonPortal::HandleStageState(const FDungeonStageRuntimeState& State)
+{
+	RefreshOpen();
+}
+void ADungeonPortal::HandleGameStateSet(AGameStateBase* GameState)
+{
+	RefreshOpen();
 }
 FTransform ADungeonPortal::GetArrivalTransform() const
 {
@@ -51,14 +87,21 @@ FTransform ADungeonPortal::GetArrivalTransform() const
 void ADungeonPortal::Interact_Implementation(ASonheimPlayer* Player)
 {
 	// The client picks the portal with its own trace, so the server checks the reach again.
-	if (!HasAuthority() || !Destination || !IsValid(Player) || Player->IsDie() || Player->GetDistanceTo(this) > InteractionDistance) return;
+	if (!HasAuthority() || !Destination || !bOpen || !IsValid(Player) || Player->IsDie() || Player->GetDistanceTo(this) > InteractionDistance) return;
 	const FTransform Target = Destination->GetArrivalTransform();
 	const FRotator Facing(0.f, Target.Rotator().Yaw, 0.f);
 	// The arrow lies on the floor and the capsule is placed by its centre.
 	const FVector Location = Target.GetLocation() + FVector(0, 0, Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 2.f);
 	if (!Player->TeleportTo(Location, Facing)) return;
 	// The camera follows the controller's rotation, not the pawn's, so the owning client is turned as well.
-	if (auto* Controller = Cast<APlayerController>(Player->GetController())) Controller->ClientSetRotation(Facing);
+	if (auto* Controller = Cast<APlayerController>(Player->GetController()))
+	{
+		Controller->ClientSetRotation(Facing);
+		// The travelling player's screen starts black and clears, so the jump reads as passing through the portal.
+		Controller->ClientSetCameraFade(true, FColor::Black, FVector2D(1.f, 0.f), FadeSeconds, false, false);
+		if (TravelSound) Controller->ClientPlaySound(TravelSound);
+	}
+	if (auto* Runtime = GetWorld()->GetSubsystem<UDungeonStageRuntimeSubsystem>()) Runtime->NotifyPortal(Player, bLeadsIntoDungeon);
 }
 void ADungeonPortal::OnDetected_Implementation(bool bDetected)
 {

@@ -69,7 +69,7 @@ void ASonheimGameMode::RestartPlayer(AController* NewPlayer)
 
 void ASonheimGameMode::Logout(AController* Exiting)
 {
-	if (auto* Runtime = GetWorld()->GetSubsystem<UDungeonStageRuntimeSubsystem>()) Runtime->AbortForOwner(Exiting);
+	if (auto* Runtime = GetWorld()->GetSubsystem<UDungeonStageRuntimeSubsystem>()) Runtime->AbortForOwner(Exiting, EDungeonFailReason::OwnerLeft);
 	Super::Logout(Exiting);
 }
 

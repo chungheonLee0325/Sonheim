@@ -61,6 +61,9 @@ bool UDungeonDefinitionDataAsset::ValidateDefinition(TArray<FString>& Errors, TA
 			// StageEntered and StageTimeout are raised by the stage itself, so a source on them would never match.
 			if ((Rule.Event == EDungeonStageEvent::StageEntered || Rule.Event == EDungeonStageEvent::StageTimeout) && !Rule.SourceId.IsNone())
 				Errors.Add(Stage.StageId.ToString() + TEXT(": ") + Key + TEXT(" must have no SourceId."));
+			// An interaction or a zone names the actor it comes from, so a rule without that name would never match.
+			if ((Rule.Event == EDungeonStageEvent::ActorInteracted || Rule.Event == EDungeonStageEvent::AreaEntered) && Rule.SourceId.IsNone())
+				Errors.Add(Stage.StageId.ToString() + TEXT(": ") + Key + TEXT(" needs the SourceId of its actor."));
 			RuleKeys.Add(Key);
 			for (const FDungeonStageAction& Action : Rule.Actions)
 			{

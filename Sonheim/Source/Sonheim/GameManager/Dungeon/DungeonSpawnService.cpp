@@ -14,8 +14,12 @@ FDungeonSpawnResult FDungeonSpawnService::Spawn(UWorld* World, const UDungeonSpa
 	for (int32 Index = 0; Index < Rule->Count; ++Index)
 	{
 		FActorSpawnParameters Params;
-		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
-		ABaseMonster* Monster = World->SpawnActor<ABaseMonster>(Rule->MonsterClass.Get(), Points[Index], Params);
+		// A player standing on a spawn point pushes the monster aside; refusing the spawn would fail the whole run.
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+		// The scale goes in with the spawn, so clients receive it with the new actor; a later change would not replicate.
+		FTransform Transform = Points[Index];
+		Transform.SetScale3D(Transform.GetScale3D() * Rule->Scale);
+		ABaseMonster* Monster = World->SpawnActor<ABaseMonster>(Rule->MonsterClass.Get(), Transform, Params);
 		if (!Monster)
 		{
 			Result.Error = TEXT("Required spawn failed.");

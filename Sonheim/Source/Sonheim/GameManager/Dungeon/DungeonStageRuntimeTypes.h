@@ -3,8 +3,12 @@
 #include "GameplayTagContainer.h"
 #include "UObject/PrimaryAssetId.h"
 #include "DungeonStageRuntimeTypes.generated.h"
+class APlayerState;
 UENUM(BlueprintType)
 enum class EDungeonRunStatus : uint8 { Idle, Loading, Running, Succeeded, Failed };
+/** Why a run failed, so the result screen can say it. None is a failure stage the definition reached by its own rules. */
+UENUM(BlueprintType)
+enum class EDungeonFailReason : uint8 { None, TimeOut, OwnerDown, OwnerLeft, TargetLost, Error };
 
 USTRUCT(BlueprintType)
 struct FDungeonRunReward
@@ -42,12 +46,17 @@ struct FDungeonStageRuntimeState
 	/** How often this dungeon has been finished, and the fastest of those runs. Filled from the saved record when a run ends. */
 	UPROPERTY(BlueprintReadOnly) int32 ClearCount = 0;
 	UPROPERTY(BlueprintReadOnly) float BestSeconds = 0.f;
+	/** Players taking part: the run's screens show only to them, and every reward goes to each of them. */
+	UPROPERTY(BlueprintReadOnly) TArray<TObjectPtr<APlayerState>> Participants;
+	UPROPERTY(BlueprintReadOnly) EDungeonFailReason FailReason = EDungeonFailReason::None;
+	/** Health of the boss group's monster, 1 to 0, while it is alive; 0 before it appears. */
+	UPROPERTY(BlueprintReadOnly) float BossHealth = 0.f;
 	bool SamePresentationState(const FDungeonStageRuntimeState& Other) const
 	{
 		return RunId == Other.RunId && DefinitionAssetId == Other.DefinitionAssetId && StageId == Other.StageId &&
 			RunStatus == Other.RunStatus && ObjectiveGroupId == Other.ObjectiveGroupId && CurrentCount == Other.CurrentCount &&
 			RequiredCount == Other.RequiredCount && SelectedBranchId == Other.SelectedBranchId && StageStartedServerTime == Other.StageStartedServerTime && StageDeadlineServerTime == Other.StageDeadlineServerTime &&
 			RunTags == Other.RunTags && Rewards == Other.Rewards && DefeatedCount == Other.DefeatedCount && ElapsedSeconds == Other.ElapsedSeconds &&
-			ClearCount == Other.ClearCount && BestSeconds == Other.BestSeconds;
+			ClearCount == Other.ClearCount && BestSeconds == Other.BestSeconds && Participants == Other.Participants && FailReason == Other.FailReason && BossHealth == Other.BossHealth;
 	}
 };

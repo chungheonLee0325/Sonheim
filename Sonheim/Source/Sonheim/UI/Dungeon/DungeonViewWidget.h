@@ -13,10 +13,17 @@ class SONHEIM_API UDungeonViewWidget : public UUserWidget
 public:
 	void ApplyViewData(const FDungeonStageViewData& Data);
 	UPROPERTY(BlueprintReadOnly, Category="Dungeon") FDungeonStageViewData ViewData;
+	/** Seconds the screen of a finished run stays up before it folds away; 0 keeps it until the next run. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") float FinishedSeconds = 12.f;
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeTick(const FGeometry& Geometry, float DeltaTime) override;
 	void RefreshTime();
+	/** Shown to participants; a finished run's screen folds away once FinishedSeconds pass. */
+	void RefreshShown();
+	FTimerHandle FinishedTimer;
+	int32 FinishedRevision = -1;
+	bool bFinishedExpired = false;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> TitleText;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> ObjectiveText;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> CountText;

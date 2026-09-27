@@ -5,6 +5,9 @@
 #include "GameplayTagContainer.h"
 #include "GameFramework/GameStateBase.h"
 #include "UObject/ConstructorHelpers.h"
+#include "NavModifierComponent.h"
+#include "NavAreas/NavArea_Default.h"
+#include "NavAreas/NavArea_Null.h"
 #include "Sonheim/GameManager/SonheimGameState.h"
 ADungeonShortcutGate::ADungeonShortcutGate()
 {
@@ -16,6 +19,9 @@ ADungeonShortcutGate::ADungeonShortcutGate()
 	SetRootComponent(Door);
 	Door->SetMobility(EComponentMobility::Movable);
 	Door->SetCollisionProfileName(TEXT("BlockAll"));
+	Door->SetCanEverAffectNavigation(false);
+	NavModifier = CreateDefaultSubobject<UNavModifierComponent>(TEXT("NavModifier"));
+	NavModifier->SetAreaClass(UNavArea_Null::StaticClass());
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cube(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	if (Cube.Succeeded()) Door->SetStaticMesh(Cube.Object);
 }
@@ -63,6 +69,8 @@ void ADungeonShortcutGate::RefreshFromState()
 	{
 		bOpen = bShouldOpen;
 		SetActorTickEnabled(true);
+		// Only the server has navigation; a client's copy changes nothing there.
+		if (NavModifier) NavModifier->SetAreaClass(bOpen ? UNavArea_Default::StaticClass() : UNavArea_Null::StaticClass());
 	}
 }
 void ADungeonShortcutGate::HandleStageState(const FDungeonStageRuntimeState& State)

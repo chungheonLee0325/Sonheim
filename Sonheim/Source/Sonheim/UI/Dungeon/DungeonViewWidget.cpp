@@ -2,6 +2,7 @@
 #include "Components/TextBlock.h"
 #include "Components/ProgressBar.h"
 #include "GameFramework/GameStateBase.h"
+#include "TimerManager.h"
 void UDungeonViewWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -46,4 +47,21 @@ void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
 	}
 	RefreshTime();
 	if (ObjectiveProgress) ObjectiveProgress->SetPercent(Data.Progress);
+	const bool bFinished = Data.Status == EDungeonRunStatus::Succeeded || Data.Status == EDungeonRunStatus::Failed;
+	if (!bFinished)
+	{
+		FinishedRevision = -1; bFinishedExpired = false;
+		if (GetWorld()) GetWorld()->GetTimerManager().ClearTimer(FinishedTimer);
+	}
+	else if (FinishedRevision < 0 && FinishedSeconds > 0.f && GetWorld())
+	{
+		// The timer starts when the run finishes; later updates of the same finished run do not restart it.
+		FinishedRevision = Data.Revision;
+		GetWorld()->GetTimerManager().SetTimer(FinishedTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { bFinishedExpired = true; RefreshShown(); }), FinishedSeconds, false);
+	}
+	RefreshShown();
+}
+void UDungeonViewWidget::RefreshShown()
+{
+	SetVisibility(ViewData.bParticipant && !bFinishedExpired ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 }

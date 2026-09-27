@@ -3,6 +3,7 @@
 #include "DungeonViewData.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
 #include "Sonheim/GameManager/SonheimGameState.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/GameManager/Dungeon/DungeonAssetSubsystem.h"
@@ -68,6 +69,8 @@ void UDungeonStagePresenter::Present()
 	if (!Router) return;
 	FDungeonStageViewData View;
 	View.Status = Latest.RunStatus; View.Revision = Latest.Revision;
+	// An empty list is a run from before participants were recorded; it shows to everyone.
+	View.bParticipant = Latest.Participants.IsEmpty() || (Owner.IsValid() && Latest.Participants.Contains(Owner->PlayerState));
 	View.DeadlineServerTime = Latest.RunStatus == EDungeonRunStatus::Running ? Latest.StageDeadlineServerTime : 0;
 	// A run has no stage while it loads and no branch before the branch point; FText::FromName would show "None" for both.
 	View.Title = Latest.StageId.IsNone() ? FText::GetEmpty() : FText::FromName(Latest.StageId);
@@ -82,7 +85,18 @@ void UDungeonStagePresenter::Present()
 		{ View.Title = Stage->Title; View.Objective = Stage->Objective; }
 		if (const FText* Branch = Presentation->BranchLabels.Find(Latest.SelectedBranchId)) View.BranchText = *Branch;
 	}
-	if (Latest.RunStatus == EDungeonRunStatus::Failed) { View.Title = FText::FromString(TEXT("던전 실패")); View.Objective = FText::FromString(TEXT("입구로 돌아가 다시 시작하세요.")); }
+	if (Latest.RunStatus == EDungeonRunStatus::Failed)
+	{
+		View.Title = FText::FromString(TEXT("원정 실패"));
+		switch (Latest.FailReason)
+		{
+		case EDungeonFailReason::TimeOut: View.Objective = FText::FromString(TEXT("제한 시간이 지났습니다.")); break;
+		case EDungeonFailReason::OwnerDown: View.Objective = FText::FromString(TEXT("원정대장이 쓰러졌습니다.")); break;
+		case EDungeonFailReason::OwnerLeft: View.Objective = FText::FromString(TEXT("원정대장이 유적을 떠났습니다.")); break;
+		case EDungeonFailReason::TargetLost: View.Objective = FText::FromString(TEXT("전투 대상이 사라졌습니다.")); break;
+		default: View.Objective = FText::FromString(TEXT("입구로 돌아가 다시 시작하세요.")); break;
+		}
+	}
 	if (Latest.RunStatus == EDungeonRunStatus::Succeeded || Latest.RunStatus == EDungeonRunStatus::Failed)
 	{
 		auto* Instance = Owner.IsValid() ? Cast<USonheimGameInstance>(Owner->GetGameInstance()) : nullptr;

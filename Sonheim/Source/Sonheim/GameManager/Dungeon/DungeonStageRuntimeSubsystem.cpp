@@ -13,6 +13,7 @@
 #include "Sonheim/AreaObject/Attribute/HealthComponent.h"
 #include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/Utilities/LogMacro.h"
+#include "GameFramework/PlayerState.h"
 
 bool UDungeonStageRuntimeSubsystem::IsAuthority() const { return GetWorld() && GetWorld()->GetNetMode() != NM_Client; }
 double UDungeonStageRuntimeSubsystem::ServerTime() const { return GetWorld()->GetGameState() ? GetWorld()->GetGameState()->GetServerWorldTimeSeconds() : GetWorld()->GetTimeSeconds(); }
@@ -40,6 +41,15 @@ bool UDungeonStageRuntimeSubsystem::TryStart(ADungeonTestArea* Area, ASonheimPla
 	OwnerHealth = Player->m_HealthComponent;
 	if (OwnerHealth) OwnerHealth->OnHealthChanged.AddUniqueDynamic(this, &UDungeonStageRuntimeSubsystem::HandleOwnerHealth);
 	State = FDungeonStageRuntimeState{};
+	// The starter and everyone else inside the dungeon take part; a player who comes in by the portal later joins then.
+	State.Participants.Add(Player->GetPlayerState());
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		auto* Other = It->Get() ? Cast<ASonheimPlayer>(It->Get()->GetPawn()) : nullptr;
+		if (!Other || Other == Player || Other->IsDie() || !Other->GetPlayerState()) continue;
+		const FVector Offset = Other->GetActorLocation() - Area->GetActorLocation();
+		if (Offset.Size2D() <= Area->ParticipationRadius && FMath::Abs(Offset.Z) <= Area->ParticipationHeight) State.Participants.AddUnique(Other->GetPlayerState());
+	}
 	State.RunId = FGuid::NewGuid();
 	State.DefinitionAssetId = Row->DefinitionAssetId;
 	State.RunStatus = EDungeonRunStatus::Loading;
@@ -51,7 +61,7 @@ bool UDungeonStageRuntimeSubsystem::TryStart(ADungeonTestArea* Area, ASonheimPla
 	{
 		auto* Self = Weak.Get();
 		if (!Self || Self->State.RunId != RunId || Self->State.RunStatus != EDungeonRunStatus::Loading) return;
-		if (!Loaded || !Self->RunOwner.IsValid() || !Self->TestArea.IsValid()) { Self->Fail(Error.IsEmpty() ? TEXT("Owner/area unavailable.") : Error); return; }
+		if (!Loaded || !Self->RunOwner.IsValid() || !Self->TestArea.IsValid()) { Self->Fail(EDungeonFailReason::Error, Error.IsEmpty() ? TEXT("Owner/area unavailable.") : Error); return; }
 		Self->Definition = Loaded;
 		Self->Objectives = NewObject<UDungeonObjectiveTracker>(Self);
 		Self->Objectives->OnProgress.AddUObject(Self, &UDungeonStageRuntimeSubsystem::HandleProgress);
@@ -74,6 +84,18 @@ bool UDungeonStageRuntimeSubsystem::TryInteractSwitch(AActor* Switch, ASonheimPl
 	return true;
 }
 
+bool UDungeonStageRuntimeSubsystem::NotifyAreaEntered(ASonheimPlayer* Player, ADungeonTestArea* Area, FName SourceId)
+{
+	if (!IsAuthority() || State.RunStatus != EDungeonRunStatus::Running || !IsValid(Player) || Player->IsDie() || TestArea.Get() != Area || SourceId.IsNone()) return false;
+	// Someone passing through who does not take part in the run moves nothing.
+	if (!State.Participants.Contains(Player->GetPlayerState()) || EnteredAreas.Contains(SourceId)) return false;
+	const auto* Stage = Definition ? Definition->FindStage(State.StageId) : nullptr;
+	if (!Stage || !Stage->EventRules.ContainsByPredicate([SourceId](const auto& Rule) { return Rule.Event == EDungeonStageEvent::AreaEntered && Rule.SourceId == SourceId; })) return false;
+	EnteredAreas.Add(SourceId);
+	QueueEvent(EDungeonStageEvent::AreaEntered, SourceId);
+	return true;
+}
+
 void UDungeonStageRuntimeSubsystem::QueueEvent(EDungeonStageEvent Event, FName Source)
 {
 	if (!IsAuthority() || State.RunStatus != EDungeonRunStatus::Running) return;
@@ -88,22 +110,23 @@ void UDungeonStageRuntimeSubsystem::ProcessQueue()
 	int32 Budget = 128;
 	while (!Queue.IsEmpty() && State.RunStatus == EDungeonRunStatus::Running)
 	{
-		if (--Budget < 0) { Fail(TEXT("Event cascade limit exceeded.")); break; }
+		if (--Budget < 0) { Fail(EDungeonFailReason::Error, TEXT("Event cascade limit exceeded.")); break; }
 		const auto Event = Queue[0]; Queue.RemoveAt(0);
 		if (Event.RunId != State.RunId || !Definition) continue;
 		const auto* Stage = Definition->FindStage(State.StageId);
-		if (!Stage) { Fail(TEXT("Current stage is missing.")); break; }
+		if (!Stage) { Fail(EDungeonFailReason::Error, TEXT("Current stage is missing.")); break; }
 		const auto* Rule = Stage->EventRules.FindByPredicate([&](const auto& Value) { return Value.Event == Event.Type && Value.SourceId == Event.SourceId; });
 		if (!Rule) continue;
 		UE_LOG(SONHEIM, Log, TEXT("[DungeonEvent] Run=%s Stage=%s Event=%d Source=%s"), *State.RunId.ToString(), *State.StageId.ToString(), int32(Event.Type), *Event.SourceId.ToString());
 		bool bSuccess = true;
 		for (const auto& Action : Rule->Actions) if (!ExecuteAction(Action)) { bSuccess = false; break; }
-		if (!bSuccess) { Fail(TEXT("Stage action failed.")); break; }
+		if (!bSuccess) { Fail(EDungeonFailReason::Error, TEXT("Stage action failed.")); break; }
 		for (const auto& Transition : Rule->Transitions)
 		{
 			if (!FDungeonStageConditionEvaluator::Evaluate(Transition.Conditions, RunTags, [this](FName Group) { return Objectives && Objectives->IsComplete(Group); })) continue;
 			UE_LOG(SONHEIM, Log, TEXT("[DungeonTransition] Run=%s From=%s To=%s Transition=%s Branch=%s"), *State.RunId.ToString(), *State.StageId.ToString(), *Transition.NextStageId.ToString(), *Transition.TransitionId.ToString(), *Transition.BranchId.ToString());
 			if (!Transition.BranchId.IsNone()) State.SelectedBranchId = Transition.BranchId;
+			TransitionReason = Event.Type == EDungeonStageEvent::StageTimeout ? EDungeonFailReason::TimeOut : EDungeonFailReason::None;
 			EnterStage(Transition.NextStageId);
 			break;
 		}
@@ -114,14 +137,16 @@ void UDungeonStageRuntimeSubsystem::ProcessQueue()
 void UDungeonStageRuntimeSubsystem::EnterStage(FName Id)
 {
 	const auto* Stage = Definition ? Definition->FindStage(Id) : nullptr;
-	if (!Stage) { Fail(TEXT("Next stage is missing.")); return; }
+	if (!Stage) { Fail(EDungeonFailReason::Error, TEXT("Next stage is missing.")); return; }
 	State.StageId = Id;
 	State.StageStartedServerTime = ServerTime();
+	EnteredAreas.Reset();
 	ClearStageTimer();
 	State.StageDeadlineServerTime = 0;
 	if (Stage->TerminalOutcome != EDungeonTerminalOutcome::None)
 	{
 		State.RunStatus = Stage->TerminalOutcome == EDungeonTerminalOutcome::Success ? EDungeonRunStatus::Succeeded : EDungeonRunStatus::Failed;
+		State.FailReason = State.RunStatus == EDungeonRunStatus::Failed ? TransitionReason : EDungeonFailReason::None;
 		State.ElapsedSeconds = float(ServerTime() - RunStartedServerTime);
 		RecordFinishedRun(Stage->TerminalOutcome == EDungeonTerminalOutcome::Success);
 		Queue.Empty();
@@ -155,14 +180,19 @@ bool UDungeonStageRuntimeSubsystem::ExecuteAction(const FDungeonStageAction& Act
 	case EDungeonStageAction::ClearRunTag: RunTags.RemoveTag(Action.RunTag); State.RunTags = RunTags; return true;
 	case EDungeonStageAction::GrantReward:
 		{
-			// The run owner is the player who started it; the inventory itself decides stacking and replication.
-			auto* Inventory = RunOwner.IsValid() ? RunOwner->GetInventoryComponent() : nullptr;
-			if (!Inventory) return false;
-			const bool bAdded = Inventory->AddItem(Action.RewardItemId, Action.RewardCount);
-			// A full inventory loses the reward but must not fail the run.
-			UE_CLOG(!bAdded, SONHEIM, Warning, TEXT("[DungeonReward] Run=%s Item=%d Count=%d was not added"), *State.RunId.ToString(), Action.RewardItemId, Action.RewardCount);
-			UE_CLOG(bAdded, SONHEIM, Log, TEXT("[DungeonReward] Run=%s Item=%d Count=%d"), *State.RunId.ToString(), Action.RewardItemId, Action.RewardCount);
-			// The settlement lists what the player actually received, so a lost reward is left out.
+			// Every participant receives the reward; each inventory decides its own stacking and replication.
+			bool bAdded = false;
+			for (const APlayerState* Participant : State.Participants)
+			{
+				auto* Member = Participant ? Participant->GetPawn<ASonheimPlayer>() : nullptr;
+				auto* Inventory = Member ? Member->GetInventoryComponent() : nullptr;
+				const bool bAddedHere = Inventory && Inventory->AddItem(Action.RewardItemId, Action.RewardCount);
+				bAdded |= bAddedHere;
+				// A full inventory loses the reward but must not fail the run.
+				UE_LOG(SONHEIM, Log, TEXT("[DungeonReward] Run=%s Player=%s Item=%d Count=%d Added=%d"), *State.RunId.ToString(),
+					Participant ? *Participant->GetPlayerName() : TEXT("?"), Action.RewardItemId, Action.RewardCount, bAddedHere);
+			}
+			// The settlement lists what the run handed out, so a reward no participant could take is left out.
 			if (bAdded)
 			{
 				if (auto* Existing = State.Rewards.FindByPredicate([&Action](const FDungeonRunReward& Value) { return Value.ItemId == Action.RewardItemId; })) Existing->Count += Action.RewardCount;
@@ -176,12 +206,24 @@ bool UDungeonStageRuntimeSubsystem::ExecuteAction(const FDungeonStageAction& Act
 	case EDungeonStageAction::SpawnGroup:
 		{
 			if (!TestArea.IsValid()) return false;
-			auto Result = FDungeonSpawnService::Spawn(GetWorld(), Action.SpawnRule.Get(), TestArea->GetSpawnTransforms(Action.PointSetId));
+			const TArray<FTransform> Points = TestArea->GetSpawnTransforms(Action.PointSetId);
+			auto Result = FDungeonSpawnService::Spawn(GetWorld(), Action.SpawnRule.Get(), Points);
 			if (!Result.IsSuccess()) { UE_LOG(SONHEIM, Error, TEXT("[DungeonSpawn] %s"), *Result.Error); return false; }
 			if (!Objectives->RegisterGroup(Action.GroupId, Action.bBossGroup, Result.Monsters))
 			{
 				for (auto* Monster : Result.Monsters) if (IsValid(Monster)) Monster->Destroy();
 				return false;
+			}
+			TArray<FVector> Burst;
+			for (int32 Index = 0; Index < Result.Monsters.Num(); ++Index) Burst.Add(Points[Index].GetLocation());
+			TestArea->MulticastSpawnBurst(Burst);
+			if (Action.bBossGroup && Result.Monsters[0]->m_HealthComponent)
+			{
+				// The screen shows the boss's health, so the run follows it while the boss lives.
+				if (IsValid(BossHealthSource)) BossHealthSource->OnHealthChanged.RemoveDynamic(this, &UDungeonStageRuntimeSubsystem::HandleBossHealth);
+				BossHealthSource = Result.Monsters[0]->m_HealthComponent;
+				BossHealthSource->OnHealthChanged.AddUniqueDynamic(this, &UDungeonStageRuntimeSubsystem::HandleBossHealth);
+				State.BossHealth = 1.f;
 			}
 			return true;
 		}
@@ -197,7 +239,7 @@ void UDungeonStageRuntimeSubsystem::HandleProgress(FName GroupId, int32 Count, i
 	Publish(); // Every count change publishes, including changes with no stage transition.
 }
 void UDungeonStageRuntimeSubsystem::HandleComplete(FName Id, bool bBoss) { QueueEvent(bBoss ? EDungeonStageEvent::BossDefeated : EDungeonStageEvent::WaveCompleted, Id); }
-void UDungeonStageRuntimeSubsystem::HandleInvalidated(FName Id) { if (IsActive()) Fail(TEXT("Unresolved monster removed: ") + Id.ToString()); }
+void UDungeonStageRuntimeSubsystem::HandleInvalidated(FName Id) { if (IsActive()) Fail(EDungeonFailReason::TargetLost, TEXT("Unresolved monster removed: ") + Id.ToString()); }
 void UDungeonStageRuntimeSubsystem::Publish()
 {
 	if (!IsAuthority()) return;
@@ -218,15 +260,16 @@ void UDungeonStageRuntimeSubsystem::ClearStageTimer()
 {
 	if (GetWorld()) GetWorld()->GetTimerManager().ClearTimer(StageTimer);
 }
-void UDungeonStageRuntimeSubsystem::Fail(const FString& Reason)
+void UDungeonStageRuntimeSubsystem::Fail(EDungeonFailReason Reason, const FString& Detail)
 {
 	State.RunStatus = EDungeonRunStatus::Failed; Queue.Empty();
+	State.FailReason = Reason;
 	ClearStageTimer();
 	State.StageDeadlineServerTime = 0;
 	State.ElapsedSeconds = float(ServerTime() - RunStartedServerTime);
 	RecordFinishedRun(false);
 	State.ElapsedSeconds = float(ServerTime() - RunStartedServerTime);
-	UE_LOG(SONHEIM, Warning, TEXT("[DungeonFailure] Run=%s Reason=%s"), *State.RunId.ToString(), *Reason);
+	UE_LOG(SONHEIM, Warning, TEXT("[DungeonFailure] Run=%s Reason=%s %s"), *State.RunId.ToString(), *UEnum::GetValueAsString(Reason), *Detail);
 	Publish();
 	ScheduleCleanup();
 }
@@ -243,15 +286,40 @@ void UDungeonStageRuntimeSubsystem::ScheduleCleanup()
 		}
 	}));
 }
-void UDungeonStageRuntimeSubsystem::AbortForOwner(const AController* Controller) { if (Controller && IsAuthority() && IsActive() && RunOwnerController.Get() == Controller) Fail(TEXT("Run owner died or left.")); }
+void UDungeonStageRuntimeSubsystem::AbortForOwner(const AController* Controller, EDungeonFailReason Reason)
+{
+	if (Controller && IsAuthority() && IsActive() && RunOwnerController.Get() == Controller) Fail(Reason, TEXT("Run owner died or left."));
+}
+void UDungeonStageRuntimeSubsystem::NotifyPortal(ASonheimPlayer* Player, bool bEnteredDungeon)
+{
+	APlayerState* Member = IsValid(Player) ? Player->GetPlayerState() : nullptr;
+	if (!IsAuthority() || !IsActive() || !Member) return;
+	if (!bEnteredDungeon && Player == RunOwner.Get())
+	{
+		Fail(EDungeonFailReason::OwnerLeft, TEXT("Run owner left the dungeon by a portal."));
+		return;
+	}
+	const int32 Before = State.Participants.Num();
+	if (bEnteredDungeon) State.Participants.AddUnique(Member);
+	else State.Participants.Remove(Member);
+	if (State.Participants.Num() != Before) Publish();
+}
+void UDungeonStageRuntimeSubsystem::HandleBossHealth(float CurrentHP, float Delta, float MaxHP)
+{
+	if (!IsAuthority() || !IsActive()) return;
+	State.BossHealth = MaxHP > 0.f ? FMath::Clamp(CurrentHP / MaxHP, 0.f, 1.f) : 0.f;
+	Publish();
+}
 void UDungeonStageRuntimeSubsystem::HandleOwnerHealth(float CurrentHP, float Delta, float MaxHP)
 {
-	if (IsAuthority() && IsActive() && CurrentHP <= 0.f) Fail(TEXT("Run owner has no health."));
+	if (IsAuthority() && IsActive() && CurrentHP <= 0.f) Fail(EDungeonFailReason::OwnerDown, TEXT("Run owner has no health."));
 }
 void UDungeonStageRuntimeSubsystem::ReleaseAssets()
 {
 	if (IsValid(OwnerHealth)) OwnerHealth->OnHealthChanged.RemoveDynamic(this, &UDungeonStageRuntimeSubsystem::HandleOwnerHealth);
 	OwnerHealth = nullptr;
+	if (IsValid(BossHealthSource)) BossHealthSource->OnHealthChanged.RemoveDynamic(this, &UDungeonStageRuntimeSubsystem::HandleBossHealth);
+	BossHealthSource = nullptr;
 	if (GetWorld() && GetWorld()->GetGameInstance())
 		if (auto* Assets = GetWorld()->GetGameInstance()->GetSubsystem<UDungeonAssetSubsystem>()) Assets->Release(AssetRequest);
 	AssetRequest.Invalidate(); Definition = nullptr;
