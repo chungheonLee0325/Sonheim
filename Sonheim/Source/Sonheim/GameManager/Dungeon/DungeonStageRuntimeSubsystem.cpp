@@ -43,6 +43,7 @@ bool UDungeonStageRuntimeSubsystem::TryStart(ADungeonTestArea* Area, ASonheimPla
 	State = FDungeonStageRuntimeState{};
 	// The starter and everyone else inside the dungeon take part; a player who comes in by the portal later joins then.
 	State.Participants.Add(Player->GetPlayerState());
+	State.OwnerPlayer = Player->GetPlayerState();
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
 		auto* Other = It->Get() ? Cast<ASonheimPlayer>(It->Get()->GetPawn()) : nullptr;

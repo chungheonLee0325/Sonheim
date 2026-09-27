@@ -19,12 +19,14 @@ void UDungeonUIRouterSubsystem::Attach(APlayerController* Controller)
 		if (Expected != Generation) return;
 		Registry = RegistryAsset.Get();
 		RefreshWidget();
+		PresentNextToast();
 	}));
 }
 void UDungeonUIRouterSubsystem::Detach(APlayerController* Controller)
 {
 	if (Owner.Get() != Controller) return;
 	++Generation;
+	ClearToasts();
 	if (Presenter) Presenter->Stop();
 	if (ActiveWidget) ActiveWidget->RemoveFromParent();
 	Presenter = nullptr; ActiveWidget = nullptr; Registry = nullptr;
@@ -32,6 +34,58 @@ void UDungeonUIRouterSubsystem::Detach(APlayerController* Controller)
 	Owner.Reset(); LatestView = FDungeonStageViewData{};
 }
 void UDungeonUIRouterSubsystem::Deinitialize() { Detach(Owner.Get()); Super::Deinitialize(); }
+
+void UDungeonUIRouterSubsystem::ShowToast(const FDungeonToastViewData& Data)
+{
+	if (!Owner.IsValid() || Data.Title.IsEmpty()) return;
+	// Only short-lived presentation messages are queued; keep the newest three.
+	if (ToastQueue.Num() >= 3) ToastQueue.RemoveAt(0);
+	ToastQueue.Add(Data);
+	PresentNextToast();
+}
+void UDungeonUIRouterSubsystem::ClearToasts()
+{
+	++ToastGeneration;
+	ToastQueue.Empty(); bToastPlaying = false; bToastUnavailable = false;
+	if (ToastLoad) ToastLoad->CancelHandle();
+	ToastLoad.Reset();
+	if (ToastWidget) { ToastWidget->OnFinished.Unbind(); ToastWidget->RemoveFromParent(); ToastWidget = nullptr; }
+}
+void UDungeonUIRouterSubsystem::ToastFinished()
+{
+	bToastPlaying = false;
+	PresentNextToast();
+}
+void UDungeonUIRouterSubsystem::PresentNextToast()
+{
+	if (!Registry || !Owner.IsValid() || ToastQueue.IsEmpty() || bToastPlaying || bToastUnavailable) return;
+	if (Registry->ToastClass.IsNull()) return;
+	if (!Registry->ToastClass.Get())
+	{
+		if (ToastLoad) return;
+		const int32 Expected = ToastGeneration;
+		ToastLoad = UAssetManager::GetStreamableManager().RequestAsyncLoad(Registry->ToastClass.ToSoftObjectPath(), FStreamableDelegate::CreateWeakLambda(this, [this, Expected]()
+		{
+			if (Expected != ToastGeneration) return;
+			if (!Registry || !Registry->ToastClass.Get()) { bToastUnavailable = true; UE_LOG(SONHEIM, Warning, TEXT("[DungeonToast] Class load failed")); return; }
+			PresentNextToast();
+		}));
+		return;
+	}
+	if (!ToastWidget)
+	{
+		ToastWidget = CreateWidget<UDungeonToastWidget>(Owner.Get(), Registry->ToastClass.Get());
+		if (!ToastWidget) { bToastUnavailable = true; return; }
+		ToastWidget->Style = Registry->ToastStyle;
+		ToastWidget->OnFinished.BindUObject(this, &UDungeonUIRouterSubsystem::ToastFinished);
+		// The widget fills the screen; its Widget Blueprint places the card, so the position is edited in the UMG designer.
+		ToastWidget->AddToPlayerScreen(2100);
+	}
+	FDungeonToastViewData Data = ToastQueue[0]; ToastQueue.RemoveAt(0);
+	bToastPlaying = true;
+	ToastWidget->ShowToast(Data);
+	UE_LOG(SONHEIM, Log, TEXT("[DungeonToast] Controller=%s Title=%s"), *Owner->GetName(), *Data.Title.ToString());
+}
 void UDungeonUIRouterSubsystem::ApplyView(const FDungeonStageViewData& Data)
 {
 	LatestView = Data;

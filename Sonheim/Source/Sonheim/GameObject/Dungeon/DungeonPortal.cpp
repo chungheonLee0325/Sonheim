@@ -6,6 +6,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/WidgetComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/UI/Widget/DetectWidget.h"
@@ -108,8 +109,13 @@ void ADungeonPortal::OnDetected_Implementation(bool bDetected)
 	if (!DetectWidgetComponent) return;
 	if (auto* Widget = Cast<UDetectWidget>(DetectWidgetComponent->GetUserWidgetObject()))
 	{
+		const auto* GameState = GetWorld()->GetGameState<ASonheimGameState>();
+		const APlayerController* Local = GetWorld()->GetFirstPlayerController();
+		const EDungeonRunStatus Status = GameState ? GameState->GetDungeonStageState().RunStatus : EDungeonRunStatus::Idle;
+		const bool bOwnerLeaving = !bLeadsIntoDungeon && !OwnerLeaveText.IsEmpty() && Local && Local->PlayerState &&
+			(Status == EDungeonRunStatus::Loading || Status == EDungeonRunStatus::Running) && GameState->GetDungeonStageState().OwnerPlayer == Local->PlayerState;
 		// WBP_Detect puts the action right after the name, so the action starts with a space, as the widget's own default text does.
-		Widget->SetInteractionInfo(DisplayName.ToString(), TEXT(" ") + ActionText.ToString());
+		Widget->SetInteractionInfo(DisplayName.ToString(), TEXT(" ") + (bOwnerLeaving ? OwnerLeaveText : ActionText).ToString());
 		Widget->UpdateInteractProgress(0.f);
 		if (bDetected) Widget->PlayShowAnimation();
 		else Widget->PlayHideAnimation();

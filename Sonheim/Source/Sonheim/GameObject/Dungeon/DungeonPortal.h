@@ -23,6 +23,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText DisplayName;
 	/** What F does, shown after the name. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText ActionText;
+	/** Shown instead of ActionText to the player who started a run that is still going, on a portal that leads out: leaving
+	 * ends the run. Empty keeps ActionText. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText OwnerLeaveText;
 	/** The server refuses a player farther than this, as the dungeon entrance does; the interaction trace reaches 500 from the camera. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") float InteractionDistance = 350.f;
 	/** The portal leads into the dungeon. Going the other way takes a player out of a run, and ends it for the player who started it. */

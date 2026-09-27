@@ -1,11 +1,29 @@
 #include "DungeonViewWidget.h"
+#include "Components/Image.h"
+#include "Engine/Texture2D.h"
+#include "Components/PanelWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/ProgressBar.h"
 #include "GameFramework/GameStateBase.h"
 #include "TimerManager.h"
+namespace
+{
+	void ShowText(UTextBlock* Block, UWidget* Frame, const FText& Text)
+	{
+		if (Block) Block->SetText(Text);
+		if (UWidget* Shown = Frame ? Frame : Block) Shown->SetVisibility(Text.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+}
+void UDungeonRewardEntryWidget::SetReward(const FDungeonRewardViewData& Reward)
+{
+	Label->SetText(Reward.Label);
+	Icon->SetBrushFromTexture(Reward.Icon);
+	Icon->SetVisibility(Reward.Icon ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+}
 void UDungeonViewWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	if (TimeText) TimeColor = TimeText->GetColorAndOpacity();
 	ApplyViewData(ViewData);
 }
 void UDungeonViewWidget::NativeTick(const FGeometry& Geometry, float DeltaTime)
@@ -23,7 +41,9 @@ void UDungeonViewWidget::RefreshTime()
 		return;
 	}
 	const int32 Remaining = FMath::Max(0, FMath::CeilToInt(ViewData.DeadlineServerTime - GameState->GetServerWorldTimeSeconds()));
-	TimeText->SetText(FText::FromString(FString::Printf(TEXT("남은 시간 %d:%02d"), Remaining / 60, Remaining % 60)));
+	const FText Clock = FText::FromString(FString::Printf(TEXT("%d:%02d"), Remaining / 60, Remaining % 60));
+	TimeText->SetText(ViewData.TimeFormat.IsEmpty() ? Clock : FText::Format(ViewData.TimeFormat, Clock));
+	TimeText->SetColorAndOpacity(Remaining <= TimeWarningSeconds ? TimeWarningColor : TimeColor);
 	TimeText->SetVisibility(ESlateVisibility::HitTestInvisible);
 }
 void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
@@ -32,18 +52,31 @@ void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
 	if (TitleText) TitleText->SetText(Data.Title);
 	if (ObjectiveText) ObjectiveText->SetText(Data.Objective);
 	if (CountText) CountText->SetText(Data.CountText);
-	if (BranchText) BranchText->SetText(Data.BranchText);
-	if (UWidget* BranchRow = BranchBadge ? BranchBadge.Get() : BranchText.Get())
-		BranchRow->SetVisibility(Data.BranchText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
-	if (RewardText)
+	ShowText(BranchText, BranchBadge, Data.BranchText);
+	ShowText(RewardText, nullptr, Data.RewardText);
+	ShowText(SummaryText, nullptr, Data.SummaryText);
+	ShowText(NewBestText, NewBestBadge, Data.NewBestText);
+	ShowText(DungeonTitleText, nullptr, Data.DungeonTitle);
+	ShowText(StepText, nullptr, Data.StepText);
+	if (StepProgress)
 	{
-		RewardText->SetText(Data.RewardText);
-		RewardText->SetVisibility(Data.RewardText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		StepProgress->SetPercent(Data.StepProgress);
+		StepProgress->SetVisibility(Data.StepText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	}
-	if (SummaryText)
+	if (BossNameText) BossNameText->SetText(Data.BossName);
+	if (BossHealthBar) BossHealthBar->SetPercent(Data.BossHealth);
+	if (BossPanel) BossPanel->SetVisibility(Data.BossHealth > 0.f ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	if (RewardList)
 	{
-		SummaryText->SetText(Data.SummaryText);
-		SummaryText->SetVisibility(Data.SummaryText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		RewardList->ClearChildren();
+		if (RewardEntryClass)
+			for (const FDungeonRewardViewData& Reward : Data.Rewards)
+				if (auto* Entry = CreateWidget<UDungeonRewardEntryWidget>(this, RewardEntryClass))
+				{
+					Entry->SetReward(Reward);
+					RewardList->AddChild(Entry);
+				}
+		RewardList->SetVisibility(Data.Rewards.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	}
 	RefreshTime();
 	if (ObjectiveProgress) ObjectiveProgress->SetPercent(Data.Progress);

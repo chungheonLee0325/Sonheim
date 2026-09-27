@@ -18,6 +18,10 @@ public:
 private:
 	void BindGameState(AGameStateBase* State);
 	void OnSnapshot(const FDungeonStageRuntimeState& Snapshot);
+	/** Banners for what changed since Previous, from the presentation's toast maps. */
+	void ShowToasts(const FDungeonStageRuntimeState& Previous);
+	/** The local player takes part in the latest run; the run's screens and banners show only to them. */
+	bool IsParticipant() const;
 	void Present();
 	TWeakObjectPtr<APlayerController> Owner;
 	TWeakObjectPtr<ASonheimGameState> GameState;

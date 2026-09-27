@@ -10,6 +10,8 @@
 #include "Sonheim/GameManager/SonheimGameState.h"
 #include "Sonheim/GameManager/Dungeon/DungeonStageRuntimeSubsystem.h"
 #include "Sonheim/UI/Widget/DetectWidget.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
 ADungeonShortcutSwitch::ADungeonShortcutSwitch()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -36,7 +38,7 @@ ADungeonShortcutSwitch::ADungeonShortcutSwitch()
 	Handle = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Handle"));
 	Handle->SetupAttachment(HandlePivot);
 	Handle->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	DisplayName = NSLOCTEXT("CuratedDungeon", "ShortcutName", "지름길 스위치 · 시작한 플레이어만");
+	DisplayName = NSLOCTEXT("CuratedDungeon", "ShortcutName", "녹슨 레버");
 	DetectWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("DetectWidget"));
 	DetectWidgetComponent->SetupAttachment(RootComponent);
 	DetectWidgetComponent->SetRelativeLocation(FVector(0, 0, 100));
@@ -100,8 +102,10 @@ void ADungeonShortcutSwitch::RefreshPrompt()
 		StageStateHandle = GameState->OnDungeonStageStateChanged.AddUObject(this, &ADungeonShortcutSwitch::HandleStageState);
 	const FDungeonStageRuntimeState State = GameState ? GameState->GetDungeonStageState() : FDungeonStageRuntimeState();
 	const bool bAvailable = State.RunStatus == EDungeonRunStatus::Running && (PromptStageId.IsNone() || State.StageId == PromptStageId) && !bPulled;
-	if (auto* Widget = Cast<UDetectWidget>(DetectWidgetComponent->GetUserWidgetObject()))
-		Widget->SetInteractionInfo(DisplayName.ToString(), TEXT(" 지름길 해제")); // WBP_Detect puts the action right after the name.
+	const APlayerController* Local = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	const bool bOwner = Local && Local->PlayerState && State.OwnerPlayer == Local->PlayerState;
+	if (auto* Widget = Cast<UDetectWidget>(DetectWidgetComponent->GetUserWidgetObject())) // WBP_Detect puts the action right after the name.
+		Widget->SetInteractionInfo(DisplayName.ToString(), TEXT(" ") + (bOwner ? ActionText : OwnerOnlyText).ToString());
 	DetectWidgetComponent->SetVisibility(bDetected && bAvailable);
 }
 void ADungeonShortcutSwitch::RefreshHandle(bool bAnimate)

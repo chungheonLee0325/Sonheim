@@ -35,6 +35,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TArray<FDungeonSpawnPointSet> PointSets;
 	/** Name shown in the Detect prompt. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText DisplayName;
+	/** What F does, after the name: before the first run, after a run, and while the player's level is short ({0} the level needed). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText StartText = INVTEXT("원정 시작");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText RestartText = INVTEXT("다시 도전");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText LevelNeededFormat = INVTEXT("Lv {0} 필요");
 	/** Played on every client where a group of monsters appears, so they arrive instead of popping into view. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TObjectPtr<UNiagaraSystem> SpawnEffect;
 	/** Played to each player of the run while the boss is alive, over the level's music, which the host turns down meanwhile. */

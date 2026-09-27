@@ -4,6 +4,8 @@
 #include "GameplayTagContainer.h"
 #include "DungeonUIRegistryDataAsset.generated.h"
 class UDungeonViewWidget;
+class UDungeonToastWidget;
+class UDungeonToastStyle;
 UENUM(BlueprintType)
 enum class EDungeonUILayer : uint8 { Screen, Modal, HUD };
 UENUM(BlueprintType)
@@ -24,4 +26,6 @@ class SONHEIM_API UDungeonUIRegistryDataAsset : public UDataAsset
 	GENERATED_BODY()
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TArray<FDungeonUIEntry> Entries;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TSoftClassPtr<UDungeonToastWidget> ToastClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TObjectPtr<UDungeonToastStyle> ToastStyle;
 };

@@ -48,6 +48,8 @@ struct FDungeonStageRuntimeState
 	UPROPERTY(BlueprintReadOnly) float BestSeconds = 0.f;
 	/** Players taking part: the run's screens show only to them, and every reward goes to each of them. */
 	UPROPERTY(BlueprintReadOnly) TArray<TObjectPtr<APlayerState>> Participants;
+	/** The player who started the run. Prompts tell everyone else that only this player can pull the lever. */
+	UPROPERTY(BlueprintReadOnly) TObjectPtr<APlayerState> OwnerPlayer;
 	UPROPERTY(BlueprintReadOnly) EDungeonFailReason FailReason = EDungeonFailReason::None;
 	/** Health of the boss group's monster, 1 to 0, while it is alive; 0 before it appears. */
 	UPROPERTY(BlueprintReadOnly) float BossHealth = 0.f;
@@ -57,6 +59,6 @@ struct FDungeonStageRuntimeState
 			RunStatus == Other.RunStatus && ObjectiveGroupId == Other.ObjectiveGroupId && CurrentCount == Other.CurrentCount &&
 			RequiredCount == Other.RequiredCount && SelectedBranchId == Other.SelectedBranchId && StageStartedServerTime == Other.StageStartedServerTime && StageDeadlineServerTime == Other.StageDeadlineServerTime &&
 			RunTags == Other.RunTags && Rewards == Other.Rewards && DefeatedCount == Other.DefeatedCount && ElapsedSeconds == Other.ElapsedSeconds &&
-			ClearCount == Other.ClearCount && BestSeconds == Other.BestSeconds && Participants == Other.Participants && FailReason == Other.FailReason && BossHealth == Other.BossHealth;
+			ClearCount == Other.ClearCount && BestSeconds == Other.BestSeconds && Participants == Other.Participants && OwnerPlayer == Other.OwnerPlayer && FailReason == Other.FailReason && BossHealth == Other.BossHealth;
 	}
 };

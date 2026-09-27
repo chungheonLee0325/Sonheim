@@ -29,7 +29,7 @@ ADungeonTestArea::ADungeonTestArea()
 	Label->SetWorldSize(30.f);
 	Label->SetRelativeLocation(FVector(0, 0, 160));
 	Label->SetHiddenInGame(true);
-	DisplayName = NSLOCTEXT("CuratedDungeon", "EntranceName", "분기 던전");
+	DisplayName = NSLOCTEXT("CuratedDungeon", "EntranceName", "봉인된 제단");
 	// Same prompt as containers and crafting stations: a screen space WBP_Detect that the detecting local player shows.
 	DetectWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("DetectWidget"));
 	DetectWidgetComponent->SetupAttachment(RootComponent);
@@ -96,10 +96,8 @@ void ADungeonTestArea::RefreshPrompt()
 	const bool bLevelReached = GetLocalPlayerLevel() >= Required;
 	if (auto* Widget = Cast<UDetectWidget>(DetectWidgetComponent->GetUserWidgetObject()))
 	{
-		const FString Action = bLevelReached
-			? FString(Status == EDungeonRunStatus::Idle ? TEXT(" 던전 시작") : TEXT(" 다시 시작"))
-			: FString::Printf(TEXT(" Lv %d 필요"), Required);
-		Widget->SetInteractionInfo(DisplayName.ToString(), Action);
+		const FText Action = bLevelReached ? (Status == EDungeonRunStatus::Idle ? StartText : RestartText) : FText::Format(LevelNeededFormat, Required);
+		Widget->SetInteractionInfo(DisplayName.ToString(), TEXT(" ") + Action.ToString());
 	}
 	DetectWidgetComponent->SetVisibility(bDetected && !bRunActive);
 }

@@ -17,8 +17,12 @@ public:
 	ADungeonShortcutSwitch();
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TObjectPtr<ADungeonTestArea> TestArea;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FName SourceId = TEXT("ShortcutSwitch");
-	/** Name shown in the Detect prompt. The server accepts the switch only from the player who started the run, and the name says so. */
+	/** Name shown in the Detect prompt. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText DisplayName;
+	/** What F does, after the name. The server takes the lever only from the player who started the run, so everyone else sees
+	 * OwnerOnlyText instead. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText ActionText = INVTEXT("당기기");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText OwnerOnlyText = INVTEXT("원정대장만 당길 수 있음");
 	/** Stage whose rules accept this switch (Stage_Combat, Wave A, in the demo definition). The prompt shows only while the run is in it; None shows it during the whole run. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FName PromptStageId = TEXT("Stage_Combat");
 	/** Run flag the lever's rule sets; the handle stays pulled while the run has it. */

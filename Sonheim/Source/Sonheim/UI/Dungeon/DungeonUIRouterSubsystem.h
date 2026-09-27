@@ -3,6 +3,7 @@
 #include "Subsystems/LocalPlayerSubsystem.h"
 #include "Engine/StreamableManager.h"
 #include "DungeonViewData.h"
+#include "DungeonToastWidget.h"
 #include "DungeonUIRouterSubsystem.generated.h"
 class UDungeonUIRegistryDataAsset;
 class UDungeonStagePresenter;
@@ -15,15 +16,25 @@ public:
 	void Attach(APlayerController* Controller);
 	void Detach(APlayerController* Controller);
 	void ApplyView(const FDungeonStageViewData& Data);
+	void ShowToast(const FDungeonToastViewData& Data);
+	void ClearToasts();
 	virtual void Deinitialize() override;
 private:
 	void RefreshWidget();
+	void PresentNextToast();
+	void ToastFinished();
 	UPROPERTY(Config) TSoftObjectPtr<UDungeonUIRegistryDataAsset> RegistryAsset;
 	UPROPERTY(Transient) TObjectPtr<UDungeonUIRegistryDataAsset> Registry;
 	UPROPERTY(Transient) TObjectPtr<UDungeonStagePresenter> Presenter;
 	UPROPERTY(Transient) TObjectPtr<UDungeonViewWidget> ActiveWidget;
+	UPROPERTY(Transient) TObjectPtr<UDungeonToastWidget> ToastWidget;
 	TWeakObjectPtr<APlayerController> Owner;
 	TSharedPtr<FStreamableHandle> RegistryLoad, WidgetLoad;
+	TSharedPtr<FStreamableHandle> ToastLoad;
+	TArray<FDungeonToastViewData> ToastQueue;
+	bool bToastPlaying = false;
+	bool bToastUnavailable = false;
+	int32 ToastGeneration = 0;
 	FDungeonStageViewData LatestView;
 	FName ActiveId, RequestedId;
 	int32 Generation = 0;
