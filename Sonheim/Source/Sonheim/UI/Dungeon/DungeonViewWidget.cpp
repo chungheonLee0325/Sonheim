@@ -13,6 +13,10 @@ namespace
 		if (Block) Block->SetText(Text);
 		if (UWidget* Shown = Frame ? Frame : Block) Shown->SetVisibility(Text.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	}
+	void Show(UWidget* Widget, bool bShown)
+	{
+		if (Widget) Widget->SetVisibility(bShown ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
 	/** One entry of the box's entry class per item; the box folds away while there is none. */
 	template <typename EntryType, typename ItemType>
 	void Fill(UDynamicEntryBox* Box, const TArray<ItemType>& Items, void (EntryType::*Apply)(const ItemType&))
@@ -21,20 +25,39 @@ namespace
 		Box->Reset();
 		for (const ItemType& Item : Items)
 			if (EntryType* Entry = Box->CreateEntry<EntryType>()) (Entry->*Apply)(Item);
-		Box->SetVisibility(Items.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		Show(Box, !Items.IsEmpty());
 	}
 }
 void UDungeonObjectiveRowWidget::SetObjective(const FDungeonObjectiveViewData& Objective)
 {
 	const FSlateColor& KindColor = Objective.Kind == EDungeonObjectiveKind::Final ? FinalColor
 		: Objective.Kind == EDungeonObjectiveKind::Optional ? OptionalColor : MainColor;
-	StatusText->SetText(Objective.bDone ? DoneMark : OpenMark);
-	StatusText->SetColorAndOpacity(Objective.bDone ? DoneColor : KindColor);
+	const FSlateColor& StateColor = Objective.State == EDungeonObjectiveState::Done ? DoneColor
+		: Objective.State == EDungeonObjectiveState::Missed ? MissedColor : KindColor;
+	StatusText->SetText(Objective.State == EDungeonObjectiveState::Done ? DoneMark : Objective.State == EDungeonObjectiveState::Missed ? MissedMark : OpenMark);
+	StatusText->SetColorAndOpacity(StateColor);
 	LabelText->SetText(Objective.Label);
+	LabelText->SetColorAndOpacity(Objective.State == EDungeonObjectiveState::Missed ? MissedColor : MainColor);
 	ShowText(CountText, nullptr, Objective.Count);
-	CountText->SetColorAndOpacity(Objective.bDone ? DoneColor : KindColor);
+	CountText->SetColorAndOpacity(StateColor);
 	ShowText(KindText, KindBadge, Objective.KindLabel);
 	if (KindText) KindText->SetColorAndOpacity(KindColor);
+	ShowText(WindowText, nullptr, Objective.Window);
+	ShowText(NoteText, nullptr, Objective.Note);
+}
+void UDungeonStepNodeWidget::SetStep(const FDungeonStepViewData& Step)
+{
+	LabelText->SetText(Step.Label);
+	LabelText->SetColorAndOpacity(Step.State == EDungeonStepState::Current ? CurrentColor : Step.State == EDungeonStepState::Done ? DoneColor : UpcomingColor);
+	Show(ArrowText, !Step.bFirst);
+}
+void UDungeonPartyMemberWidget::SetMember(const FDungeonMemberViewData& Member)
+{
+	NameText->SetText(Member.Name);
+	HealthBar->SetPercent(Member.Health);
+	HealthBar->SetFillColorAndOpacity(Member.Health <= 0.f ? DownColor : Member.Health < LowHealth ? LowColor : HealthyColor);
+	Show(OwnerMark, Member.bOwner);
+	Show(DownMark, Member.Health <= 0.f);
 }
 void UDungeonStatTileWidget::SetStat(const FDungeonStatViewData& Stat)
 {
@@ -53,6 +76,7 @@ void UDungeonViewWidget::NativeConstruct()
 	Super::NativeConstruct();
 	if (TimeText) TimeColor = TimeText->GetColorAndOpacity();
 	TitleColor = TitleText->GetColorAndOpacity();
+	Show(AreaTitlePanel, false);
 	ApplyViewData(ViewData);
 }
 void UDungeonViewWidget::NativeTick(const FGeometry& Geometry, float DeltaTime)
@@ -75,6 +99,14 @@ void UDungeonViewWidget::RefreshTime()
 	TimeText->SetColorAndOpacity(Remaining <= TimeWarningSeconds ? TimeWarningColor : TimeColor);
 	TimeText->SetVisibility(ESlateVisibility::HitTestInvisible);
 }
+void UDungeonViewWidget::ShowAreaTitle(const FText& Title, const FText& Subtitle)
+{
+	if (!AreaTitlePanel || Title.IsEmpty() || !GetWorld()) return;
+	ShowText(AreaTitleText, nullptr, Title);
+	ShowText(AreaSubtitleText, nullptr, Subtitle);
+	Show(AreaTitlePanel, true);
+	GetWorld()->GetTimerManager().SetTimer(AreaTitleTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { Show(AreaTitlePanel, false); }), AreaTitleSeconds, false);
+}
 void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
 {
 	ViewData = Data;
@@ -86,17 +118,23 @@ void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
 	if (ObjectiveProgress) ObjectiveProgress->SetPercent(Data.Progress);
 	ShowText(BranchText, BranchBadge, Data.BranchText);
 	ShowText(DungeonTitleText, nullptr, Data.DungeonTitle);
+	ShowText(GoalText, nullptr, Data.Goal);
+	Fill(StepNodes, Data.Steps, &UDungeonStepNodeWidget::SetStep);
 	ShowText(StepText, nullptr, Data.StepText);
 	if (StepProgress)
 	{
 		StepProgress->SetPercent(Data.StepProgress);
-		StepProgress->SetVisibility(Data.StepText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		Show(StepProgress, !Data.StepText.IsEmpty());
 	}
 	Fill(ObjectiveRows, Data.Objectives, &UDungeonObjectiveRowWidget::SetObjective);
 	ShowText(ObjectivesDoneText, nullptr, Data.ObjectivesDone);
+	Fill(OptionalRows, Data.OptionalObjectives, &UDungeonObjectiveRowWidget::SetObjective);
+	Show(OptionalPanel, !Data.OptionalObjectives.IsEmpty());
+	Fill(PartyRows, Data.Members, &UDungeonPartyMemberWidget::SetMember);
+	Show(PartyPanel, !Data.Members.IsEmpty());
 	if (BossNameText) BossNameText->SetText(Data.BossName);
 	if (BossHealthBar) BossHealthBar->SetPercent(Data.BossHealth);
-	if (BossPanel) BossPanel->SetVisibility(Data.BossHealth > 0.f ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	Show(BossPanel, Data.BossHealth > 0.f);
 	Fill(StatTiles, Data.Stats, &UDungeonStatTileWidget::SetStat);
 	Fill(RewardSlots, Data.Rewards, &UDungeonRewardEntryWidget::SetReward);
 	ShowText(RewardText, nullptr, Data.RewardText);

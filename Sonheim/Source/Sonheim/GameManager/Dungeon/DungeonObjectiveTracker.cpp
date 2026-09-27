@@ -24,11 +24,11 @@ void UDungeonObjectiveTracker::HandleDeath(ABaseMonster* Monster)
 	for (auto& Pair : Groups)
 	{
 		auto& Group = Pair.Value;
-		if (!Group.Monsters.Contains(Monster) || Group.Defeated.Contains(Monster)) continue;
+		if (!Group.Monsters.Contains(Monster) || Group.Defeated.Contains(Monster) || Group.Captured.Contains(Monster)) continue;
 		Group.Defeated.Add(Monster);
 		++TotalDefeated;
 		const FName Id = Pair.Key;
-		const int32 Count = Group.Defeated.Num(), Required = Group.Monsters.Num();
+		const int32 Count = Group.Resolved(), Required = Group.Monsters.Num();
 		const bool bBoss = Group.bBoss;
 		OnProgress.Broadcast(Id, Count, Required);
 		if (Count == Required) OnCompleted.Broadcast(Id, bBoss);
@@ -38,16 +38,28 @@ void UDungeonObjectiveTracker::HandleDeath(ABaseMonster* Monster)
 
 void UDungeonObjectiveTracker::HandlePartner(ABaseMonster* Monster)
 {
-	for (const auto& Pair : Groups)
-		if (Pair.Value.Monsters.Contains(Monster) && !Pair.Value.Defeated.Contains(Monster))
-		{ OnInvalidated.Broadcast(Pair.Key); return; }
+	for (auto& Pair : Groups)
+	{
+		auto& Group = Pair.Value;
+		if (!Group.Monsters.Contains(Monster) || Group.Defeated.Contains(Monster) || Group.Captured.Contains(Monster)) continue;
+		// A captured monster leaves the fight for good, so it resolves its place in the group as a defeat does.
+		Group.Captured.Add(Monster);
+		++TotalCaptured;
+		const FName Id = Pair.Key;
+		const int32 Count = Group.Resolved(), Required = Group.Monsters.Num();
+		const bool bBoss = Group.bBoss;
+		OnProgress.Broadcast(Id, Count, Required);
+		OnCaptured.Broadcast(Id);
+		if (Count == Required) OnCompleted.Broadcast(Id, bBoss);
+		return; // callbacks may have ended/reset the run
+	}
 }
 
 void UDungeonObjectiveTracker::HandleEndPlay(AActor* Actor, EEndPlayReason::Type Reason)
 {
 	auto* Monster = Cast<ABaseMonster>(Actor);
 	for (const auto& Pair : Groups)
-		if (Pair.Value.Monsters.Contains(Monster) && !Pair.Value.Defeated.Contains(Monster))
+		if (Pair.Value.Monsters.Contains(Monster) && !Pair.Value.Defeated.Contains(Monster) && !Pair.Value.Captured.Contains(Monster))
 		{
 			const FName Id = Pair.Key;
 			OnInvalidated.Broadcast(Id); // Removal is never a kill, including world cleanup.
@@ -58,7 +70,14 @@ void UDungeonObjectiveTracker::HandleEndPlay(AActor* Actor, EEndPlayReason::Type
 bool UDungeonObjectiveTracker::IsComplete(FName Id) const
 {
 	const auto* Group = Groups.Find(Id);
-	return Group && !Group->Monsters.IsEmpty() && Group->Defeated.Num() == Group->Monsters.Num();
+	return Group && !Group->Monsters.IsEmpty() && Group->Resolved() == Group->Monsters.Num();
+}
+
+TArray<FDungeonGroupTally> UDungeonObjectiveTracker::GetTallies() const
+{
+	TArray<FDungeonGroupTally> Tallies;
+	for (const auto& Pair : Groups) Tallies.Add({Pair.Key, Pair.Value.Monsters.Num(), Pair.Value.Defeated.Num(), Pair.Value.Captured.Num()});
+	return Tallies;
 }
 
 void UDungeonObjectiveTracker::Reset(bool bDestroyMonsters)
@@ -66,6 +85,7 @@ void UDungeonObjectiveTracker::Reset(bool bDestroyMonsters)
 	auto OldGroups = MoveTemp(Groups);
 	Groups.Empty();
 	TotalDefeated = 0;
+	TotalCaptured = 0;
 	for (auto& Pair : OldGroups)
 		for (auto Weak : Pair.Value.Monsters)
 			if (auto* Monster = Weak.Get())

@@ -34,7 +34,7 @@ bool UDungeonStageRuntimeSubsystem::TryStart(ADungeonTestArea* Area, ASonheimPla
 	}
 	if (Objectives) Objectives->Reset(true);
 	ReleaseAssets();
-	RunTags.Reset(); Queue.Empty();
+	RunTags.Reset(); Queue.Empty(); FiredOnceRules.Reset();
 	TestArea = Area; RunOwner = Player;
 	DungeonId = Row->DungeonId;
 	RunOwnerController = Player->GetController();
@@ -68,6 +68,7 @@ bool UDungeonStageRuntimeSubsystem::TryStart(ADungeonTestArea* Area, ASonheimPla
 		Self->Objectives->OnProgress.AddUObject(Self, &UDungeonStageRuntimeSubsystem::HandleProgress);
 		Self->Objectives->OnCompleted.AddUObject(Self, &UDungeonStageRuntimeSubsystem::HandleComplete);
 		Self->Objectives->OnInvalidated.AddUObject(Self, &UDungeonStageRuntimeSubsystem::HandleInvalidated);
+		Self->Objectives->OnCaptured.AddUObject(Self, &UDungeonStageRuntimeSubsystem::HandleCaptured);
 		Self->State.RunStatus = EDungeonRunStatus::Running;
 		Self->EnterStage(Loaded->StartStageId);
 		Self->ProcessQueue();
@@ -118,6 +119,13 @@ void UDungeonStageRuntimeSubsystem::ProcessQueue()
 		if (!Stage) { Fail(EDungeonFailReason::Error, TEXT("Current stage is missing.")); break; }
 		const auto* Rule = Stage->EventRules.FindByPredicate([&](const auto& Value) { return Value.Event == Event.Type && Value.SourceId == Event.SourceId; });
 		if (!Rule) continue;
+		if (Rule->bOnce)
+		{
+			// A rule that answers once per run takes only the first of its events.
+			const FString Key = FString::Printf(TEXT("%s/%d/%s"), *State.StageId.ToString(), int32(Rule->Event), *Rule->SourceId.ToString());
+			if (FiredOnceRules.Contains(Key)) continue;
+			FiredOnceRules.Add(Key);
+		}
 		UE_LOG(SONHEIM, Log, TEXT("[DungeonEvent] Run=%s Stage=%s Event=%d Source=%s"), *State.RunId.ToString(), *State.StageId.ToString(), int32(Event.Type), *Event.SourceId.ToString());
 		bool bSuccess = true;
 		for (const auto& Action : Rule->Actions) if (!ExecuteAction(Action)) { bSuccess = false; break; }
@@ -237,8 +245,11 @@ void UDungeonStageRuntimeSubsystem::HandleProgress(FName GroupId, int32 Count, i
 	if (!IsAuthority() || State.RunStatus != EDungeonRunStatus::Running) return;
 	State.ObjectiveGroupId = GroupId; State.CurrentCount = Count; State.RequiredCount = Required;
 	State.DefeatedCount = Objectives ? Objectives->GetTotalDefeated() : 0;
+	State.CapturedCount = Objectives ? Objectives->GetTotalCaptured() : 0;
+	State.Groups = Objectives ? Objectives->GetTallies() : TArray<FDungeonGroupTally>();
 	Publish(); // Every count change publishes, including changes with no stage transition.
 }
+void UDungeonStageRuntimeSubsystem::HandleCaptured(FName Id) { QueueEvent(EDungeonStageEvent::MonsterCaptured, Id); }
 void UDungeonStageRuntimeSubsystem::HandleComplete(FName Id, bool bBoss) { QueueEvent(bBoss ? EDungeonStageEvent::BossDefeated : EDungeonStageEvent::WaveCompleted, Id); }
 void UDungeonStageRuntimeSubsystem::HandleInvalidated(FName Id) { if (IsActive()) Fail(EDungeonFailReason::TargetLost, TEXT("Unresolved monster removed: ") + Id.ToString()); }
 void UDungeonStageRuntimeSubsystem::Publish()

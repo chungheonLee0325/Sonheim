@@ -6,7 +6,8 @@ class ADungeonTestArea;
 class UBoxComponent;
 struct FDungeonStageRuntimeState;
 /** Raises AreaEntered with its SourceId when a player of the run steps in. What that does, such as waking a wave, is up to the
- * stage rules. Only the server listens; the zone replicates nothing. */
+ * stage rules; only the server raises it. On each machine the zone also shows its room's name to the local player who walks in.
+ * The zone replicates nothing. */
 UCLASS()
 class SONHEIM_API ADungeonTriggerZone : public AActor
 {
@@ -16,6 +17,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TObjectPtr<ADungeonTestArea> TestArea;
 	/** The name rules use for this zone, such as GuardRoom. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FName SourceId;
+	/** The room's name and a line under it, shown to a player of the running run who walks in. Empty shows nothing. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText DisplayName;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText Subtitle;
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;

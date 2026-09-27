@@ -6,6 +6,9 @@
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
+#include "TimerManager.h"
+#include "Sonheim/AreaObject/Attribute/HealthComponent.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/GameManager/SonheimGameState.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/GameManager/Dungeon/DungeonAssetSubsystem.h"
@@ -22,9 +25,14 @@ void UDungeonStagePresenter::Start(APlayerController* Controller, UDungeonUIRout
 }
 void UDungeonStagePresenter::Stop()
 {
-	if (Owner.IsValid() && Owner->GetWorld()) Owner->GetWorld()->GameStateSetEvent.Remove(WorldHandle);
+	if (Owner.IsValid() && Owner->GetWorld())
+	{
+		Owner->GetWorld()->GameStateSetEvent.Remove(WorldHandle);
+		Owner->GetWorld()->GetTimerManager().ClearTimer(ResolvedTimer);
+	}
 	if (GameState.IsValid()) GameState->OnDungeonStageStateChanged.Remove(StateHandle);
 	if (Assets.IsValid()) Assets->Release(AssetRequest);
+	BindMembers(TArray<UHealthComponent*>());
 	AssetRequest.Invalidate(); RequestedDefinition = FPrimaryAssetId(); Definition = nullptr;
 	GameState.Reset(); Owner.Reset();
 }
@@ -38,6 +46,52 @@ void UDungeonStagePresenter::BindGameState(AGameStateBase* State)
 		OnSnapshot(GameState->GetDungeonStageState());
 	}
 }
+namespace
+{
+	FText Spell(const UDungeonPresentationDataAsset& Texts, float Seconds)
+	{
+		const int32 Whole = FMath::Max(0, FMath::RoundToInt(Seconds));
+		return Whole >= 60 ? FText::Format(Texts.MinutesFormat, Whole / 60, Whole % 60) : FText::Format(Texts.SecondsFormat, Whole);
+	}
+	FText Clock(float Seconds)
+	{
+		const int32 Whole = FMath::Max(0, FMath::RoundToInt(Seconds));
+		return FText::FromString(FString::Printf(TEXT("%d:%02d"), Whole / 60, Whole % 60));
+	}
+	const FDungeonGroupTally* FindTally(const FDungeonStageRuntimeState& State, FName GroupId)
+	{
+		return State.Groups.FindByPredicate([GroupId](const FDungeonGroupTally& Tally) { return Tally.GroupId == GroupId; });
+	}
+	bool IsCleared(const FDungeonGroupTally* Tally) { return Tally && Tally->Spawned > 0 && Tally->Defeated + Tally->Captured >= Tally->Spawned; }
+	/** One line of the objective list, with what the snapshot says about its goal. */
+	FDungeonObjectiveViewData ObjectiveRow(const UDungeonPresentationDataAsset& Texts, const FDungeonObjectiveLine& Line, const FDungeonStageRuntimeState& State)
+	{
+		FDungeonObjectiveViewData Row;
+		Row.Label = Line.Label;
+		Row.Kind = Line.Kind;
+		Row.Window = Line.Window;
+		Row.Note = Line.Note;
+		if (const FText* Tag = Texts.KindLabels.Find(Line.Kind)) Row.KindLabel = *Tag;
+		const FDungeonGroupTally* Tally = FindTally(State, Line.GroupId);
+		int32 Done = 0, Total = 0;
+		switch (Line.Goal)
+		{
+		// A group's count shows from its appearance on; captured monsters settle their place as defeated ones do.
+		case EDungeonObjectiveGoal::Group: if (Tally) { Done = Tally->Defeated + Tally->Captured; Total = Tally->Spawned; } break;
+		case EDungeonObjectiveGoal::Captured: Total = Line.Target; Done = Tally ? FMath::Min(Tally->Captured, Line.Target) : 0; break;
+		case EDungeonObjectiveGoal::RunTag: Total = 1; Done = State.RunTags.HasTagExact(Line.RunTag) ? 1 : 0; break;
+		case EDungeonObjectiveGoal::Clear: Total = 1; Done = State.RunStatus == EDungeonRunStatus::Succeeded ? 1 : 0; break;
+		case EDungeonObjectiveGoal::None: break;
+		}
+		Row.State = Total > 0 && Done >= Total ? EDungeonObjectiveState::Done : EDungeonObjectiveState::Open;
+		if (Total > 0) Row.Count = FText::Format(Texts.CountFormat, Done, Total);
+		return Row;
+	}
+	const FDungeonStagePresentation* FindStage(const UDungeonPresentationDataAsset& Texts, FName StageId)
+	{
+		return Texts.Stages.FindByPredicate([StageId](const FDungeonStagePresentation& Item) { return Item.StageId == StageId; });
+	}
+}
 void UDungeonStagePresenter::OnSnapshot(const FDungeonStageRuntimeState& Snapshot)
 {
 	if (Snapshot.RunId == Latest.RunId && Snapshot.Revision <= Latest.Revision) return;
@@ -45,6 +99,7 @@ void UDungeonStagePresenter::OnSnapshot(const FDungeonStageRuntimeState& Snapsho
 	const FDungeonStageRuntimeState Previous = Snapshot.RunId == Latest.RunId ? Latest : FDungeonStageRuntimeState();
 	Latest = Snapshot;
 	ShowToasts(Previous);
+	ResolveOptional(Previous);
 	if (RequestedDefinition != Snapshot.DefinitionAssetId && Assets.IsValid())
 	{
 		Assets->Release(AssetRequest); Definition = nullptr;
@@ -73,13 +128,11 @@ void UDungeonStagePresenter::ShowToasts(const FDungeonStageRuntimeState& Previou
 	// A client can receive several changes in one snapshot; each has its own banner, in the order they happen in a run.
 	for (const auto& Pair : Presentation->TagToasts)
 		if (Latest.RunTags.HasTagExact(Pair.Key) && !Previous.RunTags.HasTagExact(Pair.Key)) Router->ShowToast(Pair.Value);
+	for (const FDungeonGroupTally& Tally : Latest.Groups)
+		if (IsCleared(&Tally) && !IsCleared(FindTally(Previous, Tally.GroupId)))
+			if (const FDungeonToastViewData* Toast = Presentation->GroupClearToasts.Find(Tally.GroupId)) Router->ShowToast(*Toast);
 	if (!Latest.SelectedBranchId.IsNone() && Latest.SelectedBranchId != Previous.SelectedBranchId)
-		if (const FDungeonToastViewData* Toast = Presentation->BranchToasts.Find(Latest.SelectedBranchId))
-		{
-			// The route that was taken outdates a banner about the lever that still waits.
-			Router->ClearToasts();
-			Router->ShowToast(*Toast);
-		}
+		if (const FDungeonToastViewData* Toast = Presentation->BranchToasts.Find(Latest.SelectedBranchId)) Router->ShowToast(*Toast);
 	if (Latest.RequiredCount > 0 && Latest.ObjectiveGroupId != Previous.ObjectiveGroupId)
 		if (const FDungeonToastViewData* Toast = Presentation->GroupToasts.Find(Latest.ObjectiveGroupId))
 		{
@@ -88,45 +141,47 @@ void UDungeonStagePresenter::ShowToasts(const FDungeonStageRuntimeState& Previou
 			Router->ShowToast(Data);
 		}
 }
+void UDungeonStagePresenter::ResolveOptional(const FDungeonStageRuntimeState& Previous)
+{
+	UWorld* World = Owner.IsValid() ? Owner->GetWorld() : nullptr;
+	if (Previous.RunId != Latest.RunId) ResolvedOptional.Reset();
+	const auto* Presentation = Definition ? Definition->Presentation.Get() : nullptr;
+	if (!World || !Presentation || Previous.RunId != Latest.RunId || Previous.StageId == Latest.StageId || Latest.RunStatus != EDungeonRunStatus::Running) return;
+	const FDungeonStagePresentation* Left = FindStage(*Presentation, Previous.StageId);
+	if (!Left) return;
+	// The stage just left takes its optional lines with it; each says for a moment whether it was taken.
+	ResolvedOptional.Reset();
+	for (const FDungeonObjectiveLine& Line : Left->Objectives)
+	{
+		if (Line.Kind != EDungeonObjectiveKind::Optional) continue;
+		FDungeonObjectiveViewData Row = ObjectiveRow(*Presentation, Line, Latest);
+		Row.State = Row.State == EDungeonObjectiveState::Done ? EDungeonObjectiveState::Done : EDungeonObjectiveState::Missed;
+		Row.Count = Row.State == EDungeonObjectiveState::Done ? Presentation->OptionalDoneText : Presentation->OptionalMissedText;
+		Row.Window = FText::GetEmpty();
+		ResolvedOptional.Add(Row);
+	}
+	if (!ResolvedOptional.IsEmpty() && Presentation->OptionalResultSeconds > 0.f)
+		World->GetTimerManager().SetTimer(ResolvedTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { ResolvedOptional.Reset(); Present(); }),
+			Presentation->OptionalResultSeconds, false);
+	else ResolvedOptional.Reset();
+}
 bool UDungeonStagePresenter::IsParticipant() const
 {
 	// An empty list is a run from before participants were recorded; it shows to everyone.
 	return Latest.Participants.IsEmpty() || (Owner.IsValid() && Latest.Participants.Contains(Owner->PlayerState));
 }
-namespace
+void UDungeonStagePresenter::BindMembers(const TArray<UHealthComponent*>& Healths)
 {
-	FText Spell(const UDungeonPresentationDataAsset& Texts, float Seconds)
-	{
-		const int32 Whole = FMath::Max(0, FMath::RoundToInt(Seconds));
-		return Whole >= 60 ? FText::Format(Texts.MinutesFormat, Whole / 60, Whole % 60) : FText::Format(Texts.SecondsFormat, Whole);
-	}
-	FText Clock(float Seconds)
-	{
-		const int32 Whole = FMath::Max(0, FMath::RoundToInt(Seconds));
-		return FText::FromString(FString::Printf(TEXT("%d:%02d"), Whole / 60, Whole % 60));
-	}
-	/** One line of the objective list, with what the snapshot says about its goal. */
-	FDungeonObjectiveViewData ObjectiveRow(const UDungeonPresentationDataAsset& Texts, const FDungeonObjectiveLine& Line, const FDungeonStageRuntimeState& State)
-	{
-		FDungeonObjectiveViewData Row;
-		Row.Label = Line.Label;
-		Row.Kind = Line.Kind;
-		if (const FText* Tag = Texts.KindLabels.Find(Line.Kind)) Row.KindLabel = *Tag;
-		int32 Done = 0, Total = 0;
-		switch (Line.Goal)
-		{
-		// The run follows the group it spawned last, so a group's count is known from its appearance on.
-		case EDungeonObjectiveGoal::Group:
-			if (State.ObjectiveGroupId == Line.GroupId && State.RequiredCount > 0) { Done = State.CurrentCount; Total = State.RequiredCount; }
-			break;
-		case EDungeonObjectiveGoal::RunTag: Total = 1; Done = State.RunTags.HasTagExact(Line.RunTag) ? 1 : 0; break;
-		case EDungeonObjectiveGoal::Clear: Total = 1; Done = State.RunStatus == EDungeonRunStatus::Succeeded ? 1 : 0; break;
-		case EDungeonObjectiveGoal::None: break;
-		}
-		Row.bDone = Total > 0 && Done >= Total;
-		if (Total > 0) Row.Count = FText::Format(Texts.CountFormat, Done, Total);
-		return Row;
-	}
+	// Health changes are not snapshots, so the screen follows each member's health on its own.
+	for (const TWeakObjectPtr<UHealthComponent>& Bound : BoundHealth)
+		if (UHealthComponent* Health = Bound.Get(); Health && !Healths.Contains(Health)) Health->OnHealthChanged.RemoveDynamic(this, &UDungeonStagePresenter::HandleMemberHealth);
+	for (UHealthComponent* Health : Healths) Health->OnHealthChanged.AddUniqueDynamic(this, &UDungeonStagePresenter::HandleMemberHealth);
+	BoundHealth.Reset();
+	for (UHealthComponent* Health : Healths) BoundHealth.Add(Health);
+}
+void UDungeonStagePresenter::HandleMemberHealth(float CurrentHP, float Delta, float MaxHP)
+{
+	Present();
 }
 void UDungeonStagePresenter::Present()
 {
@@ -135,10 +190,11 @@ void UDungeonStagePresenter::Present()
 	// Until the definition arrives, the class defaults say what the screens say.
 	const UDungeonPresentationDataAsset* Presentation = Definition ? Definition->Presentation.Get() : nullptr;
 	const UDungeonPresentationDataAsset& Texts = Presentation ? *Presentation : *GetDefault<UDungeonPresentationDataAsset>();
+	const bool bRunning = Latest.RunStatus == EDungeonRunStatus::Running;
 	FDungeonStageViewData View;
 	View.Status = Latest.RunStatus; View.Revision = Latest.Revision;
 	View.bParticipant = IsParticipant();
-	View.DeadlineServerTime = Latest.RunStatus == EDungeonRunStatus::Running ? Latest.StageDeadlineServerTime : 0;
+	View.DeadlineServerTime = bRunning ? Latest.StageDeadlineServerTime : 0;
 	View.TimeFormat = Texts.TimeFormat;
 	View.DungeonTitle = Texts.DungeonTitle;
 	// A run has no stage while it loads and no branch before the branch point; FText::FromName would show "None" for both.
@@ -148,7 +204,8 @@ void UDungeonStagePresenter::Present()
 	View.Progress = Latest.RequiredCount > 0 ? float(Latest.CurrentCount) / Latest.RequiredCount : 0.f;
 	View.BranchText = Latest.SelectedBranchId.IsNone() ? FText::GetEmpty() : FText::FromName(Latest.SelectedBranchId);
 	if (const FText* Branch = Texts.BranchLabels.Find(Latest.SelectedBranchId)) View.BranchText = *Branch;
-	if (const auto* Stage = Texts.Stages.FindByPredicate([this](const auto& Item) { return Item.StageId == Latest.StageId; }))
+	const FDungeonStagePresentation* Stage = FindStage(Texts, Latest.StageId);
+	if (Stage)
 	{
 		View.Title = Stage->Title; View.Objective = Stage->Objective;
 		if (Stage->Step > 0)
@@ -156,16 +213,66 @@ void UDungeonStagePresenter::Present()
 			View.StepText = FText::Format(Texts.StepFormat, Stage->Step, Texts.StepCount);
 			View.StepProgress = FMath::Clamp(float(Stage->Step) / FMath::Max(1, Texts.StepCount), 0.f, 1.f);
 		}
-		if (Latest.RunStatus == EDungeonRunStatus::Running)
+	}
+	TArray<UHealthComponent*> Healths;
+	if (bRunning)
+	{
+		// The run's goal: its final lines, under the dungeon's name.
+		TArray<FString> Goals;
+		for (const FDungeonObjectiveLine& Line : Texts.RunObjectives) Goals.Add(Line.Label.ToString());
+		View.Goal = FText::FromString(FString::Join(Goals, TEXT(" · ")));
+		if (Stage)
 		{
-			for (const FDungeonObjectiveLine& Line : Texts.RunObjectives) View.Objectives.Add(ObjectiveRow(Texts, Line, Latest));
-			for (const FDungeonObjectiveLine& Line : Stage->Objectives) View.Objectives.Add(ObjectiveRow(Texts, Line, Latest));
-			View.Objectives.StableSort([](const FDungeonObjectiveViewData& A, const FDungeonObjectiveViewData& B) { return A.Kind < B.Kind; });
-			const int32 Done = Algo::CountIf(View.Objectives, [](const FDungeonObjectiveViewData& Row) { return Row.bDone; });
+			for (const FDungeonObjectiveLine& Line : Stage->Objectives)
+				(Line.Kind == EDungeonObjectiveKind::Optional ? View.OptionalObjectives : View.Objectives).Add(ObjectiveRow(Texts, Line, Latest));
+			const int32 Done = Algo::CountIf(View.Objectives, [](const FDungeonObjectiveViewData& Row) { return Row.State == EDungeonObjectiveState::Done; });
 			if (!View.Objectives.IsEmpty()) View.ObjectivesDone = FText::Format(Texts.ObjectivesDoneFormat, Done, View.Objectives.Num());
 		}
+		View.OptionalObjectives.Append(ResolvedOptional);
+		// The way through: a step per Step number; a step with several stages lists them until the run is in one of them or its
+		// branch points at one of them.
+		const int32 CurrentStep = Stage ? Stage->Step : 0;
+		FName Chosen;
+		if (Definition && !Latest.SelectedBranchId.IsNone())
+			for (const FDungeonStageDefinition& Defined : Definition->Stages)
+				for (const FDungeonStageEventRule& Rule : Defined.EventRules)
+					for (const FDungeonStageTransition& Transition : Rule.Transitions)
+						if (Transition.BranchId == Latest.SelectedBranchId) Chosen = Transition.NextStageId;
+		for (int32 Step = 1; Step <= Texts.StepCount; ++Step)
+		{
+			TArray<FString> Titles;
+			FString Taken;
+			for (const FDungeonStagePresentation& Item : Texts.Stages)
+				if (Item.Step == Step)
+				{
+					Titles.Add(Item.Title.ToString());
+					if (Item.StageId == Latest.StageId || Item.StageId == Chosen) Taken = Item.Title.ToString();
+				}
+			if (Titles.IsEmpty()) continue;
+			FDungeonStepViewData Node;
+			Node.Label = FText::FromString(Taken.IsEmpty() ? FString::Join(Titles, TEXT(" / ")) : Taken);
+			Node.State = Step < CurrentStep ? EDungeonStepState::Done : Step == CurrentStep ? EDungeonStepState::Current : EDungeonStepState::Upcoming;
+			Node.bFirst = View.Steps.IsEmpty();
+			View.Steps.Add(Node);
+		}
+		// The players of the run, with the health each one has now.
+		for (const TObjectPtr<APlayerState>& Member : Latest.Participants)
+		{
+			if (!Member) continue;
+			FDungeonMemberViewData Row;
+			Row.Name = FText::FromString(Member->GetPlayerName());
+			Row.bOwner = Member == Latest.OwnerPlayer;
+			if (const ASonheimPlayer* Pawn = Member->GetPawn<ASonheimPlayer>(); Pawn && Pawn->m_HealthComponent)
+			{
+				Healths.Add(Pawn->m_HealthComponent);
+				const float MaxHP = Pawn->m_HealthComponent->GetMaxHP();
+				Row.Health = MaxHP > 0.f ? FMath::Clamp(Pawn->m_HealthComponent->GetHP() / MaxHP, 0.f, 1.f) : 0.f;
+			}
+			View.Members.Add(Row);
+		}
 	}
-	if (Latest.RunStatus == EDungeonRunStatus::Running && Latest.BossHealth > 0.f)
+	BindMembers(Healths);
+	if (bRunning && Latest.BossHealth > 0.f)
 	{
 		View.BossName = Texts.BossName;
 		View.BossHealth = Latest.BossHealth;
@@ -191,6 +298,7 @@ void UDungeonStagePresenter::Present()
 		if (View.Rewards.IsEmpty()) View.Rewards.Add({Texts.NoRewardText, FText::GetEmpty(), nullptr});
 		View.Stats.Add({Texts.TimeStatLabel, Clock(Latest.ElapsedSeconds)});
 		View.Stats.Add({Texts.KillStatLabel, FText::AsNumber(Latest.DefeatedCount)});
+		if (Latest.CapturedCount > 0) View.Stats.Add({Texts.CaptureStatLabel, FText::AsNumber(Latest.CapturedCount)});
 		if (!Latest.SelectedBranchId.IsNone()) View.Stats.Add({Texts.RouteStatLabel, View.BranchText});
 		// The first clear sets the best time, so a cleared dungeon always has one.
 		if (Latest.ClearCount > 0) View.SummaryText = FText::Format(Texts.RecordFormat, Latest.ClearCount, Spell(Texts, Latest.BestSeconds));

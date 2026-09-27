@@ -61,9 +61,9 @@ bool UDungeonDefinitionDataAsset::ValidateDefinition(TArray<FString>& Errors, TA
 			// StageEntered and StageTimeout are raised by the stage itself, so a source on them would never match.
 			if ((Rule.Event == EDungeonStageEvent::StageEntered || Rule.Event == EDungeonStageEvent::StageTimeout) && !Rule.SourceId.IsNone())
 				Errors.Add(Stage.StageId.ToString() + TEXT(": ") + Key + TEXT(" must have no SourceId."));
-			// An interaction or a zone names the actor it comes from, so a rule without that name would never match.
-			if ((Rule.Event == EDungeonStageEvent::ActorInteracted || Rule.Event == EDungeonStageEvent::AreaEntered) && Rule.SourceId.IsNone())
-				Errors.Add(Stage.StageId.ToString() + TEXT(": ") + Key + TEXT(" needs the SourceId of its actor."));
+			// An interaction or a zone names the actor it comes from, and a capture the group, so a rule without that name would never match.
+			if ((Rule.Event == EDungeonStageEvent::ActorInteracted || Rule.Event == EDungeonStageEvent::AreaEntered || Rule.Event == EDungeonStageEvent::MonsterCaptured) && Rule.SourceId.IsNone())
+				Errors.Add(Stage.StageId.ToString() + TEXT(": ") + Key + TEXT(" needs the SourceId of its actor or group."));
 			RuleKeys.Add(Key);
 			for (const FDungeonStageAction& Action : Rule.Actions)
 			{
@@ -147,12 +147,13 @@ bool UDungeonDefinitionDataAsset::ValidateDefinition(TArray<FString>& Errors, TA
 							if (!bHasPath) Errors.Add(TEXT("No preceding producer for condition group: ") + Condition.GroupId.ToString());
 						}
 					}
-			if (Rule.Event != EDungeonStageEvent::WaveCompleted && Rule.Event != EDungeonStageEvent::BossDefeated) continue;
+			if (Rule.Event != EDungeonStageEvent::WaveCompleted && Rule.Event != EDungeonStageEvent::BossDefeated && Rule.Event != EDungeonStageEvent::MonsterCaptured) continue;
 			const auto Producers = ProducersByGroup.FindRef(Rule.SourceId);
 			bool bHasPath = false;
 			for (const auto& Producer : Producers)
 			{
-				if (Producer.bBoss != (Rule.Event == EDungeonStageEvent::BossDefeated)) continue;
+				// A capture can come from either kind of group; a completion only from its own kind.
+				if (Rule.Event != EDungeonStageEvent::MonsterCaptured && Producer.bBoss != (Rule.Event == EDungeonStageEvent::BossDefeated)) continue;
 				if (Producer.Event == Rule.Event && Producer.Source == Rule.SourceId) continue; // Cannot spawn only after its own completion.
 				bHasPath |= Reachable.Contains(Producer.Stage) && CanPrecede(Producer.Stage, Stage.StageId);
 			}

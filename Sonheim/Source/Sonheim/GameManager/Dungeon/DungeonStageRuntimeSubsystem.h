@@ -41,6 +41,7 @@ private:
 	void HandleProgress(FName GroupId, int32 Count, int32 Required);
 	void HandleComplete(FName GroupId, bool bBoss);
 	void HandleInvalidated(FName GroupId);
+	void HandleCaptured(FName GroupId);
 	void Publish();
 	void ClearStageTimer();
 	/** Writes the finished run into the saved progress and puts the record into the state that is about to be published. */
@@ -58,6 +59,8 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UHealthComponent> BossHealthSource;
 	/** Zones already reported in the current stage visit. */
 	TSet<FName> EnteredAreas;
+	/** Rules with bOnce that have answered in this run, by stage, event and source. */
+	TSet<FString> FiredOnceRules;
 	TWeakObjectPtr<ADungeonTestArea> TestArea;
 	TWeakObjectPtr<ASonheimPlayer> RunOwner;
 	TWeakObjectPtr<AController> RunOwnerController;

@@ -6,9 +6,11 @@
 
 class UDungeonSpawnRuleDataAsset;
 
-/** AreaEntered: a player of the run stepped into the trigger zone whose SourceId the rule names. */
+/** AreaEntered: a player of the run stepped into the trigger zone whose SourceId the rule names.
+ * MonsterCaptured: a monster of the group the rule names became a player's partner. A captured monster counts toward its group's
+ * completion like a defeated one, so a group can also be completed by capture (WaveCompleted, BossDefeated). */
 UENUM(BlueprintType)
-enum class EDungeonStageEvent : uint8 { StageEntered, WaveCompleted, BossDefeated, ActorInteracted, StageTimeout, AreaEntered };
+enum class EDungeonStageEvent : uint8 { StageEntered, WaveCompleted, BossDefeated, ActorInteracted, StageTimeout, AreaEntered, MonsterCaptured };
 UENUM(BlueprintType)
 enum class EDungeonStageCondition : uint8 { Always, HasRunTag, SpawnGroupCompleted };
 UENUM(BlueprintType)
@@ -60,6 +62,8 @@ struct FDungeonStageEventRule
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) EDungeonStageEvent Event = EDungeonStageEvent::StageEntered;
 	// Exact source match. None is used for the internally generated StageEntered event.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName SourceId;
+	/** The rule answers only the first time its event comes in a run, such as a bonus for the first capture. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) bool bOnce = false;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(TitleProperty="Type")) TArray<FDungeonStageAction> Actions;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(TitleProperty="TransitionId")) TArray<FDungeonStageTransition> Transitions;
 };

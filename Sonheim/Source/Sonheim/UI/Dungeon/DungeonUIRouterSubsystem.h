@@ -18,9 +18,13 @@ public:
 	void ApplyView(const FDungeonStageViewData& Data);
 	void ShowToast(const FDungeonToastViewData& Data);
 	void ClearToasts();
+	/** A room's name in the middle of the screen, while the local player takes part in a running run. */
+	void ShowAreaTitle(const FText& Title, const FText& Subtitle);
 	virtual void Deinitialize() override;
 private:
 	void RefreshWidget();
+	/** Hides the registry's HiddenDuringRun screens while the local player's run goes, and gives them back afterwards. */
+	void RefreshHidden();
 	void PresentNextToast();
 	void ToastFinished();
 	UPROPERTY(Config) TSoftObjectPtr<UDungeonUIRegistryDataAsset> RegistryAsset;
@@ -36,6 +40,8 @@ private:
 	bool bToastUnavailable = false;
 	int32 ToastGeneration = 0;
 	FDungeonStageViewData LatestView;
+	/** The screens RefreshHidden hid, with the visibility each had. */
+	TMap<TWeakObjectPtr<UUserWidget>, ESlateVisibility> HiddenWidgets;
 	FName ActiveId, RequestedId;
 	int32 Generation = 0;
 };

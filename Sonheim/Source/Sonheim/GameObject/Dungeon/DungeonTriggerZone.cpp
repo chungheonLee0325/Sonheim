@@ -3,6 +3,9 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/GameManager/SonheimGameState.h"
 #include "Sonheim/GameManager/Dungeon/DungeonStageRuntimeSubsystem.h"
+#include "Sonheim/UI/Dungeon/DungeonUIRouterSubsystem.h"
+#include "Engine/LocalPlayer.h"
+#include "GameFramework/PlayerController.h"
 ADungeonTriggerZone::ADungeonTriggerZone()
 {
 	Zone = CreateDefaultSubobject<UBoxComponent>(TEXT("Zone"));
@@ -15,8 +18,8 @@ ADungeonTriggerZone::ADungeonTriggerZone()
 void ADungeonTriggerZone::BeginPlay()
 {
 	Super::BeginPlay();
-	if (!HasAuthority()) return;
 	Zone->OnComponentBeginOverlap.AddDynamic(this, &ADungeonTriggerZone::HandleBeginOverlap);
+	if (!HasAuthority()) return;
 	if (auto* GameState = GetWorld()->GetGameState<ASonheimGameState>())
 		StageStateHandle = GameState->OnDungeonStageStateChanged.AddUObject(this, &ADungeonTriggerZone::HandleStageState);
 }
@@ -28,7 +31,12 @@ void ADungeonTriggerZone::EndPlay(const EEndPlayReason::Type EndPlayReason)
 }
 void ADungeonTriggerZone::HandleBeginOverlap(UPrimitiveComponent* Component, AActor* Other, UPrimitiveComponent* OtherComponent, int32 BodyIndex, bool bFromSweep, const FHitResult& Sweep)
 {
-	Report(Other);
+	if (HasAuthority()) Report(Other);
+	// The room's name goes to the screen of the player who walked in, on that player's own machine.
+	const auto* Player = Cast<ASonheimPlayer>(Other);
+	const auto* Controller = Player && Player->IsLocallyControlled() ? Player->GetController<APlayerController>() : nullptr;
+	if (ULocalPlayer* Local = Controller ? Controller->GetLocalPlayer() : nullptr)
+		if (auto* Router = Local->GetSubsystem<UDungeonUIRouterSubsystem>()) Router->ShowAreaTitle(DisplayName, Subtitle);
 }
 void ADungeonTriggerZone::HandleStageState(const FDungeonStageRuntimeState& State)
 {

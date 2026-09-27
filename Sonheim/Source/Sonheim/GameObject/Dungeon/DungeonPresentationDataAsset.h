@@ -12,12 +12,14 @@ enum class EDungeonObjectiveGoal : uint8
 {
 	/** A plain line with no count; it stays open while its stage lasts. */
 	None,
-	/** Every monster of GroupId defeated. The count shows once the group has appeared. */
+	/** Every monster of GroupId defeated or captured. The count shows once the group has appeared. */
 	Group,
 	/** The run has RunTag, such as the unlocked shortcut. */
 	RunTag,
 	/** The run is won. */
-	Clear
+	Clear,
+	/** Target monsters of GroupId captured. */
+	Captured
 };
 USTRUCT(BlueprintType)
 struct FDungeonObjectiveLine
@@ -28,6 +30,10 @@ struct FDungeonObjectiveLine
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) EDungeonObjectiveGoal Goal = EDungeonObjectiveGoal::None;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Goal == EDungeonObjectiveGoal::Group", EditConditionHides)) FName GroupId;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Goal == EDungeonObjectiveGoal::RunTag", EditConditionHides)) FGameplayTag RunTag;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Goal == EDungeonObjectiveGoal::Captured", EditConditionHides, ClampMin="1")) int32 Target = 1;
+	/** How long an optional line stays open, such as 경비실 전투 중, and what taking it means or gives. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) FText Window;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) FText Note;
 };
 USTRUCT(BlueprintType)
 struct FDungeonStagePresentation
@@ -57,7 +63,7 @@ public:
 	/** Name over the boss's health bar while it lives. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText BossName = INVTEXT("유적의 수호자");
 
-	/** Lines shown in every stage, such as the run's final goal. The list orders all lines by kind: final, main, optional. */
+	/** The run's goal, under the dungeon's name: its final lines' labels. A final line has no count on screen. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Objectives") TArray<FDungeonObjectiveLine> RunObjectives;
 	/** The tag in front of each kind of line; empty shows none. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Objectives") TMap<EDungeonObjectiveKind, FText> KindLabels = {
@@ -66,6 +72,10 @@ public:
 		{EDungeonObjectiveKind::Optional, INVTEXT("추가")}};
 	/** {0} lines done, {1} lines. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Objectives") FText ObjectivesDoneFormat = INVTEXT("{0}/{1} 완료");
+	/** When its stage ends, an optional line shows whether it was taken for this long, then leaves. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Objectives") FText OptionalDoneText = INVTEXT("완료");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Objectives") FText OptionalMissedText = INVTEXT("놓침");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Objectives", meta=(ClampMin="0")) float OptionalResultSeconds = 3.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText LoadingText = INVTEXT("던전을 불러오는 중");
 	/** {0} the stage's Step, {1} StepCount. */
@@ -87,6 +97,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText TimeStatLabel = INVTEXT("소요 시간");
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText KillStatLabel = INVTEXT("처치한 적");
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText RouteStatLabel = INVTEXT("경로");
+	/** A tile only when the run captured any monster. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText CaptureStatLabel = INVTEXT("포획");
 	/** {0} the item's name, {1} how many: a reward line on screens without reward slots. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText RewardFormat = INVTEXT("{0} ×{1}");
 	/** {0} how many, under a reward slot's name. */
@@ -106,4 +118,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FName, FDungeonToastViewData> BranchToasts;
 	/** Banner when a group of monsters appears, by group; {0} in Detail is how many. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FName, FDungeonToastViewData> GroupToasts;
+	/** Banner when every monster of a group is defeated or captured, by group. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FName, FDungeonToastViewData> GroupClearToasts;
 };

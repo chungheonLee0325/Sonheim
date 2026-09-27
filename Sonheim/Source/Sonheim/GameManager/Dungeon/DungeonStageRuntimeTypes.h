@@ -19,6 +19,21 @@ struct FDungeonRunReward
 	bool operator==(const FDungeonRunReward& Other) const { return ItemId == Other.ItemId && Count == Other.Count; }
 };
 
+/** What became of one spawned group: how many appeared, and how many of them were defeated or captured. */
+USTRUCT(BlueprintType)
+struct FDungeonGroupTally
+{
+	GENERATED_BODY()
+	UPROPERTY(BlueprintReadOnly) FName GroupId;
+	UPROPERTY(BlueprintReadOnly) int32 Spawned = 0;
+	UPROPERTY(BlueprintReadOnly) int32 Defeated = 0;
+	UPROPERTY(BlueprintReadOnly) int32 Captured = 0;
+	bool operator==(const FDungeonGroupTally& Other) const
+	{
+		return GroupId == Other.GroupId && Spawned == Other.Spawned && Defeated == Other.Defeated && Captured == Other.Captured;
+	}
+};
+
 USTRUCT(BlueprintType)
 struct FDungeonStageRuntimeState
 {
@@ -39,8 +54,11 @@ struct FDungeonStageRuntimeState
 	UPROPERTY(BlueprintReadOnly) double StageDeadlineServerTime = 0;
 	/** What the run handed over, merged per item in the order the rules granted it. The result screen settles from this. */
 	UPROPERTY(BlueprintReadOnly) TArray<FDungeonRunReward> Rewards;
-	/** Monsters the run confirmed as defeated, across every group. */
+	/** Monsters the run confirmed as defeated, and those captured, across every group. */
 	UPROPERTY(BlueprintReadOnly) int32 DefeatedCount = 0;
+	UPROPERTY(BlueprintReadOnly) int32 CapturedCount = 0;
+	/** Every group the run spawned, in spawn order. The objective list counts from these. */
+	UPROPERTY(BlueprintReadOnly) TArray<FDungeonGroupTally> Groups;
 	/** Seconds from the start to the terminal stage. It stays 0 while the run is going. */
 	UPROPERTY(BlueprintReadOnly) float ElapsedSeconds = 0.f;
 	/** How often this dungeon has been finished, and the fastest of those runs. Filled from the saved record when a run ends. */
@@ -58,7 +76,7 @@ struct FDungeonStageRuntimeState
 		return RunId == Other.RunId && DefinitionAssetId == Other.DefinitionAssetId && StageId == Other.StageId &&
 			RunStatus == Other.RunStatus && ObjectiveGroupId == Other.ObjectiveGroupId && CurrentCount == Other.CurrentCount &&
 			RequiredCount == Other.RequiredCount && SelectedBranchId == Other.SelectedBranchId && StageStartedServerTime == Other.StageStartedServerTime && StageDeadlineServerTime == Other.StageDeadlineServerTime &&
-			RunTags == Other.RunTags && Rewards == Other.Rewards && DefeatedCount == Other.DefeatedCount && ElapsedSeconds == Other.ElapsedSeconds &&
+			RunTags == Other.RunTags && Rewards == Other.Rewards && DefeatedCount == Other.DefeatedCount && CapturedCount == Other.CapturedCount && Groups == Other.Groups && ElapsedSeconds == Other.ElapsedSeconds &&
 			ClearCount == Other.ClearCount && BestSeconds == Other.BestSeconds && Participants == Other.Participants && OwnerPlayer == Other.OwnerPlayer && FailReason == Other.FailReason && BossHealth == Other.BossHealth;
 	}
 };

@@ -2,6 +2,7 @@
 #include "DungeonUIRegistryDataAsset.h"
 #include "DungeonStagePresenter.h"
 #include "DungeonViewWidget.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Engine/AssetManager.h"
 #include "GameFramework/PlayerController.h"
 #include "Sonheim/Utilities/LogMacro.h"
@@ -28,6 +29,9 @@ void UDungeonUIRouterSubsystem::Detach(APlayerController* Controller)
 	++Generation;
 	ClearToasts();
 	if (Presenter) Presenter->Stop();
+	// The world's own screens come back when the player leaves, whatever the run did.
+	LatestView = FDungeonStageViewData{};
+	RefreshHidden();
 	if (ActiveWidget) ActiveWidget->RemoveFromParent();
 	Presenter = nullptr; ActiveWidget = nullptr; Registry = nullptr;
 	RegistryLoad.Reset(); WidgetLoad.Reset(); ActiveId = NAME_None; RequestedId = NAME_None;
@@ -90,6 +94,38 @@ void UDungeonUIRouterSubsystem::ApplyView(const FDungeonStageViewData& Data)
 {
 	LatestView = Data;
 	RefreshWidget();
+	RefreshHidden();
+}
+void UDungeonUIRouterSubsystem::ShowAreaTitle(const FText& Title, const FText& Subtitle)
+{
+	if (ActiveWidget && LatestView.bParticipant && LatestView.Status == EDungeonRunStatus::Running) ActiveWidget->ShowAreaTitle(Title, Subtitle);
+}
+void UDungeonUIRouterSubsystem::RefreshHidden()
+{
+	const bool bHide = Registry && Owner.IsValid() && LatestView.bParticipant &&
+		(LatestView.Status == EDungeonRunStatus::Loading || LatestView.Status == EDungeonRunStatus::Running);
+	if (!bHide)
+	{
+		for (const auto& Pair : HiddenWidgets)
+			if (UUserWidget* Widget = Pair.Key.Get()) Widget->SetVisibility(Pair.Value);
+		HiddenWidgets.Reset();
+		return;
+	}
+	// Checked on every update, so a screen the world adds during the run is hidden too.
+	for (const TSoftClassPtr<UUserWidget>& Class : Registry->HiddenDuringRun)
+	{
+		// A class that is not loaded has no screen up.
+		UClass* Loaded = Class.Get();
+		if (!Loaded) continue;
+		TArray<UUserWidget*> Found;
+		UWidgetBlueprintLibrary::GetAllWidgetsOfClass(Owner.Get(), Found, Loaded, true);
+		for (UUserWidget* Widget : Found)
+			if (!HiddenWidgets.Contains(Widget))
+			{
+				HiddenWidgets.Add(Widget, Widget->GetVisibility());
+				Widget->SetVisibility(ESlateVisibility::Collapsed);
+			}
+	}
 }
 void UDungeonUIRouterSubsystem::RefreshWidget()
 {
