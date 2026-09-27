@@ -13,18 +13,18 @@ struct FDungeonTrackedGroup
 	bool bBoss = false;
 	int32 Resolved() const { return Defeated.Num() + Captured.Num(); }
 };
-DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnDungeonGroupProgress, FName, int32, int32);
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnDungeonGroupCompleted, FName, bool);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnDungeonGroupInvalidated, FName);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnDungeonGroupCaptured, FName);
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnDungeonGroupProgress, FGameplayTag, int32, int32);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnDungeonGroupCompleted, FGameplayTag, bool);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnDungeonGroupInvalidated, FGameplayTag);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnDungeonGroupCaptured, FGameplayTag);
 
 UCLASS()
 class SONHEIM_API UDungeonObjectiveTracker : public UObject
 {
 	GENERATED_BODY()
 public:
-	bool RegisterGroup(FName Id, bool bBoss, const TArray<ABaseMonster*>& Monsters);
-	bool IsComplete(FName Id) const;
+	bool RegisterGroup(const FGameplayTag& Id, bool bBoss, const TArray<ABaseMonster*>& Monsters);
+	bool IsComplete(const FGameplayTag& Id) const;
 	int32 GetTotalDefeated() const { return TotalDefeated; }
 	int32 GetTotalCaptured() const { return TotalCaptured; }
 	/** Every group in the order it was registered. */
@@ -38,7 +38,7 @@ private:
 	void HandleDeath(ABaseMonster* Monster);
 	void HandlePartner(ABaseMonster* Monster);
 	UFUNCTION() void HandleEndPlay(AActor* Actor, EEndPlayReason::Type Reason);
-	TMap<FName, FDungeonTrackedGroup> Groups;
+	TMap<FGameplayTag, FDungeonTrackedGroup> Groups;
 	int32 TotalDefeated = 0;
 	int32 TotalCaptured = 0;
 };

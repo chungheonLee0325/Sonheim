@@ -24,7 +24,7 @@ USTRUCT(BlueprintType)
 struct FDungeonGroupTally
 {
 	GENERATED_BODY()
-	UPROPERTY(BlueprintReadOnly) FName GroupId;
+	UPROPERTY(BlueprintReadOnly) FGameplayTag GroupId;
 	UPROPERTY(BlueprintReadOnly) int32 Spawned = 0;
 	UPROPERTY(BlueprintReadOnly) int32 Defeated = 0;
 	UPROPERTY(BlueprintReadOnly) int32 Captured = 0;
@@ -40,20 +40,20 @@ struct FDungeonStageRuntimeState
 	GENERATED_BODY()
 	UPROPERTY(BlueprintReadOnly) FGuid RunId;
 	UPROPERTY(BlueprintReadOnly) FPrimaryAssetId DefinitionAssetId;
-	UPROPERTY(BlueprintReadOnly) FName StageId;
+	UPROPERTY(BlueprintReadOnly) FGameplayTag StageId;
 	UPROPERTY(BlueprintReadOnly) int32 Revision = 0;
 	UPROPERTY(BlueprintReadOnly) EDungeonRunStatus RunStatus = EDungeonRunStatus::Idle;
-	UPROPERTY(BlueprintReadOnly) FName ObjectiveGroupId;
+	UPROPERTY(BlueprintReadOnly) FGameplayTag ObjectiveGroupId;
 	UPROPERTY(BlueprintReadOnly) int32 CurrentCount = 0;
 	UPROPERTY(BlueprintReadOnly) int32 RequiredCount = 0;
-	UPROPERTY(BlueprintReadOnly) FName SelectedBranchId;
+	UPROPERTY(BlueprintReadOnly) FGameplayTag SelectedBranchId;
 	/** Run flags the stage rules have set, such as the unlocked shortcut. The world reads them; conditions are still evaluated on the server. */
 	UPROPERTY(BlueprintReadOnly) FGameplayTagContainer RunTags;
 	UPROPERTY(BlueprintReadOnly) double StageStartedServerTime = 0;
 	/** Server time the current stage runs out at. 0 while the stage has no limit. */
 	UPROPERTY(BlueprintReadOnly) double StageDeadlineServerTime = 0;
 	/** The doorway barriers the current stage raises (its SealedBarriers). Every machine's barriers read this. */
-	UPROPERTY(BlueprintReadOnly) TArray<FName> SealedBarriers;
+	UPROPERTY(BlueprintReadOnly) TArray<FGameplayTag> SealedBarriers;
 	/** What the run handed over, merged per item in the order the rules granted it. The result screen settles from this. */
 	UPROPERTY(BlueprintReadOnly) TArray<FDungeonRunReward> Rewards;
 	/** Monsters the run confirmed as defeated, and those captured, across every group. */

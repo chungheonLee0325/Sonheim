@@ -4,7 +4,7 @@
 class FDungeonStageConditionEvaluator
 {
 public:
-	static bool Evaluate(const TArray<FDungeonStageCondition>& Conditions, const FGameplayTagContainer& Tags, TFunctionRef<bool(FName)> GroupCompleted)
+	static bool Evaluate(const TArray<FDungeonStageCondition>& Conditions, const FGameplayTagContainer& Tags, TFunctionRef<bool(const FGameplayTag&)> GroupCompleted)
 	{
 		if (Conditions.IsEmpty()) return false;
 		for (const auto& Condition : Conditions)

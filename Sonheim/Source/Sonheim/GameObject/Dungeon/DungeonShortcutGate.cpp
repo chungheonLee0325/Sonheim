@@ -61,9 +61,8 @@ void ADungeonShortcutGate::RefreshFromState()
 		StageStateHandle = GameState->OnDungeonStageStateChanged.AddUObject(this, &ADungeonShortcutGate::HandleStageState);
 	const FDungeonStageRuntimeState State = GameState ? GameState->GetDungeonStageState() : FDungeonStageRuntimeState();
 	const bool bRunActive = State.RunStatus == EDungeonRunStatus::Running || State.RunStatus == EDungeonRunStatus::Succeeded;
-	const FGameplayTag OpenTag = OpenTagName.IsNone() ? FGameplayTag() : FGameplayTag::RequestGameplayTag(OpenTagName, /*ErrorIfNotFound=*/false);
 	const bool bFlagged = OpenTag.IsValid() && State.RunTags.HasTag(OpenTag);
-	const bool bBranchTaken = !OpenBranchId.IsNone() && State.SelectedBranchId == OpenBranchId;
+	const bool bBranchTaken = OpenBranchId.IsValid() && State.SelectedBranchId == OpenBranchId;
 	const bool bShouldOpen = bRunActive && (bFlagged || bBranchTaken);
 	if (bShouldOpen != bOpen)
 	{

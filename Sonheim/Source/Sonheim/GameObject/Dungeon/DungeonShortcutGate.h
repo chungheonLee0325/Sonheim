@@ -1,5 +1,6 @@
 #pragma once
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
 #include "DungeonShortcutGate.generated.h"
 class UStaticMeshComponent;
@@ -13,9 +14,9 @@ class SONHEIM_API ADungeonShortcutGate : public AActor
 public:
 	ADungeonShortcutGate();
 	/** Run flag that opens this gate. A stage rule sets it the moment the lever is used, and the snapshot carries it to every client. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FName OpenTagName = TEXT("Dungeon.State.ShortcutUnlocked");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(Categories="Dungeon")) FGameplayTag OpenTag;
 	/** Branch that also keeps this gate open, for a run that reaches it without the flag. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FName OpenBranchId = TEXT("Shortcut");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(Categories="Dungeon")) FGameplayTag OpenBranchId;
 	/** Where the gate moves while it is open. Down by its own height sinks it under the floor. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FVector OpenOffset = FVector(0.f, 0.f, -340.f);
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") float OpenSeconds = 1.2f;

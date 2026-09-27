@@ -1,5 +1,6 @@
 #pragma once
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
 #include "Engine/DataTable.h"
 #include "Sonheim/GameObject/InteractableInterface.h"
@@ -17,7 +18,7 @@ USTRUCT(BlueprintType)
 struct FDungeonSpawnPointSet
 {
 	GENERATED_BODY()
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName PointSetId;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(Categories="Dungeon")) FGameplayTag PointSetId;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(MakeEditWidget=true)) TArray<FTransform> LocalTransforms;
 };
 UCLASS()
@@ -43,7 +44,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TObjectPtr<UNiagaraSystem> SpawnEffect;
 	/** Played to each player of the run while the boss is alive, over the level's music, which the host turns down meanwhile. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TObjectPtr<USoundBase> BossMusic;
-	TArray<FTransform> GetSpawnTransforms(FName PointSetId) const;
+	TArray<FTransform> GetSpawnTransforms(const FGameplayTag& PointSetId) const;
 	UFUNCTION(NetMulticast, Unreliable) void MulticastSpawnBurst(const TArray<FVector>& Points);
 	virtual bool CanInteract_Implementation() const override { return true; }
 	virtual void Interact_Implementation(ASonheimPlayer* Player) override;

@@ -15,39 +15,62 @@ namespace
 		return Enum ? Enum->GetNameStringByValue(Value) : FString::FromInt(Value);
 	}
 
-	FString ConditionText(const FDungeonStageCondition& Condition)
+	/** A tag without its dungeon's part, such as Stage.Combat: what a reader of one dungeon's graph needs. */
+	FString Short(const FGameplayTag& Tag, const FGameplayTag& Root)
+	{
+		FString Name = Tag.ToString();
+		const FString Prefix = Root.ToString() + TEXT(".");
+		if (Root.IsValid() && Name.StartsWith(Prefix)) Name.RightChopInline(Prefix.Len());
+		return Name;
+	}
+
+	/** Mermaid node ids take no dots. */
+	FString Node(const FGameplayTag& Tag, const FGameplayTag& Root)
+	{
+		return Short(Tag, Root).Replace(TEXT("."), TEXT("_"));
+	}
+
+	FString ConditionText(const FDungeonStageCondition& Condition, const FGameplayTag& Root)
 	{
 		FString Text = EnumName(StaticEnum<EDungeonStageCondition>(), int64(Condition.Type));
-		if (Condition.Type == EDungeonStageCondition::HasRunTag) Text += TEXT(" ") + Condition.RunTag.GetTagName().ToString();
-		if (Condition.Type == EDungeonStageCondition::SpawnGroupCompleted) Text += TEXT(" ") + Condition.GroupId.ToString();
+		if (Condition.Type == EDungeonStageCondition::HasRunTag) Text += TEXT(" ") + Short(Condition.RunTag, Root);
+		if (Condition.Type == EDungeonStageCondition::SpawnGroupCompleted) Text += TEXT(" ") + Short(Condition.GroupId, Root);
 		return Condition.bNegate ? TEXT("not ") + Text : Text;
 	}
 }
 
 FPrimaryAssetId UDungeonDefinitionDataAsset::GetPrimaryAssetId() const
 {
-	return DefinitionId.IsNone() ? FPrimaryAssetId() : FPrimaryAssetId(TEXT("DungeonDefinition"), DefinitionId);
+	return DungeonId.IsValid() ? FPrimaryAssetId(TEXT("DungeonDefinition"), DungeonId.GetTagName()) : FPrimaryAssetId();
 }
 
-const FDungeonStageDefinition* UDungeonDefinitionDataAsset::FindStage(FName Id) const
+const FDungeonStageDefinition* UDungeonDefinitionDataAsset::FindStage(const FGameplayTag& Id) const
 {
-	return Stages.FindByPredicate([Id](const FDungeonStageDefinition& Stage) { return Stage.StageId == Id; });
+	return Stages.FindByPredicate([&Id](const FDungeonStageDefinition& Stage) { return Stage.StageId == Id; });
 }
 
 bool UDungeonDefinitionDataAsset::ValidateDefinition(TArray<FString>& Errors, TArray<FString>& Warnings) const
 {
 	Errors.Reset(); Warnings.Reset();
-	if (DefinitionId.IsNone()) Errors.Add(TEXT("DefinitionId is required."));
-	if (StartStageId.IsNone() || !FindStage(StartStageId)) Errors.Add(TEXT("Invalid StartStageId."));
+	if (!DungeonId.IsValid()) Errors.Add(TEXT("DungeonId is required."));
+	if (!StartStageId.IsValid() || !FindStage(StartStageId)) Errors.Add(TEXT("Invalid StartStageId."));
 	if (Presentation.IsNull()) Errors.Add(TEXT("Presentation is required."));
-	TSet<FName> Ids, TransitionIds;
-	TMap<FName, TArray<FName>> Edges;
-	struct FProducer { FName Stage; EDungeonStageEvent Event; FName Source; bool bBoss; };
-	TMap<FName, TArray<FProducer>> ProducersByGroup;
+	// Every name the graph uses belongs to its dungeon; a tag of another dungeon is a slip in a list that offers all of them.
+	auto Own = [&](const FGameplayTag& Tag, const TCHAR* What)
+	{
+		if (Tag.IsValid() && DungeonId.IsValid() && !Tag.MatchesTag(DungeonId))
+			Errors.Add(FString::Printf(TEXT("%s %s is not under %s."), What, *Tag.ToString(), *DungeonId.ToString()));
+	};
+	TSet<FGameplayTag> Ids;
+	TSet<FName> TransitionIds;
+	TMap<FGameplayTag, TArray<FGameplayTag>> Edges;
+	struct FProducer { FGameplayTag Stage; EDungeonStageEvent Event; FGameplayTag Source; bool bBoss; };
+	TMap<FGameplayTag, TArray<FProducer>> ProducersByGroup;
 	for (const FDungeonStageDefinition& Stage : Stages)
 	{
-		if (Stage.StageId.IsNone() || Ids.Contains(Stage.StageId)) Errors.Add(FString::Printf(TEXT("Duplicate/empty StageId: %s"), *Stage.StageId.ToString()));
+		if (!Stage.StageId.IsValid() || Ids.Contains(Stage.StageId)) Errors.Add(FString::Printf(TEXT("Duplicate/empty StageId: %s"), *Stage.StageId.ToString()));
 		Ids.Add(Stage.StageId);
+		Own(Stage.StageId, TEXT("StageId"));
 		TSet<FString> RuleKeys;
 		int32 TransitionCount = 0;
 		const bool bHasTimeout = Stage.EventRules.ContainsByPredicate([](const auto& Rule) { return Rule.Event == EDungeonStageEvent::StageTimeout; });
@@ -55,36 +78,44 @@ bool UDungeonDefinitionDataAsset::ValidateDefinition(TArray<FString>& Errors, TA
 		if (Stage.TimeLimitSeconds > 0.f && !bHasTimeout) Errors.Add(Stage.StageId.ToString() + TEXT(": a time limit needs a StageTimeout rule."));
 		if (Stage.TimeLimitSeconds <= 0.f && bHasTimeout) Errors.Add(Stage.StageId.ToString() + TEXT(": a StageTimeout rule needs a time limit."));
 		// The level is not known here; a barrier the level lacks is reported when a run starts.
-		TSet<FName> Barriers;
-		for (const FName Barrier : Stage.SealedBarriers)
+		TSet<FGameplayTag> Barriers;
+		for (const FGameplayTag& Barrier : Stage.SealedBarriers)
 		{
 			bool bRepeated = false;
 			Barriers.Add(Barrier, &bRepeated);
-			if (Barrier.IsNone() || bRepeated) Errors.Add(Stage.StageId.ToString() + TEXT(": SealedBarriers needs each BarrierId once."));
+			if (!Barrier.IsValid() || bRepeated) Errors.Add(Stage.StageId.ToString() + TEXT(": SealedBarriers needs each BarrierId once."));
+			Own(Barrier, TEXT("Barrier"));
 		}
 		for (const FDungeonStageEventRule& Rule : Stage.EventRules)
 		{
-			const FString Key = FString::Printf(TEXT("%d:%s"), int32(Rule.Event), *Rule.SourceId.ToString());
+			const FString Key = FString::Printf(TEXT("%s:%s"), *EnumName(StaticEnum<EDungeonStageEvent>(), int64(Rule.Event)), *Rule.SourceId.ToString());
 			if (RuleKeys.Contains(Key)) Errors.Add(Stage.StageId.ToString() + TEXT(": conflicting event rules ") + Key);
 			// StageEntered and StageTimeout are raised by the stage itself, so a source on them would never match.
-			if ((Rule.Event == EDungeonStageEvent::StageEntered || Rule.Event == EDungeonStageEvent::StageTimeout) && !Rule.SourceId.IsNone())
+			if ((Rule.Event == EDungeonStageEvent::StageEntered || Rule.Event == EDungeonStageEvent::StageTimeout) && Rule.SourceId.IsValid())
 				Errors.Add(Stage.StageId.ToString() + TEXT(": ") + Key + TEXT(" must have no SourceId."));
 			// An interaction or a zone names the actor it comes from, and a capture the group, so a rule without that name would never match.
-			if ((Rule.Event == EDungeonStageEvent::ActorInteracted || Rule.Event == EDungeonStageEvent::AreaEntered || Rule.Event == EDungeonStageEvent::MonsterCaptured) && Rule.SourceId.IsNone())
+			if ((Rule.Event == EDungeonStageEvent::ActorInteracted || Rule.Event == EDungeonStageEvent::AreaEntered || Rule.Event == EDungeonStageEvent::MonsterCaptured) && !Rule.SourceId.IsValid())
 				Errors.Add(Stage.StageId.ToString() + TEXT(": ") + Key + TEXT(" needs the SourceId of its actor or group."));
+			Own(Rule.SourceId, TEXT("SourceId"));
 			RuleKeys.Add(Key);
 			for (const FDungeonStageAction& Action : Rule.Actions)
 			{
 				if (Action.Type == EDungeonStageAction::SpawnGroup)
 				{
-					if (Action.GroupId.IsNone() || Action.PointSetId.IsNone() || Action.SpawnRule.IsNull()) Errors.Add(Stage.StageId.ToString() + TEXT(": invalid spawn action."));
+					if (!Action.GroupId.IsValid() || !Action.PointSetId.IsValid() || Action.SpawnRule.IsNull()) Errors.Add(Stage.StageId.ToString() + TEXT(": invalid spawn action."));
+					Own(Action.GroupId, TEXT("GroupId"));
+					Own(Action.PointSetId, TEXT("PointSetId"));
 					ProducersByGroup.FindOrAdd(Action.GroupId).Add({Stage.StageId, Rule.Event, Rule.SourceId, Action.bBossGroup});
 					if (const auto* SpawnRule = Action.SpawnRule.Get())
 					{
 						if (SpawnRule->Count < 1 || SpawnRule->Count > 16 || SpawnRule->MonsterClass.IsNull()) Errors.Add(Stage.StageId.ToString() + TEXT(": invalid spawn rule."));
 					}
 				}
-				if ((Action.Type == EDungeonStageAction::SetRunTag || Action.Type == EDungeonStageAction::ClearRunTag) && !Action.RunTag.IsValid()) Errors.Add(Stage.StageId.ToString() + TEXT(": invalid RunTag action."));
+				if ((Action.Type == EDungeonStageAction::SetRunTag || Action.Type == EDungeonStageAction::ClearRunTag))
+				{
+					if (!Action.RunTag.IsValid()) Errors.Add(Stage.StageId.ToString() + TEXT(": invalid RunTag action."));
+					Own(Action.RunTag, TEXT("RunTag"));
+				}
 				if (Action.Type == EDungeonStageAction::EmitEvent && Action.Event != EDungeonStageEvent::StageEntered) Errors.Add(TEXT("EmitEvent only permits StageEntered. Combat/interaction facts require trusted producers."));
 				if (Action.Type == EDungeonStageAction::EmitEvent && Rule.Event == Action.Event && Rule.SourceId == Action.EventSourceId) Errors.Add(TEXT("Immediate event self-loop."));
 				if (Action.Type == EDungeonStageAction::GrantReward && (Action.RewardItemId <= 0 || Action.RewardCount < 1 || Action.RewardCount > 99)) Errors.Add(Stage.StageId.ToString() + TEXT(": invalid reward action."));
@@ -96,6 +127,7 @@ bool UDungeonDefinitionDataAsset::ValidateDefinition(TArray<FString>& Errors, TA
 				if (Transition.TransitionId.IsNone() || TransitionIds.Contains(Transition.TransitionId)) Errors.Add(TEXT("Duplicate/empty TransitionId."));
 				TransitionIds.Add(Transition.TransitionId);
 				if (!FindStage(Transition.NextStageId)) Errors.Add(TEXT("Missing NextStageId: ") + Transition.NextStageId.ToString());
+				Own(Transition.BranchId, TEXT("BranchId"));
 				Edges.FindOrAdd(Stage.StageId).Add(Transition.NextStageId);
 				if (Transition.Conditions.IsEmpty()) Errors.Add(TEXT("Transition requires explicit Conditions (use Always for fallback)."));
 				bool bAlways = !Transition.Conditions.IsEmpty();
@@ -103,7 +135,9 @@ bool UDungeonDefinitionDataAsset::ValidateDefinition(TArray<FString>& Errors, TA
 				{
 					bAlways &= Condition.Type == EDungeonStageCondition::Always && !Condition.bNegate;
 					if (Condition.Type == EDungeonStageCondition::HasRunTag && !Condition.RunTag.IsValid()) Errors.Add(TEXT("HasRunTag requires a valid tag."));
-					if (Condition.Type == EDungeonStageCondition::SpawnGroupCompleted && Condition.GroupId.IsNone()) Errors.Add(TEXT("SpawnGroupCompleted requires GroupId."));
+					if (Condition.Type == EDungeonStageCondition::HasRunTag) Own(Condition.RunTag, TEXT("RunTag"));
+					if (Condition.Type == EDungeonStageCondition::SpawnGroupCompleted && !Condition.GroupId.IsValid()) Errors.Add(TEXT("SpawnGroupCompleted requires GroupId."));
+					if (Condition.Type == EDungeonStageCondition::SpawnGroupCompleted) Own(Condition.GroupId, TEXT("GroupId"));
 				}
 				if (bAlways && Index != Rule.Transitions.Num() - 1) Errors.Add(TEXT("Always branch shadows subsequent transitions."));
 			}
@@ -111,28 +145,28 @@ bool UDungeonDefinitionDataAsset::ValidateDefinition(TArray<FString>& Errors, TA
 		if (Stage.TerminalOutcome == EDungeonTerminalOutcome::None && TransitionCount == 0) Errors.Add(Stage.StageId.ToString() + TEXT(": non-terminal has no transition."));
 		if (Stage.TerminalOutcome != EDungeonTerminalOutcome::None && !Stage.EventRules.IsEmpty()) Errors.Add(Stage.StageId.ToString() + TEXT(": terminal rules would never execute."));
 	}
-	TSet<FName> Visiting, Visited;
-	TFunction<void(FName)> Visit = [&](FName Id)
+	TSet<FGameplayTag> Visiting, Visited;
+	TFunction<void(const FGameplayTag&)> Visit = [&](const FGameplayTag& Id)
 	{
 		if (Visiting.Contains(Id)) { Errors.Add(TEXT("Self/cyclic transition at ") + Id.ToString()); return; }
 		if (Visited.Contains(Id)) return;
 		Visiting.Add(Id);
-		for (FName Next : Edges.FindRef(Id)) Visit(Next);
+		for (const FGameplayTag& Next : Edges.FindRef(Id)) Visit(Next);
 		Visiting.Remove(Id); Visited.Add(Id);
 	};
 	Visit(StartStageId);
-	const TSet<FName> Reachable = Visited;
+	const TSet<FGameplayTag> Reachable = Visited;
 	for (const auto& Stage : Stages)
 	{
 		if (!Reachable.Contains(Stage.StageId)) Warnings.Add(TEXT("Unreachable stage: ") + Stage.StageId.ToString());
 		Visit(Stage.StageId); // Cycles in disconnected authoring are also errors.
 	}
-	auto CanPrecede = [&](FName Producer, FName Consumer)
+	auto CanPrecede = [&](const FGameplayTag& Producer, const FGameplayTag& Consumer)
 	{
-		TSet<FName> Seen; TArray<FName> Pending{Producer};
+		TSet<FGameplayTag> Seen; TArray<FGameplayTag> Pending{Producer};
 		while (!Pending.IsEmpty())
 		{
-			FName Id = Pending.Pop(); if (Id == Consumer) return true;
+			const FGameplayTag Id = Pending.Pop(); if (Id == Consumer) return true;
 			if (Seen.Contains(Id)) continue;
 			Seen.Add(Id); Pending.Append(Edges.FindRef(Id));
 		}
@@ -195,17 +229,18 @@ EDataValidationResult UDungeonDefinitionDataAsset::IsDataValid(FDataValidationCo
 
 FString UDungeonDefinitionDataAsset::BuildStageGraph() const
 {
-	// Mermaid, because it renders in the places a design document already lives and stays readable as plain text.
-	FString Text = FString::Printf(TEXT("flowchart TD\n  %%%% %s, start %s\n"), *DefinitionId.ToString(), *StartStageId.ToString());
+	// Mermaid, because it renders in the places a design document already lives and stays readable as plain text. Names are written
+	// without the dungeon's part of their tags, which the first line gives once.
+	FString Text = FString::Printf(TEXT("flowchart TD\n  %%%% %s, start %s\n"), *DungeonId.ToString(), *Short(StartStageId, DungeonId));
 	for (const FDungeonStageDefinition& Stage : Stages)
 	{
-		const FString Id = Stage.StageId.ToString();
+		const FString Id = Node(Stage.StageId, DungeonId);
 		if (Stage.TimeLimitSeconds > 0.f) Text += FString::Printf(TEXT("  %%%% %s time limit %.0fs\n"), *Id, Stage.TimeLimitSeconds);
 		if (!Stage.SealedBarriers.IsEmpty())
-			Text += FString::Printf(TEXT("  %%%% %s seals %s\n"), *Id, *FString::JoinBy(Stage.SealedBarriers, TEXT(", "), [](FName Barrier) { return Barrier.ToString(); }));
+			Text += FString::Printf(TEXT("  %%%% %s seals %s\n"), *Id, *FString::JoinBy(Stage.SealedBarriers, TEXT(", "), [this](const FGameplayTag& Barrier) { return Short(Barrier, DungeonId); }));
 		if (Stage.TerminalOutcome != EDungeonTerminalOutcome::None)
 		{
-			Text += FString::Printf(TEXT("  %s[[\"%s %s\"]]\n"), *Id, *Id,
+			Text += FString::Printf(TEXT("  %s[[\"%s %s\"]]\n"), *Id, *Short(Stage.StageId, DungeonId),
 				Stage.TerminalOutcome == EDungeonTerminalOutcome::Success ? TEXT("성공") : TEXT("실패"));
 		}
 		for (const FDungeonStageEventRule& Rule : Stage.EventRules)
@@ -214,21 +249,21 @@ FString UDungeonDefinitionDataAsset::BuildStageGraph() const
 			for (const FDungeonStageAction& Action : Rule.Actions)
 			{
 				FString Entry = EnumName(StaticEnum<EDungeonStageAction>(), int64(Action.Type));
-				if (Action.Type == EDungeonStageAction::SpawnGroup) Entry += TEXT(" ") + Action.GroupId.ToString();
-				if (Action.Type == EDungeonStageAction::SetRunTag || Action.Type == EDungeonStageAction::ClearRunTag) Entry += TEXT(" ") + Action.RunTag.GetTagName().ToString();
+				if (Action.Type == EDungeonStageAction::SpawnGroup) Entry += TEXT(" ") + Short(Action.GroupId, DungeonId);
+				if (Action.Type == EDungeonStageAction::SetRunTag || Action.Type == EDungeonStageAction::ClearRunTag) Entry += TEXT(" ") + Short(Action.RunTag, DungeonId);
 				if (Action.Type == EDungeonStageAction::GrantReward) Entry += FString::Printf(TEXT(" %d x%d"), Action.RewardItemId, Action.RewardCount);
 				Actions.Add(Entry);
 			}
 			const FString Event = EnumName(StaticEnum<EDungeonStageEvent>(), int64(Rule.Event)) +
-				(Rule.SourceId.IsNone() ? FString() : TEXT(" ") + Rule.SourceId.ToString());
+				(Rule.SourceId.IsValid() ? TEXT(" ") + Short(Rule.SourceId, DungeonId) : FString());
 			if (!Actions.IsEmpty()) Text += FString::Printf(TEXT("  %%%% %s on %s: %s\n"), *Id, *Event, *FString::Join(Actions, TEXT(", ")));
 			for (const FDungeonStageTransition& Transition : Rule.Transitions)
 			{
 				TArray<FString> Conditions;
-				for (const FDungeonStageCondition& Condition : Transition.Conditions) Conditions.Add(ConditionText(Condition));
+				for (const FDungeonStageCondition& Condition : Transition.Conditions) Conditions.Add(ConditionText(Condition, DungeonId));
 				FString Label = Event + TEXT(" / ") + FString::Join(Conditions, TEXT(" and "));
-				if (!Transition.BranchId.IsNone()) Label += TEXT(" => ") + Transition.BranchId.ToString();
-				Text += FString::Printf(TEXT("  %s -->|\"%s\"| %s\n"), *Id, *Label, *Transition.NextStageId.ToString());
+				if (Transition.BranchId.IsValid()) Label += TEXT(" => ") + Short(Transition.BranchId, DungeonId);
+				Text += FString::Printf(TEXT("  %s -->|\"%s\"| %s\n"), *Id, *Label, *Node(Transition.NextStageId, DungeonId));
 			}
 		}
 	}

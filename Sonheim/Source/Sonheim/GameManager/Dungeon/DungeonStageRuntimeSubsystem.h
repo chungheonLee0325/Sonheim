@@ -14,7 +14,7 @@ struct FDungeonQueuedEvent
 {
 	FGuid RunId;
 	EDungeonStageEvent Type;
-	FName SourceId;
+	FGameplayTag SourceId;
 };
 
 UCLASS()
@@ -24,24 +24,24 @@ class SONHEIM_API UDungeonStageRuntimeSubsystem : public UWorldSubsystem
 public:
 	virtual void Deinitialize() override;
 	bool TryStart(ADungeonTestArea* Area, ASonheimPlayer* Player);
-	bool TryInteractSwitch(AActor* Switch, ASonheimPlayer* Player, ADungeonTestArea* Area, FName SourceId);
+	bool TryInteractSwitch(AActor* Switch, ASonheimPlayer* Player, ADungeonTestArea* Area, const FGameplayTag& SourceId);
 	/** Fails a run whose owner is this controller: it died, or it left the game. */
 	void AbortForOwner(const AController* Controller, EDungeonFailReason Reason = EDungeonFailReason::OwnerDown);
 	/** A portal moved this player into the dungeon or out of it. Leaving takes a player out of the run; the owner leaving ends it. */
 	void NotifyPortal(ASonheimPlayer* Player, bool bEnteredDungeon);
 	/** A player stepped into a trigger zone. It raises AreaEntered once per stage visit, for a player of the run, when the stage
 	 * has a rule for that zone. */
-	bool NotifyAreaEntered(ASonheimPlayer* Player, ADungeonTestArea* Area, FName SourceId);
+	bool NotifyAreaEntered(ASonheimPlayer* Player, ADungeonTestArea* Area, const FGameplayTag& SourceId);
 	bool IsActive() const;
 private:
-	void QueueEvent(EDungeonStageEvent Event, FName Source);
+	void QueueEvent(EDungeonStageEvent Event, const FGameplayTag& Source);
 	void ProcessQueue();
-	void EnterStage(FName Id);
+	void EnterStage(const FGameplayTag& Id);
 	bool ExecuteAction(const FDungeonStageAction& Action);
-	void HandleProgress(FName GroupId, int32 Count, int32 Required);
-	void HandleComplete(FName GroupId, bool bBoss);
-	void HandleInvalidated(FName GroupId);
-	void HandleCaptured(FName GroupId);
+	void HandleProgress(FGameplayTag GroupId, int32 Count, int32 Required);
+	void HandleComplete(FGameplayTag GroupId, bool bBoss);
+	void HandleInvalidated(FGameplayTag GroupId);
+	void HandleCaptured(FGameplayTag GroupId);
 	void Publish();
 	void ClearStageTimer();
 	/** Writes the finished run into the saved progress and puts the record into the state that is about to be published. */
@@ -58,7 +58,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UHealthComponent> OwnerHealth;
 	UPROPERTY(Transient) TObjectPtr<UHealthComponent> BossHealthSource;
 	/** Zones already reported in the current stage visit. */
-	TSet<FName> EnteredAreas;
+	TSet<FGameplayTag> EnteredAreas;
 	/** Rules with bOnce that have answered in this run, by stage, event and source. */
 	TSet<FString> FiredOnceRules;
 	TWeakObjectPtr<ADungeonTestArea> TestArea;
@@ -67,7 +67,8 @@ private:
 	FDungeonStageRuntimeState State;
 	FGameplayTagContainer RunTags;
 	double RunStartedServerTime = 0;
-	FName DungeonId;
+	/** The catalog's number for the dungeon, which its saved records are kept under. */
+	int32 DungeonNumber = 0;
 	FGuid AssetRequest;
 	TArray<FDungeonQueuedEvent> Queue;
 	FTimerHandle StageTimer;

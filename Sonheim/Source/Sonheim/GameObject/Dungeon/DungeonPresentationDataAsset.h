@@ -28,7 +28,7 @@ struct FDungeonObjectiveLine
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FText Label;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) EDungeonObjectiveKind Kind = EDungeonObjectiveKind::Main;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) EDungeonObjectiveGoal Goal = EDungeonObjectiveGoal::None;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Goal == EDungeonObjectiveGoal::Group", EditConditionHides)) FName GroupId;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Goal == EDungeonObjectiveGoal::Group", EditConditionHides, Categories="Dungeon")) FGameplayTag GroupId;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Goal == EDungeonObjectiveGoal::RunTag", EditConditionHides)) FGameplayTag RunTag;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Goal == EDungeonObjectiveGoal::Captured", EditConditionHides, ClampMin="1")) int32 Target = 1;
 	/** How long an optional line stays open, such as 경비실 전투 중, and what taking it means or gives. */
@@ -39,7 +39,7 @@ USTRUCT(BlueprintType)
 struct FDungeonStagePresentation
 {
 	GENERATED_BODY()
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName StageId;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(Categories="Dungeon")) FGameplayTag StageId;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FText Title;
 	/** One sentence for screens without an objective list, and the line under the result's title. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FText Objective;
@@ -57,7 +57,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText DungeonTitle;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TArray<FDungeonStagePresentation> Stages;
 	/** The route each branch takes, shown on the result. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TMap<FName, FText> BranchLabels;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TMap<FGameplayTag, FText> BranchLabels;
 	/** Steps on the way through, which each stage's Step counts against. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(ClampMin="1")) int32 StepCount = 4;
 	/** Name over the boss's health bar while it lives. */
@@ -115,9 +115,9 @@ public:
 	/** Banner when the run gains a tag its rules set, such as the unlocked shortcut. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FDungeonToastViewData> TagToasts;
 	/** Banner when the run takes a branch. It replaces any banner still waiting. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FName, FDungeonToastViewData> BranchToasts;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FDungeonToastViewData> BranchToasts;
 	/** Banner when a group of monsters appears, by group; {0} in Detail is how many. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FName, FDungeonToastViewData> GroupToasts;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FDungeonToastViewData> GroupToasts;
 	/** Banner when every monster of a group is defeated or captured, by group. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FName, FDungeonToastViewData> GroupClearToasts;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FDungeonToastViewData> GroupClearToasts;
 };

@@ -101,7 +101,7 @@ void ADungeonShortcutSwitch::RefreshPrompt()
 	if (GameState && !StageStateHandle.IsValid())
 		StageStateHandle = GameState->OnDungeonStageStateChanged.AddUObject(this, &ADungeonShortcutSwitch::HandleStageState);
 	const FDungeonStageRuntimeState State = GameState ? GameState->GetDungeonStageState() : FDungeonStageRuntimeState();
-	const bool bAvailable = State.RunStatus == EDungeonRunStatus::Running && (PromptStageId.IsNone() || State.StageId == PromptStageId) && !bPulled;
+	const bool bAvailable = State.RunStatus == EDungeonRunStatus::Running && (!PromptStageId.IsValid() || State.StageId == PromptStageId) && !bPulled;
 	const APlayerController* Local = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
 	const bool bOwner = Local && Local->PlayerState && State.OwnerPlayer == Local->PlayerState;
 	if (auto* Widget = Cast<UDetectWidget>(DetectWidgetComponent->GetUserWidgetObject())) // WBP_Detect puts the action right after the name.
@@ -111,7 +111,6 @@ void ADungeonShortcutSwitch::RefreshPrompt()
 void ADungeonShortcutSwitch::RefreshHandle(bool bAnimate)
 {
 	auto* GameState = GetWorld() ? GetWorld()->GetGameState<ASonheimGameState>() : nullptr;
-	const FGameplayTag PulledTag = PulledTagName.IsNone() ? FGameplayTag() : FGameplayTag::RequestGameplayTag(PulledTagName, /*ErrorIfNotFound=*/false);
 	const bool bShouldPull = GameState && PulledTag.IsValid() && GameState->GetDungeonStageState().RunTags.HasTag(PulledTag);
 	if (bShouldPull == bPulled && bAnimate) return;
 	bPulled = bShouldPull;

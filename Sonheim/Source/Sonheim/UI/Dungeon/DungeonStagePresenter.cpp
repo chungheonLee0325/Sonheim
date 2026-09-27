@@ -58,9 +58,9 @@ namespace
 		const int32 Whole = FMath::Max(0, FMath::RoundToInt(Seconds));
 		return FText::FromString(FString::Printf(TEXT("%d:%02d"), Whole / 60, Whole % 60));
 	}
-	const FDungeonGroupTally* FindTally(const FDungeonStageRuntimeState& State, FName GroupId)
+	const FDungeonGroupTally* FindTally(const FDungeonStageRuntimeState& State, const FGameplayTag& GroupId)
 	{
-		return State.Groups.FindByPredicate([GroupId](const FDungeonGroupTally& Tally) { return Tally.GroupId == GroupId; });
+		return State.Groups.FindByPredicate([&GroupId](const FDungeonGroupTally& Tally) { return Tally.GroupId == GroupId; });
 	}
 	bool IsCleared(const FDungeonGroupTally* Tally) { return Tally && Tally->Spawned > 0 && Tally->Defeated + Tally->Captured >= Tally->Spawned; }
 	/** One line of the objective list, with what the snapshot says about its goal. */
@@ -87,9 +87,9 @@ namespace
 		if (Total > 0) Row.Count = FText::Format(Texts.CountFormat, Done, Total);
 		return Row;
 	}
-	const FDungeonStagePresentation* FindStage(const UDungeonPresentationDataAsset& Texts, FName StageId)
+	const FDungeonStagePresentation* FindStage(const UDungeonPresentationDataAsset& Texts, const FGameplayTag& StageId)
 	{
-		return Texts.Stages.FindByPredicate([StageId](const FDungeonStagePresentation& Item) { return Item.StageId == StageId; });
+		return Texts.Stages.FindByPredicate([&StageId](const FDungeonStagePresentation& Item) { return Item.StageId == StageId; });
 	}
 }
 void UDungeonStagePresenter::OnSnapshot(const FDungeonStageRuntimeState& Snapshot)
@@ -131,7 +131,7 @@ void UDungeonStagePresenter::ShowToasts(const FDungeonStageRuntimeState& Previou
 	for (const FDungeonGroupTally& Tally : Latest.Groups)
 		if (IsCleared(&Tally) && !IsCleared(FindTally(Previous, Tally.GroupId)))
 			if (const FDungeonToastViewData* Toast = Presentation->GroupClearToasts.Find(Tally.GroupId)) Router->ShowToast(*Toast);
-	if (!Latest.SelectedBranchId.IsNone() && Latest.SelectedBranchId != Previous.SelectedBranchId)
+	if (Latest.SelectedBranchId.IsValid() && Latest.SelectedBranchId != Previous.SelectedBranchId)
 		if (const FDungeonToastViewData* Toast = Presentation->BranchToasts.Find(Latest.SelectedBranchId)) Router->ShowToast(*Toast);
 	if (Latest.RequiredCount > 0 && Latest.ObjectiveGroupId != Previous.ObjectiveGroupId)
 		if (const FDungeonToastViewData* Toast = Presentation->GroupToasts.Find(Latest.ObjectiveGroupId))
@@ -197,12 +197,12 @@ void UDungeonStagePresenter::Present()
 	View.DeadlineServerTime = bRunning ? Latest.StageDeadlineServerTime : 0;
 	View.TimeFormat = Texts.TimeFormat;
 	View.DungeonTitle = Texts.DungeonTitle;
-	// A run has no stage while it loads and no branch before the branch point; FText::FromName would show "None" for both.
-	View.Title = Latest.StageId.IsNone() ? Texts.DungeonTitle : FText::FromName(Latest.StageId);
+	// A run has no stage while it loads and no branch before the branch point. Without presentation text, the tag's name stands in.
+	View.Title = Latest.StageId.IsValid() ? FText::FromName(Latest.StageId.GetTagName()) : Texts.DungeonTitle;
 	if (Latest.RunStatus == EDungeonRunStatus::Loading) View.Objective = Texts.LoadingText;
 	View.CountText = FText::Format(Texts.CountFormat, Latest.CurrentCount, Latest.RequiredCount);
 	View.Progress = Latest.RequiredCount > 0 ? float(Latest.CurrentCount) / Latest.RequiredCount : 0.f;
-	View.BranchText = Latest.SelectedBranchId.IsNone() ? FText::GetEmpty() : FText::FromName(Latest.SelectedBranchId);
+	View.BranchText = Latest.SelectedBranchId.IsValid() ? FText::FromName(Latest.SelectedBranchId.GetTagName()) : FText::GetEmpty();
 	if (const FText* Branch = Texts.BranchLabels.Find(Latest.SelectedBranchId)) View.BranchText = *Branch;
 	const FDungeonStagePresentation* Stage = FindStage(Texts, Latest.StageId);
 	if (Stage)
@@ -232,8 +232,8 @@ void UDungeonStagePresenter::Present()
 		// The way through: a step per Step number; a step with several stages lists them until the run is in one of them or its
 		// branch points at one of them.
 		const int32 CurrentStep = Stage ? Stage->Step : 0;
-		FName Chosen;
-		if (Definition && !Latest.SelectedBranchId.IsNone())
+		FGameplayTag Chosen;
+		if (Definition && Latest.SelectedBranchId.IsValid())
 			for (const FDungeonStageDefinition& Defined : Definition->Stages)
 				for (const FDungeonStageEventRule& Rule : Defined.EventRules)
 					for (const FDungeonStageTransition& Transition : Rule.Transitions)
@@ -299,7 +299,7 @@ void UDungeonStagePresenter::Present()
 		View.Stats.Add({Texts.TimeStatLabel, Clock(Latest.ElapsedSeconds)});
 		View.Stats.Add({Texts.KillStatLabel, FText::AsNumber(Latest.DefeatedCount)});
 		if (Latest.CapturedCount > 0) View.Stats.Add({Texts.CaptureStatLabel, FText::AsNumber(Latest.CapturedCount)});
-		if (!Latest.SelectedBranchId.IsNone()) View.Stats.Add({Texts.RouteStatLabel, View.BranchText});
+		if (Latest.SelectedBranchId.IsValid()) View.Stats.Add({Texts.RouteStatLabel, View.BranchText});
 		// The first clear sets the best time, so a cleared dungeon always has one.
 		if (Latest.ClearCount > 0) View.SummaryText = FText::Format(Texts.RecordFormat, Latest.ClearCount, Spell(Texts, Latest.BestSeconds));
 		// The record is saved before the result is shown, so a run that set it finished in exactly the best time.

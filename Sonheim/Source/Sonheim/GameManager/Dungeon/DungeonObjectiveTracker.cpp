@@ -1,9 +1,9 @@
 #include "DungeonObjectiveTracker.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 
-bool UDungeonObjectiveTracker::RegisterGroup(FName Id, bool bBoss, const TArray<ABaseMonster*>& Monsters)
+bool UDungeonObjectiveTracker::RegisterGroup(const FGameplayTag& Id, bool bBoss, const TArray<ABaseMonster*>& Monsters)
 {
-	if (Id.IsNone() || Groups.Contains(Id) || Monsters.IsEmpty()) return false;
+	if (!Id.IsValid() || Groups.Contains(Id) || Monsters.IsEmpty()) return false;
 	for (auto* Monster : Monsters) if (!IsValid(Monster) || !Monster->HasAuthority() || Monster->IsDie() || Monster->PartnerOwner) return false;
 	auto& Group = Groups.Add(Id);
 	Group.bBoss = bBoss;
@@ -27,7 +27,7 @@ void UDungeonObjectiveTracker::HandleDeath(ABaseMonster* Monster)
 		if (!Group.Monsters.Contains(Monster) || Group.Defeated.Contains(Monster) || Group.Captured.Contains(Monster)) continue;
 		Group.Defeated.Add(Monster);
 		++TotalDefeated;
-		const FName Id = Pair.Key;
+		const FGameplayTag Id = Pair.Key;
 		const int32 Count = Group.Resolved(), Required = Group.Monsters.Num();
 		const bool bBoss = Group.bBoss;
 		OnProgress.Broadcast(Id, Count, Required);
@@ -45,7 +45,7 @@ void UDungeonObjectiveTracker::HandlePartner(ABaseMonster* Monster)
 		// A captured monster leaves the fight for good, so it resolves its place in the group as a defeat does.
 		Group.Captured.Add(Monster);
 		++TotalCaptured;
-		const FName Id = Pair.Key;
+		const FGameplayTag Id = Pair.Key;
 		const int32 Count = Group.Resolved(), Required = Group.Monsters.Num();
 		const bool bBoss = Group.bBoss;
 		OnProgress.Broadcast(Id, Count, Required);
@@ -61,13 +61,13 @@ void UDungeonObjectiveTracker::HandleEndPlay(AActor* Actor, EEndPlayReason::Type
 	for (const auto& Pair : Groups)
 		if (Pair.Value.Monsters.Contains(Monster) && !Pair.Value.Defeated.Contains(Monster) && !Pair.Value.Captured.Contains(Monster))
 		{
-			const FName Id = Pair.Key;
+			const FGameplayTag Id = Pair.Key;
 			OnInvalidated.Broadcast(Id); // Removal is never a kill, including world cleanup.
 			return;
 		}
 }
 
-bool UDungeonObjectiveTracker::IsComplete(FName Id) const
+bool UDungeonObjectiveTracker::IsComplete(const FGameplayTag& Id) const
 {
 	const auto* Group = Groups.Find(Id);
 	return Group && !Group->Monsters.IsEmpty() && Group->Resolved() == Group->Monsters.Num();

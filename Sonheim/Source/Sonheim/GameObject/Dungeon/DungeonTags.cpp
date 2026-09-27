@@ -1,5 +1,5 @@
 #include "NativeGameplayTags.h"
-UE_DEFINE_GAMEPLAY_TAG(TAG_DungeonShortcutUnlocked, "Dungeon.State.ShortcutUnlocked");
-UE_DEFINE_GAMEPLAY_TAG(TAG_DungeonEntry, "Dungeon.Entry");
-UE_DEFINE_GAMEPLAY_TAG(TAG_DungeonHUD, "Dungeon.HUD");
-UE_DEFINE_GAMEPLAY_TAG(TAG_DungeonResult, "Dungeon.Result");
+// The screens the UI registry maps to widgets. A dungeon's own tags (stages, groups, zones, barriers, run flags) live under
+// Dungeon.<Name> in that dungeon's tag file, Config/Tags/Dungeon_<Name>.ini.
+UE_DEFINE_GAMEPLAY_TAG(TAG_UIDungeonHUD, "UI.Dungeon.HUD");
+UE_DEFINE_GAMEPLAY_TAG(TAG_UIDungeonResult, "UI.Dungeon.Result");

@@ -55,10 +55,10 @@ void ADungeonTestArea::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	RefreshBossMusic(FDungeonStageRuntimeState());
 	Super::EndPlay(EndPlayReason);
 }
-TArray<FTransform> ADungeonTestArea::GetSpawnTransforms(FName PointSetId) const
+TArray<FTransform> ADungeonTestArea::GetSpawnTransforms(const FGameplayTag& PointSetId) const
 {
 	TArray<FTransform> Result;
-	if (const auto* Set = PointSets.FindByPredicate([PointSetId](const auto& Value) { return Value.PointSetId == PointSetId; }))
+	if (const auto* Set = PointSets.FindByPredicate([&PointSetId](const auto& Value) { return Value.PointSetId == PointSetId; }))
 		for (const auto& Local : Set->LocalTransforms) Result.Add(Local * GetActorTransform());
 	return Result;
 }

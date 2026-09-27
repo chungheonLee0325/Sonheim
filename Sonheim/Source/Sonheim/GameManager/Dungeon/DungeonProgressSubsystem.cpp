@@ -12,18 +12,18 @@ void UDungeonProgressSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	UE_LOG(SONHEIM, Log, TEXT("[DungeonProgress] loaded %d records"), Save ? Save->Records.Num() : 0);
 }
 
-const FDungeonClearRecord* UDungeonProgressSubsystem::FindRecord(FName DungeonId) const
+const FDungeonClearRecord* UDungeonProgressSubsystem::FindRecord(int32 DungeonNumber) const
 {
-	return Save ? Save->Records.FindByPredicate([DungeonId](const FDungeonClearRecord& Record) { return Record.DungeonId == DungeonId; }) : nullptr;
+	return Save ? Save->Records.FindByPredicate([DungeonNumber](const FDungeonClearRecord& Record) { return Record.DungeonNumber == DungeonNumber; }) : nullptr;
 }
 
-const FDungeonClearRecord& UDungeonProgressSubsystem::RecordRun(FName DungeonId, const FDungeonStageRuntimeState& State, bool bSuccess)
+const FDungeonClearRecord& UDungeonProgressSubsystem::RecordRun(int32 DungeonNumber, const FDungeonStageRuntimeState& State, bool bSuccess)
 {
 	static const FDungeonClearRecord Empty;
-	if (!Save || DungeonId.IsNone()) return Empty;
-	FDungeonClearRecord* Record = Save->Records.FindByPredicate([DungeonId](const FDungeonClearRecord& Value) { return Value.DungeonId == DungeonId; });
+	if (!Save || DungeonNumber <= 0) return Empty;
+	FDungeonClearRecord* Record = Save->Records.FindByPredicate([DungeonNumber](const FDungeonClearRecord& Value) { return Value.DungeonNumber == DungeonNumber; });
 	if (!Record) Record = &Save->Records[Save->Records.AddDefaulted()];
-	Record->DungeonId = DungeonId;
+	Record->DungeonNumber = DungeonNumber;
 	Record->TotalDefeated += State.DefeatedCount;
 	for (const FDungeonRunReward& Reward : State.Rewards)
 	{
@@ -40,6 +40,6 @@ const FDungeonClearRecord& UDungeonProgressSubsystem::RecordRun(FName DungeonId,
 	}
 	else ++Record->FailCount;
 	UGameplayStatics::SaveGameToSlot(Save, SlotName, 0);
-	UE_LOG(SONHEIM, Log, TEXT("[DungeonProgress] %s clears=%d fails=%d best=%.1f"), *DungeonId.ToString(), Record->ClearCount, Record->FailCount, Record->BestSeconds);
+	UE_LOG(SONHEIM, Log, TEXT("[DungeonProgress] dungeon %d clears=%d fails=%d best=%.1f"), DungeonNumber, Record->ClearCount, Record->FailCount, Record->BestSeconds);
 	return *Record;
 }

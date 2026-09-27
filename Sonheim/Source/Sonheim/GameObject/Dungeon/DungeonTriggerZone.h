@@ -1,5 +1,6 @@
 #pragma once
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
 #include "DungeonTriggerZone.generated.h"
 class ADungeonTestArea;
@@ -15,8 +16,8 @@ class SONHEIM_API ADungeonTriggerZone : public AActor
 public:
 	ADungeonTriggerZone();
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TObjectPtr<ADungeonTestArea> TestArea;
-	/** The name rules use for this zone, such as GuardRoom. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FName SourceId;
+	/** The tag rules use for this zone, such as Dungeon.ForgottenRuins.Zone.GuardRoom. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(Categories="Dungeon")) FGameplayTag SourceId;
 	/** The room's name and a line under it, shown to a player of the running run who walks in. Empty shows nothing. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText DisplayName;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText Subtitle;
@@ -29,6 +30,6 @@ private:
 	void HandleStageState(const FDungeonStageRuntimeState& State);
 	void Report(AActor* Other) const;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UBoxComponent> Zone;
-	FName LastStageId;
+	FGameplayTag LastStageId;
 	FDelegateHandle StageStateHandle;
 };

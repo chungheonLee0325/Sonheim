@@ -135,7 +135,7 @@ void UDungeonUIRouterSubsystem::RefreshWidget()
 		if (ActiveWidget) ActiveWidget->RemoveFromParent();
 		ActiveWidget = nullptr; ActiveId = NAME_None; RequestedId = NAME_None; return;
 	}
-	const FName Id = (LatestView.Status == EDungeonRunStatus::Succeeded || LatestView.Status == EDungeonRunStatus::Failed) ? FName(TEXT("Dungeon.Result")) : FName(TEXT("Dungeon.HUD"));
+	const FName Id = (LatestView.Status == EDungeonRunStatus::Succeeded || LatestView.Status == EDungeonRunStatus::Failed) ? FName(TEXT("UI.Dungeon.Result")) : FName(TEXT("UI.Dungeon.HUD"));
 	if (ActiveId == Id && ActiveWidget && ActiveWidget->IsInViewport())
 	{
 		ActiveWidget->ApplyViewData(LatestView);

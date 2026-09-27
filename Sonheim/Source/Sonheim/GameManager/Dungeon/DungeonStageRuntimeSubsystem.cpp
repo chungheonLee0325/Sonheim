@@ -38,7 +38,7 @@ bool UDungeonStageRuntimeSubsystem::TryStart(ADungeonTestArea* Area, ASonheimPla
 	ReleaseAssets();
 	RunTags.Reset(); Queue.Empty(); FiredOnceRules.Reset();
 	TestArea = Area; RunOwner = Player;
-	DungeonId = Row->DungeonId;
+	DungeonNumber = Row->DungeonNumber;
 	RunOwnerController = Player->GetController();
 	OwnerHealth = Player->m_HealthComponent;
 	if (OwnerHealth) OwnerHealth->OnHealthChanged.AddUniqueDynamic(this, &UDungeonStageRuntimeSubsystem::HandleOwnerHealth);
@@ -72,10 +72,10 @@ bool UDungeonStageRuntimeSubsystem::TryStart(ADungeonTestArea* Area, ASonheimPla
 		Self->Objectives->OnInvalidated.AddUObject(Self, &UDungeonStageRuntimeSubsystem::HandleInvalidated);
 		Self->Objectives->OnCaptured.AddUObject(Self, &UDungeonStageRuntimeSubsystem::HandleCaptured);
 		// The definition cannot see the level, so a barrier it names that the level lacks is reported here: it would hold nothing.
-		TSet<FName> Placed;
+		TSet<FGameplayTag> Placed;
 		for (TActorIterator<ADungeonBarrier> It(Self->GetWorld()); It; ++It) Placed.Add(It->BarrierId);
 		for (const FDungeonStageDefinition& Stage : Loaded->Stages)
-			for (const FName Barrier : Stage.SealedBarriers)
+			for (const FGameplayTag& Barrier : Stage.SealedBarriers)
 				if (!Placed.Contains(Barrier)) UE_LOG(SONHEIM, Warning, TEXT("[DungeonBarrier] %s names barrier %s, which this level does not have"), *Stage.StageId.ToString(), *Barrier.ToString());
 		Self->State.RunStatus = EDungeonRunStatus::Running;
 		Self->EnterStage(Loaded->StartStageId);
@@ -84,29 +84,29 @@ bool UDungeonStageRuntimeSubsystem::TryStart(ADungeonTestArea* Area, ASonheimPla
 	return true;
 }
 
-bool UDungeonStageRuntimeSubsystem::TryInteractSwitch(AActor* Switch, ASonheimPlayer* Player, ADungeonTestArea* Area, FName SourceId)
+bool UDungeonStageRuntimeSubsystem::TryInteractSwitch(AActor* Switch, ASonheimPlayer* Player, ADungeonTestArea* Area, const FGameplayTag& SourceId)
 {
 	if (!IsAuthority() || State.RunStatus != EDungeonRunStatus::Running || !IsValid(Switch) || !IsValid(Player) || Player != RunOwner.Get() ||
 		Player->IsDie() || TestArea.Get() != Area || Switch->GetWorld() != GetWorld() || Player->GetDistanceTo(Switch) > 250.f) return false;
 	const auto* Stage = Definition ? Definition->FindStage(State.StageId) : nullptr;
-	if (!Stage || !Stage->EventRules.ContainsByPredicate([SourceId](const auto& Rule) { return Rule.Event == EDungeonStageEvent::ActorInteracted && Rule.SourceId == SourceId; })) return false;
+	if (!Stage || !Stage->EventRules.ContainsByPredicate([&SourceId](const auto& Rule) { return Rule.Event == EDungeonStageEvent::ActorInteracted && Rule.SourceId == SourceId; })) return false;
 	QueueEvent(EDungeonStageEvent::ActorInteracted, SourceId);
 	return true;
 }
 
-bool UDungeonStageRuntimeSubsystem::NotifyAreaEntered(ASonheimPlayer* Player, ADungeonTestArea* Area, FName SourceId)
+bool UDungeonStageRuntimeSubsystem::NotifyAreaEntered(ASonheimPlayer* Player, ADungeonTestArea* Area, const FGameplayTag& SourceId)
 {
-	if (!IsAuthority() || State.RunStatus != EDungeonRunStatus::Running || !IsValid(Player) || Player->IsDie() || TestArea.Get() != Area || SourceId.IsNone()) return false;
+	if (!IsAuthority() || State.RunStatus != EDungeonRunStatus::Running || !IsValid(Player) || Player->IsDie() || TestArea.Get() != Area || !SourceId.IsValid()) return false;
 	// Someone passing through who does not take part in the run moves nothing.
 	if (!State.Participants.Contains(Player->GetPlayerState()) || EnteredAreas.Contains(SourceId)) return false;
 	const auto* Stage = Definition ? Definition->FindStage(State.StageId) : nullptr;
-	if (!Stage || !Stage->EventRules.ContainsByPredicate([SourceId](const auto& Rule) { return Rule.Event == EDungeonStageEvent::AreaEntered && Rule.SourceId == SourceId; })) return false;
+	if (!Stage || !Stage->EventRules.ContainsByPredicate([&SourceId](const auto& Rule) { return Rule.Event == EDungeonStageEvent::AreaEntered && Rule.SourceId == SourceId; })) return false;
 	EnteredAreas.Add(SourceId);
 	QueueEvent(EDungeonStageEvent::AreaEntered, SourceId);
 	return true;
 }
 
-void UDungeonStageRuntimeSubsystem::QueueEvent(EDungeonStageEvent Event, FName Source)
+void UDungeonStageRuntimeSubsystem::QueueEvent(EDungeonStageEvent Event, const FGameplayTag& Source)
 {
 	if (!IsAuthority() || State.RunStatus != EDungeonRunStatus::Running) return;
 	Queue.Add({State.RunId, Event, Source});
@@ -140,9 +140,9 @@ void UDungeonStageRuntimeSubsystem::ProcessQueue()
 		if (!bSuccess) { Fail(EDungeonFailReason::Error, TEXT("Stage action failed.")); break; }
 		for (const auto& Transition : Rule->Transitions)
 		{
-			if (!FDungeonStageConditionEvaluator::Evaluate(Transition.Conditions, RunTags, [this](FName Group) { return Objectives && Objectives->IsComplete(Group); })) continue;
+			if (!FDungeonStageConditionEvaluator::Evaluate(Transition.Conditions, RunTags, [this](const FGameplayTag& Group) { return Objectives && Objectives->IsComplete(Group); })) continue;
 			UE_LOG(SONHEIM, Log, TEXT("[DungeonTransition] Run=%s From=%s To=%s Transition=%s Branch=%s"), *State.RunId.ToString(), *State.StageId.ToString(), *Transition.NextStageId.ToString(), *Transition.TransitionId.ToString(), *Transition.BranchId.ToString());
-			if (!Transition.BranchId.IsNone()) State.SelectedBranchId = Transition.BranchId;
+			if (Transition.BranchId.IsValid()) State.SelectedBranchId = Transition.BranchId;
 			TransitionReason = Event.Type == EDungeonStageEvent::StageTimeout ? EDungeonFailReason::TimeOut : EDungeonFailReason::None;
 			EnterStage(Transition.NextStageId);
 			break;
@@ -151,7 +151,7 @@ void UDungeonStageRuntimeSubsystem::ProcessQueue()
 	}
 }
 
-void UDungeonStageRuntimeSubsystem::EnterStage(FName Id)
+void UDungeonStageRuntimeSubsystem::EnterStage(const FGameplayTag& Id)
 {
 	const auto* Stage = Definition ? Definition->FindStage(Id) : nullptr;
 	if (!Stage) { Fail(EDungeonFailReason::Error, TEXT("Next stage is missing.")); return; }
@@ -181,10 +181,10 @@ void UDungeonStageRuntimeSubsystem::EnterStage(FName Id)
 			{
 				if (State.RunId != RunId || State.StageId != Id) return;
 				UE_LOG(SONHEIM, Log, TEXT("[DungeonTimeout] Run=%s Stage=%s"), *State.RunId.ToString(), *Id.ToString());
-				QueueEvent(EDungeonStageEvent::StageTimeout, NAME_None);
+				QueueEvent(EDungeonStageEvent::StageTimeout, FGameplayTag());
 			}), Stage->TimeLimitSeconds, false);
 		}
-		Queue.Add({State.RunId, EDungeonStageEvent::StageEntered, NAME_None});
+		Queue.Add({State.RunId, EDungeonStageEvent::StageEntered, FGameplayTag()});
 	}
 	Publish();
 }
@@ -249,7 +249,7 @@ bool UDungeonStageRuntimeSubsystem::ExecuteAction(const FDungeonStageAction& Act
 	return false;
 }
 
-void UDungeonStageRuntimeSubsystem::HandleProgress(FName GroupId, int32 Count, int32 Required)
+void UDungeonStageRuntimeSubsystem::HandleProgress(FGameplayTag GroupId, int32 Count, int32 Required)
 {
 	if (!IsAuthority() || State.RunStatus != EDungeonRunStatus::Running) return;
 	State.ObjectiveGroupId = GroupId; State.CurrentCount = Count; State.RequiredCount = Required;
@@ -258,9 +258,9 @@ void UDungeonStageRuntimeSubsystem::HandleProgress(FName GroupId, int32 Count, i
 	State.Groups = Objectives ? Objectives->GetTallies() : TArray<FDungeonGroupTally>();
 	Publish(); // Every count change publishes, including changes with no stage transition.
 }
-void UDungeonStageRuntimeSubsystem::HandleCaptured(FName Id) { QueueEvent(EDungeonStageEvent::MonsterCaptured, Id); }
-void UDungeonStageRuntimeSubsystem::HandleComplete(FName Id, bool bBoss) { QueueEvent(bBoss ? EDungeonStageEvent::BossDefeated : EDungeonStageEvent::WaveCompleted, Id); }
-void UDungeonStageRuntimeSubsystem::HandleInvalidated(FName Id) { if (IsActive()) Fail(EDungeonFailReason::TargetLost, TEXT("Unresolved monster removed: ") + Id.ToString()); }
+void UDungeonStageRuntimeSubsystem::HandleCaptured(FGameplayTag Id) { QueueEvent(EDungeonStageEvent::MonsterCaptured, Id); }
+void UDungeonStageRuntimeSubsystem::HandleComplete(FGameplayTag Id, bool bBoss) { QueueEvent(bBoss ? EDungeonStageEvent::BossDefeated : EDungeonStageEvent::WaveCompleted, Id); }
+void UDungeonStageRuntimeSubsystem::HandleInvalidated(FGameplayTag Id) { if (IsActive()) Fail(EDungeonFailReason::TargetLost, TEXT("Unresolved monster removed: ") + Id.ToString()); }
 void UDungeonStageRuntimeSubsystem::Publish()
 {
 	if (!IsAuthority()) return;
@@ -270,10 +270,10 @@ void UDungeonStageRuntimeSubsystem::Publish()
 void UDungeonStageRuntimeSubsystem::RecordFinishedRun(bool bSuccess)
 {
 	// A run that never reached a stage is not an attempt, so a failure during loading is not counted.
-	if (State.StageId.IsNone() || DungeonId.IsNone()) return;
+	if (!State.StageId.IsValid() || DungeonNumber <= 0) return;
 	auto* Progress = GetWorld() && GetWorld()->GetGameInstance() ? GetWorld()->GetGameInstance()->GetSubsystem<UDungeonProgressSubsystem>() : nullptr;
 	if (!Progress) return;
-	const FDungeonClearRecord& Record = Progress->RecordRun(DungeonId, State, bSuccess);
+	const FDungeonClearRecord& Record = Progress->RecordRun(DungeonNumber, State, bSuccess);
 	State.ClearCount = Record.ClearCount;
 	State.BestSeconds = Record.BestSeconds;
 }

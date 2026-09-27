@@ -1,5 +1,6 @@
 #pragma once
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
 #include "DungeonBarrier.generated.h"
 class UStaticMeshComponent;
@@ -16,7 +17,7 @@ class SONHEIM_API ADungeonBarrier : public AActor
 public:
 	ADungeonBarrier();
 	/** The name the stage graph raises this barrier by. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FName BarrierId;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(Categories="Dungeon")) FGameplayTag BarrierId;
 	/** Also stands while no run is under way and after a won run, when there is no stage to ask. A failed run takes it down, so the
 	 * players can walk back to the altar. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") bool bSealedOutsideRun = false;
