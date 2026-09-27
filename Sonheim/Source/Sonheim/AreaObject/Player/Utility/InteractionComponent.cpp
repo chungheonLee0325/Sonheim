@@ -175,11 +175,13 @@ void UInteractionComponent::ShowMonsterHPBar(class ABaseMonster* Monster)
 	// 새 타이머 설정
 	FTimerHandle NewTimer;
 	FTimerDelegate TimerDel;
-	TimerDel.BindLambda([this, Monster]()
+	// A monster can be destroyed and collected before the timer fires (a finished dungeon run removes its monsters), so the timer
+	// holds it weakly; the raw pointer is only the map key and is never dereferenced.
+	TimerDel.BindWeakLambda(this, [this, Monster, WeakMonster = TWeakObjectPtr<ABaseMonster>(Monster)]()
 	{
-		if (IsValid(Monster))
+		if (ABaseMonster* Shown = WeakMonster.Get())
 		{
-			HideMonsterHPBar(Monster);
+			HideMonsterHPBar(Shown);
 		}
 		else
 		{
