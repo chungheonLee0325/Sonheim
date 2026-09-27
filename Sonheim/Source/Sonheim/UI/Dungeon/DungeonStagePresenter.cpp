@@ -1,6 +1,7 @@
 #include "DungeonStagePresenter.h"
 #include "DungeonUIRouterSubsystem.h"
 #include "DungeonViewData.h"
+#include "Algo/Count.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -99,6 +100,33 @@ namespace
 		const int32 Whole = FMath::Max(0, FMath::RoundToInt(Seconds));
 		return Whole >= 60 ? FText::Format(Texts.MinutesFormat, Whole / 60, Whole % 60) : FText::Format(Texts.SecondsFormat, Whole);
 	}
+	FText Clock(float Seconds)
+	{
+		const int32 Whole = FMath::Max(0, FMath::RoundToInt(Seconds));
+		return FText::FromString(FString::Printf(TEXT("%d:%02d"), Whole / 60, Whole % 60));
+	}
+	/** One line of the objective list, with what the snapshot says about its goal. */
+	FDungeonObjectiveViewData ObjectiveRow(const UDungeonPresentationDataAsset& Texts, const FDungeonObjectiveLine& Line, const FDungeonStageRuntimeState& State)
+	{
+		FDungeonObjectiveViewData Row;
+		Row.Label = Line.Label;
+		Row.Kind = Line.Kind;
+		if (const FText* Tag = Texts.KindLabels.Find(Line.Kind)) Row.KindLabel = *Tag;
+		int32 Done = 0, Total = 0;
+		switch (Line.Goal)
+		{
+		// The run follows the group it spawned last, so a group's count is known from its appearance on.
+		case EDungeonObjectiveGoal::Group:
+			if (State.ObjectiveGroupId == Line.GroupId && State.RequiredCount > 0) { Done = State.CurrentCount; Total = State.RequiredCount; }
+			break;
+		case EDungeonObjectiveGoal::RunTag: Total = 1; Done = State.RunTags.HasTagExact(Line.RunTag) ? 1 : 0; break;
+		case EDungeonObjectiveGoal::Clear: Total = 1; Done = State.RunStatus == EDungeonRunStatus::Succeeded ? 1 : 0; break;
+		case EDungeonObjectiveGoal::None: break;
+		}
+		Row.bDone = Total > 0 && Done >= Total;
+		if (Total > 0) Row.Count = FText::Format(Texts.CountFormat, Done, Total);
+		return Row;
+	}
 }
 void UDungeonStagePresenter::Present()
 {
@@ -128,6 +156,14 @@ void UDungeonStagePresenter::Present()
 			View.StepText = FText::Format(Texts.StepFormat, Stage->Step, Texts.StepCount);
 			View.StepProgress = FMath::Clamp(float(Stage->Step) / FMath::Max(1, Texts.StepCount), 0.f, 1.f);
 		}
+		if (Latest.RunStatus == EDungeonRunStatus::Running)
+		{
+			for (const FDungeonObjectiveLine& Line : Texts.RunObjectives) View.Objectives.Add(ObjectiveRow(Texts, Line, Latest));
+			for (const FDungeonObjectiveLine& Line : Stage->Objectives) View.Objectives.Add(ObjectiveRow(Texts, Line, Latest));
+			View.Objectives.StableSort([](const FDungeonObjectiveViewData& A, const FDungeonObjectiveViewData& B) { return A.Kind < B.Kind; });
+			const int32 Done = Algo::CountIf(View.Objectives, [](const FDungeonObjectiveViewData& Row) { return Row.bDone; });
+			if (!View.Objectives.IsEmpty()) View.ObjectivesDone = FText::Format(Texts.ObjectivesDoneFormat, Done, View.Objectives.Num());
+		}
 	}
 	if (Latest.RunStatus == EDungeonRunStatus::Running && Latest.BossHealth > 0.f)
 	{
@@ -148,16 +184,16 @@ void UDungeonStagePresenter::Present()
 		{
 			const FItemData* Item = Instance ? Instance->GetDataItem(Reward.ItemId) : nullptr;
 			const FText Name = Item ? Item->ItemName : FText::FromString(FString::Printf(TEXT("#%d"), Reward.ItemId));
-			const FText Line = FText::Format(Texts.RewardFormat, Name, Reward.Count);
-			View.Rewards.Add({Line, Item ? Item->ItemIcon : nullptr});
-			Lines.Add(Line.ToString());
+			View.Rewards.Add({Name, FText::Format(Texts.RewardCountFormat, Reward.Count), Item ? Item->ItemIcon : nullptr});
+			Lines.Add(FText::Format(Texts.RewardFormat, Name, Reward.Count).ToString());
 		}
 		View.RewardText = Lines.IsEmpty() ? Texts.NoRewardText : FText::FromString(FString::Join(Lines, TEXT("\n")));
-		if (View.Rewards.IsEmpty()) View.Rewards.Add({Texts.NoRewardText, nullptr});
-		FString Summary = FText::Format(Texts.SummaryFormat, Spell(Texts, Latest.ElapsedSeconds), Latest.DefeatedCount).ToString();
+		if (View.Rewards.IsEmpty()) View.Rewards.Add({Texts.NoRewardText, FText::GetEmpty(), nullptr});
+		View.Stats.Add({Texts.TimeStatLabel, Clock(Latest.ElapsedSeconds)});
+		View.Stats.Add({Texts.KillStatLabel, FText::AsNumber(Latest.DefeatedCount)});
+		if (!Latest.SelectedBranchId.IsNone()) View.Stats.Add({Texts.RouteStatLabel, View.BranchText});
 		// The first clear sets the best time, so a cleared dungeon always has one.
-		if (Latest.ClearCount > 0) Summary += FText::Format(Texts.RecordFormat, Latest.ClearCount, Spell(Texts, Latest.BestSeconds)).ToString();
-		View.SummaryText = FText::FromString(Summary);
+		if (Latest.ClearCount > 0) View.SummaryText = FText::Format(Texts.RecordFormat, Latest.ClearCount, Spell(Texts, Latest.BestSeconds));
 		// The record is saved before the result is shown, so a run that set it finished in exactly the best time.
 		if (Latest.RunStatus == EDungeonRunStatus::Succeeded && Latest.BestSeconds > 0.f && Latest.BestSeconds == Latest.ElapsedSeconds)
 			View.NewBestText = Texts.NewBestText;

@@ -4,16 +4,43 @@
 #include "GameplayTagContainer.h"
 #include "Sonheim/GameManager/Dungeon/DungeonStageRuntimeTypes.h"
 #include "Sonheim/UI/Dungeon/DungeonToastWidget.h"
+#include "Sonheim/UI/Dungeon/DungeonViewData.h"
 #include "DungeonPresentationDataAsset.generated.h"
+/** What completes an objective line, read from the run's snapshot. */
+UENUM(BlueprintType)
+enum class EDungeonObjectiveGoal : uint8
+{
+	/** A plain line with no count; it stays open while its stage lasts. */
+	None,
+	/** Every monster of GroupId defeated. The count shows once the group has appeared. */
+	Group,
+	/** The run has RunTag, such as the unlocked shortcut. */
+	RunTag,
+	/** The run is won. */
+	Clear
+};
+USTRUCT(BlueprintType)
+struct FDungeonObjectiveLine
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) FText Label;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) EDungeonObjectiveKind Kind = EDungeonObjectiveKind::Main;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) EDungeonObjectiveGoal Goal = EDungeonObjectiveGoal::None;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Goal == EDungeonObjectiveGoal::Group", EditConditionHides)) FName GroupId;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition="Goal == EDungeonObjectiveGoal::RunTag", EditConditionHides)) FGameplayTag RunTag;
+};
 USTRUCT(BlueprintType)
 struct FDungeonStagePresentation
 {
 	GENERATED_BODY()
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName StageId;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FText Title;
+	/** One sentence for screens without an objective list, and the line under the result's title. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FText Objective;
 	/** Where the stage stands on the way through, shown under the dungeon's name with StepFormat. 0 leaves the step out. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(ClampMin="0")) int32 Step = 0;
+	/** The objective list's lines while the run is in this stage, after the run's own lines. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) TArray<FDungeonObjectiveLine> Objectives;
 };
 /** Everything the dungeon's screens say. The widgets only lay it out, so the words change here without a code build. */
 UCLASS(BlueprintType)
@@ -23,16 +50,27 @@ class SONHEIM_API UDungeonPresentationDataAsset : public UDataAsset
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText DungeonTitle;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TArray<FDungeonStagePresentation> Stages;
+	/** The route each branch takes, shown on the result. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TMap<FName, FText> BranchLabels;
 	/** Steps on the way through, which each stage's Step counts against. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(ClampMin="1")) int32 StepCount = 4;
 	/** Name over the boss's health bar while it lives. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText BossName = INVTEXT("유적의 수호자");
 
+	/** Lines shown in every stage, such as the run's final goal. The list orders all lines by kind: final, main, optional. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Objectives") TArray<FDungeonObjectiveLine> RunObjectives;
+	/** The tag in front of each kind of line; empty shows none. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Objectives") TMap<EDungeonObjectiveKind, FText> KindLabels = {
+		{EDungeonObjectiveKind::Final, INVTEXT("최종")},
+		{EDungeonObjectiveKind::Main, FText::GetEmpty()},
+		{EDungeonObjectiveKind::Optional, INVTEXT("추가")}};
+	/** {0} lines done, {1} lines. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Objectives") FText ObjectivesDoneFormat = INVTEXT("{0}/{1} 완료");
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText LoadingText = INVTEXT("던전을 불러오는 중");
 	/** {0} the stage's Step, {1} StepCount. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText StepFormat = INVTEXT("단계 {0}/{1}");
-	/** {0} monsters defeated, {1} monsters to defeat. */
+	/** {0} done, {1} to do: the objective lines' counts and the stage's count. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText CountFormat = INVTEXT("{0} / {1}");
 	/** {0} the time left as m:ss. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText TimeFormat = INVTEXT("남은 시간 {0}");
@@ -45,13 +83,17 @@ public:
 		{EDungeonFailReason::OwnerLeft, INVTEXT("원정대장이 유적을 떠났습니다.")},
 		{EDungeonFailReason::TargetLost, INVTEXT("전투 대상이 사라졌습니다.")},
 		{EDungeonFailReason::Error, INVTEXT("입구로 돌아가 다시 시작하세요.")}};
-	/** {0} the item's name, {1} how many. */
+	/** The result's tiles: the time the run took (m:ss), monsters defeated, and the route when a branch was taken. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText TimeStatLabel = INVTEXT("소요 시간");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText KillStatLabel = INVTEXT("처치한 적");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText RouteStatLabel = INVTEXT("경로");
+	/** {0} the item's name, {1} how many: a reward line on screens without reward slots. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText RewardFormat = INVTEXT("{0} ×{1}");
+	/** {0} how many, under a reward slot's name. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText RewardCountFormat = INVTEXT("×{0}");
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText NoRewardText = INVTEXT("획득한 보상 없음");
-	/** {0} the time the run took, {1} monsters defeated. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText SummaryFormat = INVTEXT("소요 {0} · 처치 {1}");
-	/** Added to the summary once the dungeon has been cleared: {0} clears, {1} the best time. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText RecordFormat = INVTEXT(" · {0}회 클리어 (최고 {1})");
+	/** Under the result once the dungeon has been cleared: {0} clears, {1} the best time. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText RecordFormat = INVTEXT("{0}회 클리어 · 최고 {1}");
 	/** A time of a minute or more, {0} minutes and {1} seconds; SecondsFormat below that. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText MinutesFormat = INVTEXT("{0}분 {1}초");
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText SecondsFormat = INVTEXT("{0}초");
