@@ -76,5 +76,7 @@ struct FDungeonStageDefinition
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) EDungeonTerminalOutcome TerminalOutcome = EDungeonTerminalOutcome::None;
 	/** Seconds the stage may last before it raises StageTimeout. 0 is no limit, and a limit needs a rule that answers it. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(ClampMin="0")) float TimeLimitSeconds = 0.f;
+	/** The doorway barriers, by their BarrierId, that stand while the run is in this stage: the way on waits for the stage to end. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) TArray<FName> SealedBarriers;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(TitleProperty="Event")) TArray<FDungeonStageEventRule> EventRules;
 };

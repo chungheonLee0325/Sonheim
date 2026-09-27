@@ -6,17 +6,19 @@ class UStaticMeshComponent;
 class UNavModifierComponent;
 class UMaterialInstanceDynamic;
 struct FDungeonStageRuntimeState;
-/** A see-through wall across a doorway that holds the way on until the step before it is done. Like the shortcut gate, it reads the
- * replicated dungeon snapshot on every machine; it never calls the runtime and replicates nothing itself. */
+/** A see-through wall across a doorway that holds the way on until the step before it is done. The stage graph says when: a stage lists
+ * the barriers it raises (SealedBarriers), and the snapshot carries the current list to every machine. Like the shortcut gate, the
+ * barrier reads that snapshot on every machine; it never calls the runtime and replicates nothing itself. */
 UCLASS()
 class SONHEIM_API ADungeonBarrier : public AActor
 {
 	GENERATED_BODY()
 public:
 	ADungeonBarrier();
-	/** The stages of a run under way during which the barrier stands. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TArray<FName> SealedStages;
-	/** Also stands while no run is under way and after a won run. A failed run takes it down, so the players can walk back to the altar. */
+	/** The name the stage graph raises this barrier by. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FName BarrierId;
+	/** Also stands while no run is under way and after a won run, when there is no stage to ask. A failed run takes it down, so the
+	 * players can walk back to the altar. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") bool bSealedOutsideRun = false;
 	/** How long the wall takes to appear or to fade. It blocks the moment it stands and lets through the moment it falls. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") float FadeSeconds = 0.4f;

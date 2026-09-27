@@ -5,6 +5,8 @@
 #include "DungeonStageConditionEvaluator.h"
 #include "DungeonProgressSubsystem.h"
 #include "Sonheim/GameObject/Dungeon/DungeonTestArea.h"
+#include "Sonheim/GameObject/Dungeon/DungeonBarrier.h"
+#include "EngineUtils.h"
 #include "Sonheim/GameObject/Dungeon/DungeonDefinitionDataAsset.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/GameManager/SonheimGameState.h"
@@ -69,6 +71,12 @@ bool UDungeonStageRuntimeSubsystem::TryStart(ADungeonTestArea* Area, ASonheimPla
 		Self->Objectives->OnCompleted.AddUObject(Self, &UDungeonStageRuntimeSubsystem::HandleComplete);
 		Self->Objectives->OnInvalidated.AddUObject(Self, &UDungeonStageRuntimeSubsystem::HandleInvalidated);
 		Self->Objectives->OnCaptured.AddUObject(Self, &UDungeonStageRuntimeSubsystem::HandleCaptured);
+		// The definition cannot see the level, so a barrier it names that the level lacks is reported here: it would hold nothing.
+		TSet<FName> Placed;
+		for (TActorIterator<ADungeonBarrier> It(Self->GetWorld()); It; ++It) Placed.Add(It->BarrierId);
+		for (const FDungeonStageDefinition& Stage : Loaded->Stages)
+			for (const FName Barrier : Stage.SealedBarriers)
+				if (!Placed.Contains(Barrier)) UE_LOG(SONHEIM, Warning, TEXT("[DungeonBarrier] %s names barrier %s, which this level does not have"), *Stage.StageId.ToString(), *Barrier.ToString());
 		Self->State.RunStatus = EDungeonRunStatus::Running;
 		Self->EnterStage(Loaded->StartStageId);
 		Self->ProcessQueue();
@@ -148,6 +156,7 @@ void UDungeonStageRuntimeSubsystem::EnterStage(FName Id)
 	const auto* Stage = Definition ? Definition->FindStage(Id) : nullptr;
 	if (!Stage) { Fail(EDungeonFailReason::Error, TEXT("Next stage is missing.")); return; }
 	State.StageId = Id;
+	State.SealedBarriers = Stage->SealedBarriers;
 	State.StageStartedServerTime = ServerTime();
 	EnteredAreas.Reset();
 	ClearStageTimer();

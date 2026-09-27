@@ -52,6 +52,8 @@ struct FDungeonStageRuntimeState
 	UPROPERTY(BlueprintReadOnly) double StageStartedServerTime = 0;
 	/** Server time the current stage runs out at. 0 while the stage has no limit. */
 	UPROPERTY(BlueprintReadOnly) double StageDeadlineServerTime = 0;
+	/** The doorway barriers the current stage raises (its SealedBarriers). Every machine's barriers read this. */
+	UPROPERTY(BlueprintReadOnly) TArray<FName> SealedBarriers;
 	/** What the run handed over, merged per item in the order the rules granted it. The result screen settles from this. */
 	UPROPERTY(BlueprintReadOnly) TArray<FDungeonRunReward> Rewards;
 	/** Monsters the run confirmed as defeated, and those captured, across every group. */
@@ -75,7 +77,7 @@ struct FDungeonStageRuntimeState
 	{
 		return RunId == Other.RunId && DefinitionAssetId == Other.DefinitionAssetId && StageId == Other.StageId &&
 			RunStatus == Other.RunStatus && ObjectiveGroupId == Other.ObjectiveGroupId && CurrentCount == Other.CurrentCount &&
-			RequiredCount == Other.RequiredCount && SelectedBranchId == Other.SelectedBranchId && StageStartedServerTime == Other.StageStartedServerTime && StageDeadlineServerTime == Other.StageDeadlineServerTime &&
+			RequiredCount == Other.RequiredCount && SelectedBranchId == Other.SelectedBranchId && StageStartedServerTime == Other.StageStartedServerTime && StageDeadlineServerTime == Other.StageDeadlineServerTime && SealedBarriers == Other.SealedBarriers &&
 			RunTags == Other.RunTags && Rewards == Other.Rewards && DefeatedCount == Other.DefeatedCount && CapturedCount == Other.CapturedCount && Groups == Other.Groups && ElapsedSeconds == Other.ElapsedSeconds &&
 			ClearCount == Other.ClearCount && BestSeconds == Other.BestSeconds && Participants == Other.Participants && OwnerPlayer == Other.OwnerPlayer && FailReason == Other.FailReason && BossHealth == Other.BossHealth;
 	}

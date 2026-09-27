@@ -54,6 +54,14 @@ bool UDungeonDefinitionDataAsset::ValidateDefinition(TArray<FString>& Errors, TA
 		if (Stage.TimeLimitSeconds < 0.f) Errors.Add(Stage.StageId.ToString() + TEXT(": TimeLimitSeconds cannot be negative."));
 		if (Stage.TimeLimitSeconds > 0.f && !bHasTimeout) Errors.Add(Stage.StageId.ToString() + TEXT(": a time limit needs a StageTimeout rule."));
 		if (Stage.TimeLimitSeconds <= 0.f && bHasTimeout) Errors.Add(Stage.StageId.ToString() + TEXT(": a StageTimeout rule needs a time limit."));
+		// The level is not known here; a barrier the level lacks is reported when a run starts.
+		TSet<FName> Barriers;
+		for (const FName Barrier : Stage.SealedBarriers)
+		{
+			bool bRepeated = false;
+			Barriers.Add(Barrier, &bRepeated);
+			if (Barrier.IsNone() || bRepeated) Errors.Add(Stage.StageId.ToString() + TEXT(": SealedBarriers needs each BarrierId once."));
+		}
 		for (const FDungeonStageEventRule& Rule : Stage.EventRules)
 		{
 			const FString Key = FString::Printf(TEXT("%d:%s"), int32(Rule.Event), *Rule.SourceId.ToString());
@@ -193,6 +201,8 @@ FString UDungeonDefinitionDataAsset::BuildStageGraph() const
 	{
 		const FString Id = Stage.StageId.ToString();
 		if (Stage.TimeLimitSeconds > 0.f) Text += FString::Printf(TEXT("  %%%% %s time limit %.0fs\n"), *Id, Stage.TimeLimitSeconds);
+		if (!Stage.SealedBarriers.IsEmpty())
+			Text += FString::Printf(TEXT("  %%%% %s seals %s\n"), *Id, *FString::JoinBy(Stage.SealedBarriers, TEXT(", "), [](FName Barrier) { return Barrier.ToString(); }));
 		if (Stage.TerminalOutcome != EDungeonTerminalOutcome::None)
 		{
 			Text += FString::Printf(TEXT("  %s[[\"%s %s\"]]\n"), *Id, *Id,

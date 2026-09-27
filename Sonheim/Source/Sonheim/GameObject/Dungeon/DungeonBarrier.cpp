@@ -72,7 +72,7 @@ void ADungeonBarrier::RefreshFromState()
 		StageStateHandle = GameState->OnDungeonStageStateChanged.AddUObject(this, &ADungeonBarrier::HandleStageState);
 	const FDungeonStageRuntimeState State = GameState ? GameState->GetDungeonStageState() : FDungeonStageRuntimeState();
 	const bool bUnderWay = State.RunStatus == EDungeonRunStatus::Loading || State.RunStatus == EDungeonRunStatus::Running;
-	const bool bShouldSeal = bUnderWay ? SealedStages.Contains(State.StageId) : bSealedOutsideRun && State.RunStatus != EDungeonRunStatus::Failed;
+	const bool bShouldSeal = bUnderWay ? State.SealedBarriers.Contains(BarrierId) : bSealedOutsideRun && State.RunStatus != EDungeonRunStatus::Failed;
 	if (bShouldSeal == bSealed) return;
 	bSealed = bShouldSeal;
 	Wall->SetCollisionEnabled(bSealed ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
