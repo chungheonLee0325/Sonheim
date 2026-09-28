@@ -189,13 +189,14 @@ bool ABossMonster::IsInside(const FBossStrike& Strike, const FTransform& Where, 
 	}
 }
 
-void ABossMonster::LandStrike(const FBossStrike& Strike, const FTransform& Where, const TArray<FVector>& Spots, AAreaObject* Target, const int32 ProjectileCount)
+void ABossMonster::LandStrike(const FBossStrike& Strike, const FTransform& Where, const TArray<FVector>& Spots, AAreaObject* Target, const int32 Count)
 {
 	if (!HasAuthority()) return;
 	// Projectiles keep a pointer to their attack; the pattern asset holds it for as long as the boss lives.
 	FAttackData& Attack = const_cast<FAttackData&>(Strike.Attack);
-	if (Strike.Projectile && ProjectileCount > 0)
+	if (Strike.Projectile)
 	{
+		const int32 ProjectileCount = FMath::Max(1, Count);
 		const FVector Muzzle = GetActorLocation() + GetActorForwardVector() * GetCapsuleComponent()->GetScaledCapsuleRadius();
 		const float Step = ProjectileCount > 1 ? Strike.SpreadDegrees / (ProjectileCount - 1) : 0.f;
 		const float FirstYaw = Where.Rotator().Yaw - (ProjectileCount > 1 ? Strike.SpreadDegrees * 0.5f : 0.f);
@@ -212,14 +213,20 @@ void ABossMonster::LandStrike(const FBossStrike& Strike, const FTransform& Where
 		}
 		return;
 	}
+	// The area at Where, or the same area at each spot; someone where two of them overlap is hit once.
+	TArray<FTransform> Areas;
+	if (Spots.IsEmpty()) Areas.Add(Where);
+	for (const FVector& Spot : Spots) Areas.Add(FTransform(Where.GetRotation(), Spot));
 	for (TActorIterator<AAreaObject> It(GetWorld()); It; ++It)
 	{
 		AAreaObject* Other = *It;
 		if (Other == this || Other->IsDie() || !CanAttack(Other)) continue;
-		if (!IsInside(Strike, Where, ABossTelegraph::FeetTransform(Other, 0.f).GetLocation())) continue;
+		const FVector Feet = ABossTelegraph::FeetTransform(Other, 0.f).GetLocation();
+		if (!Areas.ContainsByPredicate([&Strike, &Feet](const FTransform& Area) { return IsInside(Strike, Area, Feet); })) continue;
 		FHitResult Hit;
 		Hit.Location = Hit.ImpactPoint = Other->GetActorLocation();
 		CalcDamage(Attack, this, Other, Hit);
 	}
-	if (Attack.FireVFX_N) MulticastStrikeEffect(Attack.FireVFX_N, Where.GetLocation(), Attack.VFXScale);
+	if (Attack.FireVFX_N)
+		for (const FTransform& Area : Areas) MulticastStrikeEffect(Attack.FireVFX_N, Area.GetLocation(), Attack.VFXScale);
 }

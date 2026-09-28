@@ -39,7 +39,7 @@ enum class EBossProjectileAim : uint8
 {
 	/** Along a direction from the boss: LightningBall flies straight, ElectricBall then follows the target. */
 	Direction,
-	/** At a spot on the ground at the target's distance: BladeWind is thrown there. Every spot gets its own mark. */
+	/** At a spot on the ground: BladeWind is thrown there. Every spot gets its own mark, the way an area strike's spots do. */
 	Location,
 };
 
@@ -72,12 +72,15 @@ struct FBossStrike
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float HalfWidth = 100.f;
 	/** Moves the area ahead along the facing, such as a claw that reaches in front of the boss. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float ForwardOffset = 0.f;
-	/** Damage to everyone inside the area as the strike lands, or of each projectile. */
+	/** Damage to everyone inside the area as the strike lands, or of each projectile. Its FireVFX_N plays on every area as it lands. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") FAttackData Attack;
-	/** A strike with projectiles fires them in place of hitting its area; its mark shows where they go. */
+	/** A strike with projectiles fires them in place of hitting its area; its marks show where they go. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") TSubclassOf<ABaseElement> Projectile;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss", meta=(ClampMin="0")) int32 ProjectileCount = 0;
-	/** Degrees the projectiles spread over, centred on the facing. */
+	/** Areas or projectiles the strike makes. Several areas on the target mark and hit that many spots at once: the first where the
+	 * target stands, the others within Scatter of it, or across SpreadDegrees at the target's distance while Scatter is 0. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss", meta=(ClampMin="1")) int32 Count = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float Scatter = 0.f;
+	/** Degrees the projectiles, or the spots, spread over, centred on the facing. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float SpreadDegrees = 0.f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") EBossProjectileAim Aim = EBossProjectileAim::Direction;
 };
@@ -136,22 +139,27 @@ public:
 	/** Players farther than this from where the boss spawned are out of its reach; with none within it, the boss walks back to its spot. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Intro") float ArenaRadius = 2500.f;
 
+	/** Between two patterns the boss walks toward its target for a while, so it closes in before it strikes again. Phase 2 shortens it. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Patterns") float GapSecondsMin = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Patterns") float GapSecondsMax = 2.f;
+
 	/** Share of health at which phase 2 begins: the boss roars (the Roar section of the wake montage) before its next pattern. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase", meta=(ClampMin="0", ClampMax="1")) float PhaseTwoHealth = 0.6f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase") float RoarSeconds = 1.8f;
 	/** Phase 2 plays its patterns, their marks and their montages this much faster. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase", meta=(ClampMin="1", ClampMax="2")) float PhaseTwoTempo = 1.2f;
-	/** Projectiles every projectile strike adds in phase 2. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase", meta=(ClampMin="0")) int32 PhaseTwoExtraProjectiles = 2;
+	/** Projectiles, or spots, that every strike of several adds in phase 2. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase", meta=(ClampMin="0")) int32 PhaseTwoExtraCount = 2;
 
-	/** After this many patterns the boss sits down to catch its breath, and can be captured while it rests. Phase 2 goes one pattern longer. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Rest", meta=(ClampMin="1")) int32 PatternsBeforeRest = 4;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Rest") float RestSeconds = 5.5f;
-	/** Played over RestSeconds from its start. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Rest") TObjectPtr<UAnimMontage> RestMontage;
+	/** Shares of health, highest first, at which the worn-out boss sinks down to catch its breath: the only times it can be captured.
+	 * Each one comes once, the moment the boss's health falls to it. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Exhaust") TArray<float> ExhaustHealth = {0.3f, 0.1f};
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Exhaust") float ExhaustSeconds = 8.f;
+	/** Played over ExhaustSeconds from its start. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Exhaust") TObjectPtr<UAnimMontage> ExhaustMontage;
 
-	/** Damage, as a share of its health, that knocks the boss down; it can be captured while it lies there. Damage it takes while it
-	 * rests or lies counts for nothing, so one opening never leads straight into the next. */
+	/** Damage, as a share of its health, that knocks the boss down for a while of free hits. Damage it takes while it is down or worn
+	 * out counts for nothing, so one opening never leads straight into the next. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Down", meta=(ClampMin="0.01", ClampMax="1")) float DownAfterDamage = 0.2f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Down") float DownSeconds = 6.f;
 	/** Fall, then Down until the last GetUpSeconds, then GetUp. */

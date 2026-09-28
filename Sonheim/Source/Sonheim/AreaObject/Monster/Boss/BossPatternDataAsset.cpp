@@ -24,9 +24,12 @@ namespace
 	{
 		if (Strike.MarkSeconds < 0.f || Strike.MarkSeconds > Strike.StrikeSeconds || Strike.StrikeSeconds > PatternSeconds)
 			Problems.Add(At + TEXT(": the mark must come before the strike, and the strike within the pattern"));
-		const bool bProjectiles = Strike.ProjectileCount > 0;
-		if (bProjectiles != (Strike.Projectile != nullptr))
-			Problems.Add(At + TEXT(": a projectile strike needs both a projectile and a count"));
+		const bool bProjectiles = Strike.Projectile != nullptr;
+		if (Strike.Count < 1) Problems.Add(At + TEXT(": the count must be at least 1"));
+		if (Strike.Scatter < 0.f) Problems.Add(At + TEXT(": the scatter cannot be negative"));
+		// Areas spread from the target's spot; several of them on the boss would all land in the same place.
+		if (!bProjectiles && Strike.Count > 1 && Strike.Anchor != EBossAreaAnchor::Target)
+			Problems.Add(At + TEXT(": several areas spread around the target, so they need the target as their anchor"));
 		if (Strike.Shape == EBossAreaShape::None)
 		{
 			if (!bProjectiles) Problems.Add(At + TEXT(": a strike without a shape does nothing unless it fires projectiles"));
@@ -74,7 +77,12 @@ TArray<FString> UBossPatternDataAsset::Validate() const
 	}
 	if (!HasSection(WakeMontage, SleepSection) || !HasSection(WakeMontage, WakeSection) || !HasSection(WakeMontage, RoarSection))
 		Problems.Add(TEXT("the wake montage needs the sections Sleep, Wake and Roar"));
-	if (!RestMontage) Problems.Add(TEXT("no rest montage"));
+	if (GapSecondsMin < 0.f || GapSecondsMax < GapSecondsMin) Problems.Add(TEXT("the gap between patterns must run from GapSecondsMin up to GapSecondsMax"));
+	if (!ExhaustMontage) Problems.Add(TEXT("no exhaust montage"));
+	if (ExhaustSeconds <= 0.f) Problems.Add(TEXT("ExhaustSeconds must be above 0"));
+	for (int32 Index = 0; Index < ExhaustHealth.Num(); ++Index)
+		if (ExhaustHealth[Index] <= 0.f || ExhaustHealth[Index] >= 1.f || (Index > 0 && ExhaustHealth[Index] >= ExhaustHealth[Index - 1]))
+			Problems.Add(TEXT("ExhaustHealth takes shares of health between 0 and 1, highest first"));
 	if (!HasSection(DownMontage, FallSection) || !HasSection(DownMontage, DownSection) || !HasSection(DownMontage, GetUpSection))
 		Problems.Add(TEXT("the down montage needs the sections Fall, Down and GetUp"));
 	if (GetUpSeconds >= DownSeconds) Problems.Add(TEXT("GetUpSeconds must be shorter than DownSeconds"));

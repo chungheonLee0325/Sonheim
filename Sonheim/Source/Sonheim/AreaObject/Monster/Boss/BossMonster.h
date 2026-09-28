@@ -42,8 +42,8 @@ struct FBossStatus
 	UPROPERTY(BlueprintReadOnly, Category="Boss") double ActionEndServerTime = 0;
 	/** Damage toward the next knockdown, 0 to 1. */
 	UPROPERTY(BlueprintReadOnly, Category="Boss") float Break = 0.f;
-	/** Resting and lying knocked down are the openings: the only times the boss can be captured. */
-	bool IsVulnerable() const { return Stage == EBossStage::Resting || Stage == EBossStage::Down; }
+	/** Worn out at low health, the boss rests: the only time it can be captured. Lying knocked down only takes free hits. */
+	bool IsVulnerable() const { return Stage == EBossStage::Resting; }
 	bool operator==(const FBossStatus& Other) const = default;
 };
 
@@ -67,7 +67,7 @@ public:
 	/** Makes a pattern the boss's next one, whatever the distance and cooldown, so it can be watched on its own in play, the way the
 	 * boss checks do. False for a pattern the boss does not have. */
 	UFUNCTION(BlueprintCallable, Category="Boss") bool PerformPattern(FGameplayTag PatternId);
-	/** Whether a pal sphere would take the boss now: only while it rests or lies knocked down. */
+	/** Whether a pal sphere would take the boss now: only while it rests worn out at low health. */
 	UFUNCTION(BlueprintPure, Category="Boss") bool IsCapturable() const { return CanCapture(); }
 
 	virtual bool CanCapture() const override;
@@ -83,8 +83,9 @@ public:
 	void StopMontage();
 	/** Marks a strike's area at Where: its spot on the ground, or the boss's feet when bFollow keeps the mark on the boss. */
 	ABossTelegraph* PlaceMark(const FBossStrike& Strike, const FTransform& Where, bool bFollow, float Seconds);
-	/** Lands a strike: damages everyone its area holds at Where, or fires its projectiles, along the spread or at Spots. */
-	void LandStrike(const FBossStrike& Strike, const FTransform& Where, const TArray<FVector>& Spots, AAreaObject* Target, int32 ProjectileCount);
+	/** Lands a strike: damages everyone in its area at Where, or in the same area at each of Spots, or fires Count projectiles along
+	 * the spread or at Spots. */
+	void LandStrike(const FBossStrike& Strike, const FTransform& Where, const TArray<FVector>& Spots, AAreaObject* Target, int32 Count);
 	/** Whether a point on the ground lies in a strike's area placed at Where. */
 	static bool IsInside(const FBossStrike& Strike, const FTransform& Where, const FVector& Point);
 

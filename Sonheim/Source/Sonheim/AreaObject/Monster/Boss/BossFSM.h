@@ -42,7 +42,9 @@ private:
 	ABossMonster* Boss() const;
 	double Now() const;
 	float Tempo() const;
-	int32 ProjectileCount(const FBossStrike& Strike) const;
+	int32 StrikeCount(const FBossStrike& Strike) const;
+	/** Sinks the boss down worn out once its health falls to the next of its exhaust marks. */
+	bool TryExhaust();
 	void Enter(EBossStage Stage, const FGameplayTag& ActionId, float Seconds);
 	void Wake();
 	void KnockDown();
@@ -68,7 +70,10 @@ private:
 	FGameplayTag LastPattern;
 	/** The pattern Perform asked for, which the boss starts next. */
 	int32 QueuedPattern = INDEX_NONE;
-	int32 PatternsSinceRest = 0;
+	/** The exhaust marks the boss's health has already fallen through. */
+	int32 ExhaustsTaken = 0;
+	/** Until then the boss walks toward its target before it picks its next pattern. */
+	double GapEndsAt = 0;
 	double StageEndsAt = 0;
 	bool bGettingUp = false;
 	bool bPaused = false;

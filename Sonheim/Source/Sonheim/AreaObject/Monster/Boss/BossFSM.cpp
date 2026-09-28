@@ -44,11 +44,34 @@ float UBossFSM::Tempo() const
 	return Owner->GetBossStatus().Phase >= 2 ? Owner->Patterns->PhaseTwoTempo : 1.f;
 }
 
-int32 UBossFSM::ProjectileCount(const FBossStrike& Strike) const
+int32 UBossFSM::StrikeCount(const FBossStrike& Strike) const
 {
-	if (Strike.ProjectileCount <= 0) return 0;
+	// Phase 2 adds to every strike of several: more projectiles, more spots.
 	const ABossMonster* Owner = Boss();
-	return Strike.ProjectileCount + (Owner->GetBossStatus().Phase >= 2 ? Owner->Patterns->PhaseTwoExtraProjectiles : 0);
+	const bool bSeveral = Strike.Projectile || Strike.Count > 1;
+	return FMath::Max(1, Strike.Count) + (bSeveral && Owner->GetBossStatus().Phase >= 2 ? Owner->Patterns->PhaseTwoExtraCount : 0);
+}
+
+bool UBossFSM::TryExhaust()
+{
+	ABossMonster* Owner = Boss();
+	const UBossPatternDataAsset& Data = *Owner->Patterns;
+	const float Health = Owner->GetMaxHP() > 0.f ? Owner->GetHP() / Owner->GetMaxHP() : 1.f;
+	// Every mark the health has fallen through counts as taken, so one big hit past two of them brings one rest, not two.
+	bool bDue = false;
+	while (ExhaustsTaken < Data.ExhaustHealth.Num() && Health <= Data.ExhaustHealth[ExhaustsTaken])
+	{
+		++ExhaustsTaken;
+		bDue = true;
+	}
+	if (!bDue) return false;
+	EndPattern(true);
+	StopMoving();
+	// The exhaust montage plays over the whole rest, whatever its own length.
+	const float Length = Data.ExhaustMontage ? Data.ExhaustMontage->GetPlayLength() : Data.ExhaustSeconds;
+	Owner->PlayMontage(Data.ExhaustMontage, NAME_None, Length / FMath::Max(Data.ExhaustSeconds, 0.1f));
+	Enter(EBossStage::Resting, TAG_BossResting, Data.ExhaustSeconds);
+	return true;
 }
 
 void UBossFSM::Enter(const EBossStage Stage, const FGameplayTag& ActionId, const float Seconds)
@@ -124,6 +147,8 @@ void UBossFSM::OnDamaged(const float Damage)
 	// Only a fighting boss moves toward a knockdown: damage while it wakes, roars, rests or lies there counts for nothing.
 	const float MaxHP = Owner->GetMaxHP();
 	if (Status.Stage != EBossStage::Fighting || MaxHP <= 0.f) return;
+	// Worn out at low health, it sinks down at once, whatever it was doing.
+	if (TryExhaust()) return;
 	FBossStatus Next = Status;
 	Next.Break = FMath::Min(1.f, Status.Break + Damage / (MaxHP * Owner->Patterns->DownAfterDamage));
 	Owner->SetStatus(Next);
@@ -226,22 +251,19 @@ void UBossFSM::Fight(const float DeltaSeconds)
 		Enter(EBossStage::Roaring, TAG_BossRoaring, Data.RoarSeconds);
 		return;
 	}
-	if (PatternsSinceRest >= Data.PatternsBeforeRest + Status.Phase - 1)
-	{
-		StopMoving();
-		PatternsSinceRest = 0;
-		// The rest montage plays over the whole rest, whatever its own length.
-		const float Length = Data.RestMontage ? Data.RestMontage->GetPlayLength() : Data.RestSeconds;
-		Owner->PlayMontage(Data.RestMontage, NAME_None, Length / FMath::Max(Data.RestSeconds, 0.1f));
-		Enter(EBossStage::Resting, TAG_BossResting, Data.RestSeconds);
-		return;
-	}
+	if (TryExhaust()) return;
 	AAreaObject* NewTarget = PickTarget();
 	if (!NewTarget)
 	{
 		// Nobody within reach: back to its spot, to wait there.
 		if (FVector::Dist2D(Owner->GetActorLocation(), Owner->GetSpawnLocation()) > ChaseAcceptance) MoveTo(nullptr, Owner->GetSpawnLocation());
 		else StopMoving();
+		return;
+	}
+	// Between two patterns the boss closes in on its target.
+	if (Now() < GapEndsAt)
+	{
+		MoveTo(NewTarget, NewTarget->GetActorLocation());
 		return;
 	}
 	const int32 Index = QueuedPattern != INDEX_NONE ? QueuedPattern : ChoosePattern(NewTarget);
@@ -328,7 +350,7 @@ void UBossFSM::RunPattern(const float DeltaSeconds)
 		{
 			Run.bLanded = true;
 			const FTransform Where = Strike.Anchor == EBossAreaAnchor::Boss ? ABossTelegraph::FeetTransform(Owner, Strike.ForwardOffset) : Run.Where;
-			Owner->LandStrike(Strike, Where, Run.Spots, Victim, ProjectileCount(Strike));
+			Owner->LandStrike(Strike, Where, Run.Spots, Victim, StrikeCount(Strike));
 		}
 	}
 	// The leap goes after the marks of its moment, so it can come down on the one it placed.
@@ -353,18 +375,28 @@ void UBossFSM::Mark(const FBossStrike& Strike, FStrikeRun& Run, const AAreaObjec
 	const FVector Away = (Spot - From).GetSafeNormal2D();
 	const FRotator Facing = Away.IsNearlyZero() ? BossFeet.Rotator() : Away.Rotation();
 	Run.Where = FTransform(Facing, Spot + Facing.Vector() * Strike.ForwardOffset);
-	const int32 Count = ProjectileCount(Strike);
-	if (Count > 0 && Strike.Aim == EBossProjectileAim::Location)
+	const int32 Count = StrikeCount(Strike);
+	if (Strike.Projectile ? Strike.Aim == EBossProjectileAim::Location : Count > 1)
 	{
-		// The spots a projectile is thrown at: the target's spot, turned across the spread around the boss.
-		const float Distance = FVector::Dist2D(From, Run.Where.GetLocation());
+		// Every spot gets its mark: the first on the target and the rest scattered around it, or all of them turned across the
+		// spread around the boss at the target's distance.
+		const FVector Center = Run.Where.GetLocation();
+		const float Distance = FVector::Dist2D(From, Center);
 		for (int32 Index = 0; Index < Count; ++Index)
 		{
-			const float Yaw = Facing.Yaw + (Count > 1 ? Strike.SpreadDegrees * (float(Index) / (Count - 1) - 0.5f) : 0.f);
-			FVector Point = From + FRotator(0.f, Yaw, 0.f).Vector() * Distance;
-			Point.Z = Run.Where.GetLocation().Z;
+			FVector Point = Center;
+			if (Strike.Scatter > 0.f)
+			{
+				if (Index > 0) Point += FRotator(0.f, FMath::FRandRange(0.f, 360.f), 0.f).Vector() * FMath::FRandRange(0.35f, 1.f) * Strike.Scatter;
+			}
+			else
+			{
+				const float Yaw = Facing.Yaw + (Count > 1 ? Strike.SpreadDegrees * (float(Index) / (Count - 1) - 0.5f) : 0.f);
+				Point = From + FRotator(0.f, Yaw, 0.f).Vector() * Distance;
+				Point.Z = Center.Z;
+			}
 			Run.Spots.Add(Point);
-			Run.Marks.Add(Owner->PlaceMark(Strike, FTransform(FRotator(0.f, Yaw, 0.f), Point), false, Seconds));
+			Run.Marks.Add(Owner->PlaceMark(Strike, FTransform(Facing, Point), false, Seconds));
 		}
 		return;
 	}
@@ -402,7 +434,8 @@ void UBossFSM::EndPattern(const bool bCut)
 		for (FStrikeRun& Run : Strikes)
 			for (const TWeakObjectPtr<ABossTelegraph>& Placed : Run.Marks)
 				if (Placed.IsValid() && !Run.bLanded) Placed->Destroy();
-	if (!bCut) ++PatternsSinceRest;
+	if (!bCut)
+		GapEndsAt = Now() + FMath::FRandRange(Owner->Patterns->GapSecondsMin, Owner->Patterns->GapSecondsMax) / Tempo();
 	ReadyAt.Add(Pattern.PatternId, Now() + Pattern.Cooldown);
 	LastPattern = Pattern.PatternId;
 	PatternIndex = INDEX_NONE;
