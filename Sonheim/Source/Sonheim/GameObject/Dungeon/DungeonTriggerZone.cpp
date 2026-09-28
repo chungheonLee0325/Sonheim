@@ -11,8 +11,11 @@ ADungeonTriggerZone::ADungeonTriggerZone()
 	Zone = CreateDefaultSubobject<UBoxComponent>(TEXT("Zone"));
 	SetRootComponent(Zone);
 	Zone->SetBoxExtent(FVector(200.f));
-	// Overlaps pawns and blocks nothing, the way trigger volumes do.
+	// Overlaps pawns and blocks nothing, the way trigger volumes do. The Trigger profile alone leaves the project's own channels at
+	// their default Block, which held monsters spawned inside a zone in place and would stop projectiles.
 	Zone->SetCollisionProfileName(TEXT("Trigger"));
+	Zone->SetCollisionResponseToAllChannels(ECR_Ignore);
+	Zone->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	Zone->SetCanEverAffectNavigation(false);
 }
 void ADungeonTriggerZone::BeginPlay()
