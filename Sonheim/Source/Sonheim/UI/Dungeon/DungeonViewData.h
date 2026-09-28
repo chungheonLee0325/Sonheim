@@ -87,6 +87,16 @@ struct FDungeonStageViewData
 	/** The boss's name and health while it lives; 0 health hides the boss bar. */
 	UPROPERTY(BlueprintReadOnly) FText BossName;
 	UPROPERTY(BlueprintReadOnly) float BossHealth = 0.f;
+	/** What the boss does by name, and the server times it runs between, which the widget fills a bar from. */
+	UPROPERTY(BlueprintReadOnly) FText BossActionText;
+	UPROPERTY(BlueprintReadOnly) double BossActionStartServerTime = 0;
+	UPROPERTY(BlueprintReadOnly) double BossActionEndServerTime = 0;
+	/** The boss's phase from phase 2 on, such as 2단계; empty before. */
+	UPROPERTY(BlueprintReadOnly) FText BossPhaseText;
+	/** Said while the boss can be captured; empty otherwise. */
+	UPROPERTY(BlueprintReadOnly) FText BossHintText;
+	/** Damage toward the boss's next knockdown, 0 to 1. */
+	UPROPERTY(BlueprintReadOnly) float BossBreak = 0.f;
 	/** One line per item the run gave, only on a finished run. */
 	UPROPERTY(BlueprintReadOnly) FText RewardText;
 	/** The same rewards with their icons; a run that gave nothing has one line that says so. */

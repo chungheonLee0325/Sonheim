@@ -12,6 +12,7 @@
 #include "Sonheim/GameManager/SonheimGameState.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
+#include "Sonheim/AreaObject/Monster/Boss/BossMonster.h"
 #include "Sonheim/AreaObject/Attribute/HealthComponent.h"
 #include "Sonheim/AreaObject/Attribute/LevelComponent.h"
 #include "Sonheim/Utilities/LogMacro.h"
@@ -238,10 +239,17 @@ bool UDungeonStageRuntimeSubsystem::ExecuteAction(const FDungeonStageAction& Act
 			if (Action.bBossGroup && Result.Monsters[0]->m_HealthComponent)
 			{
 				// The screen shows the boss's health, so the run follows it while the boss lives.
-				if (IsValid(BossHealthSource)) BossHealthSource->OnHealthChanged.RemoveDynamic(this, &UDungeonStageRuntimeSubsystem::HandleBossHealth);
+				ReleaseBoss();
 				BossHealthSource = Result.Monsters[0]->m_HealthComponent;
 				BossHealthSource->OnHealthChanged.AddUniqueDynamic(this, &UDungeonStageRuntimeSubsystem::HandleBossHealth);
 				State.BossHealth = 1.f;
+				// A boss of its own also shows what it does, its phase and its openings.
+				if (ABossMonster* Boss = Cast<ABossMonster>(Result.Monsters[0]))
+				{
+					BossSource = Boss;
+					BossStatusHandle = Boss->OnBossStatusChanged.AddUObject(this, &UDungeonStageRuntimeSubsystem::HandleBossStatus);
+					HandleBossStatus(Boss->GetBossStatus());
+				}
 			}
 			return true;
 		}
@@ -331,6 +339,25 @@ void UDungeonStageRuntimeSubsystem::HandleBossHealth(float CurrentHP, float Delt
 	State.BossHealth = MaxHP > 0.f ? FMath::Clamp(CurrentHP / MaxHP, 0.f, 1.f) : 0.f;
 	Publish();
 }
+void UDungeonStageRuntimeSubsystem::HandleBossStatus(const FBossStatus& Status)
+{
+	if (!IsAuthority() || !IsActive()) return;
+	State.BossActionId = Status.ActionId;
+	State.BossActionStartServerTime = Status.ActionStartServerTime;
+	State.BossActionEndServerTime = Status.ActionEndServerTime;
+	State.BossPhase = Status.Phase;
+	State.bBossVulnerable = Status.IsVulnerable();
+	State.BossBreak = Status.Break;
+	Publish();
+}
+void UDungeonStageRuntimeSubsystem::ReleaseBoss()
+{
+	if (IsValid(BossHealthSource)) BossHealthSource->OnHealthChanged.RemoveDynamic(this, &UDungeonStageRuntimeSubsystem::HandleBossHealth);
+	BossHealthSource = nullptr;
+	if (ABossMonster* Boss = BossSource.Get()) Boss->OnBossStatusChanged.Remove(BossStatusHandle);
+	BossSource.Reset();
+	BossStatusHandle.Reset();
+}
 void UDungeonStageRuntimeSubsystem::HandleOwnerHealth(float CurrentHP, float Delta, float MaxHP)
 {
 	if (IsAuthority() && IsActive() && CurrentHP <= 0.f) Fail(EDungeonFailReason::OwnerDown, TEXT("Run owner has no health."));
@@ -339,8 +366,7 @@ void UDungeonStageRuntimeSubsystem::ReleaseAssets()
 {
 	if (IsValid(OwnerHealth)) OwnerHealth->OnHealthChanged.RemoveDynamic(this, &UDungeonStageRuntimeSubsystem::HandleOwnerHealth);
 	OwnerHealth = nullptr;
-	if (IsValid(BossHealthSource)) BossHealthSource->OnHealthChanged.RemoveDynamic(this, &UDungeonStageRuntimeSubsystem::HandleBossHealth);
-	BossHealthSource = nullptr;
+	ReleaseBoss();
 	if (GetWorld() && GetWorld()->GetGameInstance())
 		if (auto* Assets = GetWorld()->GetGameInstance()->GetSubsystem<UDungeonAssetSubsystem>()) Assets->Release(AssetRequest);
 	AssetRequest.Invalidate(); Definition = nullptr;

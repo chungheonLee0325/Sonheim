@@ -73,12 +73,22 @@ struct FDungeonStageRuntimeState
 	UPROPERTY(BlueprintReadOnly) EDungeonFailReason FailReason = EDungeonFailReason::None;
 	/** Health of the boss group's monster, 1 to 0, while it is alive; 0 before it appears. */
 	UPROPERTY(BlueprintReadOnly) float BossHealth = 0.f;
+	/** A boss's own status while it lives (FBossStatus): what it does and from when to when, its phase (0 before a boss appears),
+	 * whether it can be captured now, and how close it is to a knockdown, 0 to 1. */
+	UPROPERTY(BlueprintReadOnly) FGameplayTag BossActionId;
+	UPROPERTY(BlueprintReadOnly) double BossActionStartServerTime = 0;
+	UPROPERTY(BlueprintReadOnly) double BossActionEndServerTime = 0;
+	UPROPERTY(BlueprintReadOnly) int32 BossPhase = 0;
+	UPROPERTY(BlueprintReadOnly) bool bBossVulnerable = false;
+	UPROPERTY(BlueprintReadOnly) float BossBreak = 0.f;
 	bool SamePresentationState(const FDungeonStageRuntimeState& Other) const
 	{
 		return RunId == Other.RunId && DefinitionAssetId == Other.DefinitionAssetId && StageId == Other.StageId &&
 			RunStatus == Other.RunStatus && ObjectiveGroupId == Other.ObjectiveGroupId && CurrentCount == Other.CurrentCount &&
 			RequiredCount == Other.RequiredCount && SelectedBranchId == Other.SelectedBranchId && StageStartedServerTime == Other.StageStartedServerTime && StageDeadlineServerTime == Other.StageDeadlineServerTime && SealedBarriers == Other.SealedBarriers &&
 			RunTags == Other.RunTags && Rewards == Other.Rewards && DefeatedCount == Other.DefeatedCount && CapturedCount == Other.CapturedCount && Groups == Other.Groups && ElapsedSeconds == Other.ElapsedSeconds &&
-			ClearCount == Other.ClearCount && BestSeconds == Other.BestSeconds && Participants == Other.Participants && OwnerPlayer == Other.OwnerPlayer && FailReason == Other.FailReason && BossHealth == Other.BossHealth;
+			ClearCount == Other.ClearCount && BestSeconds == Other.BestSeconds && Participants == Other.Participants && OwnerPlayer == Other.OwnerPlayer && FailReason == Other.FailReason && BossHealth == Other.BossHealth &&
+			BossActionId == Other.BossActionId && BossActionStartServerTime == Other.BossActionStartServerTime && BossActionEndServerTime == Other.BossActionEndServerTime &&
+			BossPhase == Other.BossPhase && bBossVulnerable == Other.bBossVulnerable && BossBreak == Other.BossBreak;
 	}
 };

@@ -112,6 +112,8 @@ protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeTick(const FGeometry& Geometry, float DeltaTime) override;
 	void RefreshTime();
+	/** Fills the boss's action bar from the server time. */
+	void RefreshBossAction();
 	/** Shown to participants; a finished run's screen folds away once FinishedSeconds pass. */
 	void RefreshShown();
 	FTimerHandle FinishedTimer;
@@ -152,6 +154,12 @@ protected:
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> BossPanel;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> BossNameText;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UProgressBar> BossHealthBar;
+	// What the boss does and how far along, its phase, how close it is to a knockdown, and the capture hint while it can be taken.
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> BossActionText;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UProgressBar> BossActionBar;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> BossPhaseText;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UProgressBar> BossBreakBar;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> BossHintText;
 	// The result: tiles of figures, reward slots or reward lines, the record, and the new-best badge.
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UDynamicEntryBox> StatTiles;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UDynamicEntryBox> RewardSlots;

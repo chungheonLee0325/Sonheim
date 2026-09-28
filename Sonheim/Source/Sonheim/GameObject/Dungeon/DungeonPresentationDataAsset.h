@@ -62,6 +62,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(ClampMin="1")) int32 StepCount = 4;
 	/** Name over the boss's health bar while it lives. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText BossName = INVTEXT("유적의 수호자");
+	/** What the boss does, named over its health bar: its patterns, and Boss.State.* while it sleeps, roars, rests or lies down. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(Categories="Boss")) TMap<FGameplayTag, FText> BossActionLabels;
+	/** Next to the boss's name from phase 2 on; {0} is the phase. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText BossPhaseFormat = INVTEXT("{0}단계");
+	/** Under the boss's health bar while it can be captured. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText BossCaptureHint = INVTEXT("포획 기회!");
 
 	/** The run's goal, under the dungeon's name: its final lines' labels. A final line has no count on screen. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Objectives") TArray<FDungeonObjectiveLine> RunObjectives;

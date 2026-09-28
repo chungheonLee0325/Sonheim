@@ -83,6 +83,17 @@ void UDungeonViewWidget::NativeTick(const FGeometry& Geometry, float DeltaTime)
 {
 	Super::NativeTick(Geometry, DeltaTime);
 	if (TimeText && ViewData.DeadlineServerTime > 0) RefreshTime();
+	if (BossActionBar && ViewData.BossActionEndServerTime > 0) RefreshBossAction();
+}
+void UDungeonViewWidget::RefreshBossAction()
+{
+	if (!BossActionBar) return;
+	const AGameStateBase* GameState = GetWorld() ? GetWorld()->GetGameState() : nullptr;
+	const double Start = ViewData.BossActionStartServerTime;
+	const double End = ViewData.BossActionEndServerTime;
+	const bool bTimed = GameState && End > Start;
+	Show(BossActionBar, bTimed);
+	if (bTimed) BossActionBar->SetPercent(FMath::Clamp(float((GameState->GetServerWorldTimeSeconds() - Start) / (End - Start)), 0.f, 1.f));
 }
 void UDungeonViewWidget::RefreshTime()
 {
@@ -135,6 +146,11 @@ void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
 	if (BossNameText) BossNameText->SetText(Data.BossName);
 	if (BossHealthBar) BossHealthBar->SetPercent(Data.BossHealth);
 	Show(BossPanel, Data.BossHealth > 0.f);
+	ShowText(BossActionText, nullptr, Data.BossActionText);
+	ShowText(BossPhaseText, nullptr, Data.BossPhaseText);
+	ShowText(BossHintText, nullptr, Data.BossHintText);
+	if (BossBreakBar) BossBreakBar->SetPercent(Data.BossBreak);
+	RefreshBossAction();
 	Fill(StatTiles, Data.Stats, &UDungeonStatTileWidget::SetStat);
 	Fill(RewardSlots, Data.Rewards, &UDungeonRewardEntryWidget::SetReward);
 	ShowText(RewardText, nullptr, Data.RewardText);

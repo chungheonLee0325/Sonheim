@@ -43,7 +43,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	class UMonsterStatusWidget* StatusWidget;
 
-	bool CanCapture() const;
+	// A boss narrows this to the moments it can be caught.
+	virtual bool CanCapture() const;
 
 	UPROPERTY(EditAnywhere, Category = "UI")
 	float HeightHPUI = 100.0f;

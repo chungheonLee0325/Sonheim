@@ -276,6 +276,12 @@ void UDungeonStagePresenter::Present()
 	{
 		View.BossName = Texts.BossName;
 		View.BossHealth = Latest.BossHealth;
+		if (const FText* Action = Texts.BossActionLabels.Find(Latest.BossActionId)) View.BossActionText = *Action;
+		View.BossActionStartServerTime = Latest.BossActionStartServerTime;
+		View.BossActionEndServerTime = Latest.BossActionEndServerTime;
+		if (Latest.BossPhase >= 2) View.BossPhaseText = FText::Format(Texts.BossPhaseFormat, Latest.BossPhase);
+		if (Latest.bBossVulnerable) View.BossHintText = Texts.BossCaptureHint;
+		View.BossBreak = Latest.BossBreak;
 	}
 	if (Latest.RunStatus == EDungeonRunStatus::Failed)
 	{

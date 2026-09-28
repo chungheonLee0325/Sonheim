@@ -4,7 +4,9 @@
 #include "DungeonStageRuntimeTypes.h"
 #include "Sonheim/GameObject/Dungeon/DungeonStageDefinition.h"
 #include "DungeonStageRuntimeSubsystem.generated.h"
+class ABossMonster;
 class ADungeonTestArea;
+struct FBossStatus;
 class ASonheimPlayer;
 class UDungeonDefinitionDataAsset;
 class UDungeonObjectiveTracker;
@@ -51,12 +53,17 @@ private:
 	void ScheduleCleanup();
 	UFUNCTION() void HandleOwnerHealth(float CurrentHP, float Delta, float MaxHP);
 	UFUNCTION() void HandleBossHealth(float CurrentHP, float Delta, float MaxHP);
+	void HandleBossStatus(const FBossStatus& Status);
+	void ReleaseBoss();
 	bool IsAuthority() const;
 	double ServerTime() const;
 	UPROPERTY(Transient) TObjectPtr<UDungeonDefinitionDataAsset> Definition;
 	UPROPERTY(Transient) TObjectPtr<UDungeonObjectiveTracker> Objectives;
 	UPROPERTY(Transient) TObjectPtr<UHealthComponent> OwnerHealth;
 	UPROPERTY(Transient) TObjectPtr<UHealthComponent> BossHealthSource;
+	/** The boss the screen follows, when the boss group's monster is one. */
+	TWeakObjectPtr<ABossMonster> BossSource;
+	FDelegateHandle BossStatusHandle;
 	/** Zones already reported in the current stage visit. */
 	TSet<FGameplayTag> EnteredAreas;
 	/** Rules with bOnce that have answered in this run, by stage, event and source. */
