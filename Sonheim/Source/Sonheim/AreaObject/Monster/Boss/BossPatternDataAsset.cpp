@@ -12,6 +12,7 @@ const FName UBossPatternDataAsset::RoarSection(TEXT("Roar"));
 const FName UBossPatternDataAsset::FallSection(TEXT("Fall"));
 const FName UBossPatternDataAsset::DownSection(TEXT("Down"));
 const FName UBossPatternDataAsset::GetUpSection(TEXT("GetUp"));
+const FName UBossPatternDataAsset::LandSection(TEXT("Land"));
 
 namespace
 {
@@ -70,14 +71,18 @@ TArray<FString> UBossPatternDataAsset::Validate() const
 			if (Cue.Seconds < 0.f || Cue.Seconds > Pattern.Seconds)
 				Problems.Add(FString::Printf(TEXT("%s: the cue at %.2f s lies outside the pattern"), *Name, Cue.Seconds));
 		}
-		if (Pattern.LeapEndSeconds > 0.f && (Pattern.LeapStartSeconds < 0.f || Pattern.LeapStartSeconds >= Pattern.LeapEndSeconds || Pattern.LeapEndSeconds > Pattern.Seconds))
+		if (Pattern.LeapEndSeconds > 0.f && (Pattern.LeapStartSeconds < 0.f || Pattern.LeapStartSeconds >= Pattern.LeapEndSeconds || Pattern.LeapEndSeconds > Pattern.Seconds
+			|| Pattern.LeapHeight <= 0.f))
 			Problems.Add(Name + TEXT(": the leap does not fit in the pattern"));
+		if (Pattern.LeapEndSeconds > 0.f && !HasSection(Pattern.Montage, LandSection))
+			Problems.Add(Name + TEXT(": a leaping pattern's montage needs a Land section"));
 		for (int32 StrikeIndex = 0; StrikeIndex < Pattern.Strikes.Num(); ++StrikeIndex)
 			ValidateStrike(Pattern.Strikes[StrikeIndex], Pattern.Seconds, FString::Printf(TEXT("%s strike %d"), *Name, StrikeIndex), Problems);
 	}
 	if (!HasSection(WakeMontage, SleepSection) || !HasSection(WakeMontage, WakeSection) || !HasSection(WakeMontage, RoarSection))
 		Problems.Add(TEXT("the wake montage needs the sections Sleep, Wake and Roar"));
 	if (GapSecondsMin < 0.f || GapSecondsMax < GapSecondsMin) Problems.Add(TEXT("the gap between patterns must run from GapSecondsMin up to GapSecondsMax"));
+	if (HopMontage && (!HasSection(HopMontage, LandSection) || HopDistance <= 0.f)) Problems.Add(TEXT("a hop needs a Land section in its montage and a distance"));
 	if (!ExhaustMontage) Problems.Add(TEXT("no exhaust montage"));
 	if (ExhaustSeconds <= 0.f) Problems.Add(TEXT("ExhaustSeconds must be above 0"));
 	for (int32 Index = 0; Index < ExhaustHealth.Num(); ++Index)

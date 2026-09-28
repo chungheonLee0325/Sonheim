@@ -4,17 +4,27 @@
 #include "BossTelegraph.h"
 #include "EngineUtils.h"
 #include "Animation/AnimMontage.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/GameStateBase.h"
+#include "NavigationSystem.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 
 namespace
 {
-	// How fast the boss turns to its target while a pattern tracks it.
+	// How fast the boss turns to its target while a pattern tracks it, and while it moves about between patterns.
 	constexpr float TurnDegreesPerSecond = 300.f;
+	constexpr float IdleTurnDegreesPerSecond = 160.f;
 	// How close the boss walks up to its target when no pattern reaches it yet.
 	constexpr float ChaseAcceptance = 250.f;
+	// A hop rises this high; it and a leap go up for RiseShare of their time and come down in the rest, fast.
+	constexpr float HopHeight = 130.f;
+	constexpr float HopSeconds = 0.55f;
+	constexpr float RiseShare = 0.65f;
+	// Between patterns, a target within SideHopRange draws a hop to its side this often.
+	constexpr float SideHopRange = 1500.f;
+	constexpr float SideHopChance = 0.4f;
 }
 
 UBossFSM::UBossFSM()
@@ -92,8 +102,10 @@ void UBossFSM::Enter(const EBossStage Stage, const FGameplayTag& ActionId, const
 void UBossFSM::UpdateState(const float DeltaSeconds)
 {
 	ABossMonster* Owner = Boss();
+	if (!Owner || !Owner->HasAuthority()) return;
+	UpdateFlight();
 	// A captured boss belongs to a player now, and the boss's brain fights only for itself.
-	if (!Owner || !Owner->HasAuthority() || !Owner->Patterns || bPaused || Owner->IsDie() || Owner->PartnerOwner) return;
+	if (!Owner->Patterns || bPaused || Owner->IsDie() || Owner->PartnerOwner) return;
 	const UBossPatternDataAsset& Data = *Owner->Patterns;
 	switch (Owner->GetBossStatus().Stage)
 	{
@@ -255,15 +267,26 @@ void UBossFSM::Fight(const float DeltaSeconds)
 	AAreaObject* NewTarget = PickTarget();
 	if (!NewTarget)
 	{
-		// Nobody within reach: back to its spot, to wait there.
+		// Nobody within reach: back to its spot, facing the way it walks, to wait there.
 		if (FVector::Dist2D(Owner->GetActorLocation(), Owner->GetSpawnLocation()) > ChaseAcceptance) MoveTo(nullptr, Owner->GetSpawnLocation());
 		else StopMoving();
+		const FVector Velocity = Owner->GetVelocity();
+		if (Velocity.SizeSquared2D() > 1.f) Face(Owner->GetActorLocation() + Velocity, DeltaSeconds, IdleTurnDegreesPerSecond);
 		return;
 	}
-	// Between two patterns the boss closes in on its target.
+	// Whatever it does, it keeps its eyes on its target; a hop lands before anything else starts.
+	Face(NewTarget->GetActorLocation(), DeltaSeconds, IdleTurnDegreesPerSecond);
+	if (bFlying) return;
 	if (Now() < GapEndsAt)
 	{
-		MoveTo(NewTarget, NewTarget->GetActorLocation());
+		if (GapMove == EGapMove::None)
+		{
+			// Too close: a hop back, or a stand where there is no room. Further off: now and then a hop to the side, else a walk in.
+			const float Distance = FVector::Dist2D(Owner->GetActorLocation(), NewTarget->GetActorLocation());
+			if (Distance < Data.BackOffRange) GapMove = Hop(NewTarget, true) ? EGapMove::Hop : EGapMove::Hold;
+			else GapMove = Distance < SideHopRange && FMath::FRand() < SideHopChance && Hop(NewTarget, false) ? EGapMove::Hop : EGapMove::Walk;
+		}
+		if (GapMove == EGapMove::Walk) MoveTo(NewTarget, NewTarget->GetActorLocation());
 		return;
 	}
 	const int32 Index = QueuedPattern != INDEX_NONE ? QueuedPattern : ChoosePattern(NewTarget);
@@ -332,7 +355,7 @@ void UBossFSM::RunPattern(const float DeltaSeconds)
 	PatternClock += DeltaSeconds * Tempo();
 	AAreaObject* Victim = Target.Get();
 	if (Victim && Victim->IsDie()) Victim = nullptr;
-	if (Victim && !bLeapt && PatternClock < Pattern.TrackSeconds) Face(Victim->GetActorLocation(), DeltaSeconds);
+	if (Victim && !bLeapt && PatternClock < Pattern.TrackSeconds) Face(Victim->GetActorLocation(), DeltaSeconds, TurnDegreesPerSecond);
 
 	for (int32 Index = 0; Index < Pattern.Cues.Num(); ++Index)
 	{
@@ -414,14 +437,83 @@ void UBossFSM::Leap(const FBossPattern& Pattern)
 	if (Strikes.IsValidIndex(Marked) && Strikes[Marked].bMarked) Landing = Strikes[Marked].Where.GetLocation();
 	else if (Target.IsValid()) Landing = ABossTelegraph::FeetTransform(Target.Get(), 0.f).GetLocation();
 	else return;
-	// A throw that comes down on the spot as the leap ends.
-	const float Seconds = FMath::Max(0.1f, (Pattern.LeapEndSeconds - Pattern.LeapStartSeconds) / Tempo());
-	const FVector Delta = Landing - Feet;
+	Owner->SetActorRotation(FRotator(0.f, (Landing - Feet).Rotation().Yaw, 0.f));
+	Launch(Landing, FMath::Max(0.1f, (Pattern.LeapEndSeconds - Pattern.LeapStartSeconds) / Tempo()), Pattern.LeapHeight);
+}
+
+bool UBossFSM::Hop(const AAreaObject* Foe, const bool bBack)
+{
+	ABossMonster* Owner = Boss();
+	const UBossPatternDataAsset& Data = *Owner->Patterns;
+	UNavigationSystemV1* Nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	if (!Data.HopMontage || !Nav) return false;
+	const FVector Feet = ABossTelegraph::FeetTransform(Owner, 0.f).GetLocation();
+	FVector Away = (Feet - Foe->GetActorLocation()).GetSafeNormal2D();
+	if (Away.IsNearlyZero()) Away = -Owner->GetActorForwardVector();
+	// Straight back or back and aside; one side or else the other. A spot off the floor, out of the arena or behind a wall is passed over.
+	const float Side = FMath::RandBool() ? 90.f : -90.f;
+	for (const float Turn : bBack ? TArray<float>{0.f, 35.f, -35.f} : TArray<float>{Side, -Side})
+	{
+		FNavLocation Spot;
+		FVector Blocked;
+		if (!Nav->ProjectPointToNavigation(Feet + Away.RotateAngleAxis(Turn, FVector::UpVector) * Data.HopDistance, Spot)) continue;
+		if (FVector::Dist2D(Spot.Location, Owner->GetSpawnLocation()) > Data.ArenaRadius) continue;
+		if (UNavigationSystemV1::NavigationRaycast(GetWorld(), Feet, Spot.Location, Blocked)) continue;
+		Owner->PlayMontage(Data.HopMontage, NAME_None, Tempo());
+		Launch(Spot.Location, HopSeconds / Tempo(), HopHeight);
+		return true;
+	}
+	return false;
+}
+
+void UBossFSM::Launch(const FVector& Landing, const float Seconds, const float Height)
+{
+	ABossMonster* Owner = Boss();
+	UCharacterMovementComponent* Move = Owner->GetCharacterMovement();
+	// Two gravities make the arc: a lighter one carries the boss to its top in the first RiseShare of the time, a heavier one brings
+	// it down onto Landing in the rest.
+	const FVector Delta = Landing - ABossTelegraph::FeetTransform(Owner, 0.f).GetLocation();
+	const float Top = FMath::Max(0.f, float(Delta.Z)) + Height;
+	const float Rise = Seconds * RiseShare;
+	const float Fall = Seconds - Rise;
+	const float Gravity = FMath::Max(1.f, -GetWorld()->GetGravityZ());
+	// It flies through the players on its way: coming down on someone's head, it would stand there.
+	UCapsuleComponent* Capsule = Owner->GetCapsuleComponent();
+	if (!bFlying)
+	{
+		GroundGravityScale = Move->GravityScale;
+		PawnResponse = Capsule->GetCollisionResponseToChannel(ECC_Pawn);
+	}
+	Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	Move->GravityScale = 2.f * Top / (Rise * Rise) / Gravity;
+	FallGravityScale = 2.f * (Top - Delta.Z) / (Fall * Fall) / Gravity;
+	bFlying = true;
+	bLeftGround = false;
+	LaunchedAt = Now();
 	FVector Velocity = Delta / Seconds;
-	Velocity.Z = Delta.Z / Seconds - 0.5f * Owner->GetCharacterMovement()->GetGravityZ() * Seconds;
+	Velocity.Z = 2.f * Top / Rise;
 	StopMoving();
-	Owner->SetActorRotation(FRotator(0.f, Delta.Rotation().Yaw, 0.f));
 	Owner->LaunchCharacter(Velocity, true, true);
+}
+
+void UBossFSM::UpdateFlight()
+{
+	if (!bFlying) return;
+	ABossMonster* Owner = Boss();
+	UCharacterMovementComponent* Move = Owner->GetCharacterMovement();
+	if (Move->IsFalling())
+	{
+		bLeftGround = true;
+		if (Move->Velocity.Z <= 0.f) Move->GravityScale = FallGravityScale;
+		return;
+	}
+	// The launch takes hold on the movement's next update; one that never does is dropped.
+	if (!bLeftGround && Now() - LaunchedAt < 0.5) return;
+	bFlying = false;
+	Move->GravityScale = GroundGravityScale;
+	Owner->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, PawnResponse);
+	// Touching down in a pattern or a hop, whenever that is: the landing plays now.
+	if (bLeftGround && Owner->GetBossStatus().Stage == EBossStage::Fighting) Owner->JumpToSection(UBossPatternDataAsset::LandSection);
 }
 
 void UBossFSM::EndPattern(const bool bCut)
@@ -436,6 +528,7 @@ void UBossFSM::EndPattern(const bool bCut)
 				if (Placed.IsValid() && !Run.bLanded) Placed->Destroy();
 	if (!bCut)
 		GapEndsAt = Now() + FMath::FRandRange(Owner->Patterns->GapSecondsMin, Owner->Patterns->GapSecondsMax) / Tempo();
+	GapMove = EGapMove::None;
 	ReadyAt.Add(Pattern.PatternId, Now() + Pattern.Cooldown);
 	LastPattern = Pattern.PatternId;
 	PatternIndex = INDEX_NONE;
@@ -444,12 +537,12 @@ void UBossFSM::EndPattern(const bool bCut)
 	if (!bCut) Enter(EBossStage::Fighting, FGameplayTag(), 0.f);
 }
 
-void UBossFSM::Face(const FVector& Location, const float DeltaSeconds)
+void UBossFSM::Face(const FVector& Location, const float DeltaSeconds, const float DegreesPerSecond)
 {
 	ABossMonster* Owner = Boss();
 	const FVector To = Location - Owner->GetActorLocation();
 	if (To.IsNearlyZero()) return;
-	const float Yaw = FMath::FixedTurn(Owner->GetActorRotation().Yaw, To.Rotation().Yaw, TurnDegreesPerSecond * DeltaSeconds);
+	const float Yaw = FMath::FixedTurn(Owner->GetActorRotation().Yaw, To.Rotation().Yaw, DegreesPerSecond * DeltaSeconds);
 	Owner->SetActorRotation(FRotator(0.f, Yaw, 0.f));
 }
 

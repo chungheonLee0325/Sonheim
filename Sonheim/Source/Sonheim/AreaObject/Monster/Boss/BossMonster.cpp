@@ -29,6 +29,8 @@ ABossMonster::ABossMonster()
 	TelegraphClass = ABossTelegraph::StaticClass();
 	// A boss holds its ground: hits do not push it around.
 	m_KnockBackForceMultiplier = 0.f;
+	// The brain turns the boss to face its target, walking or not.
+	GetCharacterMovement()->bOrientRotationToMovement = false;
 }
 
 void ABossMonster::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

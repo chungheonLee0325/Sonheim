@@ -8,7 +8,8 @@
 class ABossTelegraph;
 
 /** The boss's brain, run on the server. It sleeps until woken, picks patterns by distance, weight and cooldown, plays their montages,
- * marks and lands their strikes on time, rests after a run of patterns, falls when enough damage lands, and roars into phase 2.
+ * marks and lands their strikes on time, keeps moving between them while it faces its target, sinks down worn out at low health,
+ * falls when enough damage lands, and roars into phase 2.
  * The boss moves through its own stages (EBossStage) rather than through state objects. */
 UCLASS()
 class SONHEIM_API UBossFSM : public UBaseAiFSM
@@ -54,9 +55,15 @@ private:
 	void RunPattern(float DeltaSeconds);
 	void Mark(const FBossStrike& Strike, FStrikeRun& Run, const AAreaObject* Victim);
 	void Leap(const FBossPattern& Pattern);
+	/** Hops back from the foe, or to its side; false when there is no free spot to land on. */
+	bool Hop(const AAreaObject* Foe, bool bBack);
+	/** Throws the boss onto Landing, where it comes down Seconds later after rising Height over the higher end of the jump. */
+	void Launch(const FVector& Landing, float Seconds, float Height);
+	/** Past the top of a launch the boss falls with the heavier gravity; on the ground it gets its own back and plays Land. */
+	void UpdateFlight();
 	void EndPattern(bool bCut);
 	AAreaObject* PickTarget() const;
-	void Face(const FVector& Location, float DeltaSeconds);
+	void Face(const FVector& Location, float DeltaSeconds, float DegreesPerSecond);
 	void MoveTo(const AActor* Goal, const FVector& Location);
 	void StopMoving();
 
@@ -72,8 +79,18 @@ private:
 	int32 QueuedPattern = INDEX_NONE;
 	/** The exhaust marks the boss's health has already fallen through. */
 	int32 ExhaustsTaken = 0;
-	/** Until then the boss walks toward its target before it picks its next pattern. */
+	/** Until then the boss moves about before it picks its next pattern; how, it picks as the gap begins. */
 	double GapEndsAt = 0;
+	enum class EGapMove : uint8 { None, Walk, Hold, Hop };
+	EGapMove GapMove = EGapMove::None;
+	/** A launch under way: when it began, whether it has left the ground, the gravity scale it falls with past the top, and the
+	 * gravity scale and response to pawns it had before. */
+	bool bFlying = false;
+	bool bLeftGround = false;
+	double LaunchedAt = 0;
+	float FallGravityScale = 1.f;
+	float GroundGravityScale = 1.f;
+	ECollisionResponse PawnResponse = ECR_Block;
 	double StageEndsAt = 0;
 	bool bGettingUp = false;
 	bool bPaused = false;

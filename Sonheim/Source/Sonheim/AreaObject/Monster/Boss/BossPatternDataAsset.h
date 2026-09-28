@@ -108,9 +108,12 @@ struct FBossPattern
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss", meta=(ClampMin="1", ClampMax="2")) int32 MinPhase = 1;
 	/** Share of the montage's root motion the boss follows: the claw swings were animated to lunge further than the hall is wide. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss", meta=(ClampMin="0", ClampMax="1")) float RootMotionScale = 1.f;
-	/** From LeapStart to LeapEnd seconds the boss flies onto the pattern's first mark on the target, or onto the target. No leap while LeapEnd is 0. */
+	/** From LeapStart to LeapEnd seconds the boss flies in a high arc onto the pattern's first mark on the target, or onto the target,
+	 * and comes down fast; the montage's Land section plays as it touches down. No leap while LeapEnd is 0. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float LeapStartSeconds = 0.f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float LeapEndSeconds = 0.f;
+	/** How high the leap rises over the higher of its two ends. The ceiling above the boss's head bounds it. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float LeapHeight = 300.f;
 };
 
 /** How a boss fights: its patterns, how it wakes, the phase its health turns it to, and when it can be captured. */
@@ -119,13 +122,15 @@ class SONHEIM_API UBossPatternDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 public:
-	// Sections the boss's own montages carry: the wake montage Sleep (looping), Wake and Roar; the down montage Fall, Down (looping) and GetUp.
+	// Sections the boss's own montages carry: the wake montage Sleep (looping), Wake and Roar; the down montage Fall, Down (looping) and GetUp;
+	// a leaping pattern's montage and the hop montage Land, which plays as the boss touches down.
 	static const FName SleepSection;
 	static const FName WakeSection;
 	static const FName RoarSection;
 	static const FName FallSection;
 	static const FName DownSection;
 	static const FName GetUpSection;
+	static const FName LandSection;
 	/** The least time between a mark and its strike: long enough to step out of the area. */
 	static constexpr float MinWarningSeconds = 0.4f;
 
@@ -139,9 +144,15 @@ public:
 	/** Players farther than this from where the boss spawned are out of its reach; with none within it, the boss walks back to its spot. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Intro") float ArenaRadius = 2500.f;
 
-	/** Between two patterns the boss walks toward its target for a while, so it closes in before it strikes again. Phase 2 shortens it. */
+	/** Between two patterns the boss keeps moving for a while, facing its target: it hops back from a target closer than BackOffRange,
+	 * now and then hops to the side of one further off, and otherwise walks toward it. Phase 2 shortens the while. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Patterns") float GapSecondsMin = 1.f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Patterns") float GapSecondsMax = 2.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Patterns", meta=(ClampMin="0")) float BackOffRange = 500.f;
+	/** How far one hop carries the boss. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Patterns", meta=(ClampMin="0")) float HopDistance = 600.f;
+	/** In the air, looping, until Land plays as the boss touches down. Without it the boss only walks between patterns. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Patterns") TObjectPtr<UAnimMontage> HopMontage;
 
 	/** Share of health at which phase 2 begins: the boss roars (the Roar section of the wake montage) before its next pattern. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase", meta=(ClampMin="0", ClampMax="1")) float PhaseTwoHealth = 0.6f;
