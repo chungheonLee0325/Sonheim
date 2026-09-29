@@ -1,0 +1,427 @@
+{
+  "feature": "dungeon_ui",
+  "description": "Icons for the curated dungeon's HUD, boss panel, toasts and result card (잊혀진 지하 유적). They replace the text glyphs and badge words of today's screens and add a symbol where a line reads faster with one. One set: every item follows the same style and is tinted by the widget.",
+  "style": "Flat single-color game UI glyph: a pure white (#FFFFFF) silhouette on a fully transparent background. Bold shapes that read at 20 pixels: strokes about a twelfth of the icon's width, rounded ends and joins, no hairlines, no detail smaller than a stroke. No gradients, outlines, shadows, glow, perspective, text, letters, logos or watermarks. Centered and optically balanced inside the padding. Old stone ruins guarded by an electric beast: stone and rune shapes for places, a jagged lightning spark only on the guardian's own icons. See Art/Style/ui_style.md.",
+  "references": [
+    "Art/Style/style_frame_hud.png",
+    "Art/Style/style_frame_result.png",
+    "Art/Style/style_frame_boss.png",
+    "Art/Style/ui_style.md"
+  ],
+  "items": [
+    {
+      "id": "icon_goal_move",
+      "usage": "icon",
+      "subject": "Goal to go somewhere: a pair of footprints stepping toward an open stone doorway arch",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_GoalMove",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: GoalIcons, Goal None; /Game/CuratedDungeon/UI/Components/WBP_DungeonObjectiveRow: StatusIcon draws the line's goal icon while the line is open, tinted with the line's color (StatusText stays as the fallback)",
+      "status": "approved"
+    },
+    {
+      "id": "icon_goal_kill",
+      "usage": "icon",
+      "subject": "Goal to defeat enemies: two short swords crossed at the middle, blades up",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_GoalKill",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: GoalIcons, Goal Group, and KillStatIcon (the kills tile of the result: /Game/CuratedDungeon/UI/Components/WBP_DungeonStatTile TileIcon); the Wave A battle toast (GroupToasts WaveA: Icon), drawn by /Game/CuratedDungeon/UI/Components/WBP_DungeonToast: SymbolIcon in its diamond in place of the Symbol text, tinted with the toast's tone",
+      "status": "approved"
+    },
+    {
+      "id": "icon_goal_capture",
+      "usage": "icon",
+      "subject": "Goal to capture: a round capture sphere split by a band across its middle, a round button on the band",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_GoalCapture",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: GoalIcons, Goal Captured, and CaptureStatIcon (the captures tile); /Game/CuratedDungeon/UI/WBP_DungeonHUD_Styled: BossHintIcon before BossHintText, tinted Gold",
+      "status": "approved"
+    },
+    {
+      "id": "icon_goal_lever",
+      "usage": "icon",
+      "subject": "Goal to use a mechanism: a floor lever tilted to one side, a round knob on top, on a small base plate",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_GoalLever",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: GoalIcons, Goal RunTag",
+      "status": "approved"
+    },
+    {
+      "id": "icon_goal_clear",
+      "usage": "icon",
+      "subject": "The run's own goal: a crown with three points and a small round gem on the middle one",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_GoalClear",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: GoalIcons, Goal Clear; /Game/CuratedDungeon/UI/Components/WBP_DungeonPartyMember: OwnerMark in place of the word 대장, tinted Gold; /Game/CuratedDungeon/UI/WBP_DungeonResult_Styled: NewBestBadgeIcon before NewBestText, tinted like the badge's text",
+      "status": "approved"
+    },
+    {
+      "id": "icon_check",
+      "usage": "icon",
+      "subject": "Done: a bold check mark",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_Check",
+      "usedBy": "/Game/CuratedDungeon/UI/Components/WBP_DungeonObjectiveRow: DoneIcon (class default), drawn by StatusIcon when a line is done, tinted Accent",
+      "status": "approved"
+    },
+    {
+      "id": "icon_cross",
+      "usage": "icon",
+      "subject": "Failed or closed: a bold X of two crossing strokes",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_Cross",
+      "usedBy": "/Game/CuratedDungeon/UI/Components/WBP_DungeonObjectiveRow: MissedIcon (class default), drawn by StatusIcon when a line is missed, tinted Boss red",
+      "status": "approved"
+    },
+    {
+      "id": "icon_time",
+      "usage": "icon",
+      "subject": "Time: an hourglass with sand in the lower half",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_Time",
+      "usedBy": "/Game/CuratedDungeon/UI/WBP_DungeonHUD_Styled: TimeIcon before TimeText, with the text's color (Gold, red near the end) and visibility; /Game/CuratedDungeon/Presentation/DA_DungeonPresentation: TimeStatIcon (the elapsed-time tile of the result: /Game/CuratedDungeon/UI/Components/WBP_DungeonStatTile TileIcon)",
+      "status": "approved"
+    },
+    {
+      "id": "icon_route",
+      "usage": "icon",
+      "subject": "Route: one path that forks into two arrows, one going up-left and one going up-right",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_Route",
+      "usedBy": "the route toasts (TagToasts ShortcutUnlocked and BranchToasts Shortcut: Icon), drawn by /Game/CuratedDungeon/UI/Components/WBP_DungeonToast: SymbolIcon in its diamond in place of the Symbol text, tinted with the toast's tone; /Game/CuratedDungeon/Presentation/DA_DungeonPresentation: RouteStatIcon (the route tile), BranchStepIcon (the step whose rooms the run still chooses between, 지름길 / 창고) and stage Shortcut's Icon; /Game/CuratedDungeon/UI/Components/WBP_DungeonStepNode: StepIcon before LabelText, tinted like the label",
+      "status": "approved"
+    },
+    {
+      "id": "icon_warning",
+      "usage": "icon",
+      "subject": "Warning: an exclamation mark inside a triangle with rounded corners",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_Warning",
+      "usedBy": "the storeroom route toast (BranchToasts ExtraWave: Icon), drawn by /Game/CuratedDungeon/UI/Components/WBP_DungeonToast: SymbolIcon in its diamond in place of the Symbol text, tinted with the toast's tone",
+      "status": "approved"
+    },
+    {
+      "id": "icon_star",
+      "usage": "icon",
+      "subject": "Room cleared: a five-pointed star with slightly rounded points",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_Star",
+      "usedBy": "the room-cleared toasts (GroupClearToasts WaveA and WaveB: Icon), drawn by /Game/CuratedDungeon/UI/Components/WBP_DungeonToast: SymbolIcon in its diamond in place of the Symbol text, tinted with the toast's tone",
+      "status": "approved"
+    },
+    {
+      "id": "icon_downed",
+      "usage": "icon",
+      "subject": "A player knocked out: a heart split by a zigzag crack",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_Downed",
+      "usedBy": "/Game/CuratedDungeon/UI/Components/WBP_DungeonPartyMember: DownMark in place of the word 쓰러짐, tinted Boss red",
+      "status": "approved"
+    },
+    {
+      "id": "icon_room_entry",
+      "usage": "icon",
+      "subject": "Sealed antechamber: a closed stone double door with a round rune seal over the seam",
+      "size": [
+        32,
+        32
+      ],
+      "transparent": true,
+      "padding": 2,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_RoomEntry",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: stage Enter's Icon; /Game/CuratedDungeon/UI/Components/WBP_DungeonStepNode: StepIcon before LabelText, tinted like the label",
+      "status": "approved"
+    },
+    {
+      "id": "icon_room_guard",
+      "usage": "icon",
+      "subject": "Guard room: a kite shield with a plain rim",
+      "size": [
+        32,
+        32
+      ],
+      "transparent": true,
+      "padding": 2,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_RoomGuard",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: stage Combat's Icon; /Game/CuratedDungeon/UI/Components/WBP_DungeonStepNode: StepIcon before LabelText, tinted like the label",
+      "status": "approved"
+    },
+    {
+      "id": "icon_room_store",
+      "usage": "icon",
+      "subject": "Store room: a wooden crate seen from the front at a slight angle, planks and a cross brace",
+      "size": [
+        32,
+        32
+      ],
+      "transparent": true,
+      "padding": 2,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_RoomStore",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: stage ExtraWave's Icon, on the step once the run takes the storeroom; /Game/CuratedDungeon/UI/Components/WBP_DungeonStepNode: StepIcon before LabelText, tinted like the label",
+      "status": "approved"
+    },
+    {
+      "id": "icon_room_boss",
+      "usage": "icon",
+      "subject": "Guardian's hall: a horned beast skull with a small jagged lightning spark above it",
+      "size": [
+        32,
+        32
+      ],
+      "transparent": true,
+      "padding": 2,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_RoomBoss",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: stage Boss's Icon; /Game/CuratedDungeon/UI/Components/WBP_DungeonStepNode: StepIcon before LabelText, tinted like the label",
+      "status": "approved"
+    },
+    {
+      "id": "emblem_guardian",
+      "usage": "icon",
+      "subject": "The guardian: front view of the head of a stout bear-like beast with round ears, heavy brow and a jagged lightning mark across the forehead, mouth closed",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_EmblemGuardian",
+      "usedBy": "/Game/CuratedDungeon/UI/WBP_DungeonHUD_Styled: BossEmblem left of BossNameText, tinted white; the guardian's toast (GroupToasts Boss: Icon), drawn by /Game/CuratedDungeon/UI/Components/WBP_DungeonToast: SymbolIcon in its diamond in place of the Symbol text, tinted with the toast's tone",
+      "status": "approved"
+    },
+    {
+      "id": "icon_rage",
+      "usage": "icon",
+      "subject": "Rage: a jagged lightning bolt with three short sparks around it",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_Rage",
+      "usedBy": "/Game/CuratedDungeon/UI/WBP_DungeonHUD_Styled: BossPhaseIcon before BossPhaseText, tinted Boss red; /Game/CuratedDungeon/Presentation/DA_DungeonPresentation: BossActionIcons, Boss.State.Roaring; /Game/CuratedDungeon/UI/WBP_DungeonHUD_Styled: BossActionIcon before BossActionText, tinted like the text",
+      "status": "approved"
+    },
+    {
+      "id": "icon_break",
+      "usage": "icon",
+      "subject": "Stagger: a round shield with a crack running across it",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_Break",
+      "usedBy": "/Game/CuratedDungeon/UI/WBP_DungeonHUD_Styled: BossBreakIcon left of the break gauge, tinted Gold; /Game/CuratedDungeon/Presentation/DA_DungeonPresentation: BossActionIcons, Boss.State.Down; /Game/CuratedDungeon/UI/WBP_DungeonHUD_Styled: BossActionIcon before BossActionText, tinted like the text",
+      "status": "approved"
+    },
+    {
+      "id": "icon_pattern_claw",
+      "usage": "icon",
+      "subject": "Claw combo: three parallel curved slash marks",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_PatternClaw",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: BossActionIcons, Boss.Grizzbolt.Pattern.Claw; /Game/CuratedDungeon/UI/WBP_DungeonHUD_Styled: BossActionIcon before BossActionText, tinted like the text",
+      "status": "approved"
+    },
+    {
+      "id": "icon_pattern_discharge",
+      "usage": "icon",
+      "subject": "Discharge: a burst of short rays around a small circle, with a ring around it",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_PatternDischarge",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: BossActionIcons, Boss.Grizzbolt.Pattern.Discharge; /Game/CuratedDungeon/UI/WBP_DungeonHUD_Styled: BossActionIcon before BossActionText, tinted like the text",
+      "status": "approved"
+    },
+    {
+      "id": "icon_pattern_orbs",
+      "usage": "icon",
+      "subject": "Electric orbs: three small circles in a curved row, each with a short tail",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_PatternOrbs",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: BossActionIcons, Boss.Grizzbolt.Pattern.Orbs; /Game/CuratedDungeon/UI/WBP_DungeonHUD_Styled: BossActionIcon before BossActionText, tinted like the text",
+      "status": "approved"
+    },
+    {
+      "id": "icon_pattern_sparks",
+      "usage": "icon",
+      "subject": "Spark fan: five short straight arrows fanning out from one point",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_PatternSparks",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: BossActionIcons, Boss.Grizzbolt.Pattern.Sparks; /Game/CuratedDungeon/UI/WBP_DungeonHUD_Styled: BossActionIcon before BossActionText, tinted like the text",
+      "status": "approved"
+    },
+    {
+      "id": "icon_pattern_lightning",
+      "usage": "icon",
+      "subject": "Lightning strike: a jagged bolt coming down onto a ring on the ground",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_PatternLightning",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: BossActionIcons, Boss.Grizzbolt.Pattern.Lightning; /Game/CuratedDungeon/UI/WBP_DungeonHUD_Styled: BossActionIcon before BossActionText, tinted like the text",
+      "status": "approved"
+    },
+    {
+      "id": "icon_pattern_leap",
+      "usage": "icon",
+      "subject": "Leap slam: a heavy arrow curving up and then straight down onto a ring on the ground",
+      "size": [
+        48,
+        48
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_PatternLeap",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: BossActionIcons, Boss.Grizzbolt.Pattern.Leap; /Game/CuratedDungeon/UI/WBP_DungeonHUD_Styled: BossActionIcon before BossActionText, tinted like the text",
+      "status": "approved"
+    },
+    {
+      "id": "emblem_result_clear",
+      "usage": "icon",
+      "subject": "Expedition won: a laurel wreath open at the top around a five-pointed star",
+      "size": [
+        96,
+        96
+      ],
+      "transparent": true,
+      "padding": 6,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_EmblemResultClear",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: SucceededEmblem; /Game/CuratedDungeon/UI/WBP_DungeonResult_Styled: OutcomeEmblem above TitleText, tinted like the title (Gold for a won run)",
+      "status": "approved"
+    },
+    {
+      "id": "emblem_result_fail",
+      "usage": "icon",
+      "subject": "Expedition failed: a round shield broken into two pieces with a gap between them",
+      "size": [
+        96,
+        96
+      ],
+      "transparent": true,
+      "padding": 6,
+      "mipmaps": true,
+      "target": "/Game/CuratedDungeon/UI/Icons/T_Icon_EmblemResultFail",
+      "usedBy": "/Game/CuratedDungeon/Presentation/DA_DungeonPresentation: FailedEmblem; /Game/CuratedDungeon/UI/WBP_DungeonResult_Styled: OutcomeEmblem, tinted like the title (Boss red for a failed run)",
+      "status": "approved"
+    }
+  ],
+  "captures": [
+    "Saved/Evidence/CuratedDungeon/20260929-193440-styled-hud-1280x720-wave-a.png",
+    "Saved/Evidence/CuratedDungeon/20260930-015322-styled-hud-1280x720-wave-a.png",
+    "Saved/Evidence/CuratedDungeon/20260929-193440-styled-hud-1280x720-result.png",
+    "Saved/Evidence/CuratedDungeon/20260930-015322-styled-hud-1280x720-result.png",
+    "Saved/Evidence/CuratedDungeon/20260929-204700-boss-panel-before-1280x720.png",
+    "Saved/Evidence/CuratedDungeon/20260930-020000-boss-panel-bigger-1280x720.png",
+    "Saved/Evidence/CuratedDungeon/20260930-020138-new-best-badge-1280x720.png"
+  ]
+}

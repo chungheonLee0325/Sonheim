@@ -1,0 +1,19 @@
+{
+  "tool": "ChatGPT web image generation through the chatgpt-web-image MCP server (dedicated ChatGPT web session)",
+  "model": "ChatGPT image generation (web), consistency profiles off",
+  "job": "00720a81-19c2-41ac-b9e1-9b76bfe792c8",
+  "prompt": "Create one square image: a 2 by 2 grid of four flat game UI icons, in exactly the same style as a matching set of bold white glyph icons. Very bold and simple, readable at 16 pixels: mostly solid white shapes with at most two or three bold black cut-outs; strokes and cut-outs about one eighth of the icon's width; rounded corners ... cell 3: a round shield: a solid disc with one bold zigzag crack cut through it from top to bottom",
+  "settings": {
+    "surface": "chat",
+    "sheet": "2 x 2 grid, 1254 x 1254"
+  },
+  "source": "Art/Incoming/dungeon_ui/sheets/sheet_d_revisions.png",
+  "cell": [
+    2,
+    1
+  ],
+  "processing": "cut from the sheet's 2 x 2 grid; white glyph on black turned into white with alpha from brightness (24 clear, 232 solid); cropped, scaled and centered by art_fit.py",
+  "replaces": "the first sheet's version, which was too detailed for 16 pixels",
+  "date": "2026-09-29",
+  "by": "Claude (UI art request, image maker role)"
+}

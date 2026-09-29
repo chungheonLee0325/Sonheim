@@ -1,0 +1,18 @@
+{
+  "tool": "ChatGPT web image generation through the chatgpt-web-image MCP server (dedicated ChatGPT web session)",
+  "model": "ChatGPT image generation (web), consistency profiles off",
+  "job": "0ff742d1-1d14-48c1-ac7f-57df74c1c980",
+  "prompt": "Create one square image: a 3 by 3 grid of nine flat game UI icons. Style for every icon: flat single-color glyph, pure white (#FFFFFF) silhouette on a pure black (#000000) background. Bold, simple shapes that stay readable at 20 pixels; strokes about one twelfth of the icon's width; rounded ends and joins; no hairlines. No gradients, outlines, shadows, glow, perspective or 3D. No text, letters, numbers, labels, grid lines, frames or borders anywhere. All nine icons have the same visual size and the same line weight, each centered in its own equal square cell, with wide empty black gaps between the icons. ... cell 5 (row 2, column 2): a crown with three points and a small round gem on the middle point",
+  "settings": {
+    "surface": "chat",
+    "sheet": "3 x 3 grid, 1254 x 1254"
+  },
+  "source": "Art/Incoming/dungeon_ui/sheets/sheet_a.png",
+  "cell": [
+    2,
+    2
+  ],
+  "processing": "cut from the sheet's 3 x 3 grid; white glyph on black turned into white with alpha from brightness (24 clear, 232 solid); cropped, scaled and centered by art_fit.py",
+  "date": "2026-09-29",
+  "by": "Claude (UI art request, image maker role)"
+}
