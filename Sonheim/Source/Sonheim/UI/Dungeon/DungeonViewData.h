@@ -23,6 +23,8 @@ struct FDungeonObjectiveViewData
 	/** How long an optional line stays open, and what taking it means or gives. */
 	UPROPERTY(BlueprintReadOnly) FText Window;
 	UPROPERTY(BlueprintReadOnly) FText Note;
+	/** The goal's icon, drawn at the head of the line while it is open. */
+	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> Icon;
 };
 /** One step of the way through: done, where the run is, or still ahead. */
 UENUM(BlueprintType)
@@ -36,6 +38,8 @@ struct FDungeonStepViewData
 	UPROPERTY(BlueprintReadOnly) EDungeonStepState State = EDungeonStepState::Upcoming;
 	/** The first step has no arrow in front of it. */
 	UPROPERTY(BlueprintReadOnly) bool bFirst = false;
+	/** The room's icon before its name. */
+	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> Icon;
 };
 USTRUCT(BlueprintType)
 struct FDungeonMemberViewData
@@ -53,6 +57,7 @@ struct FDungeonStatViewData
 	GENERATED_BODY()
 	UPROPERTY(BlueprintReadOnly) FText Label;
 	UPROPERTY(BlueprintReadOnly) FText Value;
+	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> Icon;
 };
 USTRUCT(BlueprintType)
 struct FDungeonRewardViewData
@@ -89,6 +94,7 @@ struct FDungeonStageViewData
 	UPROPERTY(BlueprintReadOnly) float BossHealth = 0.f;
 	/** What the boss does by name, and the server times it runs between, which the widget fills a bar from. */
 	UPROPERTY(BlueprintReadOnly) FText BossActionText;
+	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> BossActionIcon;
 	UPROPERTY(BlueprintReadOnly) double BossActionStartServerTime = 0;
 	UPROPERTY(BlueprintReadOnly) double BossActionEndServerTime = 0;
 	/** The boss's phase from phase 2 on, such as 2단계; empty before. */
@@ -97,6 +103,8 @@ struct FDungeonStageViewData
 	UPROPERTY(BlueprintReadOnly) FText BossHintText;
 	/** Damage toward the boss's next knockdown, 0 to 1. */
 	UPROPERTY(BlueprintReadOnly) float BossBreak = 0.f;
+	/** Over the result's title: the emblem of a won or of a failed run, none while the run goes. */
+	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> OutcomeEmblem;
 	/** One line per item the run gave, only on a finished run. */
 	UPROPERTY(BlueprintReadOnly) FText RewardText;
 	/** The same rewards with their icons; a run that gave nothing has one line that says so. */

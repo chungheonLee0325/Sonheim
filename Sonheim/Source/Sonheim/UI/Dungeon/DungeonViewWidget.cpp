@@ -17,6 +17,17 @@ namespace
 	{
 		if (Widget) Widget->SetVisibility(bShown ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
+	/** Draws the texture in the image, tinted, or hides the image while there is none. */
+	void ShowIcon(UImage* Image, UTexture2D* Icon, const FSlateColor& Tint)
+	{
+		if (!Image) return;
+		if (Icon)
+		{
+			Image->SetBrushFromTexture(Icon);
+			Image->SetColorAndOpacity(Tint.GetSpecifiedColor());
+		}
+		Show(Image, Icon != nullptr);
+	}
 	/** One entry of the box's entry class per item; the box folds away while there is none. */
 	template <typename EntryType, typename ItemType>
 	void Fill(UDynamicEntryBox* Box, const TArray<ItemType>& Items, void (EntryType::*Apply)(const ItemType&))
@@ -36,6 +47,11 @@ void UDungeonObjectiveRowWidget::SetObjective(const FDungeonObjectiveViewData& O
 		: Objective.State == EDungeonObjectiveState::Missed ? MissedColor : KindColor;
 	StatusText->SetText(Objective.State == EDungeonObjectiveState::Done ? DoneMark : Objective.State == EDungeonObjectiveState::Missed ? MissedMark : OpenMark);
 	StatusText->SetColorAndOpacity(StateColor);
+	// The goal's icon while the line is open, the done or missed mark after; the text mark stands in while there is no icon.
+	UTexture2D* Icon = StatusIcon ? (Objective.State == EDungeonObjectiveState::Done ? DoneIcon.Get()
+		: Objective.State == EDungeonObjectiveState::Missed ? MissedIcon.Get() : Objective.Icon.Get()) : nullptr;
+	ShowIcon(StatusIcon, Icon, StateColor);
+	Show(StatusText, Icon == nullptr);
 	LabelText->SetText(Objective.Label);
 	LabelText->SetColorAndOpacity(Objective.State == EDungeonObjectiveState::Missed ? MissedColor : MainColor);
 	ShowText(CountText, nullptr, Objective.Count);
@@ -48,7 +64,9 @@ void UDungeonObjectiveRowWidget::SetObjective(const FDungeonObjectiveViewData& O
 void UDungeonStepNodeWidget::SetStep(const FDungeonStepViewData& Step)
 {
 	LabelText->SetText(Step.Label);
-	LabelText->SetColorAndOpacity(Step.State == EDungeonStepState::Current ? CurrentColor : Step.State == EDungeonStepState::Done ? DoneColor : UpcomingColor);
+	const FSlateColor& Color = Step.State == EDungeonStepState::Current ? CurrentColor : Step.State == EDungeonStepState::Done ? DoneColor : UpcomingColor;
+	LabelText->SetColorAndOpacity(Color);
+	ShowIcon(StepIcon, Step.Icon, Color);
 	Show(ArrowText, !Step.bFirst);
 }
 void UDungeonPartyMemberWidget::SetMember(const FDungeonMemberViewData& Member)
@@ -63,6 +81,7 @@ void UDungeonStatTileWidget::SetStat(const FDungeonStatViewData& Stat)
 {
 	LabelText->SetText(Stat.Label);
 	ValueText->SetText(Stat.Value);
+	ShowIcon(TileIcon, Stat.Icon, LabelText->GetColorAndOpacity());
 }
 void UDungeonRewardEntryWidget::SetReward(const FDungeonRewardViewData& Reward)
 {
@@ -102,6 +121,7 @@ void UDungeonViewWidget::RefreshTime()
 	if (ViewData.DeadlineServerTime <= 0 || !GameState)
 	{
 		TimeText->SetVisibility(ESlateVisibility::Collapsed);
+		Show(TimeIcon, false);
 		return;
 	}
 	const int32 Remaining = FMath::Max(0, FMath::CeilToInt(ViewData.DeadlineServerTime - GameState->GetServerWorldTimeSeconds()));
@@ -109,6 +129,8 @@ void UDungeonViewWidget::RefreshTime()
 	TimeText->SetText(ViewData.TimeFormat.IsEmpty() ? Clock : FText::Format(ViewData.TimeFormat, Clock));
 	TimeText->SetColorAndOpacity(Remaining <= TimeWarningSeconds ? TimeWarningColor : TimeColor);
 	TimeText->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (TimeIcon) TimeIcon->SetColorAndOpacity(TimeText->GetColorAndOpacity().GetSpecifiedColor());
+	Show(TimeIcon, true);
 }
 void UDungeonViewWidget::ShowAreaTitle(const FText& Title, const FText& Subtitle)
 {
@@ -147,8 +169,11 @@ void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
 	if (BossHealthBar) BossHealthBar->SetPercent(Data.BossHealth);
 	Show(BossPanel, Data.BossHealth > 0.f);
 	ShowText(BossActionText, nullptr, Data.BossActionText);
+	ShowIcon(BossActionIcon, Data.BossActionText.IsEmpty() ? nullptr : Data.BossActionIcon.Get(), BossActionText ? BossActionText->GetColorAndOpacity() : FSlateColor(FLinearColor::White));
 	ShowText(BossPhaseText, nullptr, Data.BossPhaseText);
+	Show(BossPhaseIcon, !Data.BossPhaseText.IsEmpty());
 	ShowText(BossHintText, nullptr, Data.BossHintText);
+	Show(BossHintIcon, !Data.BossHintText.IsEmpty());
 	if (BossBreakBar) BossBreakBar->SetPercent(Data.BossBreak);
 	RefreshBossAction();
 	Fill(StatTiles, Data.Stats, &UDungeonStatTileWidget::SetStat);
@@ -156,6 +181,7 @@ void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
 	ShowText(RewardText, nullptr, Data.RewardText);
 	ShowText(SummaryText, nullptr, Data.SummaryText);
 	ShowText(NewBestText, NewBestBadge, Data.NewBestText);
+	ShowIcon(OutcomeEmblem, Data.OutcomeEmblem, TitleText->GetColorAndOpacity());
 	RefreshTime();
 	const bool bFinished = Data.Status == EDungeonRunStatus::Succeeded || Data.Status == EDungeonRunStatus::Failed;
 	if (!bFinished)

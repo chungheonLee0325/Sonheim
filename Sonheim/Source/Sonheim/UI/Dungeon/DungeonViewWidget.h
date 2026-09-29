@@ -24,8 +24,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText OpenMark = INVTEXT("○");
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText DoneMark = INVTEXT("●");
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText MissedMark = INVTEXT("×");
+	/** Drawn in StatusIcon once the line is done or missed; while it is open, the goal's icon. Without one, the text marks. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TObjectPtr<UTexture2D> DoneIcon;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TObjectPtr<UTexture2D> MissedIcon;
 protected:
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> StatusText;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UImage> StatusIcon;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> LabelText;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> CountText;
 	// The kind's tag and the plate around it; both hide on a line whose kind has no tag.
@@ -48,6 +52,8 @@ public:
 protected:
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> LabelText;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> ArrowText;
+	/** The room's icon, in the name's color. */
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UImage> StepIcon;
 };
 /** One player of the run: name, health, the crown of the player who started it, and a mark when down. */
 UCLASS(Abstract)
@@ -77,6 +83,7 @@ public:
 protected:
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> LabelText;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> ValueText;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UImage> TileIcon;
 };
 /** One reward slot of the result: the item's icon, its name and how many. */
 UCLASS(Abstract)
@@ -138,6 +145,8 @@ protected:
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UProgressBar> StepProgress;
 	// Counts the stage's time limit down. Screens without a limit never show it.
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> TimeText;
+	/** Shown with TimeText, in its color. */
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UImage> TimeIcon;
 	// The stage's objective lines and how many are done; the optional lines on their own card, which hides while there is none.
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UDynamicEntryBox> ObjectiveRows;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> ObjectivesDoneText;
@@ -156,10 +165,13 @@ protected:
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UProgressBar> BossHealthBar;
 	// What the boss does and how far along, its phase, how close it is to a knockdown, and the capture hint while it can be taken.
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> BossActionText;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UImage> BossActionIcon;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UProgressBar> BossActionBar;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> BossPhaseText;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UImage> BossPhaseIcon;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UProgressBar> BossBreakBar;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> BossHintText;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UImage> BossHintIcon;
 	// The result: tiles of figures, reward slots or reward lines, the record, and the new-best badge.
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UDynamicEntryBox> StatTiles;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UDynamicEntryBox> RewardSlots;
@@ -167,4 +179,6 @@ protected:
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> SummaryText;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> NewBestBadge;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> NewBestText;
+	/** Over the result's title, in the title's color. */
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UImage> OutcomeEmblem;
 };

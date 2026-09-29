@@ -47,6 +47,8 @@ struct FDungeonStagePresentation
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(ClampMin="0")) int32 Step = 0;
 	/** The objective list's lines while the run is in this stage, after the run's own lines. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) TArray<FDungeonObjectiveLine> Objectives;
+	/** Before the stage's name on the way through. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) TSoftObjectPtr<UTexture2D> Icon;
 };
 /** Everything the dungeon's screens say. The widgets only lay it out, so the words change here without a code build. */
 UCLASS(BlueprintType)
@@ -117,6 +119,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText SecondsFormat = INVTEXT("{0}초");
 	/** On the result of a run that set the best time. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Texts") FText NewBestText = INVTEXT("최고 기록");
+
+	/** At the head of an objective line while it is open, by its goal; the line's widget draws its own marks once it is done or missed. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Icons") TMap<EDungeonObjectiveGoal, TSoftObjectPtr<UTexture2D>> GoalIcons;
+	/** A step of several stages while the run has not chosen between them; a chosen one shows its stage's icon. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Icons") TSoftObjectPtr<UTexture2D> BranchStepIcon;
+	/** Before what the boss does, by the same tags as BossActionLabels. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Icons", meta=(Categories="Boss")) TMap<FGameplayTag, TSoftObjectPtr<UTexture2D>> BossActionIcons;
+	/** Before the result's figures. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Icons") TSoftObjectPtr<UTexture2D> TimeStatIcon;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Icons") TSoftObjectPtr<UTexture2D> KillStatIcon;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Icons") TSoftObjectPtr<UTexture2D> CaptureStatIcon;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Icons") TSoftObjectPtr<UTexture2D> RouteStatIcon;
+	/** Over the result's title of a won and of a failed run. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Icons") TSoftObjectPtr<UTexture2D> SucceededEmblem;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Icons") TSoftObjectPtr<UTexture2D> FailedEmblem;
 
 	/** Banner when the run gains a tag its rules set, such as the unlocked shortcut. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FDungeonToastViewData> TagToasts;

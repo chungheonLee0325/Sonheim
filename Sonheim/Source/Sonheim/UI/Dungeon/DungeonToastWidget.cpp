@@ -1,5 +1,7 @@
 #include "DungeonToastWidget.h"
 #include "Components/Border.h"
+#include "Components/Image.h"
+#include "Engine/Texture2D.h"
 #include "Components/TextBlock.h"
 #include "Components/ProgressBar.h"
 
@@ -18,6 +20,7 @@ void UDungeonToastWidget::ApplyStyle()
 	if (AccentLine) AccentLine->SetBrushColor(Accent);
 	if (IconPlate) IconPlate->SetBrushColor(FLinearColor(Accent.R * 0.13f, Accent.G * 0.13f, Accent.B * 0.13f, 1.f));
 	if (SymbolText) SymbolText->SetColorAndOpacity(Accent);
+	if (SymbolIcon) SymbolIcon->SetColorAndOpacity(Accent);
 	if (CategoryText) CategoryText->SetColorAndOpacity(Accent);
 	if (TitleText) TitleText->SetColorAndOpacity(Theme->Text);
 	if (DetailText) DetailText->SetColorAndOpacity(Theme->Muted);
@@ -33,6 +36,11 @@ void UDungeonToastWidget::ShowToast(const FDungeonToastViewData& Data)
 	TitleText->SetText(Data.Title);
 	DetailText->SetText(Data.Detail);
 	SymbolText->SetText(Data.Symbol);
+	// The icon, when the toast has one, stands in for the symbol.
+	UTexture2D* Icon = SymbolIcon ? Data.Icon.LoadSynchronous() : nullptr;
+	if (Icon) SymbolIcon->SetBrushFromTexture(Icon);
+	if (SymbolIcon) SymbolIcon->SetVisibility(Icon ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	SymbolText->SetVisibility(Icon ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	ApplyStyle();
 	SetRenderOpacity(0.f);
 	LifetimeBar->SetPercent(1.f);

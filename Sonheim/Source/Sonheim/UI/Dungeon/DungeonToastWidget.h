@@ -6,8 +6,10 @@
 #include "DungeonToastWidget.generated.h"
 
 class UBorder;
+class UImage;
 class UTextBlock;
 class UProgressBar;
+class UTexture2D;
 
 UENUM(BlueprintType)
 enum class EDungeonToastTone : uint8 { Information, Route, Warning };
@@ -20,6 +22,8 @@ struct FDungeonToastViewData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FText Title;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FText Detail;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FText Symbol;
+	/** Drawn on the plate in place of Symbol, in the tone's color, when set. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) TSoftObjectPtr<UTexture2D> Icon;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) EDungeonToastTone Tone = EDungeonToastTone::Information;
 };
 
@@ -57,6 +61,7 @@ protected:
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UBorder> AccentLine;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UBorder> IconPlate;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> SymbolText;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UImage> SymbolIcon;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> CategoryText;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> TitleText;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> DetailText;

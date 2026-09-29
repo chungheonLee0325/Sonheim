@@ -72,6 +72,7 @@ namespace
 		Row.Window = Line.Window;
 		Row.Note = Line.Note;
 		if (const FText* Tag = Texts.KindLabels.Find(Line.Kind)) Row.KindLabel = *Tag;
+		if (const TSoftObjectPtr<UTexture2D>* Icon = Texts.GoalIcons.Find(Line.Goal)) Row.Icon = Icon->LoadSynchronous();
 		const FDungeonGroupTally* Tally = FindTally(State, Line.GroupId);
 		int32 Done = 0, Total = 0;
 		switch (Line.Goal)
@@ -241,16 +242,20 @@ void UDungeonStagePresenter::Present()
 		for (int32 Step = 1; Step <= Texts.StepCount; ++Step)
 		{
 			TArray<FString> Titles;
-			FString Taken;
+			const FDungeonStagePresentation* Only = nullptr;
+			const FDungeonStagePresentation* Taken = nullptr;
 			for (const FDungeonStagePresentation& Item : Texts.Stages)
 				if (Item.Step == Step)
 				{
 					Titles.Add(Item.Title.ToString());
-					if (Item.StageId == Latest.StageId || Item.StageId == Chosen) Taken = Item.Title.ToString();
+					Only = &Item;
+					if (Item.StageId == Latest.StageId || Item.StageId == Chosen) Taken = &Item;
 				}
 			if (Titles.IsEmpty()) continue;
 			FDungeonStepViewData Node;
-			Node.Label = FText::FromString(Taken.IsEmpty() ? FString::Join(Titles, TEXT(" / ")) : Taken);
+			Node.Label = Taken ? Taken->Title : FText::FromString(FString::Join(Titles, TEXT(" / ")));
+			// The stage's own icon once it is the one; a step still split between stages shows the branch's.
+			Node.Icon = (Taken ? Taken->Icon : Titles.Num() > 1 ? Texts.BranchStepIcon : Only->Icon).LoadSynchronous();
 			Node.State = Step < CurrentStep ? EDungeonStepState::Done : Step == CurrentStep ? EDungeonStepState::Current : EDungeonStepState::Upcoming;
 			Node.bFirst = View.Steps.IsEmpty();
 			View.Steps.Add(Node);
@@ -277,6 +282,7 @@ void UDungeonStagePresenter::Present()
 		View.BossName = Texts.BossName;
 		View.BossHealth = Latest.BossHealth;
 		if (const FText* Action = Texts.BossActionLabels.Find(Latest.BossActionId)) View.BossActionText = *Action;
+		if (const TSoftObjectPtr<UTexture2D>* Icon = Texts.BossActionIcons.Find(Latest.BossActionId)) View.BossActionIcon = Icon->LoadSynchronous();
 		View.BossActionStartServerTime = Latest.BossActionStartServerTime;
 		View.BossActionEndServerTime = Latest.BossActionEndServerTime;
 		if (Latest.BossPhase >= 2) View.BossPhaseText = FText::Format(Texts.BossPhaseFormat, Latest.BossPhase);
@@ -291,6 +297,7 @@ void UDungeonStagePresenter::Present()
 	}
 	if (Latest.RunStatus == EDungeonRunStatus::Succeeded || Latest.RunStatus == EDungeonRunStatus::Failed)
 	{
+		View.OutcomeEmblem = (Latest.RunStatus == EDungeonRunStatus::Succeeded ? Texts.SucceededEmblem : Texts.FailedEmblem).LoadSynchronous();
 		auto* Instance = Owner.IsValid() ? Cast<USonheimGameInstance>(Owner->GetGameInstance()) : nullptr;
 		TArray<FString> Lines;
 		for (const FDungeonRunReward& Reward : Latest.Rewards)
@@ -302,10 +309,10 @@ void UDungeonStagePresenter::Present()
 		}
 		View.RewardText = Lines.IsEmpty() ? Texts.NoRewardText : FText::FromString(FString::Join(Lines, TEXT("\n")));
 		if (View.Rewards.IsEmpty()) View.Rewards.Add({Texts.NoRewardText, FText::GetEmpty(), nullptr});
-		View.Stats.Add({Texts.TimeStatLabel, Clock(Latest.ElapsedSeconds)});
-		View.Stats.Add({Texts.KillStatLabel, FText::AsNumber(Latest.DefeatedCount)});
-		if (Latest.CapturedCount > 0) View.Stats.Add({Texts.CaptureStatLabel, FText::AsNumber(Latest.CapturedCount)});
-		if (Latest.SelectedBranchId.IsValid()) View.Stats.Add({Texts.RouteStatLabel, View.BranchText});
+		View.Stats.Add({Texts.TimeStatLabel, Clock(Latest.ElapsedSeconds), Texts.TimeStatIcon.LoadSynchronous()});
+		View.Stats.Add({Texts.KillStatLabel, FText::AsNumber(Latest.DefeatedCount), Texts.KillStatIcon.LoadSynchronous()});
+		if (Latest.CapturedCount > 0) View.Stats.Add({Texts.CaptureStatLabel, FText::AsNumber(Latest.CapturedCount), Texts.CaptureStatIcon.LoadSynchronous()});
+		if (Latest.SelectedBranchId.IsValid()) View.Stats.Add({Texts.RouteStatLabel, View.BranchText, Texts.RouteStatIcon.LoadSynchronous()});
 		// The first clear sets the best time, so a cleared dungeon always has one.
 		if (Latest.ClearCount > 0) View.SummaryText = FText::Format(Texts.RecordFormat, Latest.ClearCount, Spell(Texts, Latest.BestSeconds));
 		// The record is saved before the result is shown, so a run that set it finished in exactly the best time.
