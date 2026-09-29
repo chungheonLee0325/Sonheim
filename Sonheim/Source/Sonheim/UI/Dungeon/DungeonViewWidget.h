@@ -3,6 +3,7 @@
 #include "Blueprint/UserWidget.h"
 #include "DungeonViewData.h"
 #include "DungeonViewWidget.generated.h"
+class UCanvasPanel;
 class UDynamicEntryBox;
 class UImage;
 class UTextBlock;
@@ -97,6 +98,26 @@ protected:
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> NameText;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> CountText;
 };
+/** Marks a place an open objective line leads to: the line's icon and the distance, and on the screen's edge an arrow toward it. */
+UCLASS(Abstract)
+class SONHEIM_API UDungeonMarkerWidget : public UUserWidget
+{
+	GENERATED_BODY()
+public:
+	void SetMarker(const FDungeonMarkerViewData& Marker);
+	/** The distance under the icon; on the screen's edge the arrow turns toward Direction (screen space, y down). */
+	void Place(bool bEdge, const FVector2D& Direction, float Meters, const FText& Format);
+	/** The icon and arrow take the line's kind: MainColor for the stage's goals, OptionalColor for the optional ones. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor MainColor = FSlateColor(FLinearColor::White);
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor OptionalColor = FSlateColor(FLinearColor(1.f, 0.7f, 0.2f));
+	/** How far from the icon's center the edge arrow sits. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") float ArrowOffset = 24.f;
+protected:
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UImage> Icon;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> DistanceText;
+	/** A glyph that points right before it is turned, such as ›. */
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> Arrow;
+};
 UCLASS()
 class SONHEIM_API UDungeonViewWidget : public UUserWidget
 {
@@ -115,6 +136,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor SucceededTitleColor = FSlateColor(FLinearColor(1.f, 0.7f, 0.2f));
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor FailedTitleColor = FSlateColor(FLinearColor(1.f, 0.36f, 0.3f));
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(ClampMin="0")) float AreaTitleSeconds = 2.5f;
+	/** Drawn on MarkerLayer for each place the open lines lead to. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TSubclassOf<UDungeonMarkerWidget> MarkerClass;
+	/** How far inside the screen's edge the marker of a place off screen stays. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(ClampMin="0")) float MarkerEdgeInset = 64.f;
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeTick(const FGeometry& Geometry, float DeltaTime) override;
@@ -123,6 +148,11 @@ protected:
 	void RefreshBossAction();
 	/** Shown to participants; a finished run's screen folds away once FinishedSeconds pass. */
 	void RefreshShown();
+	/** One marker widget per place of the view data. */
+	void SyncMarkers();
+	/** Puts each marker over its place, or on the screen's edge toward it, every frame. */
+	void PlaceMarkers(const FGeometry& Geometry);
+	UPROPERTY(Transient) TArray<TObjectPtr<UDungeonMarkerWidget>> MarkerWidgets;
 	FTimerHandle FinishedTimer;
 	FTimerHandle AreaTitleTimer;
 	int32 FinishedRevision = -1;
@@ -181,4 +211,6 @@ protected:
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> NewBestText;
 	/** Over the result's title, in the title's color. */
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UImage> OutcomeEmblem;
+	/** A canvas over the whole screen, under the cards, that holds the markers. */
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UCanvasPanel> MarkerLayer;
 };

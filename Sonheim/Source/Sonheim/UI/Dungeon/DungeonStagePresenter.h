@@ -30,6 +30,8 @@ private:
 	void BindMembers(const TArray<UHealthComponent*>& Healths);
 	UFUNCTION() void HandleMemberHealth(float CurrentHP, float Delta, float MaxHP);
 	void Present();
+	/** The placed room zone or switch with this SourceId, remembered once found. */
+	AActor* FindMarkerTarget(const FGameplayTag& Id);
 	TWeakObjectPtr<APlayerController> Owner;
 	TWeakObjectPtr<ASonheimGameState> GameState;
 	TWeakObjectPtr<UDungeonUIRouterSubsystem> UIRouter;
@@ -42,4 +44,5 @@ private:
 	FGuid AssetRequest;
 	FPrimaryAssetId RequestedDefinition;
 	FDelegateHandle WorldHandle, StateHandle;
+	TMap<FGameplayTag, TWeakObjectPtr<AActor>> MarkerTargets;
 };

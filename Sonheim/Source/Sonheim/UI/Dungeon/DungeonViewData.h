@@ -69,6 +69,17 @@ struct FDungeonRewardViewData
 	/** The item's icon; none on the line that says the run gave nothing. */
 	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> Icon;
 };
+/** A place an open objective line leads to, marked on the screen with the line's icon and the distance. */
+USTRUCT(BlueprintType)
+struct FDungeonMarkerViewData
+{
+	GENERATED_BODY()
+	UPROPERTY(BlueprintReadOnly) FVector Location = FVector::ZeroVector;
+	/** The marker leaves while the local player stands in this box: the room it leads to, or the space around a switch. */
+	UPROPERTY(BlueprintReadOnly) FBox Arrival = FBox(ForceInit);
+	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> Icon;
+	UPROPERTY(BlueprintReadOnly) EDungeonObjectiveKind Kind = EDungeonObjectiveKind::Main;
+};
 USTRUCT(BlueprintType)
 struct FDungeonStageViewData
 {
@@ -87,6 +98,9 @@ struct FDungeonStageViewData
 	UPROPERTY(BlueprintReadOnly) TArray<FDungeonObjectiveViewData> Objectives;
 	UPROPERTY(BlueprintReadOnly) TArray<FDungeonObjectiveViewData> OptionalObjectives;
 	UPROPERTY(BlueprintReadOnly) FText ObjectivesDone;
+	/** Where the open lines lead, while the run goes, with the distance in MarkerDistanceFormat ({0} is meters). */
+	UPROPERTY(BlueprintReadOnly) TArray<FDungeonMarkerViewData> Markers;
+	UPROPERTY(BlueprintReadOnly) FText MarkerDistanceFormat;
 	/** The players taking part, while the run goes. */
 	UPROPERTY(BlueprintReadOnly) TArray<FDungeonMemberViewData> Members;
 	/** The boss's name and health while it lives; 0 health hides the boss bar. */

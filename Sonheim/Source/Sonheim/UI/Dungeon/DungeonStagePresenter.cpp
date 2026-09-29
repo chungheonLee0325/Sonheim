@@ -4,6 +4,7 @@
 #include "Algo/Count.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
 #include "TimerManager.h"
@@ -14,6 +15,8 @@
 #include "Sonheim/GameManager/Dungeon/DungeonAssetSubsystem.h"
 #include "Sonheim/GameObject/Dungeon/DungeonDefinitionDataAsset.h"
 #include "Sonheim/GameObject/Dungeon/DungeonPresentationDataAsset.h"
+#include "Sonheim/GameObject/Dungeon/DungeonShortcutSwitch.h"
+#include "Sonheim/GameObject/Dungeon/DungeonTriggerZone.h"
 
 void UDungeonStagePresenter::Start(APlayerController* Controller, UDungeonUIRouterSubsystem* Router)
 {
@@ -34,6 +37,7 @@ void UDungeonStagePresenter::Stop()
 	if (Assets.IsValid()) Assets->Release(AssetRequest);
 	BindMembers(TArray<UHealthComponent*>());
 	AssetRequest.Invalidate(); RequestedDefinition = FPrimaryAssetId(); Definition = nullptr;
+	MarkerTargets.Reset();
 	GameState.Reset(); Owner.Reset();
 }
 void UDungeonStagePresenter::BindGameState(AGameStateBase* State)
@@ -184,6 +188,18 @@ void UDungeonStagePresenter::HandleMemberHealth(float CurrentHP, float Delta, fl
 {
 	Present();
 }
+AActor* UDungeonStagePresenter::FindMarkerTarget(const FGameplayTag& Id)
+{
+	if (const TWeakObjectPtr<AActor>* Known = MarkerTargets.Find(Id); Known && Known->IsValid()) return Known->Get();
+	UWorld* World = Owner.IsValid() ? Owner->GetWorld() : nullptr;
+	if (!World) return nullptr;
+	// Zones and switches are placed in the level, so every machine has them without replication.
+	AActor* Found = nullptr;
+	for (TActorIterator<ADungeonTriggerZone> It(World); It && !Found; ++It) if (It->SourceId == Id) Found = *It;
+	for (TActorIterator<ADungeonShortcutSwitch> It(World); It && !Found; ++It) if (It->SourceId == Id) Found = *It;
+	if (Found) MarkerTargets.Add(Id, Found);
+	return Found;
+}
 void UDungeonStagePresenter::Present()
 {
 	auto* Router = UIRouter.Get();
@@ -197,6 +213,7 @@ void UDungeonStagePresenter::Present()
 	View.bParticipant = IsParticipant();
 	View.DeadlineServerTime = bRunning ? Latest.StageDeadlineServerTime : 0;
 	View.TimeFormat = Texts.TimeFormat;
+	View.MarkerDistanceFormat = Texts.MarkerDistanceFormat;
 	View.DungeonTitle = Texts.DungeonTitle;
 	// A run has no stage while it loads and no branch before the branch point. Without presentation text, the tag's name stands in.
 	View.Title = Latest.StageId.IsValid() ? FText::FromName(Latest.StageId.GetTagName()) : Texts.DungeonTitle;
@@ -225,7 +242,21 @@ void UDungeonStagePresenter::Present()
 		if (Stage)
 		{
 			for (const FDungeonObjectiveLine& Line : Stage->Objectives)
-				(Line.Kind == EDungeonObjectiveKind::Optional ? View.OptionalObjectives : View.Objectives).Add(ObjectiveRow(Texts, Line, Latest));
+			{
+				const FDungeonObjectiveViewData Row = ObjectiveRow(Texts, Line, Latest);
+				(Line.Kind == EDungeonObjectiveKind::Optional ? View.OptionalObjectives : View.Objectives).Add(Row);
+				// An open line that leads somewhere marks the place: a room until the player is inside, a switch until the player is near.
+				AActor* Target = Row.State == EDungeonObjectiveState::Open && Line.MarkerTarget.IsValid() ? FindMarkerTarget(Line.MarkerTarget) : nullptr;
+				if (!Target) continue;
+				FVector Origin, Extent;
+				Target->GetActorBounds(true, Origin, Extent);
+				FDungeonMarkerViewData& Marker = View.Markers.AddDefaulted_GetRef();
+				Marker.Location = FVector(Origin.X, Origin.Y, Origin.Z - Extent.Z + Texts.MarkerHeight);
+				Marker.Arrival = Target->IsA<ADungeonTriggerZone>() ? FBox(Origin - Extent, Origin + Extent)
+					: FBox::BuildAABB(Marker.Location, FVector(Texts.MarkerArriveDistance));
+				Marker.Icon = Row.Icon;
+				Marker.Kind = Line.Kind;
+			}
 			const int32 Done = Algo::CountIf(View.Objectives, [](const FDungeonObjectiveViewData& Row) { return Row.State == EDungeonObjectiveState::Done; });
 			if (!View.Objectives.IsEmpty()) View.ObjectivesDone = FText::Format(Texts.ObjectivesDoneFormat, Done, View.Objectives.Num());
 		}

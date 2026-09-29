@@ -1,10 +1,15 @@
 #include "DungeonViewWidget.h"
+#include "Blueprint/WidgetLayoutLibrary.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
 #include "Components/DynamicEntryBox.h"
 #include "Components/Image.h"
 #include "Engine/Texture2D.h"
 #include "Components/TextBlock.h"
 #include "Components/ProgressBar.h"
 #include "GameFramework/GameStateBase.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
 namespace
 {
@@ -90,6 +95,20 @@ void UDungeonRewardEntryWidget::SetReward(const FDungeonRewardViewData& Reward)
 	Icon->SetBrushFromTexture(Reward.Icon);
 	Icon->SetVisibility(Reward.Icon ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 }
+void UDungeonMarkerWidget::SetMarker(const FDungeonMarkerViewData& Marker)
+{
+	const FSlateColor& Tint = Marker.Kind == EDungeonObjectiveKind::Optional ? OptionalColor : MainColor;
+	ShowIcon(Icon, Marker.Icon, Tint);
+	if (Arrow) Arrow->SetColorAndOpacity(Tint);
+}
+void UDungeonMarkerWidget::Place(bool bEdge, const FVector2D& Direction, float Meters, const FText& Format)
+{
+	if (DistanceText) DistanceText->SetText(FText::Format(Format, FMath::RoundToInt(Meters)));
+	Show(Arrow, bEdge);
+	if (Arrow && bEdge)
+		Arrow->SetRenderTransform(FWidgetTransform(Direction.GetSafeNormal() * ArrowOffset, FVector2D::UnitVector, FVector2D::ZeroVector,
+			FMath::RadiansToDegrees(FMath::Atan2(Direction.Y, Direction.X))));
+}
 void UDungeonViewWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -103,6 +122,68 @@ void UDungeonViewWidget::NativeTick(const FGeometry& Geometry, float DeltaTime)
 	Super::NativeTick(Geometry, DeltaTime);
 	if (TimeText && ViewData.DeadlineServerTime > 0) RefreshTime();
 	if (BossActionBar && ViewData.BossActionEndServerTime > 0) RefreshBossAction();
+	if (!MarkerWidgets.IsEmpty()) PlaceMarkers(Geometry);
+}
+void UDungeonViewWidget::SyncMarkers()
+{
+	if (!MarkerLayer || !MarkerClass) return;
+	while (MarkerWidgets.Num() > ViewData.Markers.Num()) MarkerWidgets.Pop()->RemoveFromParent();
+	while (MarkerWidgets.Num() < ViewData.Markers.Num())
+	{
+		UDungeonMarkerWidget* Marker = CreateWidget<UDungeonMarkerWidget>(this, MarkerClass);
+		if (!Marker) return;
+		if (UCanvasPanelSlot* Placed = MarkerLayer->AddChildToCanvas(Marker))
+		{
+			Placed->SetAutoSize(true);
+			Placed->SetAlignment(FVector2D(0.5f, 0.5f));
+		}
+		// Hidden until the next frame places it.
+		Show(Marker, false);
+		MarkerWidgets.Add(Marker);
+	}
+	for (int32 Index = 0; Index < MarkerWidgets.Num(); ++Index) MarkerWidgets[Index]->SetMarker(ViewData.Markers[Index]);
+}
+void UDungeonViewWidget::PlaceMarkers(const FGeometry& Geometry)
+{
+	APlayerController* Player = GetOwningPlayer();
+	const APawn* Pawn = Player ? Player->GetPawn() : nullptr;
+	const FVector2D Size = Geometry.GetLocalSize();
+	const FVector2D Center = Size * 0.5f;
+	const FVector2D Half = Center - FVector2D(MarkerEdgeInset);
+	if (!Pawn || Half.X <= 0.f || Half.Y <= 0.f)
+	{
+		for (UDungeonMarkerWidget* Marker : MarkerWidgets) Show(Marker, false);
+		return;
+	}
+	FVector CameraLocation;
+	FRotator CameraRotation;
+	Player->GetPlayerViewPoint(CameraLocation, CameraRotation);
+	for (int32 Index = 0; Index < MarkerWidgets.Num() && Index < ViewData.Markers.Num(); ++Index)
+	{
+		const FDungeonMarkerViewData& Place = ViewData.Markers[Index];
+		UDungeonMarkerWidget* Marker = MarkerWidgets[Index];
+		if (Place.Arrival.IsValid && Place.Arrival.IsInsideOrOn(Pawn->GetActorLocation()))
+		{
+			Show(Marker, false);
+			continue;
+		}
+		// In camera space X looks ahead, Y goes right and Z up, while the screen's y goes down.
+		const FVector Local = CameraRotation.UnrotateVector(Place.Location - CameraLocation);
+		FVector2D Position = FVector2D::ZeroVector;
+		const bool bProjected = Local.X > 0.f && UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(Player, Place.Location, Position, true);
+		FVector2D Direction = bProjected ? Position - Center : FVector2D(Local.Y, -Local.Z);
+		const bool bEdge = !bProjected || FMath::Abs(Direction.X) > Half.X || FMath::Abs(Direction.Y) > Half.Y;
+		if (bEdge)
+		{
+			// Beside the screen or behind the camera: on the inset edge, in the place's direction.
+			if (Direction.IsNearlyZero()) Direction = FVector2D(0.f, 1.f);
+			Position = Center + Direction * FMath::Min(Half.X / FMath::Max(FMath::Abs(Direction.X), UE_KINDA_SMALL_NUMBER),
+				Half.Y / FMath::Max(FMath::Abs(Direction.Y), UE_KINDA_SMALL_NUMBER));
+		}
+		if (UCanvasPanelSlot* Placed = Cast<UCanvasPanelSlot>(Marker->Slot)) Placed->SetPosition(Position);
+		Marker->Place(bEdge, Direction, FVector::Dist(Pawn->GetActorLocation(), Place.Location) / 100.f, ViewData.MarkerDistanceFormat);
+		Show(Marker, true);
+	}
 }
 void UDungeonViewWidget::RefreshBossAction()
 {
@@ -182,6 +263,7 @@ void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
 	ShowText(SummaryText, nullptr, Data.SummaryText);
 	ShowText(NewBestText, NewBestBadge, Data.NewBestText);
 	ShowIcon(OutcomeEmblem, Data.OutcomeEmblem, TitleText->GetColorAndOpacity());
+	SyncMarkers();
 	RefreshTime();
 	const bool bFinished = Data.Status == EDungeonRunStatus::Succeeded || Data.Status == EDungeonRunStatus::Failed;
 	if (!bFinished)

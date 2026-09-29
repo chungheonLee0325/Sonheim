@@ -34,6 +34,8 @@ struct FDungeonObjectiveLine
 	/** How long an optional line stays open, such as 경비실 전투 중, and what taking it means or gives. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FText Window;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FText Note;
+	/** Where the line leads: the SourceId of a placed room zone or switch. While the line is open, the screen marks the place. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(Categories="Dungeon")) FGameplayTag MarkerTarget;
 };
 USTRUCT(BlueprintType)
 struct FDungeonStagePresentation
@@ -134,6 +136,13 @@ public:
 	/** Over the result's title of a won and of a failed run. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Icons") TSoftObjectPtr<UTexture2D> SucceededEmblem;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Icons") TSoftObjectPtr<UTexture2D> FailedEmblem;
+
+	/** How high over the floor of the place a line leads to its marker floats. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Markers", meta=(ClampMin="0")) float MarkerHeight = 180.f;
+	/** A room's marker leaves once the player is inside the room; a switch's once the player is this close. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Markers", meta=(ClampMin="0")) float MarkerArriveDistance = 300.f;
+	/** Under the marker; {0} is the distance in meters. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Markers") FText MarkerDistanceFormat = INVTEXT("{0} m");
 
 	/** Banner when the run gains a tag its rules set, such as the unlocked shortcut. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FDungeonToastViewData> TagToasts;
