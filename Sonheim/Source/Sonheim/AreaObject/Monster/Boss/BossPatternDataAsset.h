@@ -8,6 +8,8 @@
 
 class ABaseElement;
 class UAnimMontage;
+class UMaterialInterface;
+class UNiagaraSystem;
 
 /** The ground a strike covers. Its mark on the ground has the same shape and stays until the strike lands. */
 UENUM(BlueprintType)
@@ -63,6 +65,9 @@ struct FBossStrike
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float StrikeSeconds = 1.f;
 	/** The phase the strike joins in, such as an outer ring that only phase 2 adds. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss", meta=(ClampMin="1", ClampMax="2")) int32 MinPhase = 1;
+	/** From the landing of the strike before until this one's mark, the boss turns toward its target again at the pattern's turn rate,
+	 * so a combo follows a target that moves. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") bool bReaim = false;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") EBossAreaShape Shape = EBossAreaShape::Circle;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") EBossAreaAnchor Anchor = EBossAreaAnchor::Boss;
 	/** Circle and Ring: the radius. Cone and Line: the length. */
@@ -99,6 +104,8 @@ struct FBossPattern
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss", meta=(ClampMin="0.1")) float Seconds = 3.f;
 	/** The boss turns to its target until then and holds its facing after, so a mark on the boss stops turning before it lands. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float TrackSeconds = 0.5f;
+	/** How fast the boss turns toward its target while it tracks it. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss", meta=(ClampMin="1")) float TurnDegreesPerSecond = 300.f;
 	/** Distance to the target at which the boss picks the pattern. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float MinRange = 0.f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float MaxRange = 1500.f;
@@ -114,6 +121,11 @@ struct FBossPattern
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float LeapEndSeconds = 0.f;
 	/** How high the leap rises over the higher of its two ends. The ceiling above the boss's head bounds it. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float LeapHeight = 300.f;
+	/** Gathers on the boss at each of ChargeSockets while it winds up, from the pattern's start until ChargeEndSeconds, the release:
+	 * it grows and its color deepens toward the release, then it fades. No charge while ChargeEndSeconds is 0. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Charge") TObjectPtr<UNiagaraSystem> ChargeEffect;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Charge") TArray<FName> ChargeSockets;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Charge") float ChargeEndSeconds = 0.f;
 };
 
 /** How a boss fights: its patterns, how it wakes, the phase its health turns it to, and when it can be captured. */
@@ -161,6 +173,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase", meta=(ClampMin="1", ClampMax="2")) float PhaseTwoTempo = 1.2f;
 	/** Projectiles, or spots, that every strike of several adds in phase 2. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase", meta=(ClampMin="0")) int32 PhaseTwoExtraCount = 2;
+	/** From phase 2 on it crackles over the boss's body (its User.SkeletalMesh) in RageColor, brighter as its health falls and faint
+	 * while it rests or lies down. Its charges release in RageColor too. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase") TObjectPtr<UNiagaraSystem> RageEffect;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase") FLinearColor RageColor = FLinearColor(4.f, 0.4f, 0.1f);
+	/** Drawn over the boss's mesh from phase 2 on (its overlay material): a rim in RageColor, its Strength rising with the anger the
+	 * same way the crackle brightens. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase") TObjectPtr<UMaterialInterface> RageOverlay;
+
+	/** A charge's color and size (the effect's User.Color and User.Size) as it begins, and as it releases in phase 1. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Charge") FLinearColor ChargeColor = FLinearColor(1.f, 0.9f, 0.6f);
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Charge") FLinearColor ChargeReleaseColor = FLinearColor(6.f, 2.4f, 0.2f);
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Charge") FVector2D ChargeSize = FVector2D(0.3f, 1.f);
 
 	/** Shares of health, highest first, at which the worn-out boss sinks down to catch its breath: the only times it can be captured.
 	 * Each one comes once, the moment the boss's health falls to it. */

@@ -3,11 +3,14 @@
 #include "BossFSM.h"
 #include "BossTelegraph.h"
 #include "EngineUtils.h"
+#include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Components/CapsuleComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/GameStateBase.h"
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/Element/BaseElement.h"
 
@@ -21,6 +24,16 @@ namespace
 {
 	// Someone on a ledge above or below a strike's area is out of its reach.
 	constexpr float StrikeReachZ = 300.f;
+	// A section jump is a cut in the montage; the anim graph's Inertialization node blends it over this long.
+	constexpr float SectionBlendSeconds = 0.15f;
+	// The rage aura brightens up to this many times as the health falls from phase 2 to nothing, and dims while the boss is spent.
+	constexpr float RageBrightening = 2.f;
+	constexpr float SpentRage = 0.35f;
+
+	FLinearColor Brighter(const FLinearColor& Color, const float Scale)
+	{
+		return FLinearColor(Color.R * Scale, Color.G * Scale, Color.B * Scale, Color.A);
+	}
 }
 
 ABossMonster::ABossMonster()
@@ -62,12 +75,105 @@ void ABossMonster::SetStatus(const FBossStatus& NewStatus)
 	if (Status == NewStatus) return;
 	Status = NewStatus;
 	ForceNetUpdate();
+	RefreshLook();
 	OnBossStatusChanged.Broadcast(Status);
 }
 
 void ABossMonster::OnRep_Status()
 {
+	RefreshLook();
 	OnBossStatusChanged.Broadcast(Status);
+}
+
+double ABossMonster::ServerNow() const
+{
+	const UWorld* World = GetWorld();
+	return World->GetGameState() ? World->GetGameState()->GetServerWorldTimeSeconds() : World->GetTimeSeconds();
+}
+
+void ABossMonster::RefreshLook()
+{
+	if (!Patterns || GetNetMode() == NM_DedicatedServer) return;
+	// The pattern under way gathers its charge from its start until its release; a new run of a pattern, or none, ends the last one.
+	const FBossPattern* Pattern = Patterns->FindPattern(Status.ActionId);
+	const bool bCharges = Pattern && Pattern->ChargeEffect && Pattern->ChargeEndSeconds > 0.f && Status.ActionStartServerTime > 0.0;
+	if (!bCharges || ChargeFrom != Status.ActionStartServerTime) StopCharge();
+	const float Tempo = Status.Phase >= 2 ? Patterns->PhaseTwoTempo : 1.f;
+	if (bCharges && ChargeFrom != Status.ActionStartServerTime && ServerNow() < Status.ActionStartServerTime + Pattern->ChargeEndSeconds / Tempo)
+	{
+		ChargeFrom = Status.ActionStartServerTime;
+		ChargeUntil = ChargeFrom + Pattern->ChargeEndSeconds / Tempo;
+		for (const FName Socket : Pattern->ChargeSockets)
+			if (UNiagaraComponent* Effect = UNiagaraFunctionLibrary::SpawnSystemAttached(Pattern->ChargeEffect, GetMesh(), Socket, FVector::ZeroVector,
+				FRotator::ZeroRotator, EAttachLocation::SnapToTarget, true))
+				ChargeEffects.Add(Effect);
+	}
+	// From phase 2 until it falls for good, the rage crackles over the whole body.
+	const bool bRage = Patterns->RageEffect && Status.Phase >= 2 && Status.Stage != EBossStage::Defeated && !IsDie();
+	if (bRage && !RageAura)
+	{
+		RageAura = UNiagaraFunctionLibrary::SpawnSystemAttached(Patterns->RageEffect, GetMesh(), NAME_None, FVector::ZeroVector, FRotator::ZeroRotator,
+			EAttachLocation::SnapToTarget, true);
+		if (RageAura) UNiagaraFunctionLibrary::OverrideSystemUserVariableSkeletalMeshComponent(RageAura, TEXT("User.SkeletalMesh"), GetMesh());
+	}
+	else if (!bRage && RageAura)
+	{
+		RageAura->Deactivate();
+		RageAura = nullptr;
+	}
+	if (bRage && !RageGlow && Patterns->RageOverlay)
+	{
+		RageGlow = UMaterialInstanceDynamic::Create(Patterns->RageOverlay, this);
+		GetMesh()->SetOverlayMaterial(RageGlow);
+	}
+	else if (!bRage && RageGlow)
+	{
+		GetMesh()->SetOverlayMaterial(nullptr);
+		RageGlow = nullptr;
+	}
+}
+
+void ABossMonster::StopCharge()
+{
+	// Deactivated, a charge lets its particles fade and then goes by itself.
+	for (UNiagaraComponent* Effect : ChargeEffects)
+		if (IsValid(Effect)) Effect->Deactivate();
+	ChargeEffects.Reset();
+	ChargeFrom = 0;
+}
+
+void ABossMonster::Tick(const float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	if (!Patterns) return;
+	if (!ChargeEffects.IsEmpty())
+	{
+		// Deeper and brighter toward the release, faster at the end; in phase 2 it runs toward the rage color.
+		const float Alpha = FMath::Clamp(float((ServerNow() - ChargeFrom) / FMath::Max(ChargeUntil - ChargeFrom, 0.01)), 0.f, 1.f);
+		const FLinearColor Release = Status.Phase >= 2 ? Patterns->RageColor : Patterns->ChargeReleaseColor;
+		const FLinearColor Color = FMath::Lerp(Patterns->ChargeColor, Release, Alpha * Alpha);
+		const float Size = FMath::Lerp(Patterns->ChargeSize.X, Patterns->ChargeSize.Y, Alpha);
+		for (UNiagaraComponent* Effect : ChargeEffects)
+		{
+			if (!IsValid(Effect)) continue;
+			Effect->SetVariableLinearColor(TEXT("User.Color"), Color);
+			Effect->SetVariableFloat(TEXT("User.Size"), Size);
+		}
+		if (Alpha >= 1.f) StopCharge();
+	}
+	if (IsValid(RageAura) || RageGlow)
+	{
+		const float Health = GetMaxHP() > 0.f ? GetHP() / GetMaxHP() : 1.f;
+		const float Anger = FMath::Clamp((Patterns->PhaseTwoHealth - Health) / FMath::Max(Patterns->PhaseTwoHealth, 0.01f), 0.f, 1.f);
+		const bool bSpent = Status.Stage == EBossStage::Resting || Status.Stage == EBossStage::Down;
+		const float Rage = (1.f + RageBrightening * Anger) * (bSpent ? SpentRage : 1.f);
+		if (IsValid(RageAura)) RageAura->SetVariableLinearColor(TEXT("User.Color"), Brighter(Patterns->RageColor, Rage));
+		if (RageGlow)
+		{
+			RageGlow->SetVectorParameterValue(TEXT("Color"), Patterns->RageColor);
+			RageGlow->SetScalarParameterValue(TEXT("Strength"), Rage);
+		}
+	}
 }
 
 bool ABossMonster::PerformPattern(const FGameplayTag PatternId)
@@ -137,7 +243,11 @@ void ABossMonster::JumpToSection(const FName Section)
 void ABossMonster::MulticastJumpToSection_Implementation(const FName Section)
 {
 	if (UAnimInstance* Anim = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr)
-		if (UAnimMontage* Montage = Anim->GetCurrentActiveMontage()) Anim->Montage_JumpToSection(Section, Montage);
+		if (UAnimMontage* Montage = Anim->GetCurrentActiveMontage())
+		{
+			Anim->RequestSlotGroupInertialization(Montage->GetGroupName(), SectionBlendSeconds);
+			Anim->Montage_JumpToSection(Section, Montage);
+		}
 }
 
 void ABossMonster::StopMontage()

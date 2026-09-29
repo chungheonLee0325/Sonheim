@@ -8,6 +8,8 @@
 
 class ABossTelegraph;
 class UBossFSM;
+class UMaterialInstanceDynamic;
+class UNiagaraComponent;
 class UNiagaraSystem;
 
 // What the boss does between its patterns; the dungeon screen names each of them.
@@ -48,7 +50,8 @@ struct FBossStatus
 };
 
 /** A boss: it fights in patterns whose strikes mark the ground before they land, wakes when approached, turns fiercer below a share of
- * its health, and can be captured only while it rests or lies knocked down. UBossFSM runs it on the server. */
+ * its health, and can be captured only while it rests worn out. UBossFSM runs it on the server; every machine shows its charges and
+ * its rage from the replicated status. */
 UCLASS()
 class SONHEIM_API ABossMonster : public ABaseMonster
 {
@@ -75,6 +78,7 @@ public:
 	virtual void DeactivateMonster() override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void Tick(float DeltaSeconds) override;
 
 	// The server's side: what the brain has the boss do.
 	void SetStatus(const FBossStatus& NewStatus);
@@ -100,4 +104,15 @@ protected:
 	void PlayLocal(UAnimMontage* Montage, FName Section, float PlayRate);
 	UBossFSM* Brain() const;
 	UPROPERTY(ReplicatedUsing=OnRep_Status) FBossStatus Status;
+
+	/** The charge of the pattern under way and the rage aura, which follow the status on every machine. */
+	void RefreshLook();
+	void StopCharge();
+	double ServerNow() const;
+	UPROPERTY(Transient) TArray<TObjectPtr<UNiagaraComponent>> ChargeEffects;
+	UPROPERTY(Transient) TObjectPtr<UNiagaraComponent> RageAura;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> RageGlow;
+	/** The server time the charge began, which names the pattern run it belongs to, and the time it releases. */
+	double ChargeFrom = 0;
+	double ChargeUntil = 0;
 };

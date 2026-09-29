@@ -39,8 +39,7 @@ ABossTelegraph::ABossTelegraph()
 	Plane->SetCastShadow(false);
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> PlaneMesh(TEXT("/Engine/BasicShapes/Plane.Plane"));
 	if (PlaneMesh.Succeeded()) Plane->SetStaticMesh(PlaneMesh.Object);
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MarkMaterial(TEXT("/Game/CuratedDungeon/Boss/M_BossTelegraph.M_BossTelegraph"));
-	if (MarkMaterial.Succeeded()) Material = MarkMaterial.Object;
+	Material = TSoftObjectPtr<UMaterialInterface>(FSoftObjectPath(TEXT("/Game/CuratedDungeon/Boss/M_BossTelegraph.M_BossTelegraph")));
 }
 
 FTransform ABossTelegraph::FeetTransform(const AActor* Actor, const float Forward)
@@ -73,7 +72,8 @@ void ABossTelegraph::OnRep_Mark()
 void ABossTelegraph::Build()
 {
 	if (Mark.Radius <= 0.f) return;
-	if (!Dynamic && Material) Dynamic = Plane->CreateDynamicMaterialInstance(0, Material);
+	if (!Dynamic)
+		if (UMaterialInterface* Loaded = Material.LoadSynchronous()) Dynamic = Plane->CreateDynamicMaterialInstance(0, Loaded);
 	// The plane is 100 units square: circles, rings and cones sit on the anchor, a line starts at it.
 	const bool bLine = Mark.Shape == EBossAreaShape::Line;
 	Plane->SetRelativeLocation(FVector(bLine ? Mark.Radius * 0.5f : 0.f, 0.f, Lift));

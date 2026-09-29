@@ -13,8 +13,7 @@
 
 namespace
 {
-	// How fast the boss turns to its target while a pattern tracks it, and while it moves about between patterns.
-	constexpr float TurnDegreesPerSecond = 300.f;
+	// How fast the boss turns to its target while it moves about between patterns; a pattern sets its own rate.
 	constexpr float IdleTurnDegreesPerSecond = 160.f;
 	// How close the boss walks up to its target when no pattern reaches it yet.
 	constexpr float ChaseAcceptance = 250.f;
@@ -355,7 +354,11 @@ void UBossFSM::RunPattern(const float DeltaSeconds)
 	PatternClock += DeltaSeconds * Tempo();
 	AAreaObject* Victim = Target.Get();
 	if (Victim && Victim->IsDie()) Victim = nullptr;
-	if (Victim && !bLeapt && PatternClock < Pattern.TrackSeconds) Face(Victim->GetActorLocation(), DeltaSeconds, TurnDegreesPerSecond);
+	// It turns to its target while the pattern tracks it, and again before a strike that re-aims, from the landing of the one before.
+	bool bTracking = PatternClock < Pattern.TrackSeconds;
+	for (int32 Index = 1; !bTracking && Index < Pattern.Strikes.Num(); ++Index)
+		bTracking = Pattern.Strikes[Index].bReaim && Strikes[Index - 1].bLanded && !Strikes[Index].bMarked;
+	if (Victim && !bLeapt && bTracking) Face(Victim->GetActorLocation(), DeltaSeconds, Pattern.TurnDegreesPerSecond);
 
 	for (int32 Index = 0; Index < Pattern.Cues.Num(); ++Index)
 	{
@@ -450,15 +453,24 @@ bool UBossFSM::Hop(const AAreaObject* Foe, const bool bBack)
 	const FVector Feet = ABossTelegraph::FeetTransform(Owner, 0.f).GetLocation();
 	FVector Away = (Feet - Foe->GetActorLocation()).GetSafeNormal2D();
 	if (Away.IsNearlyZero()) Away = -Owner->GetActorForwardVector();
-	// Straight back or back and aside; one side or else the other. A spot off the floor, out of the arena or behind a wall is passed over.
+	// Straight back or back and aside; one side or else the other. A spot off the floor, out of the arena or behind a wall is passed
+	// over, and so is one the boss's own capsule would strike a pillar or a wall on the way to: the navigation mesh is laid for a
+	// much thinner body. The players are no obstacle, the boss flies through them.
+	const UCapsuleComponent* Capsule = Owner->GetCapsuleComponent();
+	FCollisionQueryParams Query(SCENE_QUERY_STAT(BossHop), false, Owner);
+	FCollisionResponseParams Responses;
+	Responses.CollisionResponse.SetResponse(ECC_Pawn, ECR_Ignore);
 	const float Side = FMath::RandBool() ? 90.f : -90.f;
 	for (const float Turn : bBack ? TArray<float>{0.f, 35.f, -35.f} : TArray<float>{Side, -Side})
 	{
 		FNavLocation Spot;
 		FVector Blocked;
+		FHitResult Hit;
 		if (!Nav->ProjectPointToNavigation(Feet + Away.RotateAngleAxis(Turn, FVector::UpVector) * Data.HopDistance, Spot)) continue;
 		if (FVector::Dist2D(Spot.Location, Owner->GetSpawnLocation()) > Data.ArenaRadius) continue;
 		if (UNavigationSystemV1::NavigationRaycast(GetWorld(), Feet, Spot.Location, Blocked)) continue;
+		const FVector Up(0.f, 0.f, Capsule->GetScaledCapsuleHalfHeight() + 10.f);
+		if (GetWorld()->SweepSingleByChannel(Hit, Feet + Up, Spot.Location + Up, FQuat::Identity, ECC_Pawn, Capsule->GetCollisionShape(), Query, Responses)) continue;
 		Owner->PlayMontage(Data.HopMontage, NAME_None, Tempo());
 		Launch(Spot.Location, HopSeconds / Tempo(), HopHeight);
 		return true;

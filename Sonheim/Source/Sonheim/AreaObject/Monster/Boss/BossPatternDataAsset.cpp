@@ -76,6 +76,10 @@ TArray<FString> UBossPatternDataAsset::Validate() const
 			Problems.Add(Name + TEXT(": the leap does not fit in the pattern"));
 		if (Pattern.LeapEndSeconds > 0.f && !HasSection(Pattern.Montage, LandSection))
 			Problems.Add(Name + TEXT(": a leaping pattern's montage needs a Land section"));
+		if (Pattern.ChargeEndSeconds > 0.f && (!Pattern.ChargeEffect || Pattern.ChargeSockets.IsEmpty() || Pattern.ChargeEndSeconds > Pattern.Seconds))
+			Problems.Add(Name + TEXT(": a charge needs an effect, a socket and a release within the pattern"));
+		if (!Pattern.Strikes.IsEmpty() && Pattern.Strikes[0].bReaim)
+			Problems.Add(Name + TEXT(": the first strike has no strike before it to re-aim from"));
 		for (int32 StrikeIndex = 0; StrikeIndex < Pattern.Strikes.Num(); ++StrikeIndex)
 			ValidateStrike(Pattern.Strikes[StrikeIndex], Pattern.Seconds, FString::Printf(TEXT("%s strike %d"), *Name, StrikeIndex), Problems);
 	}

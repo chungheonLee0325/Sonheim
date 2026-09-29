@@ -33,8 +33,9 @@ public:
 	ABossTelegraph();
 	/** Set on the server before the actor finishes spawning. */
 	UPROPERTY(ReplicatedUsing=OnRep_Mark, BlueprintReadOnly, Category="Boss") FBossMark Mark;
-	/** Draws the shape on a flat plane from the parameters Shape (0 circle, 1 ring, 2 cone, 3 line), Inner, HalfAngle (radians) and Fill. */
-	UPROPERTY(EditDefaultsOnly, Category="Boss") TObjectPtr<UMaterialInterface> Material;
+	/** Draws the shape on a flat plane from the parameters Shape (0 circle, 1 ring, 2 cone, 3 line), Inner, HalfAngle (radians) and Fill.
+	 * Loaded when a mark is drawn, so the editor can rebuild the material while no mark is out. */
+	UPROPERTY(EditDefaultsOnly, Category="Boss") TSoftObjectPtr<UMaterialInterface> Material;
 	/** The ground under a character and its facing, Forward ahead of its feet. A mark on the boss lies there, and so does its strike. */
 	static FTransform FeetTransform(const AActor* Actor, float Forward);
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
