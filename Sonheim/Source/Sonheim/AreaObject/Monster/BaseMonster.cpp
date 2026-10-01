@@ -457,7 +457,8 @@ void ABaseMonster::OnRep_PartnerOwner()
 {
     if (PartnerOwner != nullptr)
     {
-        StatusWidget->SetPartnerPalHPWidget();
+        // 수호자처럼 머리 위 상태 위젯이 없는 몬스터도 있다(체력은 던전 HUD가 보임)
+        if (StatusWidget) StatusWidget->SetPartnerPalHPWidget();
         // 파트너가 도착했지만 bIsAttach가 이미 true로 복제된 경우, 실제 부착을 재시도
         if (bIsAttach)
         {
