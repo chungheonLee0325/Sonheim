@@ -79,6 +79,18 @@ struct FDungeonMarkerViewData
 	UPROPERTY(BlueprintReadOnly) FBox Arrival = FBox(ForceInit);
 	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> Icon;
 	UPROPERTY(BlueprintReadOnly) EDungeonObjectiveKind Kind = EDungeonObjectiveKind::Main;
+	/** The place is a room; the map shows rooms by themselves. */
+	UPROPERTY(BlueprintReadOnly) bool bArea = false;
+};
+/** A stage's room on the map. */
+USTRUCT(BlueprintType)
+struct FDungeonMapRoomViewData
+{
+	GENERATED_BODY()
+	UPROPERTY(BlueprintReadOnly) FBox2D Area = FBox2D(ForceInit);
+	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> Icon;
+	/** The run is in this room's stage. */
+	UPROPERTY(BlueprintReadOnly) bool bCurrent = false;
 };
 USTRUCT(BlueprintType)
 struct FDungeonStageViewData
@@ -101,6 +113,10 @@ struct FDungeonStageViewData
 	/** Where the open lines lead, while the run goes, with the distance in MarkerDistanceFormat ({0} is meters). */
 	UPROPERTY(BlueprintReadOnly) TArray<FDungeonMarkerViewData> Markers;
 	UPROPERTY(BlueprintReadOnly) FText MarkerDistanceFormat;
+	/** The map while the run goes: the floor plan, the world rectangle it covers, and the stages' rooms. */
+	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> MapTexture;
+	UPROPERTY(BlueprintReadOnly) FBox2D MapBounds = FBox2D(ForceInit);
+	UPROPERTY(BlueprintReadOnly) TArray<FDungeonMapRoomViewData> MapRooms;
 	/** The players taking part, while the run goes. */
 	UPROPERTY(BlueprintReadOnly) TArray<FDungeonMemberViewData> Members;
 	/** The boss's name and health while it lives; 0 health hides the boss bar. */

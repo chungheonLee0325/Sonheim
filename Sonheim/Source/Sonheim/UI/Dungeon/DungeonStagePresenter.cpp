@@ -252,8 +252,8 @@ void UDungeonStagePresenter::Present()
 				Target->GetActorBounds(true, Origin, Extent);
 				FDungeonMarkerViewData& Marker = View.Markers.AddDefaulted_GetRef();
 				Marker.Location = FVector(Origin.X, Origin.Y, Origin.Z - Extent.Z + Texts.MarkerHeight);
-				Marker.Arrival = Target->IsA<ADungeonTriggerZone>() ? FBox(Origin - Extent, Origin + Extent)
-					: FBox::BuildAABB(Marker.Location, FVector(Texts.MarkerArriveDistance));
+				Marker.bArea = Target->IsA<ADungeonTriggerZone>();
+				Marker.Arrival = Marker.bArea ? FBox(Origin - Extent, Origin + Extent) : FBox::BuildAABB(Marker.Location, FVector(Texts.MarkerArriveDistance));
 				Marker.Icon = Row.Icon;
 				Marker.Kind = Line.Kind;
 			}
@@ -261,6 +261,11 @@ void UDungeonStagePresenter::Present()
 			if (!View.Objectives.IsEmpty()) View.ObjectivesDone = FText::Format(Texts.ObjectivesDoneFormat, Done, View.Objectives.Num());
 		}
 		View.OptionalObjectives.Append(ResolvedOptional);
+		// The map: the floor plan and every stage's room, the run's own lit.
+		View.MapTexture = Texts.MapTexture.LoadSynchronous();
+		View.MapBounds = Texts.MapBounds;
+		for (const FDungeonStagePresentation& Item : Texts.Stages)
+			if (Item.MapArea.bIsValid) View.MapRooms.Add({Item.MapArea, Item.Icon.LoadSynchronous(), Item.StageId == Latest.StageId});
 		// The way through: a step per Step number; a step with several stages lists them until the run is in one of them or its
 		// branch points at one of them.
 		const int32 CurrentStep = Stage ? Stage->Step : 0;

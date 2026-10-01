@@ -118,6 +118,40 @@ protected:
 	/** A glyph that points right before it is turned, such as ›. */
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> Arrow;
 };
+/** The run's map: the floor plan, the room of the stage the run is in lit, each stage room's icon, the switches the open lines lead to,
+ * the other players as dots and the local player as an arrow turned with the camera. As seen from above, X runs right and Y down. */
+UCLASS(Abstract)
+class SONHEIM_API UDungeonMinimapWidget : public UUserWidget
+{
+	GENERATED_BODY()
+public:
+	void SetView(const FDungeonStageViewData& Data);
+	/** The other players' dots; the local player's arrow keeps the color its Widget Blueprint gives it. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor MemberColor = FSlateColor(FLinearColor(0.35f, 0.85f, 0.45f));
+	/** Over the room of the stage the run is in. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor CurrentRoomColor = FSlateColor(FLinearColor(0.05f, 0.6f, 1.f, 0.3f));
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor RoomIconColor = FSlateColor(FLinearColor(0.55f, 0.64f, 0.75f));
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor CurrentRoomIconColor = FSlateColor(FLinearColor::White);
+	/** A switch an open line leads to takes the line's kind. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor MainMarkColor = FSlateColor(FLinearColor::White);
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor OptionalMarkColor = FSlateColor(FLinearColor(1.f, 0.7f, 0.2f));
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(ClampMin="1")) float IconSize = 14.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(ClampMin="1")) float MemberSize = 7.f;
+protected:
+	virtual void NativeTick(const FGeometry& Geometry, float DeltaTime) override;
+	/** An image on MapLayer: stretched over an area, or centred on a spot at its brush's size. */
+	UImage* AddMark(const FSlateBrush& Brush, const FSlateColor& Tint, int32 ZOrder, bool bArea);
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UImage> MapImage;
+	/** Over MapImage and as large: the rooms, the marks and the players. */
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UCanvasPanel> MapLayer;
+	/** On MapLayer; it points right before it turns. */
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UImage> PlayerArrow;
+	/** What SetView put on the map, each over its world area; an icon's area is its spot. */
+	UPROPERTY(Transient) TArray<TObjectPtr<UImage>> ViewMarks;
+	TArray<FBox2D> ViewAreas;
+	UPROPERTY(Transient) TArray<TObjectPtr<UImage>> MemberDots;
+	FBox2D Bounds = FBox2D(ForceInit);
+};
 UCLASS()
 class SONHEIM_API UDungeonViewWidget : public UUserWidget
 {
@@ -140,6 +174,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TSubclassOf<UDungeonMarkerWidget> MarkerClass;
 	/** How far inside the screen's edge the marker of a place off screen stays. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(ClampMin="0")) float MarkerEdgeInset = 64.f;
+	/** The screen's panels by name, which a marker on the edge must not sit behind; it moves to the nearest free side of the panel. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TArray<FName> MarkerBlockers = {TEXT("LeftColumn"), TEXT("RightColumn"), TEXT("BossPanel")};
+	/** How far the centre of an edge marker stays from those panels: half a marker and some room. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(ClampMin="0")) float MarkerClearance = 32.f;
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeTick(const FGeometry& Geometry, float DeltaTime) override;
@@ -213,4 +251,7 @@ protected:
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UImage> OutcomeEmblem;
 	/** A canvas over the whole screen, under the cards, that holds the markers. */
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UCanvasPanel> MarkerLayer;
+	/** The run's map, on a plate that folds away while there is no map. */
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UDungeonMinimapWidget> Minimap;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> MinimapPanel;
 };

@@ -51,6 +51,8 @@ struct FDungeonStagePresentation
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) TArray<FDungeonObjectiveLine> Objectives;
 	/** Before the stage's name on the way through. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) TSoftObjectPtr<UTexture2D> Icon;
+	/** The stage's room on the map, in world X and Y: lit while the run is in the stage, with Icon in its middle. Empty leaves it off. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) FBox2D MapArea = FBox2D(ForceInit);
 };
 /** Everything the dungeon's screens say. The widgets only lay it out, so the words change here without a code build. */
 UCLASS(BlueprintType)
@@ -143,6 +145,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Markers", meta=(ClampMin="0")) float MarkerArriveDistance = 300.f;
 	/** Under the marker; {0} is the distance in meters. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Markers") FText MarkerDistanceFormat = INVTEXT("{0} m");
+
+	/** The dungeon's floor plan, white on clear, seen from above with X to the right and Y down, and the world rectangle it covers. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") TSoftObjectPtr<UTexture2D> MapTexture;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") FBox2D MapBounds = FBox2D(ForceInit);
 
 	/** Banner when the run gains a tag its rules set, such as the unlocked shortcut. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FDungeonToastViewData> TagToasts;

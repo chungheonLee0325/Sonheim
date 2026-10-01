@@ -1,5 +1,6 @@
 #include "DungeonViewWidget.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
+#include "Blueprint/WidgetTree.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/DynamicEntryBox.h"
@@ -9,6 +10,7 @@
 #include "Components/ProgressBar.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerState.h"
 #include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
 namespace
@@ -109,6 +111,108 @@ void UDungeonMarkerWidget::Place(bool bEdge, const FVector2D& Direction, float M
 		Arrow->SetRenderTransform(FWidgetTransform(Direction.GetSafeNormal() * ArrowOffset, FVector2D::UnitVector, FVector2D::ZeroVector,
 			FMath::RadiansToDegrees(FMath::Atan2(Direction.Y, Direction.X))));
 }
+UImage* UDungeonMinimapWidget::AddMark(const FSlateBrush& Brush, const FSlateColor& Tint, int32 ZOrder, bool bArea)
+{
+	UImage* Mark = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+	Mark->SetBrush(Brush);
+	Mark->SetColorAndOpacity(Tint.GetSpecifiedColor());
+	Mark->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (UCanvasPanelSlot* Placed = MapLayer->AddChildToCanvas(Mark))
+	{
+		Placed->SetZOrder(ZOrder);
+		Placed->SetAutoSize(!bArea);
+		Placed->SetAlignment(bArea ? FVector2D::ZeroVector : FVector2D(0.5f, 0.5f));
+	}
+	return Mark;
+}
+void UDungeonMinimapWidget::SetView(const FDungeonStageViewData& Data)
+{
+	Bounds = Data.MapBounds;
+	if (Data.MapTexture) MapImage->SetBrushFromTexture(Data.MapTexture);
+	for (UImage* Mark : ViewMarks) Mark->RemoveFromParent();
+	ViewMarks.Reset();
+	ViewAreas.Reset();
+	if (!Data.MapTexture) return;
+	const auto IconBrush = [this](UTexture2D* Texture)
+	{
+		FSlateBrush Brush;
+		Brush.SetResourceObject(Texture);
+		Brush.SetImageSize(FVector2D(IconSize));
+		return Brush;
+	};
+	for (const FDungeonMapRoomViewData& Room : Data.MapRooms)
+	{
+		if (Room.bCurrent)
+		{
+			FSlateBrush Fill;
+			Fill.DrawAs = ESlateBrushDrawType::RoundedBox;
+			Fill.OutlineSettings = FSlateBrushOutlineSettings(3.f);
+			ViewMarks.Add(AddMark(Fill, CurrentRoomColor, 0, true));
+			ViewAreas.Add(Room.Area);
+		}
+		if (Room.Icon)
+		{
+			ViewMarks.Add(AddMark(IconBrush(Room.Icon), Room.bCurrent ? CurrentRoomIconColor : RoomIconColor, 1, false));
+			ViewAreas.Add(FBox2D(Room.Area.GetCenter(), Room.Area.GetCenter()));
+		}
+	}
+	// Rooms show themselves; a switch an open line leads to gets the line's icon.
+	for (const FDungeonMarkerViewData& Marker : Data.Markers)
+		if (!Marker.bArea && Marker.Icon)
+		{
+			ViewMarks.Add(AddMark(IconBrush(Marker.Icon), Marker.Kind == EDungeonObjectiveKind::Optional ? OptionalMarkColor : MainMarkColor, 2, false));
+			const FVector2D Spot(Marker.Location);
+			ViewAreas.Add(FBox2D(Spot, Spot));
+		}
+}
+void UDungeonMinimapWidget::NativeTick(const FGeometry& Geometry, float DeltaTime)
+{
+	Super::NativeTick(Geometry, DeltaTime);
+	const FVector2D Size = MapLayer->GetCachedGeometry().GetLocalSize();
+	const FVector2D Span = Bounds.bIsValid ? Bounds.GetSize() : FVector2D::ZeroVector;
+	if (Size.X <= 0.f || Size.Y <= 0.f || Span.X <= 0.f || Span.Y <= 0.f) return;
+	const auto ToMap = [this, &Size, &Span](const FVector2D& World) { return (World - Bounds.Min) / Span * Size; };
+	for (int32 Index = 0; Index < ViewMarks.Num(); ++Index)
+		if (UCanvasPanelSlot* Placed = Cast<UCanvasPanelSlot>(ViewMarks[Index]->Slot))
+		{
+			const FBox2D& Area = ViewAreas[Index];
+			Placed->SetPosition(ToMap(Area.Min));
+			if (Area.Max != Area.Min) Placed->SetSize(ToMap(Area.Max) - ToMap(Area.Min));
+		}
+	APlayerController* Player = GetOwningPlayer();
+	const APawn* Self = Player ? Player->GetPawn() : nullptr;
+	// The local player, turned the way the camera looks.
+	const bool bSelf = Self && Bounds.IsInside(FVector2D(Self->GetActorLocation()));
+	Show(PlayerArrow, bSelf);
+	if (bSelf)
+	{
+		FVector CameraLocation;
+		FRotator CameraRotation;
+		Player->GetPlayerViewPoint(CameraLocation, CameraRotation);
+		if (UCanvasPanelSlot* Placed = Cast<UCanvasPanelSlot>(PlayerArrow->Slot)) Placed->SetPosition(ToMap(FVector2D(Self->GetActorLocation())));
+		PlayerArrow->SetRenderTransformAngle(CameraRotation.Yaw);
+	}
+	// The world's other players who stand on the map.
+	int32 Dots = 0;
+	if (const AGameStateBase* State = GetWorld() ? GetWorld()->GetGameState() : nullptr)
+		for (const APlayerState* Member : State->PlayerArray)
+		{
+			const APawn* Pawn = Member ? Member->GetPawn() : nullptr;
+			if (!Pawn || Pawn == Self || !Bounds.IsInside(FVector2D(Pawn->GetActorLocation()))) continue;
+			if (Dots == MemberDots.Num())
+			{
+				FSlateBrush Round;
+				Round.DrawAs = ESlateBrushDrawType::RoundedBox;
+				Round.SetImageSize(FVector2D(MemberSize));
+				Round.OutlineSettings.RoundingType = ESlateBrushRoundingType::HalfHeightRadius;
+				MemberDots.Add(AddMark(Round, MemberColor, 3, false));
+			}
+			UImage* Dot = MemberDots[Dots++];
+			Show(Dot, true);
+			if (UCanvasPanelSlot* Placed = Cast<UCanvasPanelSlot>(Dot->Slot)) Placed->SetPosition(ToMap(FVector2D(Pawn->GetActorLocation())));
+		}
+	for (int32 Index = Dots; Index < MemberDots.Num(); ++Index) Show(MemberDots[Index], false);
+}
 void UDungeonViewWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -158,6 +262,22 @@ void UDungeonViewWidget::PlaceMarkers(const FGeometry& Geometry)
 	FVector CameraLocation;
 	FRotator CameraRotation;
 	Player->GetPlayerViewPoint(CameraLocation, CameraRotation);
+	// The panels an edge marker must not sit behind, as laid out now, in the layer's space and grown by the clearance.
+	TArray<FBox2D> Blocked;
+	const FGeometry& Layer = MarkerLayer->GetCachedGeometry();
+	for (const FName& Name : MarkerBlockers)
+	{
+		const UWidget* Blocker = GetWidgetFromName(Name);
+		if (!Blocker || !Blocker->IsVisible()) continue;
+		const FGeometry& Area = Blocker->GetCachedGeometry();
+		const FVector2D AreaSize = Area.GetLocalSize();
+		const FVector2D TopLeft = Area.LocalToAbsolute(FVector2D::ZeroVector);
+		const FVector2D BottomRight = Area.LocalToAbsolute(AreaSize);
+		const FVector2D Min = Layer.AbsoluteToLocal(TopLeft);
+		const FVector2D Max = Layer.AbsoluteToLocal(BottomRight);
+		if (Max.X > Min.X && Max.Y > Min.Y) Blocked.Add(FBox2D(Min - FVector2D(MarkerClearance), Max + FVector2D(MarkerClearance)));
+	}
+	const FBox2D Screen(Center - Half, Center + Half);
 	for (int32 Index = 0; Index < MarkerWidgets.Num() && Index < ViewData.Markers.Num(); ++Index)
 	{
 		const FDungeonMarkerViewData& Place = ViewData.Markers[Index];
@@ -179,6 +299,23 @@ void UDungeonViewWidget::PlaceMarkers(const FGeometry& Geometry)
 			if (Direction.IsNearlyZero()) Direction = FVector2D(0.f, 1.f);
 			Position = Center + Direction * FMath::Min(Half.X / FMath::Max(FMath::Abs(Direction.X), UE_KINDA_SMALL_NUMBER),
 				Half.Y / FMath::Max(FMath::Abs(Direction.Y), UE_KINDA_SMALL_NUMBER));
+			// Behind a panel: to the nearest side of it that is still on the inset screen, along the edge where there is room.
+			for (int32 Pass = 0; Pass < Blocked.Num(); ++Pass)
+			{
+				const FBox2D* Hit = Blocked.FindByPredicate([&Position](const FBox2D& Box) { return Box.IsInside(Position); });
+				if (!Hit) break;
+				const FVector2D Sides[] = {{Hit->Min.X, Position.Y}, {Hit->Max.X, Position.Y}, {Position.X, Hit->Min.Y}, {Position.X, Hit->Max.Y}};
+				FVector2D Next = Position;
+				double Nearest = TNumericLimits<double>::Max();
+				for (const FVector2D& Side : Sides)
+					if (Screen.IsInsideOrOn(Side) && FVector2D::DistSquared(Side, Position) < Nearest)
+					{
+						Nearest = FVector2D::DistSquared(Side, Position);
+						Next = Side;
+					}
+				if (Next == Position) break;
+				Position = Next;
+			}
 		}
 		if (UCanvasPanelSlot* Placed = Cast<UCanvasPanelSlot>(Marker->Slot)) Placed->SetPosition(Position);
 		Marker->Place(bEdge, Direction, FVector::Dist(Pawn->GetActorLocation(), Place.Location) / 100.f, ViewData.MarkerDistanceFormat);
@@ -264,6 +401,8 @@ void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
 	ShowText(NewBestText, NewBestBadge, Data.NewBestText);
 	ShowIcon(OutcomeEmblem, Data.OutcomeEmblem, TitleText->GetColorAndOpacity());
 	SyncMarkers();
+	if (Minimap) Minimap->SetView(Data);
+	Show(MinimapPanel, Data.MapTexture != nullptr);
 	RefreshTime();
 	const bool bFinished = Data.Status == EDungeonRunStatus::Succeeded || Data.Status == EDungeonRunStatus::Failed;
 	if (!bFinished)
