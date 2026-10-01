@@ -57,7 +57,15 @@ bool UDungeonStageRuntimeSubsystem::TryStart(ADungeonTestArea* Area, ASonheimPla
 	State.RunId = FGuid::NewGuid();
 	State.DefinitionAssetId = Row->DefinitionAssetId;
 	State.RunStatus = EDungeonRunStatus::Loading;
-	RunStartedServerTime = ServerTime();
+	State.RunStartedServerTime = ServerTime();
+	// The record as it stands before this run: the run's pace and its result compare with it, and a screen made later reads it again.
+	if (const auto* Progress = GetWorld()->GetGameInstance()->GetSubsystem<UDungeonProgressSubsystem>())
+		if (const FDungeonClearRecord* Record = Progress->FindRecord(DungeonNumber))
+		{
+			State.RunStartBestSeconds = Record->BestSeconds;
+			State.BestSeconds = Record->BestSeconds;
+			State.ClearCount = Record->ClearCount;
+		}
 	Publish();
 	const FGuid RunId = State.RunId;
 	auto* Assets = GetWorld()->GetGameInstance()->GetSubsystem<UDungeonAssetSubsystem>();
@@ -166,7 +174,7 @@ void UDungeonStageRuntimeSubsystem::EnterStage(const FGameplayTag& Id)
 	{
 		State.RunStatus = Stage->TerminalOutcome == EDungeonTerminalOutcome::Success ? EDungeonRunStatus::Succeeded : EDungeonRunStatus::Failed;
 		State.FailReason = State.RunStatus == EDungeonRunStatus::Failed ? TransitionReason : EDungeonFailReason::None;
-		State.ElapsedSeconds = float(ServerTime() - RunStartedServerTime);
+		State.ElapsedSeconds = float(ServerTime() - State.RunStartedServerTime);
 		RecordFinishedRun(Stage->TerminalOutcome == EDungeonTerminalOutcome::Success);
 		Queue.Empty();
 		ScheduleCleanup();
@@ -295,9 +303,8 @@ void UDungeonStageRuntimeSubsystem::Fail(EDungeonFailReason Reason, const FStrin
 	State.FailReason = Reason;
 	ClearStageTimer();
 	State.StageDeadlineServerTime = 0;
-	State.ElapsedSeconds = float(ServerTime() - RunStartedServerTime);
+	State.ElapsedSeconds = float(ServerTime() - State.RunStartedServerTime);
 	RecordFinishedRun(false);
-	State.ElapsedSeconds = float(ServerTime() - RunStartedServerTime);
 	UE_LOG(SONHEIM, Warning, TEXT("[DungeonFailure] Run=%s Reason=%s %s"), *State.RunId.ToString(), *UEnum::GetValueAsString(Reason), *Detail);
 	Publish();
 	ScheduleCleanup();

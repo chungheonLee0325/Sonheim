@@ -63,7 +63,12 @@ struct FDungeonStageRuntimeState
 	UPROPERTY(BlueprintReadOnly) TArray<FDungeonGroupTally> Groups;
 	/** Seconds from the start to the terminal stage. It stays 0 while the run is going. */
 	UPROPERTY(BlueprintReadOnly) float ElapsedSeconds = 0.f;
-	/** How often this dungeon has been finished, and the fastest of those runs. Filled from the saved record when a run ends. */
+	/** Server time the run started at. Screens count the run's time from it with the synchronized server clock. */
+	UPROPERTY(BlueprintReadOnly) double RunStartedServerTime = 0;
+	/** The dungeon's best time as it stood before this run began, 0 without a clear: the pace line and the result compare with it. */
+	UPROPERTY(BlueprintReadOnly) float RunStartBestSeconds = 0.f;
+	/** How often this dungeon has been finished, and the fastest of those runs: the saved record when the run starts, and again when
+	 * it ends with this run counted. */
 	UPROPERTY(BlueprintReadOnly) int32 ClearCount = 0;
 	UPROPERTY(BlueprintReadOnly) float BestSeconds = 0.f;
 	/** Players taking part: the run's screens show only to them, and every reward goes to each of them. */
@@ -87,7 +92,8 @@ struct FDungeonStageRuntimeState
 			RunStatus == Other.RunStatus && ObjectiveGroupId == Other.ObjectiveGroupId && CurrentCount == Other.CurrentCount &&
 			RequiredCount == Other.RequiredCount && SelectedBranchId == Other.SelectedBranchId && StageStartedServerTime == Other.StageStartedServerTime && StageDeadlineServerTime == Other.StageDeadlineServerTime && SealedBarriers == Other.SealedBarriers &&
 			RunTags == Other.RunTags && Rewards == Other.Rewards && DefeatedCount == Other.DefeatedCount && CapturedCount == Other.CapturedCount && Groups == Other.Groups && ElapsedSeconds == Other.ElapsedSeconds &&
-			ClearCount == Other.ClearCount && BestSeconds == Other.BestSeconds && Participants == Other.Participants && OwnerPlayer == Other.OwnerPlayer && FailReason == Other.FailReason && BossHealth == Other.BossHealth &&
+			ClearCount == Other.ClearCount && BestSeconds == Other.BestSeconds && RunStartedServerTime == Other.RunStartedServerTime &&
+			RunStartBestSeconds == Other.RunStartBestSeconds && Participants == Other.Participants && OwnerPlayer == Other.OwnerPlayer && FailReason == Other.FailReason && BossHealth == Other.BossHealth &&
 			BossActionId == Other.BossActionId && BossActionStartServerTime == Other.BossActionStartServerTime && BossActionEndServerTime == Other.BossActionEndServerTime &&
 			BossPhase == Other.BossPhase && bBossVulnerable == Other.bBossVulnerable && BossBreak == Other.BossBreak;
 	}

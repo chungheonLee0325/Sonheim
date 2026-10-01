@@ -117,6 +117,12 @@ struct FDungeonStageViewData
 	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> MapTexture;
 	UPROPERTY(BlueprintReadOnly) FBox2D MapBounds = FBox2D(ForceInit);
 	UPROPERTY(BlueprintReadOnly) TArray<FDungeonMapRoomViewData> MapRooms;
+	/** The pace line while the run goes: the server time the run started at, which the widget counts from with the synchronized server
+	 * clock, the best time from before the run (0 without one), and their formats. */
+	UPROPERTY(BlueprintReadOnly) double RunStartServerTime = 0;
+	UPROPERTY(BlueprintReadOnly) float RunStartBestSeconds = 0.f;
+	UPROPERTY(BlueprintReadOnly) FText ElapsedFormat;
+	UPROPERTY(BlueprintReadOnly) FText RunBestFormat;
 	/** The players taking part, while the run goes. */
 	UPROPERTY(BlueprintReadOnly) TArray<FDungeonMemberViewData> Members;
 	/** The boss's name and health while it lives; 0 health hides the boss bar. */

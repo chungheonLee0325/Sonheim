@@ -19,6 +19,20 @@ struct FDungeonCatalogRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(ClampMin="1")) int32 RequiredLevel = 1;
 };
 
+/** A grade a successful run earns: the first rule, best first, whose clear time and optional objectives the run meets. */
+USTRUCT(BlueprintType)
+struct FDungeonGradeRule
+{
+	GENERATED_BODY()
+	/** The grade, such as S; the presentation gives its text. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName Grade;
+	/** The slowest clear that still earns it, in seconds; 0 takes any time. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(ClampMin="0")) float MaxClearSeconds = 0.f;
+	/** How many of the run's optional objectives it needs done. A route choice, the optional line whose run tag picks a branch (the
+	 *  shortcut lever), is not one: the branch it picks already shows in the time. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(ClampMin="0")) int32 RequiredOptionalObjectives = 0;
+};
+
 UCLASS(BlueprintType)
 class SONHEIM_API UDungeonDefinitionDataAsset : public UPrimaryDataAsset
 {
@@ -29,6 +43,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(Categories="Dungeon")) FGameplayTag StartStageId;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TSoftObjectPtr<UDungeonPresentationDataAsset> Presentation;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(TitleProperty="StageId")) TArray<FDungeonStageDefinition> Stages;
+	/** The grades of a successful run, best first; the last one takes every clear. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Result", meta=(TitleProperty="Grade")) TArray<FDungeonGradeRule> GradeRules;
+	/** The grade the rules give a successful run of this time with this many optional objectives done; none without rules. */
+	FName GradeFor(float ClearSeconds, int32 OptionalObjectivesDone) const;
+	/** Whether a transition that picks a branch needs RunTag. */
+	bool PicksBranch(const FGameplayTag& RunTag) const;
 	virtual FPrimaryAssetId GetPrimaryAssetId() const override;
 	const FDungeonStageDefinition* FindStage(const FGameplayTag& Id) const;
 	// The same structural checks gate editor authoring and runtime entry.

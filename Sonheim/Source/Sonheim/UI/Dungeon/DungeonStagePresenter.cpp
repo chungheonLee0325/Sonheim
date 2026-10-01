@@ -261,6 +261,11 @@ void UDungeonStagePresenter::Present()
 			if (!View.Objectives.IsEmpty()) View.ObjectivesDone = FText::Format(Texts.ObjectivesDoneFormat, Done, View.Objectives.Num());
 		}
 		View.OptionalObjectives.Append(ResolvedOptional);
+		// The pace line, rebuilt from the snapshot alone.
+		View.RunStartServerTime = Latest.RunStartedServerTime;
+		View.RunStartBestSeconds = Latest.RunStartBestSeconds;
+		View.ElapsedFormat = Texts.ElapsedFormat;
+		View.RunBestFormat = Texts.RunBestFormat;
 		// The map: the floor plan and every stage's room, the run's own lit.
 		View.MapTexture = Texts.MapTexture.LoadSynchronous();
 		View.MapBounds = Texts.MapBounds;
@@ -349,11 +354,37 @@ void UDungeonStagePresenter::Present()
 		View.Stats.Add({Texts.KillStatLabel, FText::AsNumber(Latest.DefeatedCount), Texts.KillStatIcon.LoadSynchronous()});
 		if (Latest.CapturedCount > 0) View.Stats.Add({Texts.CaptureStatLabel, FText::AsNumber(Latest.CapturedCount), Texts.CaptureStatIcon.LoadSynchronous()});
 		if (Latest.SelectedBranchId.IsValid()) View.Stats.Add({Texts.RouteStatLabel, View.BranchText, Texts.RouteStatIcon.LoadSynchronous()});
-		// The first clear sets the best time, so a cleared dungeon always has one.
-		if (Latest.ClearCount > 0) View.SummaryText = FText::Format(Texts.RecordFormat, Latest.ClearCount, Spell(Texts, Latest.BestSeconds));
-		// The record is saved before the result is shown, so a run that set it finished in exactly the best time.
-		if (Latest.RunStatus == EDungeonRunStatus::Succeeded && Latest.BestSeconds > 0.f && Latest.BestSeconds == Latest.ElapsedSeconds)
-			View.NewBestText = Texts.NewBestText;
+		const bool bSucceeded = Latest.RunStatus == EDungeonRunStatus::Succeeded;
+		if (bSucceeded && Definition)
+		{
+			// The grade by the definition's rules, from the finished time and the optional objectives the run took. The line whose run
+			// tag picks a branch (the shortcut lever) is a route choice, not an objective.
+			int32 OptionalDone = 0;
+			for (const FDungeonStagePresentation& Item : Texts.Stages)
+				for (const FDungeonObjectiveLine& Line : Item.Objectives)
+					if (Line.Kind == EDungeonObjectiveKind::Optional && !(Line.Goal == EDungeonObjectiveGoal::RunTag && Definition->PicksBranch(Line.RunTag))
+						&& ObjectiveRow(Texts, Line, Latest).State == EDungeonObjectiveState::Done) ++OptionalDone;
+			const FName Grade = Definition->GradeFor(Latest.ElapsedSeconds, OptionalDone);
+			if (!Grade.IsNone())
+			{
+				const FText* GradeText = Texts.GradeTexts.Find(Grade);
+				View.Stats.Add({Texts.GradeStatLabel, GradeText ? *GradeText : FText::FromName(Grade), Texts.GradeStatIcon.LoadSynchronous()});
+			}
+		}
+		// The record, and under it the finished time against the best from before the run began; a first clear says its time instead.
+		TArray<FString> Summary;
+		if (Latest.ClearCount > 0) Summary.Add(FText::Format(Texts.RecordFormat, Latest.ClearCount, Spell(Texts, Latest.BestSeconds)).ToString());
+		if (bSucceeded)
+		{
+			const float Delta = Latest.ElapsedSeconds - Latest.RunStartBestSeconds;
+			const FText Comparison = Latest.RunStartBestSeconds <= 0.f ? FText::Format(Texts.FirstRecordFormat, Clock(Latest.ElapsedSeconds))
+				: FMath::RoundToInt(FMath::Abs(Delta)) == 0 ? Texts.SameAsBestText
+				: FText::Format(Delta < 0.f ? Texts.FasterThanBestFormat : Texts.SlowerThanBestFormat, Clock(FMath::Abs(Delta)));
+			Summary.Add(Comparison.ToString());
+			// A first clear, or a time under the best from before the run, sets the record.
+			if (Latest.RunStartBestSeconds <= 0.f || Latest.ElapsedSeconds < Latest.RunStartBestSeconds) View.NewBestText = Texts.NewBestText;
+		}
+		View.SummaryText = FText::FromString(FString::Join(Summary, TEXT("\n")));
 	}
 	Router->ApplyView(View);
 }

@@ -24,6 +24,10 @@ namespace
 	{
 		if (Widget) Widget->SetVisibility(bShown ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
+	FText PaceClock(int32 Seconds)
+	{
+		return FText::FromString(FString::Printf(TEXT("%d:%02d"), FMath::Max(0, Seconds) / 60, FMath::Max(0, Seconds) % 60));
+	}
 	/** Draws the texture in the image, tinted, or hides the image while there is none. */
 	void ShowIcon(UImage* Image, UTexture2D* Icon, const FSlateColor& Tint)
 	{
@@ -217,6 +221,7 @@ void UDungeonViewWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	if (TimeText) TimeColor = TimeText->GetColorAndOpacity();
+	if (RunBestText) RunBestColor = RunBestText->GetColorAndOpacity();
 	TitleColor = TitleText->GetColorAndOpacity();
 	Show(AreaTitlePanel, false);
 	ApplyViewData(ViewData);
@@ -225,6 +230,7 @@ void UDungeonViewWidget::NativeTick(const FGeometry& Geometry, float DeltaTime)
 {
 	Super::NativeTick(Geometry, DeltaTime);
 	if (TimeText && ViewData.DeadlineServerTime > 0) RefreshTime();
+	if (ElapsedText && ViewData.RunStartServerTime > 0) RefreshPace();
 	if (BossActionBar && ViewData.BossActionEndServerTime > 0) RefreshBossAction();
 	if (!MarkerWidgets.IsEmpty()) PlaceMarkers(Geometry);
 }
@@ -350,6 +356,21 @@ void UDungeonViewWidget::RefreshTime()
 	if (TimeIcon) TimeIcon->SetColorAndOpacity(TimeText->GetColorAndOpacity().GetSpecifiedColor());
 	Show(TimeIcon, true);
 }
+void UDungeonViewWidget::RefreshPace()
+{
+	const AGameStateBase* GameState = GetWorld() ? GetWorld()->GetGameState() : nullptr;
+	if (!ElapsedText || !GameState || ViewData.RunStartServerTime <= 0) return;
+	// The countdown's synchronized server clock; nothing is counted here.
+	const double Elapsed = FMath::Max(0.0, GameState->GetServerWorldTimeSeconds() - ViewData.RunStartServerTime);
+	const FText Time = PaceClock(FMath::FloorToInt32(Elapsed));
+	ElapsedText->SetText(ViewData.ElapsedFormat.IsEmpty() ? Time : FText::Format(ViewData.ElapsedFormat, Time));
+	const bool bBest = RunBestText && ViewData.RunStartBestSeconds > 0.f;
+	Show(RunBestText, bBest);
+	if (!bBest) return;
+	const FText Best = PaceClock(FMath::RoundToInt32(ViewData.RunStartBestSeconds));
+	RunBestText->SetText(ViewData.RunBestFormat.IsEmpty() ? Best : FText::Format(ViewData.RunBestFormat, Best));
+	RunBestText->SetColorAndOpacity(Elapsed > ViewData.RunStartBestSeconds ? PaceBehindColor : RunBestColor);
+}
 void UDungeonViewWidget::ShowAreaTitle(const FText& Title, const FText& Subtitle)
 {
 	if (!AreaTitlePanel || Title.IsEmpty() || !GetWorld()) return;
@@ -401,6 +422,8 @@ void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
 	ShowText(NewBestText, NewBestBadge, Data.NewBestText);
 	ShowIcon(OutcomeEmblem, Data.OutcomeEmblem, TitleText->GetColorAndOpacity());
 	SyncMarkers();
+	Show(PaceRow, Data.RunStartServerTime > 0);
+	RefreshPace();
 	if (Minimap) Minimap->SetView(Data);
 	Show(MinimapPanel, Data.MapTexture != nullptr);
 	RefreshTime();

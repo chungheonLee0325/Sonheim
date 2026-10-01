@@ -166,6 +166,8 @@ public:
 	/** The countdown turns TimeWarningColor once this many seconds are left. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") float TimeWarningSeconds = 30.f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor TimeWarningColor = FSlateColor(FLinearColor(1.f, 0.3f, 0.22f));
+	/** The best time on the pace line once the run is slower than it; the rest of the card keeps its colors. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor PaceBehindColor = FSlateColor(FLinearColor(1.f, 0.36f, 0.3f));
 	/** The title's color on a won and on a failed run; while the run goes it keeps the color the Widget Blueprint gives it. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor SucceededTitleColor = FSlateColor(FLinearColor(1.f, 0.7f, 0.2f));
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor FailedTitleColor = FSlateColor(FLinearColor(1.f, 0.36f, 0.3f));
@@ -182,6 +184,9 @@ protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeTick(const FGeometry& Geometry, float DeltaTime) override;
 	void RefreshTime();
+	/** The pace line: the run's time from its start on the synchronized server clock, and the best time from before the run. */
+	void RefreshPace();
+	FSlateColor RunBestColor;
 	/** Fills the boss's action bar from the server time. */
 	void RefreshBossAction();
 	/** Shown to participants; a finished run's screen folds away once FinishedSeconds pass. */
@@ -215,6 +220,10 @@ protected:
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> TimeText;
 	/** Shown with TimeText, in its color. */
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UImage> TimeIcon;
+	// The run's time and the best time from before it, on a row that shows while the run goes.
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> PaceRow;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> ElapsedText;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> RunBestText;
 	// The stage's objective lines and how many are done; the optional lines on their own card, which hides while there is none.
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UDynamicEntryBox> ObjectiveRows;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> ObjectivesDoneText;

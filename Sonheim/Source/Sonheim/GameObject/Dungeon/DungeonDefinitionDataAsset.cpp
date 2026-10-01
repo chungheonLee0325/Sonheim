@@ -49,6 +49,25 @@ const FDungeonStageDefinition* UDungeonDefinitionDataAsset::FindStage(const FGam
 	return Stages.FindByPredicate([&Id](const FDungeonStageDefinition& Stage) { return Stage.StageId == Id; });
 }
 
+FName UDungeonDefinitionDataAsset::GradeFor(float ClearSeconds, int32 OptionalObjectivesDone) const
+{
+	const FDungeonGradeRule* Rule = GradeRules.FindByPredicate([&](const FDungeonGradeRule& Item)
+	{
+		return (Item.MaxClearSeconds <= 0.f || ClearSeconds <= Item.MaxClearSeconds) && OptionalObjectivesDone >= Item.RequiredOptionalObjectives;
+	});
+	return Rule ? Rule->Grade : NAME_None;
+}
+
+bool UDungeonDefinitionDataAsset::PicksBranch(const FGameplayTag& RunTag) const
+{
+	for (const FDungeonStageDefinition& Stage : Stages)
+		for (const FDungeonStageEventRule& Rule : Stage.EventRules)
+			for (const FDungeonStageTransition& Transition : Rule.Transitions)
+				if (Transition.BranchId.IsValid() && Transition.Conditions.ContainsByPredicate([&RunTag](const FDungeonStageCondition& Condition)
+					{ return Condition.Type == EDungeonStageCondition::HasRunTag && Condition.RunTag == RunTag; }))
+					return true;
+	return false;
+}
 bool UDungeonDefinitionDataAsset::ValidateDefinition(TArray<FString>& Errors, TArray<FString>& Warnings) const
 {
 	Errors.Reset(); Warnings.Reset();
@@ -202,6 +221,11 @@ bool UDungeonDefinitionDataAsset::ValidateDefinition(TArray<FString>& Errors, TA
 			if (Reachable.Contains(Stage.StageId) && !bHasPath) Errors.Add(Stage.StageId.ToString() + TEXT(": no preceding spawn path for ") + Rule.SourceId.ToString());
 		}
 	}
+	// Every successful run gets a grade: the last rule takes any time and needs no optional objective.
+	for (const FDungeonGradeRule& Rule : GradeRules)
+		if (Rule.Grade.IsNone()) Errors.Add(TEXT("A grade rule needs a Grade."));
+	if (!GradeRules.IsEmpty() && (GradeRules.Last().MaxClearSeconds > 0.f || GradeRules.Last().RequiredOptionalObjectives > 0))
+		Errors.Add(TEXT("The last grade rule must take every clear: MaxClearSeconds 0 and RequiredOptionalObjectives 0."));
 	return Errors.IsEmpty();
 }
 

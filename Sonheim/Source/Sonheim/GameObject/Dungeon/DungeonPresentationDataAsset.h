@@ -150,6 +150,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") TSoftObjectPtr<UTexture2D> MapTexture;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") FBox2D MapBounds = FBox2D(ForceInit);
 
+	/** The dungeon card's pace line: the run's time, then the best time from before the run when there is one ({0} is m:ss). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Record") FText ElapsedFormat = INVTEXT("경과 {0}");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Record") FText RunBestFormat = INVTEXT(" · 최고 {0}");
+	/** The result's grade tile, and each grade's text; the grades and their rules are the definition's, a grade without text shows its name. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Record") FText GradeStatLabel = INVTEXT("등급");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Record") TSoftObjectPtr<UTexture2D> GradeStatIcon;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Record") TMap<FName, FText> GradeTexts;
+	/** Under the record on the result: the finished time against the best from before the run ({0} is m:ss), or a first clear's time. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Record") FText FasterThanBestFormat = INVTEXT("최고보다 {0} 빠름");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Record") FText SlowerThanBestFormat = INVTEXT("최고보다 {0} 느림");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Record") FText SameAsBestText = INVTEXT("최고와 같은 기록");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Record") FText FirstRecordFormat = INVTEXT("첫 기록 {0}");
+
 	/** Banner when the run gains a tag its rules set, such as the unlocked shortcut. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FDungeonToastViewData> TagToasts;
 	/** Banner when the run takes a branch. It replaces any banner still waiting. */

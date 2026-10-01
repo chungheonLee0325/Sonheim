@@ -73,7 +73,6 @@ private:
 	TWeakObjectPtr<AController> RunOwnerController;
 	FDungeonStageRuntimeState State;
 	FGameplayTagContainer RunTags;
-	double RunStartedServerTime = 0;
 	/** The catalog's number for the dungeon, which its saved records are kept under. */
 	int32 DungeonNumber = 0;
 	FGuid AssetRequest;
