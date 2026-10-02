@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "Engine/DataTable.h"
 #include "Sonheim/GameObject/InteractableInterface.h"
+#include "Sonheim/Utilities/StringTableIds.h"
 #include "DungeonTestArea.generated.h"
 class UBoxComponent;
 class UNiagaraSystem;
@@ -37,9 +38,9 @@ public:
 	/** Name shown in the Detect prompt. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText DisplayName;
 	/** What F does, after the name: before the first run, after a run, and while the player's level is short ({0} the level needed). */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText StartText = INVTEXT("원정 시작");
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText RestartText = INVTEXT("다시 도전");
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText LevelNeededFormat = INVTEXT("Lv {0} 필요");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText StartText = LOCTABLE(SONHEIM_ST_DUNGEON, "Prompt.Altar.Start");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText RestartText = LOCTABLE(SONHEIM_ST_DUNGEON, "Prompt.Altar.Restart");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText LevelNeededFormat = LOCTABLE(SONHEIM_ST_DUNGEON, "Prompt.Altar.LevelNeededFormat");
 	/** Played on every client where a group of monsters appears, so they arrive instead of popping into view. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TObjectPtr<UNiagaraSystem> SpawnEffect;
 	/** Played to each player of the run while the boss is alive, over the level's music, which the host turns down meanwhile. */

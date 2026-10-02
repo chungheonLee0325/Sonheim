@@ -8,6 +8,7 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/Utilities/StringTableIds.h"
 
 ULevelComponent::ULevelComponent()
 {
@@ -25,9 +26,9 @@ ULevelComponent::ULevelComponent()
     StatPointsPerLevel = 3;
     ClientPreviousLevel = 1;
 
-    LevelUpNotice.Category = INVTEXT("성장");
-    LevelUpNotice.Title = INVTEXT("레벨 {0} 달성");
-    LevelUpNotice.Detail = INVTEXT("능력치가 오르고 체력이 모두 회복됐습니다.");
+    LevelUpNotice.Category = LOCTABLE(SONHEIM_ST_NOTICE, "LevelUp.Category");
+    LevelUpNotice.Title = LOCTABLE(SONHEIM_ST_NOTICE, "LevelUp.Title");
+    LevelUpNotice.Detail = LOCTABLE(SONHEIM_ST_NOTICE, "LevelUp.Detail");
     LevelUpNotice.Symbol = INVTEXT("★");
     LevelUpNotice.Icon = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT("/Game/CuratedDungeon/UI/Icons/T_Icon_Star.T_Icon_Star")));
     LevelUpNotice.Tone = ENoticeTone::Highlight;

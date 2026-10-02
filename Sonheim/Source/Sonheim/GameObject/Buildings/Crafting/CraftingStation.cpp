@@ -14,15 +14,16 @@
 #include "Sonheim/UI/Widget/GameObject/Crafting/CraftingQueueWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sonheim/Utilities/InventoryResourceProvider.h"
+#include "Sonheim/Utilities/StringTableIds.h"
 
 ACraftingStation::ACraftingStation()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
 
-	CompletedNotice.Category = INVTEXT("제작");
-	CompletedNotice.Title = INVTEXT("{0} 완성");
-	CompletedNotice.Detail = INVTEXT("작업대에서 받으세요 · ×{0}");
+	CompletedNotice.Category = LOCTABLE(SONHEIM_ST_NOTICE, "CraftDone.Category");
+	CompletedNotice.Title = LOCTABLE(SONHEIM_ST_NOTICE, "CraftDone.Title");
+	CompletedNotice.Detail = LOCTABLE(SONHEIM_ST_NOTICE, "CraftDone.Detail");
 	CompletedNotice.Symbol = INVTEXT("✓");
 	CompletedNotice.Icon = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT("/Game/CuratedDungeon/UI/Icons/T_Icon_Check.T_Icon_Check")));
 	CompletedNotice.Tone = ENoticeTone::Information;

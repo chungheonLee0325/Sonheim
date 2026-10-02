@@ -3,6 +3,7 @@
 #include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
 #include "Sonheim/GameObject/InteractableInterface.h"
+#include "Sonheim/Utilities/StringTableIds.h"
 #include "DungeonShortcutSwitch.generated.h"
 class ADungeonTestArea;
 class USoundBase;
@@ -23,8 +24,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText DisplayName;
 	/** What F does, after the name. The server takes the lever only from the player who started the run, so everyone else sees
 	 * OwnerOnlyText instead. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText ActionText = INVTEXT("당기기");
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText OwnerOnlyText = INVTEXT("원정대장만 당길 수 있음");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText ActionText = LOCTABLE(SONHEIM_ST_DUNGEON, "Prompt.Lever.Pull");
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FText OwnerOnlyText = LOCTABLE(SONHEIM_ST_DUNGEON, "Prompt.Lever.OwnerOnly");
 	/** Stage whose rules accept this switch. The prompt shows only while the run is in it; empty shows it during the whole run. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(Categories="Dungeon")) FGameplayTag PromptStageId;
 	/** Run flag the lever's rule sets; the handle stays pulled while the run has it. */

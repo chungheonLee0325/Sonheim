@@ -7,6 +7,7 @@
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/Animation/Player/PlayerAniminstance.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
+#include "Sonheim/Utilities/StringTableIds.h"
 #include "PalInventoryComponent.h"
 
 UPalCaptureComponent::UPalCaptureComponent()
@@ -14,9 +15,9 @@ UPalCaptureComponent::UPalCaptureComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 	SetIsReplicatedByDefault(true);
 
-	PartyFullNotice.Category = INVTEXT("포획");
-	PartyFullNotice.Title = INVTEXT("팰을 더 데려갈 수 없습니다");
-	PartyFullNotice.Detail = INVTEXT("팰은 {0}마리까지 데리고 다닐 수 있습니다.");
+	PartyFullNotice.Category = LOCTABLE(SONHEIM_ST_NOTICE, "PartyFull.Category");
+	PartyFullNotice.Title = LOCTABLE(SONHEIM_ST_NOTICE, "PartyFull.Title");
+	PartyFullNotice.Detail = LOCTABLE(SONHEIM_ST_NOTICE, "PartyFull.Detail");
 	PartyFullNotice.Symbol = INVTEXT("!");
 	PartyFullNotice.Icon = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT("/Game/CuratedDungeon/UI/Icons/T_Icon_Warning.T_Icon_Warning")));
 	PartyFullNotice.Tone = ENoticeTone::Warning;
