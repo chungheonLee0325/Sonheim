@@ -13,6 +13,13 @@ UPalCaptureComponent::UPalCaptureComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	SetIsReplicatedByDefault(true);
+
+	PartyFullNotice.Category = INVTEXT("포획");
+	PartyFullNotice.Title = INVTEXT("팰을 더 데려갈 수 없습니다");
+	PartyFullNotice.Detail = INVTEXT("팰은 {0}마리까지 데리고 다닐 수 있습니다.");
+	PartyFullNotice.Symbol = INVTEXT("!");
+	PartyFullNotice.Icon = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT("/Game/CuratedDungeon/UI/Icons/T_Icon_Warning.T_Icon_Warning")));
+	PartyFullNotice.Tone = ENoticeTone::Warning;
 }
 
 void UPalCaptureComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -217,6 +224,7 @@ void UPalCaptureComponent::Server_ApplyCaptureOutcome_Implementation(ABaseMonste
 		{
 			// 연출 중에 팰 인벤이 가득 찼다면 실패로 처리
 			bSuccess = false;
+			NotifyPartyFull();
 		}
 	}
 
@@ -241,9 +249,12 @@ void UPalCaptureComponent::Server_AttemptCapture_Implementation(ABaseMonster* Ta
 	const int32 randomValue = FMath::RandRange(1, 100);
 	bool bCaptureSuccess = (randomValue <= capturePercent);
 
-	// 인벤 가득이면 강제 실패
-	if (bCaptureSuccess && PalInventory->GetOwnedPalCount() >= PalInventory->MaxPalCount)
+	// 인벤 가득이면 강제 실패. 판정과 상관없이 실패하므로 던진 플레이어에게 이유를 알린다.
+	if (PalInventory->GetOwnedPalCount() >= PalInventory->MaxPalCount)
+	{
 		bCaptureSuccess = false;
+		NotifyPartyFull();
+	}
 
 	// 2) 연출 파라미터 계산(서버 기준 → 모두 동일)
 	const float Guess = captureRate;
@@ -282,6 +293,15 @@ void UPalCaptureComponent::Server_AttemptCapture_Implementation(ABaseMonster* Ta
 		FTimerDelegate::CreateUObject(this, &UPalCaptureComponent::Server_ApplyCaptureOutcome, TargetPal,
 		                              bCaptureSuccess),
 		RevealTotal, false);
+}
+
+void UPalCaptureComponent::NotifyPartyFull() const
+{
+	ASonheimPlayerController* Controller = OwnerPlayer ? OwnerPlayer->GetController<ASonheimPlayerController>() : nullptr;
+	if (!Controller || !PalInventory) return;
+	FNoticeData Data = PartyFullNotice;
+	Data.Detail = FText::Format(PartyFullNotice.Detail, PalInventory->MaxPalCount);
+	Controller->PushNotice(ENoticeSlot::Banner, TEXT("Capture"), Data);
 }
 
 void UPalCaptureComponent::OnRep_IsThrowingPalSphere()

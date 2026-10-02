@@ -9,6 +9,7 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
+#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "Sonheim/UI/Widget/GameObject/Crafting/CraftingQueueWidget.h"
 #include "Kismet/GameplayStatics.h"
@@ -18,6 +19,13 @@ ACraftingStation::ACraftingStation()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
+
+	CompletedNotice.Category = INVTEXT("제작");
+	CompletedNotice.Title = INVTEXT("{0} 완성");
+	CompletedNotice.Detail = INVTEXT("작업대에서 받으세요 · ×{0}");
+	CompletedNotice.Symbol = INVTEXT("✓");
+	CompletedNotice.Icon = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT("/Game/CuratedDungeon/UI/Icons/T_Icon_Check.T_Icon_Check")));
+	CompletedNotice.Tone = ENoticeTone::Information;
 
 	StationMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StationMesh"));
 	RootComponent = StationMesh;
@@ -327,11 +335,24 @@ void ACraftingStation::ServerAddWork_Implementation(float WorkDelta, class ASonh
 			// 작업 종료
 			bHasActiveWork = false;
 			ActiveWork.WorkAccumulated = 0.f;
+			NotifyCompleted(Worker);
 		}
 	}
 
 	//ForceNetUpdate();
 	OnRep_ActiveWork();
+}
+
+void ACraftingStation::NotifyCompleted(const ASonheimPlayer* Worker) const
+{
+	ASonheimPlayerController* Controller = Worker ? Worker->GetController<ASonheimPlayerController>() : nullptr;
+	USonheimGameInstance* GameInstance = GetGameInstance<USonheimGameInstance>();
+	const FItemData* Item = GameInstance ? GameInstance->GetDataItem(ActiveWork.ResultItemID) : nullptr;
+	if (!Controller || !Item) return;
+	FNoticeData Data = CompletedNotice;
+	Data.Title = FText::Format(CompletedNotice.Title, Item->ItemName);
+	Data.Detail = FText::Format(CompletedNotice.Detail, CompletedToCollect);
+	Controller->PushNotice(ENoticeSlot::Banner, TEXT("Crafting"), Data);
 }
 
 void ACraftingStation::ServerCollectAll_Implementation(ASonheimPlayer* Player)

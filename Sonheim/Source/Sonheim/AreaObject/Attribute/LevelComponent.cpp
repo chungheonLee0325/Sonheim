@@ -5,9 +5,9 @@
 #include "Net/UnrealNetwork.h"
 #include "Sonheim/AreaObject/Base/AreaObject.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
-#include "Sonheim/Utilities/LogMacro.h"
 
 ULevelComponent::ULevelComponent()
 {
@@ -24,6 +24,13 @@ ULevelComponent::ULevelComponent()
     AvailableStatPoints = 0;
     StatPointsPerLevel = 3;
     ClientPreviousLevel = 1;
+
+    LevelUpNotice.Category = INVTEXT("성장");
+    LevelUpNotice.Title = INVTEXT("레벨 {0} 달성");
+    LevelUpNotice.Detail = INVTEXT("능력치가 오르고 체력이 모두 회복됐습니다.");
+    LevelUpNotice.Symbol = INVTEXT("★");
+    LevelUpNotice.Icon = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT("/Game/CuratedDungeon/UI/Icons/T_Icon_Star.T_Icon_Star")));
+    LevelUpNotice.Tone = ENoticeTone::Highlight;
 }
 
 void ULevelComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -227,8 +234,17 @@ void ULevelComponent::HandleLevelUp()
 
     // 서버 이벤트
     OnLevelChanged.Broadcast(OldLevel, CurrentLevel, true);
-    
-    LOG_SCREEN_MY(2.0f, FColor::Yellow, "Level Up! Current Level: %d", CurrentLevel);
+
+    // 레벨이 오른 플레이어에게 배너를 보낸다. 서버가 정하므로 호스트와 클라이언트가 같은 길로 받는다.
+    if (const ASonheimPlayer* Player = Cast<ASonheimPlayer>(m_Owner))
+    {
+        if (ASonheimPlayerController* Controller = Player->GetController<ASonheimPlayerController>())
+        {
+            FNoticeData Data = LevelUpNotice;
+            Data.Title = FText::Format(LevelUpNotice.Title, CurrentLevel);
+            Controller->PushNotice(ENoticeSlot::Banner, TEXT("Level"), Data);
+        }
+    }
 }
 
 void ULevelComponent::ApplyLevelUpBonuses(int32 OldLevel, int32 NewLevel)
@@ -280,21 +296,11 @@ void ULevelComponent::OnRep_CurrentLevel(int32 OldLevel)
     // 클라이언트에서 레벨 변경 감지
     bool bLevelUp = CurrentLevel > ClientPreviousLevel;
     
-    // 레벨업 이벤트 발생
+    // 레벨업 이벤트 발생. 레벨 업 배너는 서버가 HandleLevelUp에서 보낸다.
     OnLevelChanged.Broadcast(ClientPreviousLevel, CurrentLevel, bLevelUp);
-    
-    // 레벨업 효과 재생 (VFX, SFX 등)
-    if (bLevelUp && m_Owner)
-    {
-        // 레벨업 시각 효과
-        if (m_Owner->IsLocallyControlled())
-        {
-            LOG_SCREEN_MY(3.0f, FColor::Green, "LEVEL UP! You are now level %d!", CurrentLevel);
-        }
-        
-        // TODO: 레벨업 파티클 효과, 사운드 재생 등
-    }
-    
+
+    // TODO: 레벨업 파티클 효과, 사운드 재생 등
+
     ClientPreviousLevel = CurrentLevel;
 }
 
@@ -303,22 +309,12 @@ void ULevelComponent::OnRep_CurrentExp(int32 OldExp)
     // 클라이언트에서 경험치 변경 감지
     int32 Delta = CurrentExp - OldExp;
     
-    // UI 업데이트를 위한 이벤트
+    // UI 업데이트를 위한 이벤트. 경험치는 상태 위젯의 막대가 보인다.
     OnExperienceChanged.Broadcast(CurrentExp, ExpToNextLevel, Delta);
-    
-    // 경험치 획득 표시 (로컬 플레이어만)
-    if (Delta > 0 && m_Owner && m_Owner->IsLocallyControlled())
-    {
-        LOG_SCREEN_MY(1.0f, FColor::Yellow, "+%d EXP", Delta);
-    }
 }
 
 void ULevelComponent::OnRep_AvailableStatPoints()
 {
     // 클라이언트에서 스탯 포인트 변경 알림
-    // UI 업데이트나 알림 표시
-    if (m_Owner && m_Owner->IsLocallyControlled() && AvailableStatPoints > 0)
-    {
-        LOG_SCREEN_MY(2.0f, FColor::Cyan, "You have %d stat points available!", AvailableStatPoints);
-    }
+    // 스탯 포인트를 쓰는 화면이 생기면 여기서 갱신한다.
 }

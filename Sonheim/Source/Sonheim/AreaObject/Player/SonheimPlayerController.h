@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "SonheimPlayer.h"
 #include "GameFramework/PlayerController.h"
+#include "Sonheim/UI/Notice/NoticeSubsystem.h"
 #include "SonheimPlayerController.generated.h"
 
 struct FInputActionValue;
@@ -42,9 +43,19 @@ public:
 	UFUNCTION(Client, Unreliable)
 	void Client_DisplayItemPopup(int32 ItemID, int32 Delta);
 
+	/** Shows a notice on this player's screen: at once on the player's own machine, sent there from the server otherwise. The server
+	 * calls it for what it decides, such as a level gained or a capture without room. */
+	void PushNotice(ENoticeSlot Slot, FName Channel, const FNoticeData& Data);
+	UFUNCTION(Client, Reliable)
+	void Client_PushNotice(ENoticeSlot Slot, FName Channel, const FNoticeData& Data);
+
 protected:
 	// 입력 설정
 	virtual void SetupInputComponent() override;
+
+	// 새로 받은 폰이 서 있는 섬 지역의 이름을 보인다. 지역 안에서 태어난 폰은 그 지역에 걸어 들어간 적이 없다.
+	UFUNCTION()
+	void ShowRegionOfPawn(APawn* PreviousPawn, APawn* NewPawn);
 
 private:
 	// Input Action

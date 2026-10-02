@@ -5,6 +5,7 @@
 #include "InputMappingContext.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Engine/LocalPlayer.h"
 #include "SonheimPlayer.h"
 #include "SonheimPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -12,6 +13,7 @@
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
 #include "Sonheim/GameObject/Buildings/Storage/BaseContainer.h"
 #include "Sonheim/GameObject/Buildings/Crafting/CraftingStation.h"
+#include "Sonheim/GameObject/Region/RegionZone.h"
 #include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
 #include "Sonheim/UI/Widget/GameObject/ContainerInteractionWidget.h"
 #include "Sonheim/UI/Widget/GameObject/Crafting/CraftingWidget.h"
@@ -217,6 +219,10 @@ void ASonheimPlayerController::BeginPlay()
 
 	// UI 초기화
 	//InitializeHUD();
+
+	OnPossessedPawnChanged.AddDynamic(this, &ASonheimPlayerController::ShowRegionOfPawn);
+	// 시작할 때 이미 가진 폰은 모든 액터가 시작해 겹침이 정해진 다음 틱에 본다.
+	GetWorldTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this]() { ShowRegionOfPawn(nullptr, GetPawn()); }));
 }
 
 void ASonheimPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -310,6 +316,29 @@ void ASonheimPlayerController::Client_DisplayItemPopup_Implementation(int32 Item
 	{
 		StatusWidget->DisplayItemPopup(ItemID, Delta);
 	}
+}
+
+void ASonheimPlayerController::PushNotice(const ENoticeSlot Slot, const FName Channel, const FNoticeData& Data)
+{
+	if (!IsLocalController())
+	{
+		Client_PushNotice(Slot, Channel, Data);
+		return;
+	}
+	if (UNoticeSubsystem* Notices = GetLocalPlayer() ? GetLocalPlayer()->GetSubsystem<UNoticeSubsystem>() : nullptr)
+	{
+		Notices->Push(Slot, Channel, Data);
+	}
+}
+
+void ASonheimPlayerController::Client_PushNotice_Implementation(const ENoticeSlot Slot, const FName Channel, const FNoticeData& Data)
+{
+	PushNotice(Slot, Channel, Data);
+}
+
+void ASonheimPlayerController::ShowRegionOfPawn(APawn* PreviousPawn, APawn* NewPawn)
+{
+	ARegionZone::ShowWhereStanding(NewPawn, GetLocalPlayer());
 }
 
 void ASonheimPlayerController::SetupInputComponent()

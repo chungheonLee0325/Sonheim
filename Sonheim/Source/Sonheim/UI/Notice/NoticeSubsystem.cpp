@@ -78,7 +78,8 @@ void UNoticeSubsystem::PresentNext(const ENoticeSlot Slot)
 	State.bShowing = true;
 	State.ShowingChannel = Next.Channel;
 	Widget->Show(Next.Data);
-	UE_LOG(SONHEIM, Log, TEXT("[Notice] Slot=%s Channel=%s Title=%s"), *UEnum::GetValueAsString(Slot), *Next.Channel.ToString(), *Next.Data.Title.ToString());
+	UE_LOG(SONHEIM, Log, TEXT("[Notice] World=%s Slot=%s Channel=%s Title=%s"), *GetPathNameSafe(Widget->GetWorld()), *UEnum::GetValueAsString(Slot),
+		*Next.Channel.ToString(), *Next.Data.Title.ToString());
 }
 
 void UNoticeSubsystem::Finished(const ENoticeSlot Slot)

@@ -3,6 +3,7 @@
 #include "GameFramework/Actor.h"
 #include "Engine/DataTable.h"
 #include "Sonheim/GameObject/InteractableInterface.h"
+#include "Sonheim/UI/Notice/NoticeWidget.h"
 #include "CraftingStation.generated.h"
 
 class UStaticMeshComponent;
@@ -215,6 +216,10 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category="Crafting|SFX", meta=(ClampMin="0.05", ClampMax="5.0"))
     float CraftSFXInterval = 0.9f;
 
+	// 마지막 작업으로 제작이 끝났을 때 그 작업을 한 플레이어에게 뜨는 배너. Title의 {0}은 결과 아이템 이름, Detail의 {0}은 받을 수량이다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Crafting|Notice")
+	FNoticeData CompletedNotice;
+
 	// State
 	UPROPERTY(Replicated, VisibleAnywhere, Category="Crafting|State")
 	FName SelectedRecipe;
@@ -232,6 +237,9 @@ private:
     UFUNCTION(NetMulticast, Unreliable)
     void Multicast_PlayCraftSfx();
     void PlayCraftSfxOnce();
+
+    // 서버: CompletedNotice를 Worker에게 보낸다.
+    void NotifyCompleted(const ASonheimPlayer* Worker) const;
 
     // 자동수령 방지용: 최근 작업 추가 서버시간
     float LastWorkAddServerTime = -1000.f;

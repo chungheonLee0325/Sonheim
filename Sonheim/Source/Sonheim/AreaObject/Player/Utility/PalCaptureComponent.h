@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Sonheim/UI/Notice/NoticeWidget.h"
 #include "PalCaptureComponent.generated.h"
 
 class APalSphere;
@@ -108,6 +109,10 @@ public:
     UPROPERTY(EditDefaultsOnly, Category = "Pal Capture")
     int32 PalSphereSkillID = 15;
 
+    // 팰을 더 데려갈 수 없어 포획이 실패할 때 던진 플레이어에게 뜨는 배너. Detail의 {0}은 데려갈 수 있는 수다.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pal Capture|Notice")
+    FNoticeData PartyFullNotice;
+
 protected:
     virtual void BeginPlay() override;
 
@@ -145,6 +150,9 @@ protected:
 
     int32 PickFailStage(float Guess, int32 Segments) const;
 private:
+    // 서버: PartyFullNotice를 이 컴포넌트의 플레이어에게 보낸다.
+    void NotifyPartyFull() const;
+
     UPROPERTY()
     ASonheimPlayer* OwnerPlayer;
 
