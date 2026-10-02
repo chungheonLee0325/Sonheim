@@ -19,6 +19,8 @@ struct FBossMark
 	UPROPERTY(BlueprintReadOnly, Category="Boss") float HalfAngle = 0.f;
 	UPROPERTY(BlueprintReadOnly, Category="Boss") float HalfWidth = 0.f;
 	UPROPERTY(BlueprintReadOnly, Category="Boss") float Seconds = 1.f;
+	/** The pattern's MarkColor, the material's Color while the mark fills. */
+	UPROPERTY(BlueprintReadOnly, Category="Boss") FLinearColor Color = FLinearColor(1.f, 0.3f, 0.08f);
 	/** A mark on the boss follows it, FollowForward ahead of its feet; a mark on the ground stays where it was placed. */
 	UPROPERTY(BlueprintReadOnly, Category="Boss") TObjectPtr<AActor> Follow;
 	UPROPERTY(BlueprintReadOnly, Category="Boss") float FollowForward = 0.f;
@@ -33,7 +35,8 @@ public:
 	ABossTelegraph();
 	/** Set on the server before the actor finishes spawning. */
 	UPROPERTY(ReplicatedUsing=OnRep_Mark, BlueprintReadOnly, Category="Boss") FBossMark Mark;
-	/** Draws the shape on a flat plane from the parameters Shape (0 circle, 1 ring, 2 cone, 3 line), Inner, HalfAngle (radians) and Fill.
+	/** Draws the shape on a flat plane from the parameters Shape (0 circle, 1 ring, 2 cone, 3 line), Inner, HalfAngle (radians) and Fill,
+	 * glowing in Color and deepening into HotColor as it fills.
 	 * Loaded when a mark is drawn, so the editor can rebuild the material while no mark is out. */
 	UPROPERTY(EditDefaultsOnly, Category="Boss") TSoftObjectPtr<UMaterialInterface> Material;
 	/** The ground under a character and its facing, Forward ahead of its feet. A mark on the boss lies there, and so does its strike. */

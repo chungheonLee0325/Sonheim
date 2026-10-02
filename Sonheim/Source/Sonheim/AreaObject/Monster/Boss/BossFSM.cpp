@@ -106,6 +106,11 @@ void UBossFSM::UpdateState(const float DeltaSeconds)
 	// A captured boss belongs to a player now, and the boss's brain fights only for itself.
 	if (!Owner->Patterns || bPaused || Owner->IsDie() || Owner->PartnerOwner) return;
 	const UBossPatternDataAsset& Data = *Owner->Patterns;
+	if (RoarAt > 0 && Now() >= RoarAt)
+	{
+		RoarAt = 0;
+		if (Data.RoarSound) Owner->Multicast_PlaySoundAtLocation(Owner->GetActorLocation(), Data.RoarSound);
+	}
 	switch (Owner->GetBossStatus().Stage)
 	{
 	case EBossStage::Sleeping:
@@ -141,8 +146,23 @@ void UBossFSM::Wake()
 {
 	ABossMonster* Owner = Boss();
 	if (Owner->GetBossStatus().Stage != EBossStage::Sleeping) return;
+	const UAnimMontage* Montage = Owner->Patterns->WakeMontage;
 	Owner->PlayMontage(Owner->Patterns->WakeMontage, UBossPatternDataAsset::WakeSection, 1.f);
 	Enter(EBossStage::Waking, TAG_BossWaking, Owner->Patterns->WakeSeconds);
+	// The montage roars where its Roar section begins, after Wake; the sound waits for it. A machine that missed the montage, such as
+	// a client the boss woke before it reached, still hears the roar.
+	const int32 WakeIndex = Montage ? Montage->GetSectionIndex(UBossPatternDataAsset::WakeSection) : INDEX_NONE;
+	const int32 RoarIndex = Montage ? Montage->GetSectionIndex(UBossPatternDataAsset::RoarSection) : INDEX_NONE;
+	if (WakeIndex == INDEX_NONE || RoarIndex == INDEX_NONE) return;
+	float WakeStart = 0.f, RoarStart = 0.f, End = 0.f;
+	Montage->GetSectionStartAndEndTime(WakeIndex, WakeStart, End);
+	Montage->GetSectionStartAndEndTime(RoarIndex, RoarStart, End);
+	Roar(FMath::Max(0.f, RoarStart - WakeStart));
+}
+
+void UBossFSM::Roar(const float Delay)
+{
+	RoarAt = Now() + Delay;
 }
 
 void UBossFSM::OnDamaged(const float Damage)
@@ -260,6 +280,7 @@ void UBossFSM::Fight(const float DeltaSeconds)
 		Owner->SetStatus(Status);
 		Owner->PlayMontage(Data.WakeMontage, UBossPatternDataAsset::RoarSection, 1.f);
 		Enter(EBossStage::Roaring, TAG_BossRoaring, Data.RoarSeconds);
+		Roar(0.f);
 		return;
 	}
 	if (TryExhaust()) return;
@@ -389,9 +410,10 @@ void UBossFSM::Mark(const FBossStrike& Strike, FStrikeRun& Run, const AAreaObjec
 	ABossMonster* Owner = Boss();
 	Run.bMarked = true;
 	const float Seconds = (Strike.StrikeSeconds - Strike.MarkSeconds) / Tempo();
+	const FLinearColor& Color = Owner->Patterns->Patterns[PatternIndex].MarkColor;
 	if (Strike.Anchor == EBossAreaAnchor::Boss)
 	{
-		Run.Marks.Add(Owner->PlaceMark(Strike, ABossTelegraph::FeetTransform(Owner, Strike.ForwardOffset), true, Seconds));
+		Run.Marks.Add(Owner->PlaceMark(Strike, ABossTelegraph::FeetTransform(Owner, Strike.ForwardOffset), true, Seconds, Color));
 		return;
 	}
 	// On the target: the spot it stands on now, facing away from the boss. The mark stays there and so does the strike.
@@ -422,11 +444,11 @@ void UBossFSM::Mark(const FBossStrike& Strike, FStrikeRun& Run, const AAreaObjec
 				Point.Z = Center.Z;
 			}
 			Run.Spots.Add(Point);
-			Run.Marks.Add(Owner->PlaceMark(Strike, FTransform(Facing, Point), false, Seconds));
+			Run.Marks.Add(Owner->PlaceMark(Strike, FTransform(Facing, Point), false, Seconds, Color));
 		}
 		return;
 	}
-	Run.Marks.Add(Owner->PlaceMark(Strike, Run.Where, false, Seconds));
+	Run.Marks.Add(Owner->PlaceMark(Strike, Run.Where, false, Seconds, Color));
 }
 
 void UBossFSM::Leap(const FBossPattern& Pattern)

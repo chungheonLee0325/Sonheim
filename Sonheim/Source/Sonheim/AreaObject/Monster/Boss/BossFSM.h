@@ -48,6 +48,8 @@ private:
 	bool TryExhaust();
 	void Enter(EBossStage Stage, const FGameplayTag& ActionId, float Seconds);
 	void Wake();
+	/** Plays the roar's sound on every machine Delay seconds from now; a roar still due is replaced. */
+	void Roar(float Delay);
 	void KnockDown();
 	void Fight(float DeltaSeconds);
 	int32 ChoosePattern(const AAreaObject* NewTarget) const;
@@ -92,6 +94,8 @@ private:
 	float GroundGravityScale = 1.f;
 	ECollisionResponse PawnResponse = ECR_Block;
 	double StageEndsAt = 0;
+	/** When the roar's sound is due, 0 while none is. */
+	double RoarAt = 0;
 	bool bGettingUp = false;
 	bool bPaused = false;
 	double PausedAt = 0;

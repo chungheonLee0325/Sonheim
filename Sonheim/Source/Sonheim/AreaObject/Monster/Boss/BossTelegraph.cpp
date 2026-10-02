@@ -84,6 +84,7 @@ void ABossTelegraph::Build()
 		Dynamic->SetScalarParameterValue(TEXT("Inner"), Mark.Shape == EBossAreaShape::Ring ? Mark.InnerRadius / Mark.Radius : 0.f);
 		Dynamic->SetScalarParameterValue(TEXT("HalfAngle"), FMath::DegreesToRadians(Mark.HalfAngle));
 		Dynamic->SetScalarParameterValue(TEXT("Fill"), 0.f);
+		Dynamic->SetVectorParameterValue(TEXT("Color"), Mark.Color);
 	}
 	if (Mark.Follow) SetActorTransform(FeetTransform(Mark.Follow, Mark.FollowForward));
 }

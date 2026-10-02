@@ -85,8 +85,9 @@ public:
 	void PlayMontage(UAnimMontage* Montage, FName Section, float PlayRate);
 	void JumpToSection(FName Section);
 	void StopMontage();
-	/** Marks a strike's area at Where: its spot on the ground, or the boss's feet when bFollow keeps the mark on the boss. */
-	ABossTelegraph* PlaceMark(const FBossStrike& Strike, const FTransform& Where, bool bFollow, float Seconds);
+	/** Marks a strike's area at Where, in its pattern's Color: its spot on the ground, or the boss's feet when bFollow keeps the mark on
+	 * the boss. */
+	ABossTelegraph* PlaceMark(const FBossStrike& Strike, const FTransform& Where, bool bFollow, float Seconds, const FLinearColor& Color);
 	/** Lands a strike: damages everyone in its area at Where, or in the same area at each of Spots, or fires Count projectiles along
 	 * the spread or at Spots. */
 	void LandStrike(const FBossStrike& Strike, const FTransform& Where, const TArray<FVector>& Spots, AAreaObject* Target, int32 Count);

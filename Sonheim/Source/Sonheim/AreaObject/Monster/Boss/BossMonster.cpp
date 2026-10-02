@@ -265,7 +265,7 @@ void ABossMonster::MulticastStrikeEffect_Implementation(UNiagaraSystem* Effect, 
 	UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, Effect, Location, FRotator::ZeroRotator, FVector(Scale));
 }
 
-ABossTelegraph* ABossMonster::PlaceMark(const FBossStrike& Strike, const FTransform& Where, const bool bFollow, const float Seconds)
+ABossTelegraph* ABossMonster::PlaceMark(const FBossStrike& Strike, const FTransform& Where, const bool bFollow, const float Seconds, const FLinearColor& Color)
 {
 	if (!HasAuthority() || Strike.Shape == EBossAreaShape::None || !TelegraphClass) return nullptr;
 	ABossTelegraph* Mark = GetWorld()->SpawnActorDeferred<ABossTelegraph>(TelegraphClass, Where, this, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
@@ -276,6 +276,7 @@ ABossTelegraph* ABossMonster::PlaceMark(const FBossStrike& Strike, const FTransf
 	Mark->Mark.HalfAngle = Strike.HalfAngle;
 	Mark->Mark.HalfWidth = Strike.HalfWidth;
 	Mark->Mark.Seconds = Seconds;
+	Mark->Mark.Color = Color;
 	if (bFollow)
 	{
 		Mark->Mark.Follow = this;
@@ -323,6 +324,7 @@ void ABossMonster::LandStrike(const FBossStrike& Strike, const FTransform& Where
 			Element->SetOwner(this);
 			Element->InitElement(this, Target, bAtSpot ? Spots[Index] : Facing.Vector(), &Attack);
 		}
+		if (Attack.FireSFX) Multicast_PlaySoundAtLocation(Muzzle, Attack.FireSFX);
 		return;
 	}
 	// The area at Where, or the same area at each spot; someone where two of them overlap is hit once.
@@ -341,4 +343,6 @@ void ABossMonster::LandStrike(const FBossStrike& Strike, const FTransform& Where
 	}
 	if (Attack.FireVFX_N)
 		for (const FTransform& Area : Areas) MulticastStrikeEffect(Attack.FireVFX_N, Area.GetLocation(), Attack.VFXScale);
+	// One sound for the strike, at its first area: the target's spot when several come down at once.
+	if (Attack.FireSFX) Multicast_PlaySoundAtLocation(Areas[0].GetLocation(), Attack.FireSFX);
 }

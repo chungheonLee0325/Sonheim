@@ -10,6 +10,7 @@ class ABaseElement;
 class UAnimMontage;
 class UMaterialInterface;
 class UNiagaraSystem;
+class USoundBase;
 
 /** The ground a strike covers. Its mark on the ground has the same shape and stays until the strike lands. */
 UENUM(BlueprintType)
@@ -77,7 +78,8 @@ struct FBossStrike
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float HalfWidth = 100.f;
 	/** Moves the area ahead along the facing, such as a claw that reaches in front of the boss. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") float ForwardOffset = 0.f;
-	/** Damage to everyone inside the area as the strike lands, or of each projectile. Its FireVFX_N plays on every area as it lands. */
+	/** Damage to everyone inside the area as the strike lands, or of each projectile. Its FireVFX_N plays on every area as it lands,
+	 * and its FireSFX once on every machine: where the strike lands, or at the boss as it fires its projectiles. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") FAttackData Attack;
 	/** A strike with projectiles fires them in place of hitting its area; its marks show where they go. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") TSubclassOf<ABaseElement> Projectile;
@@ -100,6 +102,9 @@ struct FBossPattern
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") TObjectPtr<UAnimMontage> Montage;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") TArray<FBossSectionCue> Cues;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") TArray<FBossStrike> Strikes;
+	/** The color the pattern's marks show while they fill, so the pattern reads at a glance; each deepens into the telegraph's
+	 * HotColor as its strike lands, so the moment of the hit reads the same for every pattern. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss") FLinearColor MarkColor = FLinearColor(1.f, 0.3f, 0.08f);
 	/** Length of the pattern with its recovery; the boss picks the next one after it. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Boss", meta=(ClampMin="0.1")) float Seconds = 3.f;
 	/** The boss turns to its target until then and holds its facing after, so a mark on the boss stops turning before it lands. */
@@ -169,6 +174,8 @@ public:
 	/** Share of health at which phase 2 begins: the boss roars (the Roar section of the wake montage) before its next pattern. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase", meta=(ClampMin="0", ClampMax="1")) float PhaseTwoHealth = 0.6f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase") float RoarSeconds = 1.8f;
+	/** Plays on every machine as the boss roars: when the wake montage reaches its Roar section after Wake, and as phase 2 begins. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase") TObjectPtr<USoundBase> RoarSound;
 	/** Phase 2 plays its patterns, their marks and their montages this much faster. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Phase", meta=(ClampMin="1", ClampMax="2")) float PhaseTwoTempo = 1.2f;
 	/** Projectiles, or spots, that every strike of several adds in phase 2. */
