@@ -223,7 +223,6 @@ void UDungeonViewWidget::NativeConstruct()
 	if (TimeText) TimeColor = TimeText->GetColorAndOpacity();
 	if (RunBestText) RunBestColor = RunBestText->GetColorAndOpacity();
 	TitleColor = TitleText->GetColorAndOpacity();
-	Show(AreaTitlePanel, false);
 	ApplyViewData(ViewData);
 }
 void UDungeonViewWidget::NativeTick(const FGeometry& Geometry, float DeltaTime)
@@ -370,14 +369,6 @@ void UDungeonViewWidget::RefreshPace()
 	const FText Best = PaceClock(FMath::RoundToInt32(ViewData.RunStartBestSeconds));
 	RunBestText->SetText(ViewData.RunBestFormat.IsEmpty() ? Best : FText::Format(ViewData.RunBestFormat, Best));
 	RunBestText->SetColorAndOpacity(Elapsed > ViewData.RunStartBestSeconds ? PaceBehindColor : RunBestColor);
-}
-void UDungeonViewWidget::ShowAreaTitle(const FText& Title, const FText& Subtitle)
-{
-	if (!AreaTitlePanel || Title.IsEmpty() || !GetWorld()) return;
-	ShowText(AreaTitleText, nullptr, Title);
-	ShowText(AreaSubtitleText, nullptr, Subtitle);
-	Show(AreaTitlePanel, true);
-	GetWorld()->GetTimerManager().SetTimer(AreaTitleTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { Show(AreaTitlePanel, false); }), AreaTitleSeconds, false);
 }
 void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
 {

@@ -3,8 +3,8 @@
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
 #include "Sonheim/GameManager/Dungeon/DungeonStageRuntimeTypes.h"
-#include "Sonheim/UI/Dungeon/DungeonToastWidget.h"
 #include "Sonheim/UI/Dungeon/DungeonViewData.h"
+#include "Sonheim/UI/Notice/NoticeWidget.h"
 #include "DungeonPresentationDataAsset.generated.h"
 /** What completes an objective line, read from the run's snapshot. */
 UENUM(BlueprintType)
@@ -164,11 +164,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Record") FText FirstRecordFormat = INVTEXT("첫 기록 {0}");
 
 	/** Banner when the run gains a tag its rules set, such as the unlocked shortcut. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FDungeonToastViewData> TagToasts;
-	/** Banner when the run takes a branch. It replaces any banner still waiting. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FDungeonToastViewData> BranchToasts;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FNoticeData> TagToasts;
+	/** Banner when the run takes a branch. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FNoticeData> BranchToasts;
 	/** Banner when a group of monsters appears, by group; {0} in Detail is how many. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FDungeonToastViewData> GroupToasts;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FNoticeData> GroupToasts;
 	/** Banner when every monster of a group is defeated or captured, by group. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FDungeonToastViewData> GroupClearToasts;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Toasts") TMap<FGameplayTag, FNoticeData> GroupClearToasts;
 };

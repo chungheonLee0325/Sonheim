@@ -2,6 +2,7 @@
 #include "DungeonUIRouterSubsystem.h"
 #include "DungeonViewData.h"
 #include "Algo/Count.h"
+#include "Engine/LocalPlayer.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -17,6 +18,7 @@
 #include "Sonheim/GameObject/Dungeon/DungeonPresentationDataAsset.h"
 #include "Sonheim/GameObject/Dungeon/DungeonShortcutSwitch.h"
 #include "Sonheim/GameObject/Dungeon/DungeonTriggerZone.h"
+#include "Sonheim/UI/Notice/NoticeSubsystem.h"
 
 void UDungeonStagePresenter::Start(APlayerController* Controller, UDungeonUIRouterSubsystem* Router)
 {
@@ -123,27 +125,28 @@ void UDungeonStagePresenter::OnSnapshot(const FDungeonStageRuntimeState& Snapsho
 }
 void UDungeonStagePresenter::ShowToasts(const FDungeonStageRuntimeState& Previous)
 {
-	auto* Router = UIRouter.Get();
-	if (!Router) return;
+	auto* Notices = UIRouter.IsValid() ? UIRouter->GetLocalPlayer()->GetSubsystem<UNoticeSubsystem>() : nullptr;
+	if (!Notices) return;
+	const FName Channel = UDungeonUIRouterSubsystem::NoticeChannel;
 	// Banners belong to the run's screens, so a player outside the run sees none, and one who leaves it loses the one showing.
 	const bool bShown = Latest.RunStatus == EDungeonRunStatus::Running && IsParticipant();
-	if (Previous.RunId != Latest.RunId || !bShown) Router->ClearToasts();
+	if (Previous.RunId != Latest.RunId || !bShown) Notices->Clear(Channel);
 	const auto* Presentation = Definition ? Definition->Presentation.Get() : nullptr;
 	if (!Presentation || !bShown) return;
 	// A client can receive several changes in one snapshot; each has its own banner, in the order they happen in a run.
 	for (const auto& Pair : Presentation->TagToasts)
-		if (Latest.RunTags.HasTagExact(Pair.Key) && !Previous.RunTags.HasTagExact(Pair.Key)) Router->ShowToast(Pair.Value);
+		if (Latest.RunTags.HasTagExact(Pair.Key) && !Previous.RunTags.HasTagExact(Pair.Key)) Notices->Push(ENoticeSlot::Banner, Channel, Pair.Value);
 	for (const FDungeonGroupTally& Tally : Latest.Groups)
 		if (IsCleared(&Tally) && !IsCleared(FindTally(Previous, Tally.GroupId)))
-			if (const FDungeonToastViewData* Toast = Presentation->GroupClearToasts.Find(Tally.GroupId)) Router->ShowToast(*Toast);
+			if (const FNoticeData* Toast = Presentation->GroupClearToasts.Find(Tally.GroupId)) Notices->Push(ENoticeSlot::Banner, Channel, *Toast);
 	if (Latest.SelectedBranchId.IsValid() && Latest.SelectedBranchId != Previous.SelectedBranchId)
-		if (const FDungeonToastViewData* Toast = Presentation->BranchToasts.Find(Latest.SelectedBranchId)) Router->ShowToast(*Toast);
+		if (const FNoticeData* Toast = Presentation->BranchToasts.Find(Latest.SelectedBranchId)) Notices->Push(ENoticeSlot::Banner, Channel, *Toast);
 	if (Latest.RequiredCount > 0 && Latest.ObjectiveGroupId != Previous.ObjectiveGroupId)
-		if (const FDungeonToastViewData* Toast = Presentation->GroupToasts.Find(Latest.ObjectiveGroupId))
+		if (const FNoticeData* Toast = Presentation->GroupToasts.Find(Latest.ObjectiveGroupId))
 		{
-			FDungeonToastViewData Data = *Toast;
+			FNoticeData Data = *Toast;
 			Data.Detail = FText::Format(Toast->Detail, Latest.RequiredCount);
-			Router->ShowToast(Data);
+			Notices->Push(ENoticeSlot::Banner, Channel, Data);
 		}
 }
 void UDungeonStagePresenter::ResolveOptional(const FDungeonStageRuntimeState& Previous)

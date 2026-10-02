@@ -158,8 +158,6 @@ class SONHEIM_API UDungeonViewWidget : public UUserWidget
 	GENERATED_BODY()
 public:
 	void ApplyViewData(const FDungeonStageViewData& Data);
-	/** Shows a room's name in the middle of the screen for AreaTitleSeconds, as a player of the run walks in. */
-	void ShowAreaTitle(const FText& Title, const FText& Subtitle);
 	UPROPERTY(BlueprintReadOnly, Category="Dungeon") FDungeonStageViewData ViewData;
 	/** Seconds the screen of a finished run stays up before it folds away; 0 keeps it until the next run. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") float FinishedSeconds = 10.f;
@@ -171,7 +169,6 @@ public:
 	/** The title's color on a won and on a failed run; while the run goes it keeps the color the Widget Blueprint gives it. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor SucceededTitleColor = FSlateColor(FLinearColor(1.f, 0.7f, 0.2f));
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") FSlateColor FailedTitleColor = FSlateColor(FLinearColor(1.f, 0.36f, 0.3f));
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon", meta=(ClampMin="0")) float AreaTitleSeconds = 2.5f;
 	/** Drawn on MarkerLayer for each place the open lines lead to. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dungeon") TSubclassOf<UDungeonMarkerWidget> MarkerClass;
 	/** How far inside the screen's edge the marker of a place off screen stays. */
@@ -197,7 +194,6 @@ protected:
 	void PlaceMarkers(const FGeometry& Geometry);
 	UPROPERTY(Transient) TArray<TObjectPtr<UDungeonMarkerWidget>> MarkerWidgets;
 	FTimerHandle FinishedTimer;
-	FTimerHandle AreaTitleTimer;
 	int32 FinishedRevision = -1;
 	bool bFinishedExpired = false;
 	FSlateColor TimeColor;
@@ -232,10 +228,6 @@ protected:
 	// The players of the run, on a card that hides while the run is not going.
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UDynamicEntryBox> PartyRows;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> PartyPanel;
-	// A room's name as a player walks in.
-	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> AreaTitlePanel;
-	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> AreaTitleText;
-	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> AreaSubtitleText;
 	// Shown while the boss lives.
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> BossPanel;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> BossNameText;

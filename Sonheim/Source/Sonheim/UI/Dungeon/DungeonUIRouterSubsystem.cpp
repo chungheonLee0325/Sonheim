@@ -4,8 +4,11 @@
 #include "DungeonViewWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Engine/AssetManager.h"
+#include "Engine/LocalPlayer.h"
 #include "GameFramework/PlayerController.h"
+#include "Sonheim/UI/Notice/NoticeSubsystem.h"
 #include "Sonheim/Utilities/LogMacro.h"
+const FName UDungeonUIRouterSubsystem::NoticeChannel(TEXT("Dungeon"));
 void UDungeonUIRouterSubsystem::Attach(APlayerController* Controller)
 {
 	if (Owner.Get() == Controller && Presenter) return;
@@ -20,14 +23,13 @@ void UDungeonUIRouterSubsystem::Attach(APlayerController* Controller)
 		if (Expected != Generation) return;
 		Registry = RegistryAsset.Get();
 		RefreshWidget();
-		PresentNextToast();
 	}));
 }
 void UDungeonUIRouterSubsystem::Detach(APlayerController* Controller)
 {
 	if (Owner.Get() != Controller) return;
 	++Generation;
-	ClearToasts();
+	if (auto* Notices = GetLocalPlayer()->GetSubsystem<UNoticeSubsystem>()) Notices->Clear(NoticeChannel);
 	if (Presenter) Presenter->Stop();
 	// The world's own screens come back when the player leaves, whatever the run did.
 	LatestView = FDungeonStageViewData{};
@@ -39,57 +41,6 @@ void UDungeonUIRouterSubsystem::Detach(APlayerController* Controller)
 }
 void UDungeonUIRouterSubsystem::Deinitialize() { Detach(Owner.Get()); Super::Deinitialize(); }
 
-void UDungeonUIRouterSubsystem::ShowToast(const FDungeonToastViewData& Data)
-{
-	if (!Owner.IsValid() || Data.Title.IsEmpty()) return;
-	// Only short-lived presentation messages are queued; keep the newest three.
-	if (ToastQueue.Num() >= 3) ToastQueue.RemoveAt(0);
-	ToastQueue.Add(Data);
-	PresentNextToast();
-}
-void UDungeonUIRouterSubsystem::ClearToasts()
-{
-	++ToastGeneration;
-	ToastQueue.Empty(); bToastPlaying = false; bToastUnavailable = false;
-	if (ToastLoad) ToastLoad->CancelHandle();
-	ToastLoad.Reset();
-	if (ToastWidget) { ToastWidget->OnFinished.Unbind(); ToastWidget->RemoveFromParent(); ToastWidget = nullptr; }
-}
-void UDungeonUIRouterSubsystem::ToastFinished()
-{
-	bToastPlaying = false;
-	PresentNextToast();
-}
-void UDungeonUIRouterSubsystem::PresentNextToast()
-{
-	if (!Registry || !Owner.IsValid() || ToastQueue.IsEmpty() || bToastPlaying || bToastUnavailable) return;
-	if (Registry->ToastClass.IsNull()) return;
-	if (!Registry->ToastClass.Get())
-	{
-		if (ToastLoad) return;
-		const int32 Expected = ToastGeneration;
-		ToastLoad = UAssetManager::GetStreamableManager().RequestAsyncLoad(Registry->ToastClass.ToSoftObjectPath(), FStreamableDelegate::CreateWeakLambda(this, [this, Expected]()
-		{
-			if (Expected != ToastGeneration) return;
-			if (!Registry || !Registry->ToastClass.Get()) { bToastUnavailable = true; UE_LOG(SONHEIM, Warning, TEXT("[DungeonToast] Class load failed")); return; }
-			PresentNextToast();
-		}));
-		return;
-	}
-	if (!ToastWidget)
-	{
-		ToastWidget = CreateWidget<UDungeonToastWidget>(Owner.Get(), Registry->ToastClass.Get());
-		if (!ToastWidget) { bToastUnavailable = true; return; }
-		ToastWidget->Style = Registry->ToastStyle;
-		ToastWidget->OnFinished.BindUObject(this, &UDungeonUIRouterSubsystem::ToastFinished);
-		// The widget fills the screen; its Widget Blueprint places the card, so the position is edited in the UMG designer.
-		ToastWidget->AddToPlayerScreen(2100);
-	}
-	FDungeonToastViewData Data = ToastQueue[0]; ToastQueue.RemoveAt(0);
-	bToastPlaying = true;
-	ToastWidget->ShowToast(Data);
-	UE_LOG(SONHEIM, Log, TEXT("[DungeonToast] Controller=%s Title=%s"), *Owner->GetName(), *Data.Title.ToString());
-}
 void UDungeonUIRouterSubsystem::ApplyView(const FDungeonStageViewData& Data)
 {
 	LatestView = Data;
@@ -98,7 +49,11 @@ void UDungeonUIRouterSubsystem::ApplyView(const FDungeonStageViewData& Data)
 }
 void UDungeonUIRouterSubsystem::ShowAreaTitle(const FText& Title, const FText& Subtitle)
 {
-	if (ActiveWidget && LatestView.bParticipant && LatestView.Status == EDungeonRunStatus::Running) ActiveWidget->ShowAreaTitle(Title, Subtitle);
+	if (!ActiveWidget || !LatestView.bParticipant || LatestView.Status != EDungeonRunStatus::Running) return;
+	FNoticeData Data;
+	Data.Title = Title;
+	Data.Detail = Subtitle;
+	if (auto* Notices = GetLocalPlayer()->GetSubsystem<UNoticeSubsystem>()) Notices->Push(ENoticeSlot::Title, NoticeChannel, Data);
 }
 void UDungeonUIRouterSubsystem::RefreshHidden()
 {
