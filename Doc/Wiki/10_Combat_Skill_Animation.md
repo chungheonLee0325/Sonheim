@@ -1,6 +1,6 @@
 # 10. Combat, Skill & Animation
 
-> **이 문서가 답하는 질문**
+> **핵심 구현 범위**
 >
 > 1. Sonheim에서 “Skill 하나”는 실제로 어떤 데이터와 객체로 구성되는가?
 > 2. Client 입력이 어떻게 Server 검증을 거쳐 실제 공격으로 이어지는가?
@@ -8,7 +8,7 @@
 > 4. 빠른 근접 공격의 판정 누락과 중복 Hit을 어떻게 처리했는가?
 > 5. Hit 이후 Element / Weak Point / Knockback / Hit Stop 정보는 어떻게 전달되는가?
 
-처음 읽는다면 먼저 아래 한 장의 흐름만 기억하면 됩니다.
+전체 실행 흐름은 다음과 같습니다.
 
 ```text
 Input / AI
@@ -31,7 +31,7 @@ HP / Condition / Feedback
 ```
 
 
-> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
+> **코드 예시:** 실제 구현에서 구조 이해에 필요한 선언과 함수만 발췌했으며, `UPROPERTY` metadata와 보조 필드는 일부 생략했습니다.
 ---
 
 ## Part 1. Skill 하나를 어떻게 표현하는가
@@ -660,7 +660,7 @@ Item partial rollback은 있지만 Stamina까지 포함한 전체 transaction ro
 
 ---
 
-## 이 문서 다음에 읽기
+## 연관 문서
 
 - Player action/state가 궁금하면 → [[11. Player & Character Systems|11_Player_Character_Systems]]
 - Capture가 Combat 위에 어떻게 얹히는지 → [[9. Pal Capture & Partner Lifecycle|9_Pal_Capture_Partner_Lifecycle]]
