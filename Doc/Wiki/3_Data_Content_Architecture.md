@@ -7,9 +7,11 @@
 Sonheim은 모든 데이터를 한 형태로 통일하지 않습니다.  
 **조회 방식, 수명, dependency, editor workflow**가 다르면 표현 방식도 달라집니다.
 
+
+> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
 ---
 
-# Part 1. 먼저 구분해야 할 네 종류
+## Part 1. 먼저 구분해야 할 네 종류
 
 | 문제 | 사용 방식 |
 |---|---|
@@ -22,7 +24,7 @@ Sonheim은 모든 데이터를 한 형태로 통일하지 않습니다.
 
 ---
 
-# Part 2. DataTable — 대량 Row 데이터
+## Part 2. DataTable — 대량 Row 데이터
 
 대표적으로:
 
@@ -65,7 +67,7 @@ Skill 자체의 실행 구조는 [[10. Combat, Skill & Animation|10_Combat_Skill
 
 ---
 
-# Part 3. Dungeon은 왜 PrimaryDataAsset인가
+## Part 3. Dungeon은 왜 PrimaryDataAsset인가
 
 Dungeon은 “row 하나”보다 하나의 **콘텐츠 패키지**에 가깝습니다.
 
@@ -80,7 +82,7 @@ Dungeon은 “row 하나”보다 하나의 **콘텐츠 패키지**에 가깝습
 
 그래서 Catalog와 실제 Definition을 분리합니다.
 
-## 3.1 Catalog Row
+### 3.1 Catalog Row
 
 ```cpp
 USTRUCT(BlueprintType)
@@ -101,7 +103,7 @@ Catalog는 “어떤 Dungeon을 열 것인가”를 찾는 작은 index입니다
 
 ---
 
-## 3.2 Definition Asset
+### 3.2 Definition Asset
 
 ```cpp
 UCLASS(BlueprintType)
@@ -133,7 +135,7 @@ Dungeon Definition
 
 ---
 
-# Part 4. GameplayTag — Runtime Identifier
+## Part 4. GameplayTag — Runtime Identifier
 
 Dungeon의:
 
@@ -156,7 +158,7 @@ Dungeon.ForgottenRuins.Barrier.*
 Boss.Grizzbolt.Pattern.*
 ```
 
-## 왜 enum이 아닌가
+### 왜 enum이 아닌가
 
 전역 enum에 콘텐츠별 값을 계속 추가하면:
 
@@ -168,7 +170,7 @@ GameplayTag는 콘텐츠별 namespace와 editor category filter를 함께 사용
 
 ---
 
-# Part 5. Stable Save ID와 Runtime ID는 다르다
+## Part 5. Stable Save ID와 Runtime ID는 다르다
 
 Dungeon Record의 key는 `DungeonNumber`를 사용합니다.
 
@@ -191,7 +193,7 @@ DungeonNumber (int32)
 
 ---
 
-# Part 6. Soft Reference — Dependency를 Load Timing과 분리
+## Part 6. Soft Reference — Dependency를 Load Timing과 분리
 
 Definition은 Presentation을 soft reference로 가집니다.
 
@@ -205,7 +207,7 @@ Stage Action의 SpawnRule도 soft reference입니다.
 
 ---
 
-# Part 7. Runtime Data와 Presentation Data를 분리한다
+## Part 7. Runtime Data와 Presentation Data를 분리한다
 
 Dungeon gameplay definition과 화면 표현은 별도 asset입니다.
 
@@ -235,7 +237,7 @@ Runtime은 “Combat Stage”라는 ID를 다루고, Presenter가 이를 “경�
 
 ---
 
-# Part 8. StringTable — Player-facing Text
+## Part 8. StringTable — Player-facing Text
 
 현재 주요 player-facing text는:
 
@@ -251,7 +253,7 @@ StringTable로 이동했습니다.
 
 ---
 
-# 선택 기준 요약
+## 선택 기준 요약
 
 ```text
 대량 Row인가?
@@ -272,7 +274,7 @@ Player가 읽는 문구인가?
 
 ---
 
-# 이 문서 다음에 읽기
+## 이 문서 다음에 읽기
 
 - 이 데이터가 실제 Dungeon Runtime에서 어떻게 해석되는지 → [[4. Branching Dungeon Runtime|4_Branching_Dungeon_Runtime]]
 - Definition 작성 실수를 어떻게 잡는지 → [[6. Content Authoring & Validation|6_Content_Authoring_Validation]]
