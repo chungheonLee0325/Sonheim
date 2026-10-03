@@ -1,6 +1,6 @@
 # 7. Boss Encounter Runtime
 
-> **이 문서가 답하는 질문**
+> **핵심 구현 범위**
 >
 > “일반 Monster Skill 몇 개를 순서대로 호출하는 수준을 넘어, Telegraph·Pattern·Phase·Down·Capture Window를 가진 Boss를 어떻게 데이터와 Runtime으로 구성했는가?”
 
@@ -27,7 +27,7 @@ Replicated Boss Status
 ```
 
 
-> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
+> **코드 예시:** 실제 구현에서 구조 이해에 필요한 선언과 함수만 발췌했으며, `UPROPERTY` metadata와 보조 필드는 일부 생략했습니다.
 ---
 
 ## Part 1. Pattern은 실제로 어떤 데이터인가
@@ -304,7 +304,7 @@ Network delay가 있어도 gameplay 결과 기준은 Server이며, Client presen
 
 ---
 
-## 이 문서 다음에 읽기
+## 연관 문서
 
 - 기반 Combat 구조 → [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]]
 - Exhaust Capture가 연결되는 방식 → [[9. Pal Capture & Partner Lifecycle|9_Pal_Capture_Partner_Lifecycle]]
