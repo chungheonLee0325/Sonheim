@@ -22,11 +22,13 @@ UDungeonUIRouterSubsystem
 UMG
 ```
 
+
+> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
 ---
 
-# Part 1. Gameplay State와 UI Data는 같은 것이 아니다
+## Part 1. Gameplay State와 UI Data는 같은 것이 아니다
 
-## 1.1 Runtime Snapshot
+### 1.1 Runtime Snapshot
 
 Client가 받는 authoritative state의 대표 필드:
 
@@ -67,7 +69,7 @@ struct FDungeonStageRuntimeState
 
 ---
 
-## 1.2 ViewData
+### 1.2 ViewData
 
 Presenter가 Widget에 넘기는 타입은 다릅니다.
 
@@ -111,7 +113,7 @@ Runtime의 GameplayTag나 ItemId를 Widget이 직접 해석하지 않습니다.
 
 ---
 
-# Part 2. Presenter가 하는 일
+## Part 2. Presenter가 하는 일
 
 예를 들어 Runtime에는:
 
@@ -140,7 +142,7 @@ Marker     = Guard Room World Position
 
 ---
 
-# Part 3. 왜 Widget이 Snapshot을 직접 읽지 않는가
+## Part 3. 왜 Widget이 Snapshot을 직접 읽지 않는가
 
 Widget이 직접:
 
@@ -166,7 +168,7 @@ Widget layout changes
 
 ---
 
-# Part 4. LocalPlayer UI Router
+## Part 4. LocalPlayer UI Router
 
 `UDungeonUIRouterSubsystem : ULocalPlayerSubsystem`은 **어느 LocalPlayer에게 어떤 화면을 띄울지**를 관리합니다.
 
@@ -184,7 +186,7 @@ Gameplay Runtime은 “이 Client에서 어떤 Widget을 생성해야 하는가�
 
 ---
 
-# Part 5. UI가 늦게 만들어져도 현재 상태를 복구한다
+## Part 5. UI가 늦게 만들어져도 현재 상태를 복구한다
 
 RPC만으로:
 
@@ -210,7 +212,7 @@ Snapshot은 현재 상태 자체를 보관합니다.
 
 ---
 
-# Part 6. Revision
+## Part 6. Revision
 
 같은 Stage에서도 Objective count, Boss state, Reward 등이 여러 번 바뀝니다.
 
@@ -224,7 +226,7 @@ int32 Revision = 0;
 
 ---
 
-# Part 7. Timer는 Client 수신 시각이 아니라 Server 시각을 기준으로 한다
+## Part 7. Timer는 Client 수신 시각이 아니라 Server 시각을 기준으로 한다
 
 Snapshot은:
 
@@ -249,7 +251,7 @@ Client가 packet을 받은 순간부터 30초를 세는 것이 아니라 synchro
 
 ---
 
-# Part 8. 모든 UI를 Snapshot으로 만들지는 않는다
+## Part 8. 모든 UI를 Snapshot으로 만들지는 않는다
 
 Health처럼 이미 Actor Component가 자신의 replicated state와 delegate를 갖는 값은 그대로 사용합니다.
 
@@ -274,7 +276,7 @@ Dungeon progression처럼 여러 값이 한 묶음으로 현재 콘텐츠 상태
 
 ---
 
-# Part 9. Notice는 또 다른 문제다
+## Part 9. Notice는 또 다른 문제다
 
 Room Title, Level Up, Capture 실패는 “현재 상태”라기보다 일시적 메시지입니다.
 
@@ -291,7 +293,7 @@ Transient presentation event를 Runtime Snapshot에 억지로 저장하지 않�
 
 ---
 
-# Part 10. UI 초기화 Race
+## Part 10. UI 초기화 Race
 
 일반 Player HUD에서는 Controller와 PlayerState가 Client에 도착하는 순서가 고정되지 않습니다.
 
@@ -315,7 +317,7 @@ PossessedBy (Server)
 
 ---
 
-# 이 문서 다음에 읽기
+## 이 문서 다음에 읽기
 
 - Snapshot을 만드는 Server Runtime → [[4. Branching Dungeon Runtime|4_Branching_Dungeon_Runtime]]
 - Presentation data의 출처 → [[3. Data & Content Architecture|3_Data_Content_Architecture]]
