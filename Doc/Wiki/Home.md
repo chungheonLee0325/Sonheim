@@ -1,13 +1,14 @@
 # Sonheim Engineering Wiki
 
-> **UE5.5 / C++ 서버 권위 멀티플레이 액션 어드벤처**  
-> 이 Wiki는 포트폴리오에서 더 깊게 확인하고 싶은 설계, 코드 흐름, 트레이드오프와 검증 근거를 설명합니다.
+> **Unreal Engine 5.5 / C++ 기반 서버 권위 멀티플레이 액션 어드벤처**
+>
+> 수집·전투·포획·제작·협동 시스템과, 그 위에 구축한 **데이터 기반 분기형 던전 Vertical Slice**의 설계와 구현을 정리합니다.
 
 ---
 
-## Start Here
+## 빠르게 보기
 
-처음 보는 경우 아래 순서만 읽어도 현재 Sonheim의 기술적 범위를 파악할 수 있습니다.
+프로젝트의 현재 구조를 파악하려면 아래 순서로 보는 것을 권장합니다.
 
 1. [[Project Overview|1_Project_Overview]]
 2. [[Architecture Overview|2_Architecture_Overview]]
@@ -21,54 +22,49 @@
 
 ### [[Branching Dungeon Runtime|4_Branching_Dungeon_Runtime]]
 
-DataAsset에 정의된 Event / Condition / Action / Transition을 서버 runtime이 해석해 Shortcut / ExtraWave 분기, 실패, 보상, 기록과 결과까지 진행합니다.
+Dungeon을 Stage 순서가 하드코딩된 Level Script가 아니라, **Event / Condition / Action / Transition을 데이터로 정의하고 서버가 해석하는 콘텐츠 런타임**으로 구성했습니다. Shortcut / ExtraWave 분기, 제한시간, 실패, 보상, 기록과 결과 정산까지 같은 모델에서 처리합니다.
 
 ### [[Multiplayer State & UI Pipeline|5_Multiplayer_State_UI_Pipeline]]
 
-Server Runtime → GameState Snapshot → Presenter → ViewData → LocalPlayer Router → UMG로 gameplay state와 presentation lifecycle을 분리했습니다.
+서버 gameplay state와 UMG lifecycle을 분리하기 위해 **Server Runtime → Replicated Snapshot → Presenter → ViewData → LocalPlayer UI Router** 흐름을 구성했습니다. 일반 HUD의 delegate 기반 갱신과 Dungeon의 snapshot 기반 presentation을 각각 상태 성격에 맞게 사용합니다.
 
 ### [[Content Authoring & Validation|6_Content_Authoring_Validation]]
 
-GameplayTag, EditCondition, Data Validation, CallInEditor 검사와 Stage Graph 생성으로 콘텐츠 오류를 runtime 이전에 찾습니다.
+GameplayTag, PrimaryAsset, EditCondition, Data Validation, CallInEditor 검사와 Definition 기반 Stage Graph를 이용해 **콘텐츠 오류를 실행 전에 발견하고 흐름을 검토할 수 있는 authoring 환경**을 구성했습니다.
 
 ### [[Multiplayer Inventory & Crafting|8_Multiplayer_Inventory_Crafting]]
 
-FastArray, client prediction/reconciliation, subscriber-based replication과 서버 권위 shared crafting lifecycle을 다룹니다.
+Owner-only FastArray, client prediction/reconciliation, subscriber-based Container replication, shared Crafting state와 동시성 제어를 통해 **개인 소유 상태와 공유 월드 상태를 서로 다른 replication policy로 처리**합니다.
 
 ### [[Boss Encounter Runtime|7_Boss_Encounter_Runtime]]
 
-DataAsset 기반 Pattern, Telegraph, Phase, Break/Down, Capture Window와 Animation Section을 하나의 Boss Runtime으로 구성했습니다.
+Grizzbolt Guardian의 Pattern, Telegraph, Phase, Down/Exhaust, Capture Window와 Montage Section을 데이터와 상태 머신으로 구성해 Dungeon의 Boss Stage에 연결했습니다.
 
 ---
 
 ## Architecture
 
-- [[Architecture Overview|2_Architecture_Overview]]
-- [[Data & Content Architecture|3_Data_Content_Architecture]]
+- [[1. Project Overview|1_Project_Overview]]
+- [[2. Architecture Overview|2_Architecture_Overview]]
+- [[3. Data & Content Architecture|3_Data_Content_Architecture]]
 
-## Gameplay Systems
+## Gameplay & Systems
 
-- [[Pal Capture & Partner Lifecycle|9_Pal_Capture_Partner_Lifecycle]]
-- [[Combat, Skill & Animation|10_Combat_Skill_Animation]]
-- [[Player & Character Systems|11_Player_Character_Systems]]
-- [[World Interaction Systems|12_World_Interaction_Systems]]
+- [[8. Multiplayer Inventory & Crafting|8_Multiplayer_Inventory_Crafting]]
+- [[9. Pal Capture & Partner Lifecycle|9_Pal_Capture_Partner_Lifecycle]]
+- [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]]
+- [[11. Player & Character Systems|11_Player_Character_Systems]]
+- [[12. World Interaction Systems|12_World_Interaction_Systems]]
 
 ## Engineering
 
-- [[Development Workflow & Verification|13_Development_Workflow_Verification]]
-- [[Development History & Retrospective|14_Development_History_Retrospective]]
+- [[13. Development Workflow & Verification|13_Development_Workflow_Verification]]
+- [[14. Development History & Retrospective|14_Development_History_Retrospective]]
 
 ---
 
-## Repository
+## Source
 
-- [Main Repository](https://github.com/chungheonLee0325/Sonheim) — 전체 Unreal Engine 프로젝트
-- [Source-only Mirror](https://github.com/chungheonLee0325/Sonheim.Source) — Source / Config / Docs 중심 코드 검토용
-
----
-
-## Legacy Wiki
-
-2025년에 작성한 세부 시스템 문서는 repository의 `Doc/Wiki`에 그대로 보존되어 있습니다.
-
-새 Wiki에서는 동일 내용을 기능별로 평평하게 나열하지 않고, **현재 설계 기준으로 통합한 14개 문서만 기본 탐색 경로에 노출**합니다.
+- [Sonheim](https://github.com/chungheonLee0325/Sonheim) — 전체 Unreal Engine 프로젝트
+- [Sonheim.Source](https://github.com/chungheonLee0325/Sonheim.Source) — Source / Config / Docs 중심 코드 검토용
+- [AgentMcp](https://github.com/chungheonLee0325/AgentMcp) — Unreal Editor automation / agent integration
