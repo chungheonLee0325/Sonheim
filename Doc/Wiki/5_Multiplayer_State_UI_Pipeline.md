@@ -1,253 +1,331 @@
 # 5. Multiplayer State & UI Pipeline
 
-> **Gameplay code가 Widget을 직접 조작하지 않으면서, 네트워크로 도착하는 상태를 UI lifecycle에 맞게 안정적으로 표현하는 것이 목표입니다.**
+> **이 문서가 답하는 질문**
+>
+> “Server의 Dungeon 상태를 Widget이 직접 읽거나 RPC를 놓치지 않고, Client에서 언제든 현재 화면을 다시 구성하려면?”
 
-Sonheim의 UI는 한 가지 패턴으로만 구성되지 않습니다.  
-Health처럼 독립 값의 변경은 **Delegate**, Dungeon처럼 여러 값이 하나의 콘텐츠 상태를 만드는 경우는 **Replicated Snapshot + Presenter**, 순간적인 메시지는 **Notice**로 분리합니다.
+Dungeon UI는 단순 Delegate 하나로 설명하기 어렵습니다.
 
----
-
-## 1. 일반 HUD: Delegate 기반 Publish / Subscribe
-
-Health, Inventory, Equipment 등은 이미 소유 object가 명확하고 “값이 바뀌었다”는 사실이 중요합니다.
-
-예를 들어 Health:
+핵심 흐름:
 
 ```text
-Server HP 변경
-   ↓ Replication
-UHealthComponent::OnRep_HP
-   ↓
-OnHealthChanged.Broadcast
-   ↓
-HUD Widget Update
-```
-
-Widget이 `UHealthComponent` 내부 계산을 알 필요는 없고, gameplay component도 Widget class를 알 필요가 없습니다.
-
-### PlayerController는 Binding Mediator
-
-Player HUD는 `ASonheimPlayerController`가 Widget lifecycle과 event binding을 조율합니다.
-
-이 역할을 한 곳에 두어:
-
-- Widget 생성
-- Pawn / PlayerState reference 연결
-- Delegate bind
-- UI teardown
-
-이 여러 위치에 흩어지지 않도록 했습니다.
-
----
-
-## 2. Listen Server / Remote Client 초기화 순서 문제
-
-멀티플레이에서 Pawn, Controller, PlayerState가 Client에서 유효해지는 순서는 항상 같지 않습니다.
-
-특히:
-
-- Host: `PossessedBy`는 server path
-- Remote Client: Controller / PlayerState는 replication으로 도착
-
-따라서 HUD 초기화를 BeginPlay 한 지점에만 두면 race가 생길 수 있습니다.
-
-Remote Client에서는:
-
-```text
-OnRep_Controller ─┐
-                  ├─ TryInitHUD_OnClient()
-OnRep_PlayerState ┘
-```
-
-처럼 두 replication callback이 동일한 gate를 호출하고, 필요한 reference가 모두 준비됐을 때만 한 번 초기화합니다.
-
-Host는 `PossessedBy → Client RPC` 경로를 사용합니다.
-
-핵심은 **어느 callback이 먼저 오느냐에 의존하지 않는 idempotent initialization**입니다.
-
----
-
-## 3. Dungeon UI: Snapshot 기반 Presentation
-
-Dungeon은 HP 하나처럼 개별 event만 구독하기에는 상태의 결합도가 높습니다.
-
-한 화면이 동시에 사용합니다.
-
-- Stage / Route
-- Objective progress
-- Branch
-- Deadline
-- Party
-- Boss health/action/phase/break
-- Reward / Result
-- Best time / Grade
-- Marker / Minimap
-
-이런 경우 “무슨 event가 방금 발생했는가”보다 **현재 Run 전체가 어떤 상태인가**가 중요합니다.
-
-```text
-UDungeonStageRuntimeSubsystem
-        ↓ publish
-FDungeonStageRuntimeState
-        ↓ Replication
+Server Runtime State
+       ↓ replication
 ASonheimGameState
-        ↓
+       ↓
 UDungeonStagePresenter
-        ↓
+       ↓
 FDungeonStageViewData
-        ↓
+       ↓
 UDungeonUIRouterSubsystem
-        ↓
-UDungeonViewWidget
+       ↓
+UMG
 ```
 
 ---
 
-## 4. Replicated Snapshot
+# Part 1. Gameplay State와 UI Data는 같은 것이 아니다
 
-`FDungeonStageRuntimeState`는 UI 전용 구조체가 아니라 Client가 알아야 할 authoritative run snapshot입니다.
+## 1.1 Runtime Snapshot
 
-대표 항목:
+Client가 받는 authoritative state의 대표 필드:
 
-- RunId / DefinitionAssetId
-- StageId / Revision / RunStatus
-- Objective group progress
-- SelectedBranchId / RunTags
-- Deadline
-- SealedBarriers
-- Rewards
-- Defeated / Captured
-- Participants / Owner
-- Elapsed / Start Best
-- Boss status
+```cpp
+USTRUCT(BlueprintType)
+struct FDungeonStageRuntimeState
+{
+    GENERATED_BODY()
 
-### Revision
+    FGuid RunId;
+    FGameplayTag StageId;
+    int32 Revision = 0;
+    EDungeonRunStatus RunStatus;
 
-같은 Stage 안에서도 state가 바뀔 수 있기 때문에 StageId만으로 변경 여부를 판단하지 않고 Revision을 함께 사용합니다.
+    FGameplayTag ObjectiveGroupId;
+    int32 CurrentCount = 0;
+    int32 RequiredCount = 0;
+
+    FGameplayTag SelectedBranchId;
+    FGameplayTagContainer RunTags;
+
+    double StageDeadlineServerTime = 0;
+
+    TArray<FDungeonRunReward> Rewards;
+    TArray<FDungeonGroupTally> Groups;
+
+    TArray<TObjectPtr<APlayerState>> Participants;
+
+    float BossHealth = 0.f;
+    FGameplayTag BossActionId;
+    int32 BossPhase = 0;
+    bool bBossVulnerable = false;
+    float BossBreak = 0.f;
+};
+```
+
+이 구조는 “화면용 text”가 아니라 **현재 Run이 실제로 어떤 상태인가**를 표현합니다.
 
 ---
 
-## 5. Presenter: Runtime State를 UI 언어로 변환
+## 1.2 ViewData
 
-`UDungeonStagePresenter`는 Snapshot을 그대로 Widget에 넘기지 않습니다.
+Presenter가 Widget에 넘기는 타입은 다릅니다.
 
-Definition / Presentation asset과 조합하여 `FDungeonStageViewData`를 만듭니다.
+```cpp
+USTRUCT(BlueprintType)
+struct FDungeonStageViewData
+{
+    GENERATED_BODY()
+
+    FText DungeonTitle;
+    FText Goal;
+
+    TArray<FDungeonStepViewData> Steps;
+    TArray<FDungeonObjectiveViewData> Objectives;
+    TArray<FDungeonObjectiveViewData> OptionalObjectives;
+
+    TArray<FDungeonMarkerViewData> Markers;
+
+    UTexture2D* MapTexture;
+    TArray<FDungeonMapRoomViewData> MapRooms;
+
+    TArray<FDungeonMemberViewData> Members;
+
+    FText BossName;
+    float BossHealth = 0.f;
+    FText BossActionText;
+    FText BossPhaseText;
+    FText BossHintText;
+
+    TArray<FDungeonRewardViewData> Rewards;
+    TArray<FDungeonStatViewData> Stats;
+
+    double DeadlineServerTime = 0;
+    EDungeonRunStatus Status;
+    bool bParticipant = true;
+    int32 Revision = 0;
+};
+```
+
+Runtime의 GameplayTag나 ItemId를 Widget이 직접 해석하지 않습니다.
+
+---
+
+# Part 2. Presenter가 하는 일
+
+예를 들어 Runtime에는:
+
+```text
+StageId = Dungeon.ForgottenRuins.Stage.GuardRoom
+ObjectiveGroupId = Dungeon.ForgottenRuins.Group.Guards
+CurrentCount = 2
+RequiredCount = 4
+```
+
+가 있다고 가정합니다.
+
+Presenter는 Definition / Presentation Asset을 조합해:
+
+```text
+Title      = "경비실"
+Objective  = "경비병을 처치하세요"
+Count      = "2 / 4"
+Icon       = Guard Icon
+Marker     = Guard Room World Position
+```
+
+같은 ViewData를 만듭니다.
+
+즉 Presenter는 **authoritative state를 presentation language로 번역하는 계층**입니다.
+
+---
+
+# Part 3. 왜 Widget이 Snapshot을 직접 읽지 않는가
+
+Widget이 직접:
+
+- GameplayTag를 해석하고
+- DataAsset을 찾고
+- ItemId를 이름으로 변환하고
+- Objective kind를 판단하고
+- Boss pattern text를 찾기 시작하면
+
+Gameplay schema와 UMG가 강하게 결합됩니다.
+
+Widget은 최종 ViewData만 소비합니다.
+
+```text
+Gameplay changes
+→ Presenter 수정
+
+Widget layout changes
+→ Widget 수정
+```
+
+책임을 분리합니다.
+
+---
+
+# Part 4. LocalPlayer UI Router
+
+`UDungeonUIRouterSubsystem : ULocalPlayerSubsystem`은 **어느 LocalPlayer에게 어떤 화면을 띄울지**를 관리합니다.
+
+주요 책임:
+
+- participant 여부
+- Dungeon HUD 생성/제거
+- Result 화면
+- 다른 HUD hide/restore
+- Latest ViewData cache
+- Notice channel
+- async Widget asset loading
+
+Gameplay Runtime은 “이 Client에서 어떤 Widget을 생성해야 하는가”를 알지 않습니다.
+
+---
+
+# Part 5. UI가 늦게 만들어져도 현재 상태를 복구한다
+
+RPC만으로:
+
+```text
+"Stage Changed!"
+"Boss Phase Changed!"
+```
+
+같은 event를 보내면 Widget이 없던 순간의 event는 사라집니다.
+
+Snapshot은 현재 상태 자체를 보관합니다.
+
+그래서 Widget이 다시 생성돼도 Latest State로 화면을 재구성할 수 있습니다.
+
+이 차이는 특히:
+
+- HUD recreation
+- late binding
+- network relevancy
+- local screen transition
+
+에서 중요합니다.
+
+---
+
+# Part 6. Revision
+
+같은 Stage에서도 Objective count, Boss state, Reward 등이 여러 번 바뀝니다.
+
+그래서 “StageId가 같으니 변화 없음”으로 판단할 수 없습니다.
+
+```cpp
+int32 Revision = 0;
+```
+
+을 사용해 동일 Stage 내부의 presentation update도 구분합니다.
+
+---
+
+# Part 7. Timer는 Client 수신 시각이 아니라 Server 시각을 기준으로 한다
+
+Snapshot은:
+
+```cpp
+double RunStartedServerTime;
+double StageDeadlineServerTime;
+double BossActionStartServerTime;
+double BossActionEndServerTime;
+```
+
+를 전달합니다.
+
+Client가 packet을 받은 순간부터 30초를 세는 것이 아니라 synchronized server clock을 기준으로 남은 시간을 계산합니다.
+
+이렇게 하면:
+
+- latency
+- HUD recreation
+- 서로 다른 frame rate
+
+가 있어도 같은 logical timer를 바라봅니다.
+
+---
+
+# Part 8. 모든 UI를 Snapshot으로 만들지는 않는다
+
+Health처럼 이미 Actor Component가 자신의 replicated state와 delegate를 갖는 값은 그대로 사용합니다.
 
 예:
 
-| Runtime | ViewData |
-|---|---|
-| GameplayTag StageId | 화면 제목 / Route Step |
-| Group progress | Objective label / count |
-| Server deadline | Countdown display source |
-| Boss PatternId | Boss action text / icon |
-| Reward ItemId | 이름 / 수량 / icon |
-| World SourceId | Marker location |
+```text
+UHealthComponent
+  ↓ RepNotify
+OnHealthChanged
+  ↓
+Participant Health UI
+```
 
-Widget은 GameplayTag tree, Stage transition, Item lookup을 직접 해석하지 않습니다.
-
----
-
-## 6. LocalPlayer UI Router
-
-`UDungeonUIRouterSubsystem : ULocalPlayerSubsystem`은 LocalPlayer 기준으로 UI lifecycle을 관리합니다.
-
-- participant인 경우만 Dungeon HUD 표시
-- Run 시작 시 충돌하는 기존 화면 hide
-- Run 종료 시 이전 visibility 복원
-- 최신 ViewData cache
-- HUD / Result route
-- Notice channel 정리
-
-UI ownership을 World singleton이 아니라 LocalPlayer에 둬서 “어느 화면에 보여야 하는가”를 gameplay runtime에서 분리했습니다.
-
----
-
-## 7. 서버 시각을 화면 기준으로 사용
-
-Countdown과 Boss action progress는 Client가 “받은 순간부터 N초”를 세지 않습니다.
-
-Snapshot에 서버 기준 start/deadline을 포함하고 Client는 synchronized server time으로 남은 값을 계산합니다.
-
-이 방식은:
-
-- Network delay
-- HUD recreation
-- Frame rate 차이
-
-때문에 UI timer의 기준이 달라지는 문제를 줄입니다.
-
----
-
-## 8. Snapshot 밖의 변화는 Delegate로 보완
-
-모든 화면 값을 Snapshot에 집어넣는 것도 효율적이지 않습니다.
-
-예를 들어 Participant HP처럼 별도 replicated component가 이미 있는 값은 Presenter가 해당 delegate를 따라가며 ViewData를 갱신할 수 있습니다.
+Dungeon progression처럼 여러 값이 한 묶음으로 현재 콘텐츠 상태를 구성할 때 Snapshot이 유리합니다.
 
 즉:
 
-- Dungeon progression → Snapshot
-- 독립 actor property → 기존 replication/delegate
+- 독립 상태 변화 → Delegate
+- 복합 콘텐츠 상태 → Snapshot + Presenter
 
-로 책임을 중복시키지 않습니다.
+로 구분합니다.
 
 ---
 
-## 9. Notice: 지속 상태가 아닌 메시지
+# Part 9. Notice는 또 다른 문제다
 
-Room title, Level-up, Capture failure, Crafting complete 같은 메시지는 “현재 게임 상태”가 아니라 **일시적으로 표시할 presentation event**입니다.
+Room Title, Level Up, Capture 실패는 “현재 상태”라기보다 일시적 메시지입니다.
 
-`UNoticeSubsystem`은 다음 정책을 공통화합니다.
+`UNoticeSubsystem`은:
 
 - Banner / Title slot
-- TakeTurns / ReplaceShowing
+- queue
+- Replace / TakeTurns
 - producer Channel
-- Widget / Style / Z-order config
 
-Channel을 두어 Dungeon이 끝날 때 Dungeon이 만든 대기 메시지만 정리할 수 있습니다.
+을 관리합니다.
 
----
-
-## 10. UI 성능: 사용 패턴에 맞는 Pooling
-
-모든 UI를 하나의 pool에 넣지 않습니다.
-
-### Floating Damage
-
-전투 중 짧은 수명의 damage actor/widget가 반복 생성되므로 전역 pool을 사용합니다.
-
-### Crafting Required Row
-
-Recipe detail 내부의 row는 같은 screen 안에서 반복 재사용되므로 Widget 내부 local pool을 사용합니다.
-
-- 필요한 개수까지 한 번 생성
-- 남는 row는 `Collapsed`
-- Recipe가 바뀔 때 icon/layout 갱신
-- Inventory/수량 변화에는 숫자와 상태만 갱신
-
-Pooling 범위를 실제 사용 수명에 맞춥니다.
+Transient presentation event를 Runtime Snapshot에 억지로 저장하지 않습니다.
 
 ---
 
-## Trade-offs
+# Part 10. UI 초기화 Race
 
-### Presenter/ViewData는 코드량을 늘린다
-단순 HUD에는 과한 구조입니다. Dungeon처럼 presentation logic과 상태 조합이 복잡한 화면에만 사용합니다.
+일반 Player HUD에서는 Controller와 PlayerState가 Client에 도착하는 순서가 고정되지 않습니다.
 
-### Delegate는 초기 binding이 중요하다
-Publisher보다 Widget이 늦게 생성될 수 있으므로 최초 상태를 별도로 읽어 초기화해야 합니다.
+Remote Client:
 
-### Snapshot은 transient event를 대신하지 않는다
-Toast 같은 일회성 presentation까지 Snapshot에 넣으면 stale event 처리 문제가 생기므로 Notice와 분리했습니다.
+```text
+OnRep_Controller ─┐
+                  ├→ TryInitHUD_OnClient
+OnRep_PlayerState ┘
+```
+
+Host:
+
+```text
+PossessedBy (Server)
+ → Client RPC
+ → HUD Init
+```
+
+어느 callback이 먼저 오는지에 의존하지 않고 필요한 reference가 모두 준비됐을 때 한 번만 실행합니다.
+
+---
+
+# 이 문서 다음에 읽기
+
+- Snapshot을 만드는 Server Runtime → [[4. Branching Dungeon Runtime|4_Branching_Dungeon_Runtime]]
+- Presentation data의 출처 → [[3. Data & Content Architecture|3_Data_Content_Architecture]]
+- Notice와 검증 workflow → [[13. Development Workflow & Verification|13_Development_Workflow_Verification]]
 
 ---
 
 ## 관련 코드
 
-- [SonheimPlayerController](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayerController.h)
-- [DungeonStagePresenter](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Dungeon/DungeonStagePresenter.h)
-- [DungeonViewData](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Dungeon/DungeonViewData.h)
-- [DungeonUIRouterSubsystem](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Dungeon/DungeonUIRouterSubsystem.h)
-- [NoticeSubsystem](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Notice/NoticeSubsystem.h)
-- [FloatingDamagePool](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/FloatingDamagePool.h)
+- [DungeonStageRuntimeTypes.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonStageRuntimeTypes.h)
+- [DungeonViewData.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Dungeon/DungeonViewData.h)
+- [DungeonStagePresenter.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Dungeon/DungeonStagePresenter.cpp)
+- [DungeonUIRouterSubsystem.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Dungeon/DungeonUIRouterSubsystem.h)

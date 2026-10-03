@@ -1,201 +1,264 @@
 # 11. Player & Character Systems
 
-> **Player의 World body, 연결, 지속 데이터와 Character 공통 능력치를 UE Gameplay Framework의 수명에 맞춰 분리합니다.**
+> **이 문서가 답하는 질문**
+>
+> “Player의 몸(Pawn), 연결(Controller), 지속 데이터(PlayerState), 그리고 Character 공통 능력은 어디에 두는가?”
+
+이 문서는 전투나 Inventory보다 먼저 **객체 수명과 책임**을 설명합니다.
 
 ---
 
-## 1. AAreaObject — Player와 Monster의 공통 Gameplay Facade
+# Part 1. UE Gameplay Framework 기준으로 수명을 나눈다
 
-`AAreaObject`는 모든 기능을 직접 구현하는 God Class가 아니라, Character 공통 component를 조합하고 외부에 일관된 API를 제공합니다.
+| 객체 | Sonheim에서의 책임 |
+|---|---|
+| `ASonheimPlayer` | 이동, Mesh, Animation, World Action |
+| `ASonheimPlayerController` | Input, Client RPC, UI bootstrap |
+| `ASonheimPlayerState` | Inventory, Stat 등 Player identity에 가까운 data |
+| `AAreaObject` | Player / Monster 공통 gameplay facade |
 
-대표 component:
-
-- `UHealthComponent`
-- `UStaminaComponent`
-- `UConditionComponent`
-- `ULevelComponent`
-- `USonheimSkillComponent`
-- Move / Rotate Utility
-
-외부 시스템은 `DecreaseHP`, `CastSkill`, `AddCondition` 같은 AreaObject 수준의 API를 사용하고 실제 state mutation은 해당 component가 담당합니다.
+Pawn이 교체될 수 있는 데이터와 World body에 종속된 데이터를 분리합니다.
 
 ---
 
-## 2. Health — RepNotify + Delegate
+# Part 2. AAreaObject는 공통 Facade다
 
-Health 값은 replicated state이고 변화는 delegate로 알립니다.
+`AAreaObject`는 여러 component를 조합합니다.
 
 ```text
-Server ModifyHP
-     ↓
-Replicated HP
-     ↓
-OnRep_HP
-     ↓
-OnHealthChanged
-     ├─ HUD
-     ├─ Dungeon Presenter
-     └─ 기타 Subscriber
+AAreaObject
+ ├─ Health
+ ├─ Stamina
+ ├─ Condition
+ ├─ Level
+ ├─ Skill
+ ├─ Move Utility
+ └─ Rotate Utility
 ```
 
-Health component는 누가 이 값을 화면에 그리는지 알지 않습니다.
+외부에서는:
+
+- `DecreaseHP`
+- `AddCondition`
+- `CastSkill`
+
+같은 AreaObject API를 사용하고 실제 state owner는 component입니다.
 
 ---
 
-## 3. Condition — Bitmask 기반 상태 조합
+# Part 3. Player Action State
 
-Dead / Invincible / Hidden 등 여러 boolean condition을 각각 bool property로 늘리지 않고 `uint32 ConditionFlags` bitmask로 관리합니다.
+실제 Player state enum:
 
-- Add → OR
-- Remove → AND + NOT
-- Query → bit check
+```cpp
+UENUM(BlueprintType)
+enum class EPlayerState : uint8
+{
+    NORMAL,
+    ONLY_ROTATE,
+    ACTION,
+    CANACTION,
+    DIE,
+    GLIDING,
+};
+```
 
-상태 종류가 늘어나도 동일한 storage와 API를 사용합니다.
+각 상태가 허용하는 행동은 별도 구조체로 표현합니다.
 
-### Timed Condition의 한계
+```cpp
+USTRUCT(BlueprintType)
+struct FActionRestrictions
+{
+    GENERATED_BODY()
 
-현재 timer map은 Condition type 중심이므로 동일 Condition을 여러 source가 서로 다른 duration으로 중첩하는 요구에는 제약이 있습니다.
+    bool bCanLook = true;
+    bool bCanMove = true;
+    bool bCanRotate = true;
+    bool bCanOnlyRotate = false;
+    bool bCanAction = true;
+};
+```
 
-Source별 독립 수명이 필요해지면 GUID/token 기반 instance 추적이 더 적합합니다.
-
----
-
-## 4. Level
-
-`ULevelComponent`는 Level table을 이용해:
-
-- Current Level
-- EXP
-- Next Level requirement
-- Level-up
-
-을 관리하고 변경 이벤트를 외부에 알립니다.
-
-Level-up presentation은 gameplay component 내부에서 Widget을 직접 만들지 않고 Notice 계층으로 전달합니다.
-
----
-
-## 5. Pawn / Controller / PlayerState
-
-Player data를 한 Actor에 모두 넣지 않습니다.
-
-| 객체 | 책임 |
-|---|---|
-| `ASonheimPlayer` | 이동, Mesh, Animation, World interaction |
-| `ASonheimPlayerController` | Input/Connection, Client RPC, UI bootstrap |
-| `ASonheimPlayerState` | Inventory, Stat처럼 Pawn 교체와 분리할 Player data |
-
-Pawn이 죽고 새로 생성될 수 있어도 Player identity에 가까운 데이터는 PlayerState lifecycle에 유지할 수 있습니다.
+입력 함수마다 `if (bAttacking && !bCanDodge ...)`를 흩뿌리지 않고 현재 state의 restriction을 조회합니다.
 
 ---
 
-## 6. PlayerState 중심 Stat Bonus
+# Part 4. Animation과 Action State가 연결된다
 
-`UStatBonusComponent`는 base stat 자체를 소유하기보다 여러 source의 modifier를 모아 최종값을 계산합니다.
+Combat Montage의 Notify가:
 
-`FStatModifier`:
+```text
+ACTION
+ → CANACTION
+ → NORMAL
+```
 
-- StatType
-- Value
-- Additive / Multiplicative / Override
-- SourceID
+을 변경합니다.
 
-### Source 추적
+그래서:
 
-Equipment, Item, Buff처럼 modifier를 만든 source를 ID로 추적해 특정 source의 bonus만 제거할 수 있습니다.
+- 선딜
+- Combo 가능
+- Dodge cancel
+- 이동 복귀
 
-### 결과 전파
+시점을 animation timeline에서 조정할 수 있습니다.
 
-Stat이 바뀌면 Pawn의 실제 runtime component에 반영합니다.
+이 흐름은 [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]]과 연결됩니다.
+
+---
+
+# Part 5. Health / Stamina / Condition
+
+## Health
+
+Server 상태가 RepNotify로 Client에 전달되고 Delegate가 UI를 갱신합니다.
+
+```text
+Server HP
+ → Replication
+ → OnRep
+ → OnHealthChanged
+```
+
+## Condition
+
+Dead / Invincible / Hidden은 bitmask입니다.
+
+```cpp
+enum class EConditionBitsType : uint32
+{
+    None       = 0,
+    Dead       = 1 << 0,
+    Invincible = 1 << 1,
+    Hidden     = 1 << 2,
+};
+```
+
+여러 bool property를 각각 늘리지 않고 bit operation으로 조합합니다.
+
+---
+
+# Part 6. Stat Bonus는 Source를 추적한다
+
+실제 modifier:
+
+```cpp
+USTRUCT(BlueprintType)
+struct FStatModifier
+{
+    GENERATED_BODY()
+
+    EAreaObjectStatType StatType;
+    float Value;
+    EStatModifierType ModifierType;
+    int SourceID;
+};
+```
+
+`SourceID`가 있기 때문에:
+
+- Item A가 준 HP
+- Buff B가 준 HP
+- Weapon C가 준 Attack
+
+을 같은 stat에 더하면서도 특정 source만 제거할 수 있습니다.
+
+---
+
+# Part 7. 왜 Stat을 PlayerState 쪽에 두는가
+
+장비/성장 데이터는 Pawn mesh보다 Player identity에 가깝습니다.
+
+따라서 PlayerState 쪽에서 modifier를 계산하고 Pawn의 runtime component에 결과를 반영합니다.
 
 예:
 
-- Max HP → HealthComponent
-- 이동 속도 → CharacterMovement
-- 기타 Player runtime stat
-
-PlayerState가 계산의 중심이고 Pawn은 World에서 그 결과를 적용합니다.
-
----
-
-## 7. Equipment와 Stat / Skill 연결
-
-Inventory에서 장비가 바뀌면 단순히 EquippedSlots만 변경하지 않습니다.
-
-- StatBonus 등록/해제
-- Current Weapon 상태
-- Weapon Mesh
-- Skill Grant
-
-까지 이어집니다.
-
-따라서 Equipment는 Inventory, Stat, Skill 사이의 orchestration point 역할을 합니다.
+```text
+Equipment Change
+  ↓
+StatBonusComponent
+  ↓
+Final MaxHP
+  ↓
+Pawn HealthComponent
+```
 
 ---
 
-## 8. Action Restriction State
+# Part 8. Equipment는 여러 시스템을 연결한다
 
-Player action 가능 여부를 입력 함수마다 제각각 bool로 관리하지 않고 `EPlayerState`와 `FActionRestrictions`에 모읍니다.
+무기 하나를 장착하면:
 
-상태 예:
+```text
+Inventory
+  ├─ Equipped Slot
+  ├─ Stat Modifier
+  ├─ Mesh
+  └─ Skill Grant
+```
 
-- NORMAL
-- ONLY_ROTATE
-- ACTION
-- CANACTION
-- DIE
-- GLIDING
-
-각 상태는:
-
-- Look
-- Move
-- Rotate
-- Action
-
-허용 여부를 가집니다.
-
-Animation Notify가 ACTION → CANACTION → NORMAL을 변경하면서 combat cancel window를 조정합니다.
+이 흐름 때문에 Inventory / Stat / Skill은 서로 완전히 독립된 섬이 아니라 명확한 orchestration point를 갖습니다.
 
 ---
 
-## 9. Aim / Camera 전환은 보간한다
+# Part 9. Movement 관련 Custom Replication
 
-Lock-on/aim 전환에서 Camera Boom, 회전 상태를 즉시 snap시키지 않고 `FInterpTo`, rotation interpolation을 사용합니다.
-
-Gameplay state는 discrete하게 바뀌더라도 camera presentation은 시간에 따라 부드럽게 따라가도록 분리합니다.
-
----
-
-## 10. Movement State Replication
-
-Sprint / Glider / LockOn처럼 다른 Client의 presentation에도 필요한 custom state는 RepNotify를 사용합니다.
+CharacterMovement가 기본 이동 동기화를 담당하고 프로젝트 고유 state만 별도로 복제합니다.
 
 예:
 
 - `bIsSprinting`
 - `bIsGliding`
 - `bIsLockOn`
-- selected weapon / visibility
+- Current Weapon
+- Weapon Visibility
 
-CharacterMovement가 기본 movement replication을 담당하고, 프로젝트 고유 state만 별도 replicated property로 보완합니다.
+RepNotify에서 Client presentation을 적용합니다.
 
 ---
 
-## 11. HUD Initialization도 Character Lifecycle 문제다
+# Part 10. HUD 초기화도 Lifecycle 문제다
 
-Remote Client에서 Controller와 PlayerState replication 순서는 고정되지 않습니다.
+Remote Client에서 Controller와 PlayerState의 Replication 순서는 고정되지 않습니다.
 
-Player는 `OnRep_Controller`, `OnRep_PlayerState`에서 동일한 initialization gate를 호출하고 준비 조건이 맞을 때 HUD setup을 진행합니다.
+따라서:
 
-이 내용은 [[Multiplayer State & UI Pipeline|5_Multiplayer_State_UI_Pipeline]]에서 자세히 설명합니다.
+```text
+OnRep_Controller ─┐
+                  ├→ Init Gate
+OnRep_PlayerState ┘
+```
+
+구조를 사용합니다.
+
+Host는 Server `PossessedBy`에서 Client RPC로 초기화합니다.
+
+자세한 UI 흐름은 [[5. Multiplayer State & UI Pipeline|5_Multiplayer_State_UI_Pipeline]]에서 설명합니다.
+
+---
+
+# Trade-offs
+
+### Condition Timer
+현재 같은 Condition type을 서로 다른 source가 독립 duration으로 중첩하는 데 제한이 있습니다.
+
+### PlayerState 집중
+지속 데이터에는 적합하지만 모든 gameplay state를 PlayerState에 넣으면 World/Pawn 책임이 흐려질 수 있어 movement/animation은 Pawn에 유지합니다.
+
+---
+
+# 이 문서 다음에 읽기
+
+- Skill/Combat 실행 → [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]]
+- Inventory/Equipment → [[8. Multiplayer Inventory & Crafting|8_Multiplayer_Inventory_Crafting]]
+- Pal ownership → [[9. Pal Capture & Partner Lifecycle|9_Pal_Capture_Partner_Lifecycle]]
 
 ---
 
 ## 관련 코드
 
-- [AreaObject](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Base/AreaObject.h)
-- [Attributes](https://github.com/chungheonLee0325/Sonheim/tree/main/Sonheim/Source/Sonheim/AreaObject/Attribute)
-- [SonheimPlayer](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayer.h)
-- [SonheimPlayerState](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayerState.h)
-- [StatBonusComponent](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Attribute/StatBonusComponent.h)
+- [SonheimPlayer.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayer.h)
+- [SonheimPlayerState.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayerState.h)
+- [AreaObject.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Base/AreaObject.h)
+- [StatBonusComponent.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Attribute/StatBonusComponent.h)
