@@ -6,9 +6,11 @@
 
 이 문서는 전투나 Inventory보다 먼저 **객체 수명과 책임**을 설명합니다.
 
+
+> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
 ---
 
-# Part 1. UE Gameplay Framework 기준으로 수명을 나눈다
+## Part 1. UE Gameplay Framework 기준으로 수명을 나눈다
 
 | 객체 | Sonheim에서의 책임 |
 |---|---|
@@ -21,7 +23,7 @@ Pawn이 교체될 수 있는 데이터와 World body에 종속된 데이터를 �
 
 ---
 
-# Part 2. AAreaObject는 공통 Facade다
+## Part 2. AAreaObject는 공통 Facade다
 
 `AAreaObject`는 여러 component를 조합합니다.
 
@@ -46,7 +48,7 @@ AAreaObject
 
 ---
 
-# Part 3. Player Action State
+## Part 3. Player Action State
 
 실제 Player state enum:
 
@@ -83,7 +85,7 @@ struct FActionRestrictions
 
 ---
 
-# Part 4. Animation과 Action State가 연결된다
+## Part 4. Animation과 Action State가 연결된다
 
 Combat Montage의 Notify가:
 
@@ -108,9 +110,9 @@ ACTION
 
 ---
 
-# Part 5. Health / Stamina / Condition
+## Part 5. Health / Stamina / Condition
 
-## Health
+### Health
 
 Server 상태가 RepNotify로 Client에 전달되고 Delegate가 UI를 갱신합니다.
 
@@ -121,7 +123,7 @@ Server HP
  → OnHealthChanged
 ```
 
-## Condition
+### Condition
 
 Dead / Invincible / Hidden은 bitmask입니다.
 
@@ -139,7 +141,7 @@ enum class EConditionBitsType : uint32
 
 ---
 
-# Part 6. Stat Bonus는 Source를 추적한다
+## Part 6. Stat Bonus는 Source를 추적한다
 
 실제 modifier:
 
@@ -166,7 +168,7 @@ struct FStatModifier
 
 ---
 
-# Part 7. 왜 Stat을 PlayerState 쪽에 두는가
+## Part 7. 왜 Stat을 PlayerState 쪽에 두는가
 
 장비/성장 데이터는 Pawn mesh보다 Player identity에 가깝습니다.
 
@@ -186,7 +188,7 @@ Pawn HealthComponent
 
 ---
 
-# Part 8. Equipment는 여러 시스템을 연결한다
+## Part 8. Equipment는 여러 시스템을 연결한다
 
 무기 하나를 장착하면:
 
@@ -202,7 +204,7 @@ Inventory
 
 ---
 
-# Part 9. Movement 관련 Custom Replication
+## Part 9. Movement 관련 Custom Replication
 
 CharacterMovement가 기본 이동 동기화를 담당하고 프로젝트 고유 state만 별도로 복제합니다.
 
@@ -218,7 +220,7 @@ RepNotify에서 Client presentation을 적용합니다.
 
 ---
 
-# Part 10. HUD 초기화도 Lifecycle 문제다
+## Part 10. HUD 초기화도 Lifecycle 문제다
 
 Remote Client에서 Controller와 PlayerState의 Replication 순서는 고정되지 않습니다.
 
@@ -238,7 +240,7 @@ Host는 Server `PossessedBy`에서 Client RPC로 초기화합니다.
 
 ---
 
-# Trade-offs
+## Trade-offs
 
 ### Condition Timer
 현재 같은 Condition type을 서로 다른 source가 독립 duration으로 중첩하는 데 제한이 있습니다.
@@ -248,7 +250,7 @@ Host는 Server `PossessedBy`에서 Client RPC로 초기화합니다.
 
 ---
 
-# 이 문서 다음에 읽기
+## 이 문서 다음에 읽기
 
 - Skill/Combat 실행 → [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]]
 - Inventory/Equipment → [[8. Multiplayer Inventory & Crafting|8_Multiplayer_Inventory_Crafting]]
