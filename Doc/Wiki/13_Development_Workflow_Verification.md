@@ -1,6 +1,6 @@
 # 13. Development Workflow & Verification
 
-> **이 문서가 답하는 질문**
+> **핵심 구현 범위**
 >
 > “기능 구현이 끝났다는 것을 무엇으로 확인했고, Unreal Editor에서 반복되는 작성/검증 작업을 어떻게 줄였는가?”
 
@@ -191,7 +191,7 @@ Sonheim Wiki에서는 이 기능들이 **게임 Runtime 기능인 것처럼 섞�
 
 ---
 
-## 이 문서 다음에 읽기
+## 연관 문서
 
 - Editor validation 자체 → [[6. Content Authoring & Validation|6_Content_Authoring_Validation]]
 - 실제 Dungeon runtime → [[4. Branching Dungeon Runtime|4_Branching_Dungeon_Runtime]]
