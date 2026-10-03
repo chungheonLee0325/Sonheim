@@ -1,6 +1,6 @@
 # 4. Branching Dungeon Runtime
 
-> **이 문서가 답하는 질문**
+> **핵심 구현 범위**
 >
 > “분기, 목표, 제한시간, 실패, 보상 같은 Dungeon 규칙이 늘어날 때마다 C++에 Stage별 분기문을 추가하지 않고 콘텐츠를 확장하려면?”
 
@@ -25,7 +25,7 @@ GameState Replication
 ```
 
 
-> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
+> **코드 예시:** 실제 구현에서 구조 이해에 필요한 선언과 함수만 발췌했으며, `UPROPERTY` metadata와 보조 필드는 일부 생략했습니다.
 ---
 
 ## Part 1. Dungeon 하나는 무엇으로 정의되는가
@@ -363,7 +363,7 @@ UI에서 이 Snapshot을 어떻게 ViewData로 바꾸는지는 [[5. Multiplayer 
 
 ---
 
-## 이 문서 다음에 읽기
+## 연관 문서
 
 - Definition이 어떤 데이터 구조로 관리되는지 → [[3. Data & Content Architecture|3_Data_Content_Architecture]]
 - Boss Stage 내부 구조 → [[7. Boss Encounter Runtime|7_Boss_Encounter_Runtime]]
