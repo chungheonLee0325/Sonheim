@@ -1,161 +1,256 @@
 # 8. Multiplayer Inventory & Crafting
 
-> **같은 Item 데이터를 다루더라도 개인 Inventory, 공유 Container, Crafting Station은 소유권과 동시성 조건이 다릅니다.**
+> **이 문서가 답하는 질문**
+>
+> 같은 Item 데이터를 사용하는데 왜 Player Inventory, World Container, Crafting Station은 서로 다른 네트워크 구조를 가져야 하는가?
 
-이 시스템의 핵심은 Item 처리 코드를 하나로 만드는 것이 아니라, **상태를 누가 보고 누가 변경할 수 있는지에 따라 network policy와 UI 책임을 구분하는 것**입니다.
+먼저 세 상태의 차이를 보면 전체 문서를 이해하기 쉽습니다.
+
+| 시스템 | 소유 범위 | 누가 보는가 | 핵심 네트워크 정책 |
+|---|---|---|---|
+| Player Inventory | 개인 | Owner | Owner-only FastArray |
+| Container | World shared | 열어본 Player | Subscriber-based FastArray |
+| Crafting Station | World shared workflow | 주변/참여 Player | Replicated work state + Server lock |
 
 ---
 
-## 1. Player Inventory — Owner-only FastArray
+# Part 1. Player Inventory
 
-`UInventoryComponent`는 authoritative 배열과 network용 FastArray를 함께 관리합니다.
+## 1.1 실제 Replication 구조
+
+```cpp
+USTRUCT(BlueprintType)
+struct FRepInventoryEntry : public FFastArraySerializerItem
+{
+    GENERATED_BODY()
+
+    int32 SlotIndex = 0;
+    int32 ItemID = 0;
+    int32 Count = 0;
+};
+
+USTRUCT(BlueprintType)
+struct FRepInventoryList : public FFastArraySerializer
+{
+    GENERATED_BODY()
+
+    TArray<FRepInventoryEntry> Items;
+
+    bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms)
+    {
+        return FFastArraySerializer::FastArrayDeltaSerialize<
+            FRepInventoryEntry,
+            FRepInventoryList>(Items, DeltaParms, *this);
+    }
+};
+```
+
+실제 Component는 network list와 local mirror를 나눕니다.
+
+```cpp
+UPROPERTY(ReplicatedUsing=OnRep_RepItems)
+FRepInventoryList RepItems;
+
+UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+TArray<FInventoryItem> InventoryItems;
+```
+
+---
+
+## 1.2 왜 두 배열인가
+
+Server에서는 `InventoryItems`를 gameplay API가 사용하고, 변경 slot만 FastArray entry에 반영합니다.
+
+Client는 `OnRep_RepItems`에서 local mirror를 다시 구성합니다.
 
 ```text
 Server InventoryItems
-      ↓ dirty entry
-FRepInventoryList (FastArray)
-      ↓ COND_OwnerOnly
-Owning Client
-      ↓ OnRep_RepItems
-Local InventoryItems mirror
-      ↓ Delegate
-UI
+       ↓ Dirty Entry
+RepItems (FastArray)
+       ↓ Owner-only replication
+Client OnRep_RepItems
+       ↓
+Client InventoryItems mirror
+       ↓
+UI Delegate
 ```
-
-### 왜 FastArray인가
-
-Inventory는 슬롯 일부만 바뀌는 일이 많습니다.
-
-- Item count 변화
-- 두 슬롯 swap
-- 한 슬롯 remove
-- 한 슬롯 insert
-
-전체 배열을 매번 다시 보내기보다 변경 entry를 dirty 처리합니다.
-
-또한 개인 Inventory는 다른 Client가 볼 이유가 없으므로 owner-only 조건으로 복제합니다.
 
 ---
 
-## 2. Prediction / Request / Reconciliation
+## 1.3 Owner-only
 
-Drag & Drop의 응답성을 위해 일부 operation은 Client Prediction을 지원합니다.
+다른 Player의 개인 Inventory 전체를 받을 필요가 없습니다.
 
-Swap 예:
+따라서 `RepItems`는 owner-only 조건으로 복제합니다.
+
+“FastArray를 사용했다”보다 중요한 것은 **데이터를 누가 소비하는가에 맞춰 replication scope를 제한했다는 점**입니다.
+
+---
+
+# Part 2. Client Prediction
+
+## 2.1 Slot Swap
+
+```cpp
+bool UInventoryComponent::SwapItems(int32 FromIndex, int32 ToIndex)
+{
+    if (GetOwnerRole() == ROLE_Authority)
+    {
+        InventoryItems.Swap(FromIndex, ToIndex);
+        UpdateRepEntryAtIndex(FromIndex);
+        UpdateRepEntryAtIndex(ToIndex);
+        BroadcastInventoryChanged();
+        return true;
+    }
+
+    if (bEnableClientPrediction)
+        PerformClientPrediction_SwapItems(FromIndex, ToIndex);
+
+    ServerSwapItems(FromIndex, ToIndex);
+    return true;
+}
+```
+
+흐름:
 
 ```text
-SlotWidget Drop
-    ↓
-UInventoryComponent::SwapItems
-    ├─ Client: PerformClientPrediction_SwapItems
-    └─ RPC: ServerSwapItems
-                ↓
-         Server authoritative swap
-                ↓
-          FastArray replication
-                ↓
-        OnRep → local mirror rebuild
+Drag
+ ↓
+Client Prediction
+ ↓
+Server RPC
+ ↓
+Server authoritative mutation
+ ↓
+FastArray replication
+ ↓
+OnRep reconciliation
 ```
 
-Prediction은 UI 전용 가짜 배열을 별도로 두는 방식이 아니라 Client local mirror를 먼저 변경합니다. 서버 결과가 다르면 `OnRep_RepItems`가 authoritative state로 다시 구성합니다.
-
-### Trade-off
-
-Prediction 로직과 Server mutation 로직이 따로 존재하므로 두 경로가 같은 규칙을 따라야 합니다. 복잡한 operation일수록 misprediction 가능성이 증가하기 때문에, 현재는 반응성이 중요한 제한된 조작에 적용합니다.
+Prediction은 authority를 대신하지 않고 round-trip latency를 가리는 역할만 합니다.
 
 ---
 
-## 3. “Inventory 변경”과 “새 Item 획득”은 다른 Event다
+# Part 3. “상태 변경”과 “획득 이벤트”를 분리한다
 
-같은 `AddItem`이라도 UI 관점에서는 의미가 다릅니다.
+Inventory slot이 바뀌었다고 항상 “아이템 획득” popup을 띄우면 안 됩니다.
 
 예:
 
-- 필드 Item 획득 → 획득 popup 필요
-- 장비 해제 후 Inventory 복귀 → popup 불필요
-- 슬롯 이동 → popup 불필요
+- Field pickup → 획득 알림 O
+- Equip 해제 후 Inventory 복귀 → 획득 알림 X
+- Slot swap → 획득 알림 X
 
-`IsDirectAcquisition`과 별도 delegate를 통해 이를 구분합니다.
+그래서:
 
-- `OnInventoryChanged`: 슬롯 상태가 바뀌면 항상
-- `OnItemAdded`: 직접 획득 의미가 있을 때만
+- `OnInventoryChanged`: 구조 변경
+- `OnItemAdded`: 직접 획득 의미가 있을 때
 
-단순 data mutation과 player-facing semantic event를 분리한 사례입니다.
+를 분리합니다.
 
----
-
-## 4. Equipment와 Skill Grant 연결
-
-장비 변경은 Item 위치만 바꾸지 않습니다.
-
-Inventory가 장비 state를 변경하면:
-
-- Stat bonus 적용/해제
-- Weapon mesh / HUD 갱신
-- 활성 무기에 따른 Skill Grant 교체
-
-같은 후속 처리가 이어집니다.
-
-`ActiveWeaponGrantId`를 보관하여 무기 교체 시 `ReplaceGrant`로 해당 source가 부여한 skill set을 교체합니다.
+`AddItem(..., bool IsDirectAcquisition)`이 이 semantic 차이를 전달합니다.
 
 ---
 
-## 5. Shared Container — Subscriber-based FastArray
+# Part 4. Equipment는 다른 시스템의 Source다
 
-Container는 Player Inventory와 달리 월드에 놓인 공유 state입니다.
-
-모든 Client가 모든 Container 내부를 항상 받을 필요는 없습니다.
-
-`UContainerComponent::PreReplication`:
-
-```cpp
-const bool bActive = Subscribers.Num() > 0;
-DOREPLIFETIME_ACTIVE_OVERRIDE(
-    UContainerComponent,
-    RepContainerItems,
-    bActive);
-```
-
-Player가 Container를 열면 `ServerSubscribeViewer`, 닫으면 `ServerUnsubscribeViewer`로 viewer set을 갱신합니다.
-
-### Inventory와 Container의 차이
-
-| | Player Inventory | Container |
-|---|---|---|
-| 소유 범위 | 한 Player | World shared |
-| Replication | Owner-only | Viewer가 있을 때 활성 |
-| Delta | FastArray | FastArray |
-| Client local mirror | 있음 | 있음 |
-
-같은 Item 구조라도 소유권에 맞춰 replication policy를 다르게 선택합니다.
-
----
-
-## 6. Crafting Station — 상태에 따라 같은 Interaction을 다르게 해석
-
-Crafting Station은 한 개의 F 키가 항상 “UI 열기”를 의미하지 않습니다.
-
-`Interact_Implementation`은 현재 station state를 보고 행동을 라우팅합니다.
+장비 변경은 Inventory 내부만의 일이 아닙니다.
 
 ```text
-Interact
-   ↓
-Completed result? → Collect
-   ↓ no
-Active work?      → Add Work
-   ↓ no
-Idle              → Open Recipe UI
+Equip Item
+  ├─ EquippedSlots
+  ├─ StatBonus
+  ├─ Weapon Mesh
+  ├─ HUD
+  └─ Skill Grant
 ```
 
-이를 통해 별도 “돕기 버튼”, “수령 버튼”을 월드에 추가하지 않고 현재 상태를 interaction 의미에 반영합니다.
+Inventory Component는 현재 무기가 부여한 Skill source를 `ActiveWeaponGrantId`로 추적합니다.
+
+무기가 바뀌면 Skill Component의 `ReplaceGrant`와 연결합니다.
 
 ---
 
-## 7. Recipe 선택 구간의 동시성 제어
+# Part 5. Shared Container
 
-여러 Player가 동시에 Recipe UI를 열고 서로 다른 작업을 시작하면 재료와 ActiveWork가 충돌할 수 있습니다.
+## 5.1 구조는 비슷하지만 전송 조건이 다르다
 
-`UIOwner`는 **Recipe 선택/시작 구간에 대한 exclusive owner** 역할을 합니다.
+Container도 FastArray입니다.
+
+```cpp
+USTRUCT(BlueprintType)
+struct FRepContainerEntry : public FFastArraySerializerItem
+{
+    GENERATED_BODY()
+
+    int32 SlotIndex = 0;
+    int32 ItemID = 0;
+    int32 Count = 0;
+};
+```
+
+하지만 owner-only가 아닙니다.
+
+Container는 여러 Player가 볼 수 있는 World state입니다.
+
+---
+
+## 5.2 Subscriber가 있을 때만 내부 Item을 복제한다
+
+```cpp
+void UContainerComponent::PreReplication(
+    IRepChangedPropertyTracker& ChangedPropertyTracker)
+{
+    Super::PreReplication(ChangedPropertyTracker);
+
+    const bool bActive = Subscribers.Num() > 0;
+
+    DOREPLIFETIME_ACTIVE_OVERRIDE(
+        UContainerComponent,
+        RepContainerItems,
+        bActive);
+}
+```
+
+Player가 UI를 열면:
+
+```cpp
+ServerSubscribeViewer(APlayerController* Viewer);
+```
+
+닫으면:
+
+```cpp
+ServerUnsubscribeViewer(APlayerController* Viewer);
+```
+
+를 호출합니다.
+
+즉 Container Actor 자체가 존재한다고 내부 Inventory까지 항상 전송하지 않습니다.
+
+---
+
+# Part 6. Crafting Station
+
+## 6.1 한 개의 Interaction이 상태에 따라 다른 의미를 갖는다
+
+```text
+F Interaction
+   ↓
+완료 결과 존재? → Collect
+   ↓ no
+작업 진행 중?   → Add Work
+   ↓ no
+Idle             → Recipe UI Open
+```
+
+Crafting Station은 현재 authoritative state를 보고 Input 의미를 결정합니다.
+
+---
+
+## 6.2 왜 `UIOwner`가 필요한가
+
+Recipe를 선택하는 순간 두 Player가 서로 다른 작업을 동시에 시작하면 `ActiveWork`와 재료 소모가 충돌할 수 있습니다.
 
 ```cpp
 if (UIOwner && UIOwner != Player)
@@ -164,89 +259,103 @@ if (UIOwner && UIOwner != Player)
 UIOwner = Player;
 ```
 
-중요한 점은 Station 전체를 잠그지 않는다는 것입니다.
+이 lock은 Station 전체를 잠그지 않습니다.
 
-작업이 시작된 뒤 다른 Player는:
+다른 Player는 작업이 시작된 후:
 
-- 작업 돕기
-- 완료 결과 수령
+- Help
+- Collect
 
-같은 collaborative interaction을 계속 할 수 있습니다.
+를 계속할 수 있습니다.
 
-즉 lock의 범위를 데이터 경쟁이 실제로 발생하는 구간으로 제한합니다.
-
----
-
-## 8. Server-authoritative Crafting Lifecycle
-
-제작 요청 시 Server는 Client UI의 계산값을 그대로 믿지 않습니다.
-
-1. Recipe 조회
-2. Server 기준 최대 제작 가능 수량 계산
-3. Inventory 재료 검증/소모
-4. `ActiveWork` 설정
-5. 작업량 누적
-6. Unit completion
-7. `CompletedToCollect` 증가
-8. 수령 시 결과 Item 지급
-
-작업을 취소하면 이미 완료된 Unit은 유지하고, **미완료 Unit에 해당하는 재료만 환불**합니다.
+즉 동시성 충돌이 생기는 **Recipe 선택/시작 구간만 exclusive**하게 만듭니다.
 
 ---
 
-## 9. Resource 계산을 UI와 분리
+# Part 7. Server-authoritative Crafting Lifecycle
 
-Crafting Widget도 “재료가 충분한가?”를 알아야 하지만 Server Station의 구현 세부를 복사하지 않습니다.
+```text
+Recipe Select
+ ↓
+ServerStartWork
+ ↓
+Server 재료 검증
+ ↓
+재료 소모
+ ↓
+ActiveWork 생성
+ ↓
+ServerAddWork
+ ↓
+Unit 완료
+ ↓
+CompletedToCollect
+ ↓
+ServerCollectAll
+ ↓
+Inventory 지급
+```
 
-`UInventoryResourceProvider`가:
-
-- Item count
-- Required materials
-- Max craftable
-
-같은 read-only 계산을 제공합니다.
-
-Server는 최종 validation을 다시 수행하고, UI는 동일 규칙을 사용자 피드백에 활용합니다.
-
----
-
-## 10. Crafting UI — 정적/동적 갱신 분리
-
-Recipe detail에서 모든 child widget을 매번 다시 만들 필요는 없습니다.
-
-`UCraftingWidget`은:
-
-### Recipe가 바뀔 때
-- 결과 Item name/icon
-- Required Material row 구성
-- icon/layout
-
-### Inventory / Quantity가 바뀔 때
-- 보유 수량
-- 필요 수량
-- 가능/불가능 색
-- button enable
-
-만 갱신합니다.
-
-Required Material row는 local pool에 보관해 필요한 개수까지 생성하고 나머지는 숨깁니다.
+Client UI의 “제작 가능” 표시를 신뢰하지 않고 Server가 다시 계산합니다.
 
 ---
 
-## 11. Crafting Queue — Event + 최소 Tick
+## 7.1 Cancel
 
-`UCraftingQueueWidget`은 `OnWorkChanged`, `OnCompletedChanged`에 bind해 Item / count / 상태를 갱신합니다.
+진행 중 작업을 취소하면:
 
-연속적으로 변하는 progress visual만 현재 work progress를 읽어 표시합니다.
+- 이미 완료된 Unit은 유지
+- 미완료 Unit 재료만 환불
 
-즉 모든 데이터를 Tick polling하지 않고 **이산 상태 변화와 연속 presentation을 구분**합니다.
+합니다.
+
+“작업 전체 rollback”과 “완료 결과 보존”을 구분합니다.
+
+---
+
+# Part 8. Crafting UI는 어떤 데이터를 소유하지 않는다
+
+`UCraftingWidget`은 authoritative crafting state를 만들지 않습니다.
+
+역할은:
+
+- Recipe 표시
+- 현재 Inventory 기준 craftable 계산
+- Quantity UI
+- Server request
+
+입니다.
+
+Recipe가 바뀔 때는 구조적 UI를 갱신하고, Inventory/Quantity가 바뀔 때는 숫자와 enable 상태만 갱신합니다.
+
+Required Material Row는 local pool을 사용합니다.
+
+---
+
+# Trade-offs
+
+### Client Prediction
+응답성은 좋아지지만 Server mutation과 prediction rule이 어긋나지 않도록 유지해야 합니다.
+
+### Container Subscription
+현재는 “viewer가 하나라도 있는가”를 기준으로 property replication을 활성화합니다. Viewer별 세밀한 per-connection 필터링이 필요한 규모에서는 더 고급 replication graph/policy가 필요할 수 있습니다.
+
+### Crafting UIOwner
+간단하고 명확하지만 여러 Player가 각자 독립 Recipe queue를 가질 수 있는 Station 모델에는 적합하지 않습니다.
+
+---
+
+# 이 문서 다음에 읽기
+
+- 기본 Server Authority 원칙 → [[2. Architecture Overview|2_Architecture_Overview]]
+- Inventory가 Skill/Stat과 만나는 지점 → [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]], [[11. Player & Character Systems|11_Player_Character_Systems]]
+- Dungeon Reward가 Inventory에 들어가는 흐름 → [[4. Branching Dungeon Runtime|4_Branching_Dungeon_Runtime]]
 
 ---
 
 ## 관련 코드
 
-- [InventoryComponent](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/Utility/InventoryComponent.h)
-- [ContainerComponent](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Buildings/Utility/ContainerComponent.h)
+- [InventoryComponent.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/Utility/InventoryComponent.h)
+- [ContainerComponent.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Buildings/Utility/ContainerComponent.h)
 - [CraftingStation](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Buildings/Crafting/CraftingStation.h)
 - [CraftingWidget](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Widget/GameObject/Crafting/CraftingWidget.cpp)
-- [InventoryResourceProvider](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/Utilities/InventoryResourceProvider.h)

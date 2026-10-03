@@ -1,166 +1,378 @@
-# 4. Case Study — Branching Dungeon Runtime
+# 4. Branching Dungeon Runtime
 
-> **문제:** 스테이지, 분기, 선택 목표, 실패 조건, 보상과 결과 정산이 늘어날 때마다 dungeon-specific C++ flow를 추가하지 않고 콘텐츠를 확장하려면?
+> **이 문서가 답하는 질문**
+>
+> “분기, 목표, 제한시간, 실패, 보상 같은 Dungeon 규칙이 늘어날 때마다 C++에 Stage별 분기문을 추가하지 않고 콘텐츠를 확장하려면?”
 
-Sonheim의 Dungeon은 하나의 scripted level이 아니라, **데이터 정의를 서버 런타임이 해석하는 콘텐츠 시스템**으로 구현했습니다.
+Dungeon은 하나의 Level Script가 아니라 **Definition을 Server Runtime이 해석하는 콘텐츠 시스템**입니다.
 
----
-
-## 전체 흐름
+먼저 이 구조만 보면 됩니다.
 
 ```text
-Dungeon Catalog
-      ↓
+Catalog Row
+   ↓
 PrimaryAssetId
-      ↓
-Dungeon Definition DataAsset
-      ↓
-Asset Preparation
-      ↓
-UDungeonStageRuntimeSubsystem (Authority)
-      ↓
-Event → Condition → Action → Transition
-      ↓
+   ↓
+UDungeonDefinitionDataAsset
+   ↓
+FDungeonStageDefinition[]
+   ↓
+UDungeonStageRuntimeSubsystem
+   ↓
 FDungeonStageRuntimeState
-      ↓
-ASonheimGameState Replication
+   ↓
+GameState Replication
 ```
 
 ---
 
-## Stage Definition
+# Part 1. Dungeon 하나는 무엇으로 정의되는가
 
-`FDungeonStageDefinition`은 한 Stage의 규칙을 정의합니다.
+## 1.1 Catalog는 “어떤 Dungeon인가”만 찾는다
 
-주요 요소:
+실제 `FDungeonCatalogRow`:
 
-- `StageId`
-- Terminal Outcome
-- Time Limit
-- Sealed Barriers
-- Event Rules
+```cpp
+USTRUCT(BlueprintType)
+struct FDungeonCatalogRow : public FTableRowBase
+{
+    GENERATED_BODY()
 
-각 Event Rule은 다음을 데이터로 가집니다.
+    FGameplayTag DungeonId;
+    int32 DungeonNumber = 0;
+    FPrimaryAssetId DefinitionAssetId;
+    int32 RequiredLevel = 1;
+};
+```
 
-- 어떤 Event를 받을지
-- 특정 SourceId에만 반응할지
-- Run 중 한 번만 실행할지
-- 어떤 Action을 실행할지
-- 어느 Transition으로 이동할지
+- `DungeonId`: Runtime / Tag namespace
+- `DungeonNumber`: SaveGame에서 사용하는 stable numeric key
+- `DefinitionAssetId`: 실제 콘텐츠 Definition
+- `RequiredLevel`: 입장 조건
 
----
-
-## Event → Condition → Action → Transition
-
-Dungeon flow는 서로 다른 기능을 같은 pipeline으로 처리합니다.
-
-### Event
-
-예:
-
-- StageEntered
-- AreaEntered
-- Monster/Wave progress
-- Capture
-- Switch interaction
-- Stage timeout
-
-### Condition
-
-Transition은 현재 RunTag, objective 상태 등 runtime state를 평가합니다.
-
-### Action
-
-Action은 다음과 같은 gameplay 결과를 실행합니다.
-
-- SpawnGroup
-- Set / Clear RunTag
-- EmitEvent
-- GrantReward
-
-새 콘텐츠 흐름은 이 building block을 조합해서 정의합니다.
+Catalog 자체에 모든 Stage를 넣지 않습니다.
 
 ---
 
-## Branch
+## 1.2 Definition은 Stage Graph를 소유한다
 
-Forgotten Ruins는 하나의 직선 진행이 아니라 **Shortcut / ExtraWave** 경로로 갈립니다.
+```cpp
+UCLASS(BlueprintType)
+class UDungeonDefinitionDataAsset : public UPrimaryDataAsset
+{
+    GENERATED_BODY()
 
-플레이어의 선택은 `SelectedBranchId`와 RunTag에 남고, 이후 Stage와 Reward rule에서 조건으로 재사용됩니다.
+public:
+    FGameplayTag DungeonId;
+    FGameplayTag StartStageId;
+    TSoftObjectPtr<UDungeonPresentationDataAsset> Presentation;
+    TArray<FDungeonStageDefinition> Stages;
+    TArray<FDungeonGradeRule> GradeRules;
+};
+```
 
-Barrier 역시 level actor에 stage별 hardcoding을 두지 않고 현재 Stage Definition의 `SealedBarriers`로부터 상태를 결정합니다.
+Dungeon 하나의:
+
+- 시작 Stage
+- 전체 Stage graph
+- 결과 Grade rule
+- Presentation dependency
+
+를 하나의 Primary Asset 단위로 묶습니다.
 
 ---
 
-## Objective Tracking
+# Part 2. Stage는 어떻게 표현되는가
 
-`UDungeonObjectiveTracker`는 runtime이 생성한 monster group을 추적합니다.
+## 2.1 핵심 Building Block
+
+현재 Stage 규칙은 네 종류의 type으로 나뉩니다.
+
+```cpp
+enum class EDungeonStageEvent : uint8
+{
+    StageEntered,
+    WaveCompleted,
+    BossDefeated,
+    ActorInteracted,
+    StageTimeout,
+    AreaEntered,
+    MonsterCaptured
+};
+
+enum class EDungeonStageCondition : uint8
+{
+    Always,
+    HasRunTag,
+    SpawnGroupCompleted
+};
+
+enum class EDungeonStageAction : uint8
+{
+    SpawnGroup,
+    SetRunTag,
+    ClearRunTag,
+    EmitEvent,
+    GrantReward
+};
+```
+
+읽는 방법은 단순합니다.
+
+```text
+Event가 들어오면
+ → Action을 실행하고
+ → Condition을 만족하는 Transition을 찾아
+ → 다음 Stage로 이동한다
+```
+
+---
+
+## 2.2 실제 `FDungeonStageDefinition`
+
+```cpp
+USTRUCT(BlueprintType)
+struct FDungeonStageDefinition
+{
+    GENERATED_BODY()
+
+    FGameplayTag StageId;
+    EDungeonTerminalOutcome TerminalOutcome = EDungeonTerminalOutcome::None;
+
+    float TimeLimitSeconds = 0.f;
+
+    TArray<FGameplayTag> SealedBarriers;
+
+    TArray<FDungeonStageEventRule> EventRules;
+};
+```
+
+Stage가 직접 갖는 정보는 크게:
+
+- 정체성
+- Terminal 여부
+- 제한시간
+- 현재 막아야 할 Door/Barrier
+- Event에 대한 Rule
+
+입니다.
+
+---
+
+# Part 3. 실제 Runtime은 무엇을 저장하는가
+
+Definition은 “규칙”이고 Runtime State는 “이번 Run에서 실제로 무슨 일이 일어났는가”입니다.
+
+대표 필드를 발췌하면:
+
+```cpp
+USTRUCT(BlueprintType)
+struct FDungeonStageRuntimeState
+{
+    GENERATED_BODY()
+
+    FGuid RunId;
+    FPrimaryAssetId DefinitionAssetId;
+    FGameplayTag StageId;
+    int32 Revision = 0;
+    EDungeonRunStatus RunStatus = EDungeonRunStatus::Idle;
+
+    FGameplayTag ObjectiveGroupId;
+    int32 CurrentCount = 0;
+    int32 RequiredCount = 0;
+
+    FGameplayTag SelectedBranchId;
+    FGameplayTagContainer RunTags;
+
+    double StageStartedServerTime = 0;
+    double StageDeadlineServerTime = 0;
+
+    TArray<FGameplayTag> SealedBarriers;
+    TArray<FDungeonRunReward> Rewards;
+    TArray<FDungeonGroupTally> Groups;
+
+    int32 DefeatedCount = 0;
+    int32 CapturedCount = 0;
+
+    TArray<TObjectPtr<APlayerState>> Participants;
+    TObjectPtr<APlayerState> OwnerPlayer;
+
+    float BossHealth = 0.f;
+    FGameplayTag BossActionId;
+    int32 BossPhase = 0;
+    bool bBossVulnerable = false;
+    float BossBreak = 0.f;
+};
+```
+
+Definition과 Runtime을 분리했기 때문에 같은 Definition으로 여러 Run을 시작해도 각 Run의 state는 별도로 존재할 수 있습니다.
+
+---
+
+# Part 4. 한 Stage Event가 처리되는 방식
+
+예를 들어 어떤 Switch를 사용했다고 가정하면:
+
+```text
+ADungeonShortcutSwitch
+   ↓ Server interaction
+ActorInteracted(SourceId)
+   ↓
+UDungeonStageRuntimeSubsystem
+   ↓
+현재 Stage의 EventRules 검색
+   ↓
+SourceId 일치 확인
+   ↓
+Actions 실행
+   ├─ SetRunTag
+   └─ EmitEvent ...
+   ↓
+Transitions 평가
+   ↓
+NextStageId / BranchId 결정
+```
+
+World Actor는 “Shortcut을 열면 Combat Stage 다음에 어떤 Stage로 가야 하는가”를 알지 않습니다.
+
+그 규칙은 Definition이 소유합니다.
+
+---
+
+# Part 5. Branch를 어떻게 기억하는가
+
+Forgotten Ruins는 Shortcut / ExtraWave 경로를 갖습니다.
+
+Branch 선택 결과는:
+
+- `SelectedBranchId`
+- `RunTags`
+
+에 남습니다.
+
+이 state는 이후:
+
+- 다음 Transition
+- Barrier
+- Reward
+- HUD
+- Result
+
+에서 재사용됩니다.
+
+분기를 한 번 선택한 사실을 서로 다른 시스템이 각자 bool로 중복 저장하지 않습니다.
+
+---
+
+# Part 6. Objective는 Spawn 결과를 추적한다
+
+`UDungeonObjectiveTracker`는 Runtime이 생성한 group을 기준으로:
 
 - Spawned
 - Defeated
 - Captured
 
-포획되어 player partner가 된 monster는 전투에서 영구 이탈하므로 objective completion에도 반영합니다.
+를 집계합니다.
 
-Actor가 예상치 못하게 사라지면 invalidation을 runtime에 전달해 진행 상태가 조용히 멈추지 않도록 합니다.
+Capture가 중요한 이유는 Monster가 죽지 않고 Player Partner가 되어도 전투에서는 영구 이탈하기 때문입니다.
 
----
-
-## Failure도 동일한 Runtime으로 처리
-
-성공 flow와 별도로 임시 exception code를 쌓지 않고 failure 역시 run state의 일부로 관리합니다.
-
-예:
-
-- Stage timeout
-- Run owner death
-- Run owner logout
-- Owner portal exit
-- Objective target invalidation
-- Definition/runtime error
-
-Stage에 time limit이 있으면 서버 기준 deadline을 publish하고, UI countdown도 같은 서버 시각을 사용합니다.
+따라서 Capture 역시 objective completion에 포함됩니다.
 
 ---
 
-## Result & Persistence
+# Part 7. 실패도 별도 예외가 아니라 Run State다
 
-Run 종료 시 서버는 다음 결과를 기록합니다.
+Failure reason:
 
-- elapsed time
+```cpp
+enum class EDungeonFailReason : uint8
+{
+    None,
+    TimeOut,
+    OwnerDown,
+    OwnerLeft,
+    TargetLost,
+    Error
+};
+```
+
+실패 원인도 Runtime State 안에 들어가므로 Result UI와 Save 기록이 같은 state를 사용합니다.
+
+---
+
+# Part 8. Barrier는 Stage Definition이 소유한다
+
+초기 구현처럼 Barrier Actor가 “Combat Stage면 닫는다”를 직접 알게 하지 않습니다.
+
+현재 Stage Definition의:
+
+```cpp
+TArray<FGameplayTag> SealedBarriers;
+```
+
+가 authoritative rule이고, Snapshot이 현재 sealed list를 전달합니다.
+
+Barrier Actor는 Snapshot을 읽고 자신의 `BarrierId`가 포함됐는지만 판단합니다.
+
+```text
+Definition
+ → Runtime State.SealedBarriers
+ → GameState
+ → ADungeonBarrier
+```
+
+---
+
+# Part 9. Result / Persistence
+
+Run 종료 시 Runtime은:
+
+- elapsed
 - rewards
 - defeated / captured
-- selected branch
-- clear / fail count
-- best time
+- route
+- clear count
+- best
 - grade
 
-`UDungeonProgressSubsystem`은 Dungeon의 stable numeric number를 persistence key로 사용합니다.
+를 기록합니다.
 
-Runtime identifier(GameplayTag)의 이름이 바뀌더라도 기존 SaveGame key가 바뀌지 않도록 역할을 분리했습니다.
+SaveGame key는 `DungeonNumber`를 사용합니다.
+
+GameplayTag는 이름이 바뀔 수 있지만 Save key는 바뀌면 안 되기 때문에 identity 역할을 분리했습니다.
 
 ---
 
-## 왜 Snapshot을 Publish하는가
+# Part 10. 왜 Snapshot을 발행하는가
 
-Runtime은 HUD callback을 직접 호출하지 않습니다.
+Runtime이 Widget 함수를 직접 호출하지 않습니다.
 
-StageId만 보내는 대신 **화면을 다시 구성하는 데 필요한 현재 run state 전체**를 snapshot으로 publish합니다.
+Snapshot 하나가:
 
-그 결과:
+- World Barrier
+- Shortcut Gate
+- UI Presenter
+- Result
+- Boss HUD
 
-- UI가 재생성돼도 현재 상태를 복구할 수 있고
-- gameplay와 UMG lifecycle이 분리되며
-- Listen Server와 Client가 같은 데이터 모델을 소비합니다.
+같은 여러 소비자에게 현재 authoritative state를 제공합니다.
 
-UI 측 구조는 [[Multiplayer State & UI Pipeline|5_Multiplayer_State_UI_Pipeline]]에서 이어집니다.
+UI에서 이 Snapshot을 어떻게 ViewData로 바꾸는지는 [[5. Multiplayer State & UI Pipeline|5_Multiplayer_State_UI_Pipeline]]에서 이어집니다.
+
+---
+
+# 이 문서 다음에 읽기
+
+- Definition이 어떤 데이터 구조로 관리되는지 → [[3. Data & Content Architecture|3_Data_Content_Architecture]]
+- Boss Stage 내부 구조 → [[7. Boss Encounter Runtime|7_Boss_Encounter_Runtime]]
+- Runtime State가 UI로 가는 과정 → [[5. Multiplayer State & UI Pipeline|5_Multiplayer_State_UI_Pipeline]]
+- Definition 오류를 Editor에서 잡는 방법 → [[6. Content Authoring & Validation|6_Content_Authoring_Validation]]
 
 ---
 
 ## 관련 코드
 
-- [Dungeon Runtime](https://github.com/chungheonLee0325/Sonheim/tree/main/Sonheim/Source/Sonheim/GameManager/Dungeon)
-- [Dungeon Definition](https://github.com/chungheonLee0325/Sonheim/tree/main/Sonheim/Source/Sonheim/GameObject/Dungeon)
+- [DungeonDefinitionDataAsset.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonDefinitionDataAsset.h)
+- [DungeonStageDefinition.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonStageDefinition.h)
+- [DungeonStageRuntimeTypes.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonStageRuntimeTypes.h)
 - [DungeonStageRuntimeSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonStageRuntimeSubsystem.cpp)
-- [DungeonObjectiveTracker.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonObjectiveTracker.h)
-- [DungeonProgressSubsystem.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonProgressSubsystem.h)
