@@ -5,7 +5,9 @@ Sonheim은 처음부터 현재 규모의 시스템으로 설계된 프로젝트�
 
 ---
 
-## 2025.03–04 — Core Foundation
+## 2025 — Core Foundation
+
+### 2025.03–04 — Core Foundation
 
 2인 팀으로 시작해 Player와 World gameplay의 기본 구조를 구축했습니다.
 
@@ -30,7 +32,7 @@ Sonheim은 처음부터 현재 규모의 시스템으로 설계된 프로젝트�
 
 ---
 
-## 2025.06 — Pal Lifecycle와 구조 분리
+### 2025.06 — Pal Lifecycle와 구조 분리
 
 Capture / Inventory / Partner 기능을 Player에 직접 계속 추가하기보다 component로 분리했습니다.
 
@@ -52,7 +54,7 @@ Capture / Inventory / Partner 기능을 Player에 직접 계속 추가하기보�
 
 ---
 
-## 2025.07 — Combat / Item 확장
+### 2025.07 — Combat / Item 확장
 
 - Shotgun
 - 다양한 Attack 형태
@@ -65,7 +67,7 @@ Capture / Inventory / Partner 기능을 Player에 직접 계속 추가하기보�
 
 ---
 
-## 2025.08 — Shared World Systems
+### 2025.08 — Shared World Systems
 
 - Container
 - Crafting
@@ -86,7 +88,7 @@ Capture / Inventory / Partner 기능을 Player에 직접 계속 추가하기보�
 
 ---
 
-## 2025.09–10 — Networking / UI 안정화
+### 2025.09–10 — Networking / UI 안정화
 
 - Inventory FastArray
 - Client prediction
@@ -101,13 +103,13 @@ Capture / Inventory / Partner 기능을 Player에 직접 계속 추가하기보�
 
 ---
 
-# 2026 — Forgotten Ruins Vertical Slice
+## 2026 — Forgotten Ruins Vertical Slice
 
 2026년에는 새로운 개별 feature를 여러 개 추가하는 대신, 기존 시스템이 실제 콘텐츠 하나에서 함께 동작하도록 Dungeon을 만들었습니다.
 
 ---
 
-## 2026.09.15 — Dungeon Runtime
+### 2026.09.15 — Dungeon Runtime
 
 첫 단계에서 구현한 핵심 flow:
 
@@ -125,7 +127,7 @@ Catalog
 
 ---
 
-## 2026.09.16–17 — Content Flow 완성
+### 2026.09.16–17 — Content Flow 완성
 
 추가된 항목:
 
@@ -142,7 +144,7 @@ Catalog
 
 ---
 
-## 2026.09.26–28 — World / HUD / Barrier
+### 2026.09.26–28 — World / HUD / Barrier
 
 - Modular dungeon space
 - Island ↔ Dungeon Portal
@@ -159,7 +161,7 @@ Barrier를 Actor 내부에 stage별로 하드코딩했다가 Definition의 `Seal
 
 ---
 
-## 2026.09.28–30 — Guardian Boss
+### 2026.09.28–30 — Guardian Boss
 
 일반 Monster 스킬 조합에서 별도 Boss Runtime으로 확장했습니다.
 
@@ -177,7 +179,7 @@ Boss도 Dungeon Runtime에 별도 특수 UI callback을 직접 넣지 않고 Sna
 
 ---
 
-## 2026.09.30–10.01 — Navigation / Result
+### 2026.09.30–10.01 — Navigation / Result
 
 - Dungeon UI icon
 - Objective world marker
@@ -192,7 +194,7 @@ Minimap은 수동 이미지 위에 임의 좌표를 찍는 대신 Dungeon을 생
 
 ---
 
-## 2026.10.02–03 — Workflow / Common Systems
+### 2026.10.02–03 — Workflow / Common Systems
 
 - Agent MCP project config
 - Boss presentation polish
@@ -206,9 +208,9 @@ Dungeon을 위해 만든 기능이 범용성이 생긴 경우 Dungeon namespace�
 
 ---
 
-# Retrospective
+## Retrospective
 
-## 1. “처음부터 완벽한 구조”보다 ownership을 계속 수정했다
+### 1. “처음부터 완벽한 구조”보다 ownership을 계속 수정했다
 
 Sonheim의 구조는 한 번 설계하고 유지된 것이 아닙니다.
 
@@ -225,7 +227,7 @@ Sonheim의 구조는 한 번 설계하고 유지된 것이 아닙니다.
 
 ---
 
-## 2. Data-driven은 DataTable 하나를 의미하지 않는다
+### 2. Data-driven은 DataTable 하나를 의미하지 않는다
 
 초기에는 DataTable이 대부분의 gameplay data를 담당했습니다.
 
@@ -249,7 +251,7 @@ Dungeon을 만들면서 다음 요구가 생겼습니다.
 
 ---
 
-## 3. Server Authority만으로 UX가 좋아지지는 않는다
+### 3. Server Authority만으로 UX가 좋아지지는 않는다
 
 모든 결과를 Server가 결정해도 Client가 매번 round-trip을 기다리면 Inventory 같은 UI는 답답해집니다.
 
@@ -263,7 +265,7 @@ Dungeon을 만들면서 다음 요구가 생겼습니다.
 
 ---
 
-## 4. 재사용 여부가 추상화의 실제 검증이었다
+### 4. 재사용 여부가 추상화의 실제 검증이었다
 
 2025년에 만든 시스템 중 2026 Dungeon에서 다시 사용된 것:
 
@@ -278,7 +280,7 @@ Dungeon을 만들면서 다음 요구가 생겼습니다.
 
 ---
 
-## 5. 자동 검증은 기능 규모가 커질수록 중요해졌다
+### 5. 자동 검증은 기능 규모가 커질수록 중요해졌다
 
 Dungeon은 한 path만 확인해서는 충분하지 않습니다.
 
@@ -295,7 +297,7 @@ Dungeon은 한 path만 확인해서는 충분하지 않습니다.
 
 ---
 
-## 현재 남아 있는 개선 지점
+### 현재 남아 있는 개선 지점
 
 문서에서는 구현된 내용을 과장하지 않고 현재 trade-off도 함께 남깁니다.
 
