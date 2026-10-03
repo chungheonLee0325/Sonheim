@@ -1,6 +1,6 @@
 # 5. Multiplayer State & UI Pipeline
 
-> **이 문서가 답하는 질문**
+> **핵심 구현 범위**
 >
 > “Server의 Dungeon 상태를 Widget이 직접 읽거나 RPC를 놓치지 않고, Client에서 언제든 현재 화면을 다시 구성하려면?”
 
@@ -23,7 +23,7 @@ UMG
 ```
 
 
-> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
+> **코드 예시:** 실제 구현에서 구조 이해에 필요한 선언과 함수만 발췌했으며, `UPROPERTY` metadata와 보조 필드는 일부 생략했습니다.
 ---
 
 ## Part 1. Gameplay State와 UI Data는 같은 것이 아니다
@@ -317,7 +317,7 @@ PossessedBy (Server)
 
 ---
 
-## 이 문서 다음에 읽기
+## 연관 문서
 
 - Snapshot을 만드는 Server Runtime → [[4. Branching Dungeon Runtime|4_Branching_Dungeon_Runtime]]
 - Presentation data의 출처 → [[3. Data & Content Architecture|3_Data_Content_Architecture]]
