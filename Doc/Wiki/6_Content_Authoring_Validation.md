@@ -7,9 +7,11 @@
 Data-driven은 “코드를 덜 쓴다”가 끝이 아닙니다.  
 작성 가능한 데이터 조합이 늘어난 만큼 **authoring constraint와 validation**이 필요합니다.
 
+
+> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
 ---
 
-# Part 1. 작성 화면에서 잘못된 입력 자체를 줄인다
+## Part 1. 작성 화면에서 잘못된 입력 자체를 줄인다
 
 예를 들어 Dungeon Action은 Type에 따라 필요한 필드가 다릅니다.
 
@@ -47,7 +49,7 @@ struct FDungeonStageAction
 
 ---
 
-# Part 2. Editor Metadata의 역할
+## Part 2. Editor Metadata의 역할
 
 사용한 주요 metadata:
 
@@ -68,7 +70,7 @@ struct FDungeonStageAction
 
 ---
 
-# Part 3. Validation Rule은 하나만 유지한다
+## Part 3. Validation Rule은 하나만 유지한다
 
 `UDungeonDefinitionDataAsset`의 핵심 API:
 
@@ -90,7 +92,7 @@ void ValidateNow();
 
 ---
 
-# Part 4. 무엇을 검사하는가
+## Part 4. 무엇을 검사하는가
 
 대표적인 구조 오류:
 
@@ -107,7 +109,7 @@ void ValidateNow();
 
 ---
 
-# Part 5. Runtime도 다시 방어한다
+## Part 5. Runtime도 다시 방어한다
 
 Editor Validation이 있다고 Runtime validation을 없애지는 않습니다.
 
@@ -127,7 +129,7 @@ Editor tool은 편의를 위한 것이고 Runtime은 신뢰 경계입니다.
 
 ---
 
-# Part 6. Stage Graph는 Definition에서 생성한다
+## Part 6. Stage Graph는 Definition에서 생성한다
 
 `BuildStageGraph()`는 실제 Definition을 읽어 Mermaid graph를 만듭니다.
 
@@ -152,7 +154,7 @@ Review / Wiki / PR
 
 ---
 
-# Part 7. Boss Pattern도 Validation 대상이다
+## Part 7. Boss Pattern도 Validation 대상이다
 
 Boss Pattern에는:
 
@@ -173,7 +175,7 @@ Boss Pattern에는:
 
 ---
 
-# Part 8. Authoring Tool의 기준
+## Part 8. Authoring Tool의 기준
 
 Editor tool을 추가하는 기준은 “자동화할 수 있는가?”가 아니라 아래와 같습니다.
 
@@ -191,7 +193,7 @@ Editor tool을 추가하는 기준은 “자동화할 수 있는가?”가 아�
 
 ---
 
-# 이 문서 다음에 읽기
+## 이 문서 다음에 읽기
 
 - 실제 Definition 구조 → [[4. Branching Dungeon Runtime|4_Branching_Dungeon_Runtime]]
 - DataAsset을 선택한 이유 → [[3. Data & Content Architecture|3_Data_Content_Architecture]]
