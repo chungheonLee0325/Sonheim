@@ -24,11 +24,13 @@ FDungeonStageRuntimeState
 GameState Replication
 ```
 
+
+> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
 ---
 
-# Part 1. Dungeon 하나는 무엇으로 정의되는가
+## Part 1. Dungeon 하나는 무엇으로 정의되는가
 
-## 1.1 Catalog는 “어떤 Dungeon인가”만 찾는다
+### 1.1 Catalog는 “어떤 Dungeon인가”만 찾는다
 
 실제 `FDungeonCatalogRow`:
 
@@ -54,7 +56,7 @@ Catalog 자체에 모든 Stage를 넣지 않습니다.
 
 ---
 
-## 1.2 Definition은 Stage Graph를 소유한다
+### 1.2 Definition은 Stage Graph를 소유한다
 
 ```cpp
 UCLASS(BlueprintType)
@@ -82,9 +84,9 @@ Dungeon 하나의:
 
 ---
 
-# Part 2. Stage는 어떻게 표현되는가
+## Part 2. Stage는 어떻게 표현되는가
 
-## 2.1 핵심 Building Block
+### 2.1 핵심 Building Block
 
 현재 Stage 규칙은 네 종류의 type으로 나뉩니다.
 
@@ -128,7 +130,7 @@ Event가 들어오면
 
 ---
 
-## 2.2 실제 `FDungeonStageDefinition`
+### 2.2 실제 `FDungeonStageDefinition`
 
 ```cpp
 USTRUCT(BlueprintType)
@@ -159,7 +161,7 @@ Stage가 직접 갖는 정보는 크게:
 
 ---
 
-# Part 3. 실제 Runtime은 무엇을 저장하는가
+## Part 3. 실제 Runtime은 무엇을 저장하는가
 
 Definition은 “규칙”이고 Runtime State는 “이번 Run에서 실제로 무슨 일이 일어났는가”입니다.
 
@@ -209,7 +211,7 @@ Definition과 Runtime을 분리했기 때문에 같은 Definition으로 여러 R
 
 ---
 
-# Part 4. 한 Stage Event가 처리되는 방식
+## Part 4. 한 Stage Event가 처리되는 방식
 
 예를 들어 어떤 Switch를 사용했다고 가정하면:
 
@@ -239,7 +241,7 @@ World Actor는 “Shortcut을 열면 Combat Stage 다음에 어떤 Stage로 가�
 
 ---
 
-# Part 5. Branch를 어떻게 기억하는가
+## Part 5. Branch를 어떻게 기억하는가
 
 Forgotten Ruins는 Shortcut / ExtraWave 경로를 갖습니다.
 
@@ -264,7 +266,7 @@ Branch 선택 결과는:
 
 ---
 
-# Part 6. Objective는 Spawn 결과를 추적한다
+## Part 6. Objective는 Spawn 결과를 추적한다
 
 `UDungeonObjectiveTracker`는 Runtime이 생성한 group을 기준으로:
 
@@ -280,7 +282,7 @@ Capture가 중요한 이유는 Monster가 죽지 않고 Player Partner가 되어
 
 ---
 
-# Part 7. 실패도 별도 예외가 아니라 Run State다
+## Part 7. 실패도 별도 예외가 아니라 Run State다
 
 Failure reason:
 
@@ -300,7 +302,7 @@ enum class EDungeonFailReason : uint8
 
 ---
 
-# Part 8. Barrier는 Stage Definition이 소유한다
+## Part 8. Barrier는 Stage Definition이 소유한다
 
 초기 구현처럼 Barrier Actor가 “Combat Stage면 닫는다”를 직접 알게 하지 않습니다.
 
@@ -323,7 +325,7 @@ Definition
 
 ---
 
-# Part 9. Result / Persistence
+## Part 9. Result / Persistence
 
 Run 종료 시 Runtime은:
 
@@ -343,7 +345,7 @@ GameplayTag는 이름이 바뀔 수 있지만 Save key는 바뀌면 안 되기 �
 
 ---
 
-# Part 10. 왜 Snapshot을 발행하는가
+## Part 10. 왜 Snapshot을 발행하는가
 
 Runtime이 Widget 함수를 직접 호출하지 않습니다.
 
@@ -361,7 +363,7 @@ UI에서 이 Snapshot을 어떻게 ViewData로 바꾸는지는 [[5. Multiplayer 
 
 ---
 
-# 이 문서 다음에 읽기
+## 이 문서 다음에 읽기
 
 - Definition이 어떤 데이터 구조로 관리되는지 → [[3. Data & Content Architecture|3_Data_Content_Architecture]]
 - Boss Stage 내부 구조 → [[7. Boss Encounter Runtime|7_Boss_Encounter_Runtime]]
