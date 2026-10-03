@@ -1,6 +1,6 @@
 # 3. Data & Content Architecture
 
-> **이 문서가 답하는 질문**
+> **핵심 구현 범위**
 >
 > “왜 어떤 데이터는 DataTable이고, 어떤 콘텐츠는 PrimaryDataAsset이며, Runtime ID는 GameplayTag인가?”
 
@@ -8,7 +8,7 @@ Sonheim은 모든 데이터를 한 형태로 통일하지 않습니다.
 **조회 방식, 수명, dependency, editor workflow**가 다르면 표현 방식도 달라집니다.
 
 
-> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
+> **코드 예시:** 실제 구현에서 구조 이해에 필요한 선언과 함수만 발췌했으며, `UPROPERTY` metadata와 보조 필드는 일부 생략했습니다.
 ---
 
 ## Part 1. 먼저 구분해야 할 네 종류
@@ -274,7 +274,7 @@ Player가 읽는 문구인가?
 
 ---
 
-## 이 문서 다음에 읽기
+## 연관 문서
 
 - 이 데이터가 실제 Dungeon Runtime에서 어떻게 해석되는지 → [[4. Branching Dungeon Runtime|4_Branching_Dungeon_Runtime]]
 - Definition 작성 실수를 어떻게 잡는지 → [[6. Content Authoring & Validation|6_Content_Authoring_Validation]]
