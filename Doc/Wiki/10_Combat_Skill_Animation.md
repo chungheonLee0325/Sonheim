@@ -30,11 +30,13 @@ AAreaObject::TakeDamage
 HP / Condition / Feedback
 ```
 
+
+> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
 ---
 
-# Part 1. Skill 하나를 어떻게 표현하는가
+## Part 1. Skill 하나를 어떻게 표현하는가
 
-## 1.1 세 층으로 분리한다
+### 1.1 세 층으로 분리한다
 
 Sonheim의 Skill은 하나의 거대한 replicated object가 아닙니다.
 
@@ -48,7 +50,7 @@ Sonheim의 Skill은 하나의 거대한 replicated object가 아닙니다.
 
 ---
 
-## 1.2 실제 `FSkillData`
+### 1.2 실제 `FSkillData`
 
 아래는 현재 `SonheimGameType.h`의 실제 정의입니다.
 
@@ -96,7 +98,7 @@ struct FSkillData : public FTableRowBase
 };
 ```
 
-### 이 구조를 어떻게 읽어야 하는가
+#### 이 구조를 어떻게 읽어야 하는가
 
 - `SkillClass`  
   데이터가 어떤 실행 로직 클래스를 사용할지 결정합니다.  
@@ -125,7 +127,7 @@ struct FSkillData : public FTableRowBase
 
 ---
 
-## 1.3 실제 복제 상태: `FSonheimSkillSpecItem`
+### 1.3 실제 복제 상태: `FSonheimSkillSpecItem`
 
 Skill Logic UObject 전체를 복제하지 않고 Client가 알아야 할 작은 상태만 FastArray에 넣습니다.
 
@@ -177,7 +179,7 @@ struct FSonheimSkillSpecContainer : public FFastArraySerializer
 
 ---
 
-## 1.4 실행 객체: `UBaseSkill`
+### 1.4 실행 객체: `UBaseSkill`
 
 `UBaseSkill`은 실제 동작을 담당합니다.
 
@@ -198,9 +200,9 @@ Skill별 차이는 이 실행 객체의 파생 클래스에 둡니다.
 
 ---
 
-# Part 2. Skill은 언제 생성되고 누가 소유하는가
+## Part 2. Skill은 언제 생성되고 누가 소유하는가
 
-## 2.1 필요할 때 Logic Instance를 만든다
+### 2.1 필요할 때 Logic Instance를 만든다
 
 현재 코드는 모든 `UBaseSkill`을 시작 시점에 생성하지 않습니다.
 
@@ -227,7 +229,7 @@ UBaseSkill* USonheimSkillComponent::EnsureSkillInstance(int32 SkillId)
 
 ---
 
-## 2.2 장비/Buff가 Skill을 부여할 때
+### 2.2 장비/Buff가 Skill을 부여할 때
 
 Skill을 단순 bool 보유 상태로 두면 두 Source가 같은 Skill을 줄 때 문제가 생깁니다.
 
@@ -259,9 +261,9 @@ TMap<int32, int32> GrantRefCounts;
 
 ---
 
-# Part 3. 한 번의 Cast가 실행되는 과정
+## Part 3. 한 번의 Cast가 실행되는 과정
 
-## 3.1 전체 Sequence
+### 3.1 전체 Sequence
 
 ```mermaid
 sequenceDiagram
@@ -285,7 +287,7 @@ sequenceDiagram
 
 ---
 
-## 3.2 Server가 최종 Cast를 결정한다
+### 3.2 Server가 최종 Cast를 결정한다
 
 핵심 흐름은 다음과 같습니다.
 
@@ -331,9 +333,9 @@ Server가 다시:
 
 ---
 
-# Part 4. 비용과 Phase
+## Part 4. 비용과 Phase
 
-## 4.1 Phase
+### 4.1 Phase
 
 ```text
 Ready
@@ -362,7 +364,7 @@ enum class ESkillCostPhase : uint8
 
 ---
 
-## 4.2 Check와 Apply를 분리한다
+### 4.2 Check와 Apply를 분리한다
 
 - `CheckCosts`: 상태를 변경하지 않는 검사
 - `ApplyCosts`: Authority에서 실제 소모
@@ -375,9 +377,9 @@ enum class ESkillCostPhase : uint8
 
 ---
 
-# Part 5. Animation이 실제 Gameplay Timing을 결정한다
+## Part 5. Animation이 실제 Gameplay Timing을 결정한다
 
-## 5.1 왜 Timer 대신 Notify인가
+### 5.1 왜 Timer 대신 Notify인가
 
 공격 효과가 C++의 `Delay(0.3f)`에 묶여 있으면:
 
@@ -398,7 +400,7 @@ enum class ESkillCostPhase : uint8
 
 ---
 
-## 5.2 Server Authority와 Notify
+### 5.2 Server Authority와 Notify
 
 Animation은 각 machine에서 재생되지만 최종 Gameplay 판정은 Authority가 담당합니다.
 
@@ -413,9 +415,9 @@ Melee 판정 NotifyState는 Authority에서 실제 hit detection window를 시�
 
 ---
 
-# Part 6. 실제 근접 공격 데이터
+## Part 6. 실제 근접 공격 데이터
 
-## 6.1 `FHitBoxData`
+### 6.1 `FHitBoxData`
 
 ```cpp
 USTRUCT(BlueprintType)
@@ -451,7 +453,7 @@ struct FHitBoxData
 
 ---
 
-## 6.2 `FAttackData`
+### 6.2 `FAttackData`
 
 실제 `FAttackData`는 판정 정보뿐 아니라 Damage와 Feedback context를 함께 갖습니다.
 
@@ -485,7 +487,7 @@ struct FAttackData
 
 ---
 
-## 6.3 AttackDataIndex
+### 6.3 AttackDataIndex
 
 하나의 Skill은 `TArray<FAttackData>`를 갖습니다.
 
@@ -511,9 +513,9 @@ Notify Window #3 → AttackData[2]
 
 ---
 
-# Part 7. Melee 판정의 실제 문제 해결
+## Part 7. Melee 판정의 실제 문제 해결
 
-## 7.1 빠른 Swing에서 Hit이 빠지는 문제
+### 7.1 빠른 Swing에서 Hit이 빠지는 문제
 
 현재 frame 위치에서 한 번만 sweep하면 무기가 한 frame 사이에 Target을 지나칠 수 있습니다.
 
@@ -531,7 +533,7 @@ Previous ──•──•──•── Current
 
 ---
 
-## 7.2 보간하면 중복 Hit이 늘어난다
+### 7.2 보간하면 중복 Hit이 늘어난다
 
 여러 sweep에서 같은 Actor가 반복 검출되므로 두 단계로 제거합니다.
 
@@ -545,7 +547,7 @@ Interpolation 정밀도를 높여도 한 window에서 의도치 않은 다단 da
 
 ---
 
-## 7.3 Socket 기반 판정과 Animation Optimization 충돌
+### 7.3 Socket 기반 판정과 Animation Optimization 충돌
 
 Gameplay 판정이 bone/socket 위치에 의존하면 off-screen animation optimization이 correctness에 영향을 줄 수 있습니다.
 
@@ -564,9 +566,9 @@ GetMesh()->VisibilityBasedAnimTickOption =
 
 ---
 
-# Part 8. Hit 이후 Damage Pipeline
+## Part 8. Hit 이후 Damage Pipeline
 
-## 8.1 float Damage만 전달하지 않는다
+### 8.1 float Damage만 전달하지 않는다
 
 Sonheim 공격은 단순 damage 값 외에도 다음 정보가 필요합니다.
 
@@ -592,7 +594,7 @@ struct FCustomDamageEvent : public FPointDamageEvent
 
 ---
 
-## 8.2 Server의 `TakeDamage` 흐름
+### 8.2 Server의 `TakeDamage` 흐름
 
 ```text
 Hit
@@ -618,7 +620,7 @@ Hit Stop / Knockback / Multicast Feedback
 
 ---
 
-# Part 9. Player Cancel Window
+## Part 9. Player Cancel Window
 
 Player의 행동 가능 여부는 `EPlayerState`와 `FActionRestrictions`로 관리합니다.
 
@@ -642,7 +644,7 @@ NORMAL      ← 이동까지 복귀
 
 ---
 
-# Trade-offs / 현재 한계
+## Trade-offs / 현재 한계
 
 ### Animation-driven gameplay
 Gameplay timing과 motion은 잘 맞지만 Server에서도 필요한 animation/bone update 비용이 생깁니다.
@@ -658,7 +660,7 @@ Item partial rollback은 있지만 Stamina까지 포함한 전체 transaction ro
 
 ---
 
-# 이 문서 다음에 읽기
+## 이 문서 다음에 읽기
 
 - Player action/state가 궁금하면 → [[11. Player & Character Systems|11_Player_Character_Systems]]
 - Capture가 Combat 위에 어떻게 얹히는지 → [[9. Pal Capture & Partner Lifecycle|9_Pal_Capture_Partner_Lifecycle]]
