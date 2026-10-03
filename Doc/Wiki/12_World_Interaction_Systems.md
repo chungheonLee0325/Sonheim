@@ -1,6 +1,6 @@
 # 12. World Interaction Systems
 
-> **이 문서가 답하는 질문**
+> **핵심 구현 범위**
 >
 > “Player가 Item, Container, Crafting Station, Dungeon Lever처럼 서로 다른 World Object를 만날 때 Player 코드가 각 concrete type을 모두 알아야 하는가?”
 
@@ -17,7 +17,7 @@ Attack / Collision / Damage
 둘을 한 generic system으로 억지로 합치지 않습니다.
 
 
-> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
+> **코드 예시:** 실제 구현에서 구조 이해에 필요한 선언과 함수만 발췌했으며, `UPROPERTY` metadata와 보조 필드는 일부 생략했습니다.
 ---
 
 ## Part 1. 의도 기반 Interaction Contract
@@ -275,7 +275,7 @@ Option이 너무 늘어나면 잘못된 조합이 가능해지므로 preset/vali
 
 ---
 
-## 이 문서 다음에 읽기
+## 연관 문서
 
 - Damage가 실제로 처리되는 방식 → [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]]
 - Container/Crafting interaction → [[8. Multiplayer Inventory & Crafting|8_Multiplayer_Inventory_Crafting]]
