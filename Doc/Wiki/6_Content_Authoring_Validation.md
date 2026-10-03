@@ -1,6 +1,6 @@
 # 6. Content Authoring & Validation
 
-> **이 문서가 답하는 질문**
+> **핵심 구현 범위**
 >
 > “Data-driven 구조에서 잘못된 조합도 쉽게 만들 수 있는데, 실행하기 전에 Editor에서 어떻게 오류를 발견할 것인가?”
 
@@ -8,7 +8,7 @@ Data-driven은 “코드를 덜 쓴다”가 끝이 아닙니다.
 작성 가능한 데이터 조합이 늘어난 만큼 **authoring constraint와 validation**이 필요합니다.
 
 
-> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
+> **코드 예시:** 실제 구현에서 구조 이해에 필요한 선언과 함수만 발췌했으며, `UPROPERTY` metadata와 보조 필드는 일부 생략했습니다.
 ---
 
 ## Part 1. 작성 화면에서 잘못된 입력 자체를 줄인다
@@ -193,7 +193,7 @@ Editor tool을 추가하는 기준은 “자동화할 수 있는가?”가 아�
 
 ---
 
-## 이 문서 다음에 읽기
+## 연관 문서
 
 - 실제 Definition 구조 → [[4. Branching Dungeon Runtime|4_Branching_Dungeon_Runtime]]
 - DataAsset을 선택한 이유 → [[3. Data & Content Architecture|3_Data_Content_Architecture]]
