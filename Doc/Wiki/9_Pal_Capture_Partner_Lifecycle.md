@@ -20,9 +20,11 @@ Summoned Partner
 Partner AI
 ```
 
+
+> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
 ---
 
-# Part 1. 역할 분리
+## Part 1. 역할 분리
 
 | Component / Actor | 책임 |
 |---|---|
@@ -35,7 +37,7 @@ Player 하나에 모든 Pal logic을 넣지 않습니다.
 
 ---
 
-# Part 2. Capture Rate
+## Part 2. Capture Rate
 
 실제 계산은 Monster 종 데이터와 HP를 사용합니다.
 
@@ -73,7 +75,7 @@ Client는 예상 확률을 UI에 보여줄 수 있지만 성공 random roll은 S
 
 ---
 
-# Part 3. Capture 진행 중 대상 격리
+## Part 3. Capture 진행 중 대상 격리
 
 Capture 도중 같은 Monster에 다른 Player가 다시 상호작용하면 ownership race가 생길 수 있습니다.
 
@@ -93,7 +95,7 @@ Deactivate 시:
 
 ---
 
-# Part 4. 결과 판정과 실제 적용 시점을 분리
+## Part 4. 결과 판정과 실제 적용 시점을 분리
 
 Server는 결과를 먼저 정하지만 즉시 ownership을 바꾸지 않습니다.
 
@@ -115,7 +117,7 @@ Server_ApplyCaptureOutcome
 
 ---
 
-# Part 5. Reveal도 Server가 같은 parameter를 배포한다
+## Part 5. Reveal도 Server가 같은 parameter를 배포한다
 
 Server가 구성하는 값:
 
@@ -132,7 +134,7 @@ Server가 구성하는 값:
 
 ---
 
-# Part 6. Outcome 시 다시 검증한다
+## Part 6. Outcome 시 다시 검증한다
 
 Reveal 동안 Pal Inventory가 가득 찰 수 있습니다.
 
@@ -149,7 +151,7 @@ SetPartnerOwner(Player)
 
 ---
 
-# Part 7. Pal Inventory는 왜 FastArray가 아닌가
+## Part 7. Pal Inventory는 왜 FastArray가 아닌가
 
 Item Inventory는 슬롯이 많고 변경도 빈번하지만 Pal 목록은 작습니다.
 
@@ -174,7 +176,7 @@ NewPal != nullptr && OldPal != NewPal
 
 ---
 
-# Part 8. 선택 Slot은 Prediction
+## Part 8. 선택 Slot은 Prediction
 
 Pal slot 변경은 즉각적인 HUD 반응이 중요합니다.
 
@@ -199,7 +201,7 @@ Inventory swap과 같은 prediction/reconciliation 원리입니다.
 
 ---
 
-# Part 9. Summon은 Animation 종료와 실제 상태를 맞춘다
+## Part 9. Summon은 Animation 종료와 실제 상태를 맞춘다
 
 소환 입력 즉시 Pal을 활성화한 뒤 Animation을 재생하지 않습니다.
 
@@ -215,7 +217,7 @@ presentation과 gameplay state transition의 시점을 맞춥니다.
 
 ---
 
-# Part 10. Actor를 Destroy/Spawn하지 않고 상태를 전환한다
+## Part 10. Actor를 Destroy/Spawn하지 않고 상태를 전환한다
 
 Owned Pal은 actor identity를 유지한 채 world participation을 끕니다.
 
@@ -233,7 +235,7 @@ Owned Pal은 actor identity를 유지한 채 world participation을 끕니다.
 
 ---
 
-# Part 11. Partner AI
+## Part 11. Partner AI
 
 같은 `ABaseMonster`가 `PartnerOwner` 여부에 따라 다른 behavior route를 탑니다.
 
@@ -248,7 +250,7 @@ Partner patrol은:
 
 ---
 
-# Part 12. IFF
+## Part 12. IFF
 
 Partner가 되면 단순 team enum 하나만 보는 것이 아니라 `PartnerOwner` 관계를 이용해 공격 가능 여부를 판단합니다.
 
@@ -262,7 +264,7 @@ Partner가 되면 단순 team enum 하나만 보는 것이 아니라 `PartnerOwn
 
 ---
 
-# Part 13. Boss Capture
+## Part 13. Boss Capture
 
 Guardian은 항상 Capturable하지 않습니다.
 
@@ -272,7 +274,7 @@ Boss를 위해 별도 Capture ownership model을 만들지 않습니다.
 
 ---
 
-# 이 문서 다음에 읽기
+## 이 문서 다음에 읽기
 
 - 일반 Combat 기반 → [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]]
 - Player data/lifecycle → [[11. Player & Character Systems|11_Player_Character_Systems]]
