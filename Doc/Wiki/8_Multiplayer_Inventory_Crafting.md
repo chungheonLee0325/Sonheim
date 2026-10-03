@@ -1,6 +1,6 @@
 # 8. Multiplayer Inventory & Crafting
 
-> **이 문서가 답하는 질문**
+> **핵심 구현 범위**
 >
 > 같은 Item 데이터를 사용하는데 왜 Player Inventory, World Container, Crafting Station은 서로 다른 네트워크 구조를 가져야 하는가?
 
@@ -13,7 +13,7 @@
 | Crafting Station | World shared workflow | 주변/참여 Player | Replicated work state + Server lock |
 
 
-> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
+> **코드 예시:** 실제 구현에서 구조 이해에 필요한 선언과 함수만 발췌했으며, `UPROPERTY` metadata와 보조 필드는 일부 생략했습니다.
 ---
 
 ## Part 1. Player Inventory
@@ -347,7 +347,7 @@ Required Material Row는 local pool을 사용합니다.
 
 ---
 
-## 이 문서 다음에 읽기
+## 연관 문서
 
 - 기본 Server Authority 원칙 → [[2. Architecture Overview|2_Architecture_Overview]]
 - Inventory가 Skill/Stat과 만나는 지점 → [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]], [[11. Player & Character Systems|11_Player_Character_Systems]]
