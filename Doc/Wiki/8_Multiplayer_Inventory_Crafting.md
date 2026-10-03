@@ -12,11 +12,13 @@
 | Container | World shared | 열어본 Player | Subscriber-based FastArray |
 | Crafting Station | World shared workflow | 주변/참여 Player | Replicated work state + Server lock |
 
+
+> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
 ---
 
-# Part 1. Player Inventory
+## Part 1. Player Inventory
 
-## 1.1 실제 Replication 구조
+### 1.1 실제 Replication 구조
 
 ```cpp
 USTRUCT(BlueprintType)
@@ -57,7 +59,7 @@ TArray<FInventoryItem> InventoryItems;
 
 ---
 
-## 1.2 왜 두 배열인가
+### 1.2 왜 두 배열인가
 
 Server에서는 `InventoryItems`를 gameplay API가 사용하고, 변경 slot만 FastArray entry에 반영합니다.
 
@@ -77,7 +79,7 @@ UI Delegate
 
 ---
 
-## 1.3 Owner-only
+### 1.3 Owner-only
 
 다른 Player의 개인 Inventory 전체를 받을 필요가 없습니다.
 
@@ -87,9 +89,9 @@ UI Delegate
 
 ---
 
-# Part 2. Client Prediction
+## Part 2. Client Prediction
 
-## 2.1 Slot Swap
+### 2.1 Slot Swap
 
 ```cpp
 bool UInventoryComponent::SwapItems(int32 FromIndex, int32 ToIndex)
@@ -131,7 +133,7 @@ Prediction은 authority를 대신하지 않고 round-trip latency를 가리는 �
 
 ---
 
-# Part 3. “상태 변경”과 “획득 이벤트”를 분리한다
+## Part 3. “상태 변경”과 “획득 이벤트”를 분리한다
 
 Inventory slot이 바뀌었다고 항상 “아이템 획득” popup을 띄우면 안 됩니다.
 
@@ -152,7 +154,7 @@ Inventory slot이 바뀌었다고 항상 “아이템 획득” popup을 띄우�
 
 ---
 
-# Part 4. Equipment는 다른 시스템의 Source다
+## Part 4. Equipment는 다른 시스템의 Source다
 
 장비 변경은 Inventory 내부만의 일이 아닙니다.
 
@@ -171,9 +173,9 @@ Inventory Component는 현재 무기가 부여한 Skill source를 `ActiveWeaponG
 
 ---
 
-# Part 5. Shared Container
+## Part 5. Shared Container
 
-## 5.1 구조는 비슷하지만 전송 조건이 다르다
+### 5.1 구조는 비슷하지만 전송 조건이 다르다
 
 Container도 FastArray입니다.
 
@@ -195,7 +197,7 @@ Container는 여러 Player가 볼 수 있는 World state입니다.
 
 ---
 
-## 5.2 Subscriber가 있을 때만 내부 Item을 복제한다
+### 5.2 Subscriber가 있을 때만 내부 Item을 복제한다
 
 ```cpp
 void UContainerComponent::PreReplication(
@@ -230,9 +232,9 @@ ServerUnsubscribeViewer(APlayerController* Viewer);
 
 ---
 
-# Part 6. Crafting Station
+## Part 6. Crafting Station
 
-## 6.1 한 개의 Interaction이 상태에 따라 다른 의미를 갖는다
+### 6.1 한 개의 Interaction이 상태에 따라 다른 의미를 갖는다
 
 ```text
 F Interaction
@@ -248,7 +250,7 @@ Crafting Station은 현재 authoritative state를 보고 Input 의미를 결정�
 
 ---
 
-## 6.2 왜 `UIOwner`가 필요한가
+### 6.2 왜 `UIOwner`가 필요한가
 
 Recipe를 선택하는 순간 두 Player가 서로 다른 작업을 동시에 시작하면 `ActiveWork`와 재료 소모가 충돌할 수 있습니다.
 
@@ -272,7 +274,7 @@ UIOwner = Player;
 
 ---
 
-# Part 7. Server-authoritative Crafting Lifecycle
+## Part 7. Server-authoritative Crafting Lifecycle
 
 ```text
 Recipe Select
@@ -300,7 +302,7 @@ Client UI의 “제작 가능” 표시를 신뢰하지 않고 Server가 다시 
 
 ---
 
-## 7.1 Cancel
+### 7.1 Cancel
 
 진행 중 작업을 취소하면:
 
@@ -313,7 +315,7 @@ Client UI의 “제작 가능” 표시를 신뢰하지 않고 Server가 다시 
 
 ---
 
-# Part 8. Crafting UI는 어떤 데이터를 소유하지 않는다
+## Part 8. Crafting UI는 어떤 데이터를 소유하지 않는다
 
 `UCraftingWidget`은 authoritative crafting state를 만들지 않습니다.
 
@@ -332,7 +334,7 @@ Required Material Row는 local pool을 사용합니다.
 
 ---
 
-# Trade-offs
+## Trade-offs
 
 ### Client Prediction
 응답성은 좋아지지만 Server mutation과 prediction rule이 어긋나지 않도록 유지해야 합니다.
@@ -345,7 +347,7 @@ Required Material Row는 local pool을 사용합니다.
 
 ---
 
-# 이 문서 다음에 읽기
+## 이 문서 다음에 읽기
 
 - 기본 Server Authority 원칙 → [[2. Architecture Overview|2_Architecture_Overview]]
 - Inventory가 Skill/Stat과 만나는 지점 → [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]], [[11. Player & Character Systems|11_Player_Character_Systems]]
