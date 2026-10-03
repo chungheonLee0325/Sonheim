@@ -1,6 +1,6 @@
 # 9. Pal Capture & Partner Lifecycle
 
-> **이 문서가 답하는 질문**
+> **핵심 구현 범위**
 >
 > “야생 Monster가 Capture 대상에서 Player 소유 Pal이 되고, 보관·선택·소환·Partner AI로 이어지는 전체 수명을 어떻게 관리하는가?”
 
@@ -21,7 +21,7 @@ Partner AI
 ```
 
 
-> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
+> **코드 예시:** 실제 구현에서 구조 이해에 필요한 선언과 함수만 발췌했으며, `UPROPERTY` metadata와 보조 필드는 일부 생략했습니다.
 ---
 
 ## Part 1. 역할 분리
@@ -274,7 +274,7 @@ Boss를 위해 별도 Capture ownership model을 만들지 않습니다.
 
 ---
 
-## 이 문서 다음에 읽기
+## 연관 문서
 
 - 일반 Combat 기반 → [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]]
 - Player data/lifecycle → [[11. Player & Character Systems|11_Player_Character_Systems]]
