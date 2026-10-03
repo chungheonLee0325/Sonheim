@@ -26,11 +26,13 @@ Phase / Down / Exhaust
 Replicated Boss Status
 ```
 
+
+> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
 ---
 
-# Part 1. Pattern은 실제로 어떤 데이터인가
+## Part 1. Pattern은 실제로 어떤 데이터인가
 
-## 1.1 한 번의 Strike
+### 1.1 한 번의 Strike
 
 실제 구조 일부:
 
@@ -78,7 +80,7 @@ struct FBossStrike
 
 ---
 
-## 1.2 Pattern
+### 1.2 Pattern
 
 ```cpp
 USTRUCT(BlueprintType)
@@ -114,7 +116,7 @@ Boss code는 Pattern마다 별도 함수 이름을 hardcode하기보다 이 데�
 
 ---
 
-# Part 2. Pattern 선택
+## Part 2. Pattern 선택
 
 Boss는 현재 Target distance, Phase, Cooldown과 Weight를 보고 candidate를 고릅니다.
 
@@ -132,7 +134,7 @@ Pattern을 “애니메이션 하나”가 아니라 **선택 조건 + timing + 
 
 ---
 
-# Part 3. Telegraph와 실제 Strike는 같은 데이터를 사용한다
+## Part 3. Telegraph와 실제 Strike는 같은 데이터를 사용한다
 
 Telegraph가 Circle인데 실제 Damage가 다른 Radius라면 player가 화면을 믿을 수 없습니다.
 
@@ -156,7 +158,7 @@ presentation과 gameplay의 geometry source를 하나로 둡니다.
 
 ---
 
-# Part 4. Re-aim / Tracking
+## Part 4. Re-aim / Tracking
 
 모든 공격을 Pattern 시작 순간에 완전히 lock하면 moving target에 지나치게 쉽게 빗나갑니다.
 
@@ -173,7 +175,7 @@ presentation과 gameplay의 geometry source를 하나로 둡니다.
 
 ---
 
-# Part 5. Montage Section Cue
+## Part 5. Montage Section Cue
 
 Pattern은 Montage를 처음부터 끝까지 수동 Timer로만 다루지 않습니다.
 
@@ -204,7 +206,7 @@ section convention을 사용합니다.
 
 ---
 
-# Part 6. Phase 2
+## Part 6. Phase 2
 
 `UBossPatternDataAsset`에는 전체 Boss fight tuning도 있습니다.
 
@@ -229,7 +231,7 @@ HP threshold를 넘으면:
 
 ---
 
-# Part 7. Down과 Exhaust는 다른 상태다
+## Part 7. Down과 Exhaust는 다른 상태다
 
 Boss의 “공격 불가”를 하나의 stun bool로 처리하지 않습니다.
 
@@ -249,7 +251,7 @@ Boss Runtime이:
 
 ---
 
-# Part 8. 기존 Combat Data를 재사용한다
+## Part 8. 기존 Combat Data를 재사용한다
 
 `FBossStrike` 안에는 별도 BossDamage 구조체가 아니라:
 
@@ -272,7 +274,7 @@ Boss 전용 Runtime은 “언제/어디서 공격하는가”를 확장하고, D
 
 ---
 
-# Part 9. UI에 필요한 Boss 상태만 Snapshot으로 보낸다
+## Part 9. UI에 필요한 Boss 상태만 Snapshot으로 보낸다
 
 Dungeon Snapshot에는 대표적으로:
 
@@ -289,7 +291,7 @@ Widget이 `UBossFSM` 자체를 참조하지 않습니다.
 
 ---
 
-# Trade-offs
+## Trade-offs
 
 ### Data tuning 폭이 넓다
 Pattern authoring 실수 가능성이 높아 validation이 중요합니다.
@@ -302,7 +304,7 @@ Network delay가 있어도 gameplay 결과 기준은 Server이며, Client presen
 
 ---
 
-# 이 문서 다음에 읽기
+## 이 문서 다음에 읽기
 
 - 기반 Combat 구조 → [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]]
 - Exhaust Capture가 연결되는 방식 → [[9. Pal Capture & Partner Lifecycle|9_Pal_Capture_Partner_Lifecycle]]
