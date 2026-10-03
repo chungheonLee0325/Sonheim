@@ -16,9 +16,11 @@ Attack / Collision / Damage
 
 둘을 한 generic system으로 억지로 합치지 않습니다.
 
+
+> **코드 표기:** 아래 코드 블록은 `main`의 실제 선언/함수에서 문서 이해에 필요한 부분을 발췌한 것입니다. `UPROPERTY` metadata나 보조 필드는 일부 생략될 수 있으며, 전체 구현은 하단 Source 링크에서 확인할 수 있습니다.
 ---
 
-# Part 1. 의도 기반 Interaction Contract
+## Part 1. 의도 기반 Interaction Contract
 
 실제 interface의 핵심 API:
 
@@ -60,7 +62,7 @@ Player는 “이게 Item인가 CraftingStation인가”보다 이 contract를 �
 
 ---
 
-# Part 2. 전체 Pipeline
+## Part 2. 전체 Pipeline
 
 ```text
 Detection
@@ -82,7 +84,7 @@ Detection, UI feedback, actual execution을 구분합니다.
 
 ---
 
-# Part 3. Context UI도 Target이 정보를 제공한다
+## Part 3. Context UI도 Target이 정보를 제공한다
 
 Detect Widget이 concrete type을 검사해:
 
@@ -100,7 +102,7 @@ Target의 `GetInteractionName()`, `GetHoldDuration()` 같은 interface data를 �
 
 ---
 
-# Part 4. Instant / Hold
+## Part 4. Instant / Hold
 
 `GetHoldDuration() == 0`이면 즉시 상호작용, 값이 있으면 Hold progress를 사용합니다.
 
@@ -115,7 +117,7 @@ Target의 `GetInteractionName()`, `GetHoldDuration()` 같은 interface data를 �
 
 ---
 
-# Part 5. Item의 “정적 정체성”과 “이번 Spawn 상황”을 분리한다
+## Part 5. Item의 “정적 정체성”과 “이번 Spawn 상황”을 분리한다
 
 Item의 `FItemData`는:
 
@@ -156,7 +158,7 @@ struct FItemSpawnOptions
 
 ---
 
-# Part 6. 같은 Item도 Spawn Context에 따라 다르다
+## Part 6. 같은 Item도 Spawn Context에 따라 다르다
 
 예:
 
@@ -174,7 +176,7 @@ struct FItemSpawnOptions
 
 ---
 
-# Part 7. 자주 쓰는 조합은 Preset으로 만든다
+## Part 7. 자주 쓰는 조합은 Preset으로 만든다
 
 실제 helper:
 
@@ -187,7 +189,7 @@ Caller가 여러 bool/float 값을 매번 직접 맞추지 않고 의미가 드�
 
 ---
 
-# Part 8. 물리 기반 Interaction은 Damage Pipeline을 사용한다
+## Part 8. 물리 기반 Interaction은 Damage Pipeline을 사용한다
 
 나무를 도끼로 치는 것을 F키 Interaction으로 처리하지 않습니다.
 
@@ -207,7 +209,7 @@ Harvest Progress
 
 ---
 
-# Part 9. Resource는 Damage를 Harvest로 해석한다
+## Part 9. Resource는 Damage를 Harvest로 해석한다
 
 Resource Object는 `TakeDamage`를 override합니다.
 
@@ -223,7 +225,7 @@ Monster라면 HP 감소/Death로 이어지는 같은 entry가 Resource에서는:
 
 ---
 
-# Part 10. HP Segment 기반 Reward
+## Part 10. HP Segment 기반 Reward
 
 큰 Damage가 여러 threshold를 한 번에 지나갈 수 있습니다.
 
@@ -241,7 +243,7 @@ Lost = 2
 
 ---
 
-# Part 11. Dungeon도 같은 Interaction Contract를 사용한다
+## Part 11. Dungeon도 같은 Interaction Contract를 사용한다
 
 - Portal
 - Shortcut Switch
@@ -260,7 +262,7 @@ Dungeon Runtime은 “누가 Switch를 사용했다”는 event만 받고:
 
 ---
 
-# Trade-offs
+## Trade-offs
 
 ### Interface contract가 커질 수 있다
 Interaction 종류가 계속 늘면 모든 구현체가 사용하지 않는 함수도 생길 수 있어 역할 분리가 필요합니다.
@@ -273,7 +275,7 @@ Option이 너무 늘어나면 잘못된 조합이 가능해지므로 preset/vali
 
 ---
 
-# 이 문서 다음에 읽기
+## 이 문서 다음에 읽기
 
 - Damage가 실제로 처리되는 방식 → [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]]
 - Container/Crafting interaction → [[8. Multiplayer Inventory & Crafting|8_Multiplayer_Inventory_Crafting]]
