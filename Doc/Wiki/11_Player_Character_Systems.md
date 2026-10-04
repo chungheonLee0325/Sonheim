@@ -6,8 +6,6 @@
 
 이 문서는 전투나 Inventory보다 먼저 **객체 수명과 책임**을 설명합니다.
 
-
-> **코드 예시:** 실제 구현에서 구조 이해에 필요한 선언과 함수만 발췌했으며, `UPROPERTY` metadata와 보조 필드는 일부 생략했습니다.
 ---
 
 ## Part 1. UE Gameplay Framework 기준으로 수명을 나눈다
