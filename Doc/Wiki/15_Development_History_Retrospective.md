@@ -1,10 +1,8 @@
 # 15. Development History & Retrospective
 
-Sonheim은 처음부터 현재 구조를 완성해 두고 기능을 채운 프로젝트가 아닙니다.
+Sonheim은 **Core Gameplay → Shared World Systems → Dungeon Vertical Slice** 순으로 확장되면서 상태 ownership과 시스템 경계를 여러 차례 수정했습니다.
 
-초기에는 Player·Combat·Item·Capture 같은 개별 gameplay 기능을 만드는 데 집중했고, 이후 Container/Crafting과 Dungeon처럼 **여러 시스템이 동시에 연결되는 콘텐츠**를 만들면서 기존 책임 경계를 반복해서 수정했습니다.
-
-이 페이지는 기능 추가 순서보다 **어떤 구조가 실제 확장에서 문제가 되었고 어떻게 바꿨는지**를 중심으로 정리합니다.
+아래는 기능 추가 자체보다, 실제 확장에서 변경된 구조와 그 결과를 정리한 기록입니다.
 
 ---
 
@@ -27,7 +25,7 @@ Sonheim은 처음부터 현재 구조를 완성해 두고 기능을 채운 프�
 
 ---
 
-## 1. 기능 수가 늘면서 “어디에 둘 것인가”가 더 중요해졌다
+## 1. Pal 기능의 Component 분리
 
 초기에는 기능 하나를 빠르게 완성하는 것이 우선이었습니다.
 
@@ -63,7 +61,7 @@ UPalPartnerSkillComponent
 
 ---
 
-## 2. 재사용되지 않는 추상화는 다시 경계를 조정했다
+## 2. 새 콘텐츠에서 기존 경계 재사용
 
 추상화가 유효한지는 이름보다 새 콘텐츠에서 실제로 재사용되는지로 확인했습니다.
 
@@ -128,7 +126,7 @@ Dungeon을 만들면서 추가 요구가 생겼습니다.
 - validation
 - Presentation 분리
 
-그래서 DataTable을 대체한 것이 아니라 역할을 세분화했습니다.
+DataTable은 반복 row data에 유지하고, Dungeon/Boss 같은 독립 콘텐츠는 DataAsset으로 분리했습니다.
 
 ~~~text
 Repeated Row Data
@@ -183,7 +181,7 @@ UMG
 
 로 변경했습니다.
 
-이 구조는 UI 코드량을 줄이기 위한 것이 아니라 **HUD가 늦게 만들어져도 현재 Run state를 다시 구성하고, gameplay schema와 Widget layout의 변경 이유를 분리**하기 위한 선택이었습니다.
+Snapshot/Presenter/ViewData 구조로 HUD 재생성 시 현재 Run state를 복원하고, gameplay schema와 Widget layout의 변경 경계를 분리했습니다.
 
 ---
 
@@ -324,7 +322,7 @@ Entrance
 
 ## 현재 남아 있는 제약
 
-구현된 내용을 완성형으로 표현하지 않고 현재 구조의 한계도 함께 관리합니다.
+현재 구현에서 확인된 제약은 다음과 같습니다.
 
 - Skill Cost rollback은 Item 부분 실패를 복구하지만 Stamina까지 포함한 전체 transaction은 아님
 - Condition timer는 같은 condition을 여러 Source가 독립 duration으로 중첩하는 요구에 제한이 있음
