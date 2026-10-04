@@ -317,8 +317,8 @@ PossessedBy (Server)
 
 ## 연관 문서
 
-- Snapshot을 만드는 Server Runtime → [[9. Branching Dungeon Runtime|9_Branching_Dungeon_Runtime]]
-- Presentation data의 출처 → [[3. Data & Content Architecture|3_Data_Content_Architecture]]
+- Snapshot을 만드는 Server Runtime → [[9. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]]
+- Presentation data의 출처 → [[3. Data & Content Architecture|03_Data_Content_Architecture]]
 - Notice와 검증 workflow → [[14. Development Workflow & Verification|14_Development_Workflow_Verification]]
 
 ---
