@@ -57,7 +57,7 @@ Boss Runtime은 **언제 어떤 공격을 선택하고 어디에 어떤 타격�
 
 ## 1. Pattern = 선택 조건 + Timeline + Strike
 
-`FBossPattern`은 Montage 하나가 아니라 **선택 조건 + 실행 시간 + Strike 목록 + 이동/추적 규칙**을 묶은 행동 단위입니다.
+<code>FBossPattern</code>은 **선택 조건 + 실행 시간 + Strike 목록 + 이동/추적 규칙**을 하나의 행동 단위로 묶습니다.
 
 ```cpp
 struct FBossPattern
