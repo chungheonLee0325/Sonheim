@@ -1,8 +1,11 @@
 # 08. Pal Capture & Partner Lifecycle
 
-Pal 시스템은 “포획 확률 계산” 하나가 아니라, **야생 Monster가 Player 소유 객체로 전환되고 이후 보관·선택·소환·Partner AI로 이어지는 lifecycle**을 다룹니다.
+Pal 시스템은 **Wild Monster → Capture → Ownership → Storage → Selection → Summon → Partner AI**로 이어지는 lifecycle을 관리합니다.
 
-Capture, Inventory, Summon을 한 Component에 몰아넣지 않고 각 단계의 책임을 분리했습니다.
+- <code>UPalCaptureComponent</code> — 포획 판정과 Reveal
+- <code>UPalInventoryComponent</code> — 소유 Pal 목록과 선택 Slot
+- <code>UPalPartnerSkillComponent</code> — 소환/회수와 Partner action
+- <code>ABaseMonster</code> — ownership, active state, AI/IFF
 
 ---
 
