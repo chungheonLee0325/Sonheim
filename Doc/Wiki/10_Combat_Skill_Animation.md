@@ -30,8 +30,6 @@ AAreaObject::TakeDamage
 HP / Condition / Feedback
 ```
 
-
-> **코드 예시:** 실제 구현에서 구조 이해에 필요한 선언과 함수만 발췌했으며, `UPROPERTY` metadata와 보조 필드는 일부 생략했습니다.
 ---
 
 ## Part 1. Skill 하나를 어떻게 표현하는가
