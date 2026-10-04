@@ -1,4 +1,4 @@
-# 11. UI Architecture & Client Presentation
+# 11. Client State & Presentation Pipeline
 
 Sonheim UI는 **Persistent HUD, Interaction Screen, Transient Notice, Complex Content UI**의 네 흐름으로 구성됩니다.
 
@@ -385,6 +385,14 @@ Stage countdown과 Boss action progress는 Snapshot의:
 을 synchronized server clock과 비교해 계산합니다.
 
 HUD가 늦게 생성되거나 재생성돼도 같은 현재 progress를 복원합니다.
+
+### Boss Status
+
+Boss FSM 자체를 Widget이 직접 참조하지 않고, Snapshot에 반영된 **Action / Phase / Break / Capture 가능 상태**를 Presenter가 화면용 정보로 변환합니다.
+
+![Boss Status HUD](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_status_hud.png)
+
+위 화면에서는 Phase 2, Break 상태, Exhaust 상태와 Capture 안내가 하나의 HUD에서 함께 표현됩니다. 같은 Runtime state를 Boss HUD와 Dungeon Objective가 각각 필요한 형태로 소비합니다.
 
 ### Result
 

@@ -95,6 +95,12 @@ struct FBossPattern
 - Montage의 어떤 Section을 언제 전환할 것인가
 - 어떤 Strike를 어떤 시점에 실행할 것인가
 
+### 실제 Pattern Definition
+
+아래는 `Boss.Grizzbolt.Pattern.Discharge`의 실제 설정입니다. Pattern 선택 조건과 전체 실행 시간, Strike의 Mark/Hit timing과 공격 범위를 같은 Definition에서 확인할 수 있습니다.
+
+![Grizzbolt Discharge Pattern DataAsset](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_pattern_asset.png)
+
 ---
 
 ## 2. Strike 하나가 Telegraph와 실제 공격을 함께 정의
@@ -140,6 +146,10 @@ struct FBossStrike
 을 함께 결정합니다.
 
 **보여주는 영역과 실제 맞는 영역의 source를 하나로 유지**하기 위한 구조입니다.
+
+[▶ Telegraph → 실제 Hit 시연 (MP4)](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_telegraph_hit.mp4)
+
+영상에서는 Telegraph가 먼저 표시되고, 같은 범위를 기준으로 실제 Strike가 이어집니다.
 
 ---
 
@@ -258,6 +268,10 @@ Pattern 시작 시:
 
 Animation, Telegraph, 실제 Hit이 서로 다른 독립 Timer로 흩어지지 않습니다.
 
+[▶ Discharge Pattern Runtime 시연 (MP4)](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_pattern_runtime.mp4)
+
+위 DataAsset에서 확인한 `Discharge` Pattern이 실제로 **Tracking → Telegraph → Strike → Recovery** 순서로 실행되는 장면입니다.
+
 ---
 
 ## 6. Telegraph는 공격 종류에 따라 위치를 고정하거나 따라간다
@@ -313,6 +327,10 @@ bReaim이면 다시 Track
 
 Tracking의 종료 시점 자체를 Pattern tuning 값으로 둡니다.
 
+[▶ Tracking / Anchor 동작 시연 (MP4)](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_tracking_anchor.mp4)
+
+Pattern이 Target을 추적하는 구간과 Telegraph가 기준 위치를 유지하는 구간을 분리해, 경고를 본 뒤 회피할 수 있는 시간을 확보합니다.
+
 ---
 
 ## 8. Montage Section Cue로 Charge / Release를 연결
@@ -362,6 +380,10 @@ Phase 2에서는:
 
 가 같은 Phase state를 기준으로 적용됩니다.
 
+[▶ Phase 1 → Roar → Phase 2 전환 시연 (MP4)](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_phase2.mp4)
+
+HP threshold를 통과하면 현재 공격을 바로 Phase 2로 덮어쓰는 대신, **Roaring 상태를 거쳐 Phase가 전환된 뒤** 다음 Pattern부터 Phase 2 설정을 적용합니다.
+
 ---
 
 ## 10. Break와 Exhaust는 Damage 흐름에 연결
@@ -379,6 +401,10 @@ Down
 ```
 
 Down, Waking, Resting 중 받은 Damage는 다음 Knockdown으로 이어지는 Break에 누적하지 않습니다.
+
+[▶ Break 누적 → Down → 전투 복귀 시연 (MP4)](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_down.mp4)
+
+Down은 Break 누적으로 발생하는 일시적인 공격 기회이며, 이 상태 자체는 Capture Window가 아닙니다.
 
 Exhaust는 Break와 별도로 HP threshold를 사용합니다.
 
@@ -410,6 +436,10 @@ bool IsVulnerable() const
 ```
 
 실제 Capture 확률 판정, Reveal, ownership 적용은 기존 Pal Capture 시스템으로 연결합니다.
+
+[▶ Exhaust → Capture Window → 실제 Capture 시연 (MP4)](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_exhaust_capture.mp4)
+
+영상에서는 낮은 HP threshold에서 Boss가 `Resting`으로 전환되고 Capture 안내가 활성화된 뒤, 기존 Pal Capture 흐름을 통해 실제 포획까지 이어집니다.
 
 Boss 전용 Capture 결과 처리 코드를 별도로 만들지 않았습니다.
 
@@ -488,7 +518,7 @@ Dungeon Runtime은 Boss status를 다시 Run Snapshot에 반영해 HUD가 `UBoss
 - [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Boss Strike가 재사용하는 Attack/Damage Pipeline
 - [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — Exhaust 상태에서 연결되는 기존 Capture 처리
 - [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Boss가 Dungeon Stage의 Objective로 연결되는 과정
-- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Boss Status를 HUD로 변환하는 과정
+- [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]] — Boss Status를 HUD로 변환하는 과정
 - [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — Pattern / Timing 데이터 검증
 
 ---
