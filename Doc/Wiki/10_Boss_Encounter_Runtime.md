@@ -8,24 +8,50 @@ Guardian Boss는 일반 Monster Skill을 순서대로 호출하는 구조가 아
 
 ## 전체 구조
 
-```mermaid
-flowchart LR
-    DATA["Boss Pattern DataAsset<br/>Pattern · Strike · Phase Tuning"]
-    FSM["Server Boss FSM<br/>State · Target · Pattern Selection"]
-    RUN["Pattern Runtime<br/>Track · Mark · Strike · Recovery"]
-    COMBAT["Existing Combat<br/>FAttackData · Damage"]
-    STATUS["Replicated Boss Status<br/>Action · Phase · Break · Vulnerable"]
-    VIEW["Client Presentation<br/>Telegraph · VFX · HUD"]
+Boss는 기존 Character/Monster 기반을 유지하고, Encounter에 필요한 상태와 Pattern 실행만 전용 계층으로 확장합니다.
 
+~~~mermaid
+flowchart TB
+    subgraph COMMON["Common Gameplay Foundation"]
+        CHAR["<b>UE Character</b><br/>ACharacter"]
+        AREA["<b>공통 Gameplay Actor</b><br/>AAreaObject"]
+        MON["<b>공통 Monster</b><br/>ABaseMonster"]
+        AICOMP["<b>UE AI Component 기반</b><br/>UActorComponent"]
+        AIFSM["<b>공통 Monster FSM</b><br/>UBaseAiFSM"]
+        ATTACK["<b>공통 Combat Data</b><br/>FAttackData · FCustomDamageEvent"]
+
+        CHAR --> AREA --> MON
+        AICOMP --> AIFSM
+    end
+
+    subgraph BOSS["Guardian Encounter"]
+        ACTOR["<b>Boss Actor</b><br/>ABossMonster : ABaseMonster"]
+        FSM["<b>Boss Encounter FSM</b><br/>UBossFSM : UBaseAiFSM"]
+        DATA["<b>Pattern Definition</b><br/>UBossPatternDataAsset"]
+        RUN["<b>Pattern Runtime</b><br/>Track · Mark · Strike · Recovery"]
+        STATUS["<b>Replicated Boss Status</b><br/>Action · Phase · Break · Vulnerable"]
+    end
+
+    VIEW["<b>Client Presentation</b><br/>Telegraph · VFX · Boss HUD"]
+
+    MON --> ACTOR
+    AIFSM --> FSM
     DATA --> FSM
     FSM --> RUN
-    RUN --> COMBAT
+    RUN --> ATTACK
     FSM --> STATUS
     RUN --> STATUS
     STATUS --> VIEW
-```
+~~~
 
-Boss 전용 Runtime은 **언제 어떤 Pattern을 실행할지와 Encounter 상태**를 담당하고, 실제 Damage 의미는 기존 Combat 구조를 사용합니다.
+역할을 나누면 다음과 같습니다.
+
+- **기존 Monster/Combat 기반** — Health, Damage 처리, Capture ownership, 기본 Actor lifecycle
+- **Boss 전용 FSM** — Wake/Fighting/Roaring/Down/Resting 상태와 Pattern 선택
+- **Pattern Data** — 거리·Phase·Cooldown·Weight, Montage/Cue, Strike/Telegraph timing
+- **Replicated Boss Status** — Client가 현재 Action/Phase/Break/Capture 가능 상태를 표현할 최소 상태
+
+Boss Runtime은 **언제 어떤 공격을 선택하고 어디에 어떤 타격을 발생시킬지**를 담당합니다. 실제 타격이 발생한 뒤의 **Health/Stamina Damage, Element, Knockback, HitStop, Feedback 처리**는 기존 <code>FAttackData → FCustomDamageEvent → AAreaObject::TakeDamage</code> 흐름을 그대로 사용합니다.
 
 ---
 
@@ -389,7 +415,7 @@ Boss 전용 Capture 결과 처리 코드를 별도로 만들지 않았습니다.
 
 ---
 
-## 12. Damage 의미는 기존 Combat Data를 재사용
+## 12. 타격 이후 처리는 기존 Combat Pipeline을 재사용
 
 Boss Strike에는 별도 Boss Damage 구조체 대신:
 
@@ -409,7 +435,7 @@ FAttackData Attack;
 
 context가 그대로 `FCustomDamageEvent`로 전달됩니다.
 
-Boss Runtime은 **언제·어디서 공격하는가**를 확장하고, **맞았을 때 어떤 전투 규칙을 적용하는가**는 기존 Combat이 담당합니다.
+Boss Runtime은 **언제·어디서 공격을 발생시킬지**를 결정하고, Hit 이후의 방어·속성·HP/Stamina 감소·Knockback·HitStop 처리는 기존 Combat pipeline에 맡깁니다.
 
 ---
 
