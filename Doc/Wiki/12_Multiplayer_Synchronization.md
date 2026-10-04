@@ -84,7 +84,7 @@ State Synchronization
 
 ## 2. 동기화 범위는 데이터의 소비자를 기준으로 선택
 
-모든 replicated property를 모든 Client에게 같은 방식으로 보내지 않습니다.
+Replicated state는 실제 소비 범위에 따라 전송 scope와 형태를 구분합니다.
 
 | 상태 | 소비 범위 | 구현 |
 |---|---|---|
