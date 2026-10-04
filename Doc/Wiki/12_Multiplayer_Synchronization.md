@@ -2,7 +2,7 @@
 
 Sonheim의 실제 네트워크 구현은 **Unreal Engine Listen Server + RPC / Replication / FastArray**를 사용합니다.
 
-이 문서에서는 API 자체보다 gameplay 상태를 동기화할 때 반복해서 마주친 문제를 다룹니다.
+동기화 구조는 **Request / State / Scope / Prediction / Transient Event**의 다섯 문제로 나눠 구현했습니다.
 
 - **Request와 State를 분리**
 - **State를 필요한 소비자 범위에만 전달**
@@ -96,7 +96,7 @@ State Synchronization
 | Dungeon Run | 참여 화면/World에서 공유 | GameState Snapshot |
 | Boss Status | Boss를 표현할 Client | Actor Replication + Dungeon Snapshot |
 
-핵심은 “FastArray가 좋다”가 아니라 **누가 이 상태를 실제로 소비하는가에 따라 scope와 형태를 선택**한 것입니다.
+State의 소비 범위에 따라 owner-only, shared actor replication, conditional replication, GameState snapshot을 구분합니다.
 
 ---
 
@@ -128,7 +128,7 @@ struct FSonheimSkillSpecItem
 };
 ~~~
 
-**실행 object와 network state를 같은 것으로 만들지 않습니다.**
+Skill 실행 UObject와 Client에 필요한 network state를 분리합니다.
 
 ---
 
@@ -160,9 +160,7 @@ DOREPLIFETIME_ACTIVE_OVERRIDE(
     bActive);
 ~~~
 
-이 방식은 **per-connection payload filtering**까지 수행하지는 않습니다.
-
-규모가 커지고 Container가 많아지면 Replication Graph나 connection별 policy를 고려할 수 있지만, 현재 프로젝트 범위에서는 “사용되지 않는 공유 내부 상태를 항상 활성화하지 않는다”는 수준을 선택했습니다.
+현재 Container는 viewer가 한 명 이상 있을 때 내부 Item property replication을 활성화합니다. 이 구현은 property 단위 활성화이며 connection별 payload filtering은 적용하지 않습니다.
 
 ---
 
@@ -234,7 +232,7 @@ Client relevancy가 아직 갱신되지 않음
 RPC 유실
 ~~~
 
-이 문제는 “Reliable이면 반드시 나중에 받는다”는 식으로 해결할 수 있는 문제가 아니었습니다.
+Reliable Multicast도 해당 시점에 Actor가 Client에 relevant하지 않으면 현재 상태 복구 수단이 되지 못했습니다.
 
 그 결과 Boss에서는:
 
@@ -307,22 +305,15 @@ Presentation 변환은 [[11. UI Architecture & Client Presentation|11_Client_Sta
 
 ---
 
-## 10. UE 구현과 일반 Client/Server 문제의 대응
+## 10. 구현 범위
 
-Sonheim이 구현한 전송 계층은 Unreal Networking입니다.
+> **Scope**
+>
+> Sonheim은 Unreal Engine Listen Server 기반으로 구현했으며, 별도 socket protocol·packet framing/serialization·reconnect protocol·server-process routing은 이 프로젝트의 구현 범위에 포함되지 않습니다.
 
-외부 전용 게임 서버에서 흔히 필요한:
+UE API에 대응되는 상태 설계 문제는 다음처럼 정리할 수 있습니다.
 
-- 별도 socket protocol 설계
-- packet serialization / framing
-- reconnect protocol
-- 서버 프로세스 간 routing
-
-을 Sonheim에서 구현했다고 표현하지 않습니다.
-
-다만 Client가 다루는 상태 문제는 다음처럼 대응됩니다.
-
-| Sonheim | 일반적인 Client / Server 문제 |
+| Sonheim 구현 | 다루는 문제 |
 |---|---|
 | Server RPC | Client Command / Request |
 | Replicated Property | Authoritative State Update |
@@ -330,12 +321,8 @@ Sonheim이 구현한 전송 계층은 Unreal Networking입니다.
 | Client Prediction | Latency Hiding |
 | Reconciliation | Server 결과로 Local State 보정 |
 | GameState Snapshot | Composite State Snapshot |
-| Presenter / ViewData | Network/Game Model과 UI Model 분리 |
+| Presenter / ViewData | Game/Network State와 UI Model 분리 |
 | Multicast | Transient Event / Presentation |
-
-따라서 이 프로젝트의 네트워크 경험은 **UE API 사용 경험과 함께 Request / State / Scope / Prediction / Presentation의 경계를 설계한 경험**으로 한정해 설명합니다.
-
----
 
 ## 설계 선택과 비용
 
