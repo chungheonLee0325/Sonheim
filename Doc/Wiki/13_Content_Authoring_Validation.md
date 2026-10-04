@@ -193,8 +193,8 @@ Editor tool을 추가하는 기준은 “자동화할 수 있는가?”가 아�
 
 ## 연관 문서
 
-- 실제 Definition 구조 → [[9. Branching Dungeon Runtime|9_Branching_Dungeon_Runtime]]
-- DataAsset을 선택한 이유 → [[3. Data & Content Architecture|3_Data_Content_Architecture]]
+- 실제 Definition 구조 → [[9. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]]
+- DataAsset을 선택한 이유 → [[3. Data & Content Architecture|03_Data_Content_Architecture]]
 - Editor agent workflow → [[14. Development Workflow & Verification|14_Development_Workflow_Verification]]
 
 ---
