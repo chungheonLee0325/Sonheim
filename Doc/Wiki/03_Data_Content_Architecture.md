@@ -23,8 +23,8 @@ flowchart LR
     CATALOG["<b>Catalog</b><br/>입장/조회용 Index"]
     DEF["<b>Content Definition</b><br/>Dungeon · Boss"]
     TAG["<b>GameplayTag</b><br/>Stage · Branch · Pattern"]
-    SOFT["Soft Asset Dependency"]
-    RUNTIME["Runtime"]
+    SOFT["<b>Soft Asset Dependency</b>"]
+    RUNTIME["<b>Runtime</b>"]
 
     ROW --> RUNTIME
     CATALOG --> DEF
