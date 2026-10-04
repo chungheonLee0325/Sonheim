@@ -1,289 +1,441 @@
 # 06. World Interaction Systems
 
-> **핵심 구현 범위**
->
-> “Player가 Item, Container, Crafting Station, Dungeon Lever처럼 서로 다른 World Object를 만날 때 Player 코드가 각 concrete type을 모두 알아야 하는가?”
+Player가 Item, Container, Crafting Station, Dungeon Lever처럼 서로 다른 Actor와 상호작용할 때, Player code가 각 concrete class를 직접 구분하지 않도록 **공통 Interaction contract**를 구성했습니다.
 
-Sonheim은 World interaction을 두 종류로 구분합니다.
-
-```text
-의도 기반 Interaction
-F / Hold / Prompt / Interface
-
-물리 기반 Interaction
-Attack / Collision / Damage
-```
-
-둘을 한 generic system으로 억지로 합치지 않습니다.
+Detection·Prompt·Hold·Server 요청은 \`UInteractionComponent\`가 공통으로 처리하고, 실제 결과는 \`IInteractableInterface\`를 구현한 Actor가 결정합니다.
 
 ---
 
-## Part 1. 의도 기반 Interaction Contract
+## 전체 구조
 
-실제 interface의 핵심 API:
+~~~mermaid
+flowchart LR
+    INPUT["Player Input"]
+    COMP["Interaction Component<br/>Detection · Hold · Request"]
+    API["IInteractableInterface<br/>공통 Contract"]
 
-```cpp
+    ITEM["Item<br/>획득"]
+    BOX["Container<br/>보관함 열기"]
+    CRAFT["Crafting Station<br/>Recipe · Work · Collect"]
+    LEVER["Dungeon Lever<br/>Branch Event"]
+    PORTAL["Dungeon Entrance<br/>Run Start"]
+
+    UI["Context UI<br/>Prompt · Hold Progress · Cancel"]
+
+    INPUT --> COMP
+    COMP --> API
+    API --> ITEM
+    API --> BOX
+    API --> CRAFT
+    API --> LEVER
+    API --> PORTAL
+
+    API --> UI
+~~~
+
+Player는 “현재 대상이 Item인가 Lever인가”를 판단하지 않습니다.  
+대상이 **무엇을 보여주고, 얼마나 눌러야 하며, 실행되면 무엇을 할지**를 contract로 제공합니다.
+
+---
+
+## 1. Interaction Contract
+
+핵심 interface는 다음 책임을 제공합니다.
+
+~~~cpp
 class IInteractableInterface
 {
-    GENERATED_BODY()
-
 public:
-    UFUNCTION(BlueprintNativeEvent)
     bool CanInteract() const;
-
-    UFUNCTION(BlueprintNativeEvent)
     void OnDetected(bool bDetected);
 
-    UFUNCTION(BlueprintNativeEvent)
     void Interact(ASonheimPlayer* Player);
 
-    UFUNCTION(BlueprintNativeEvent)
     FString GetInteractionName() const;
-
-    UFUNCTION(BlueprintNativeEvent)
     float GetHoldDuration() const;
 
-    UFUNCTION(BlueprintNativeEvent)
     void UpdateHoldProgressUI(
         float Progress,
         EHoldPurpose Purpose);
 
-    UFUNCTION(BlueprintNativeEvent)
     bool CanHoldCancel() const;
-
-    UFUNCTION(BlueprintNativeEvent)
     void ExecuteCancel(ASonheimPlayer* Player);
+
+    int32 GetInteractionModeCode() const;
 };
-```
+~~~
 
-Player는 “이게 Item인가 CraftingStation인가”보다 이 contract를 만족하는지 봅니다.
+각 함수는 서로 다른 목적을 가집니다.
+
+| Contract | 역할 |
+|---|---|
+| \`CanInteract\` | 현재 상태에서 실행 가능한지 |
+| \`OnDetected\` | 탐지/해제 시 highlight·prompt 반응 |
+| \`GetInteractionName\` | 대상이 UI에 표시할 이름/행동 |
+| \`GetHoldDuration\` | 즉시 실행인지 Hold인지 |
+| \`UpdateHoldProgressUI\` | 대상 UI의 진행 표시 |
+| \`Interact\` | 실제 gameplay 동작 |
+| \`CanHoldCancel / ExecuteCancel\` | 취소 가능한 작업 처리 |
+| \`GetInteractionModeCode\` | Hold 중 대상 상태가 바뀌었는지 감지 |
+
+입력 처리와 대상별 gameplay 로직을 같은 class에 넣지 않습니다.
 
 ---
 
-## Part 2. 전체 Pipeline
+## 2. Player 쪽 흐름은 대상 종류와 무관하다
 
-```text
-Detection
- ↓
+\`UInteractionComponent::TryInteract()\`는 concrete class를 검사하지 않고 interface를 호출합니다.
+
+~~~cpp
+void UInteractionComponent::TryInteract()
+{
+    if (GetOwnerRole() != ROLE_Authority)
+    {
+        Server_TryInteract(CurrentInteractable);
+        return;
+    }
+
+    if (!CurrentInteractable ||
+        !IInteractableInterface::Execute_CanInteract(CurrentInteractable))
+        return;
+
+    IInteractableInterface::Execute_Interact(
+        CurrentInteractable,
+        OwnerPlayer);
+}
+~~~
+
+실행 흐름:
+
+~~~text
+Detect Actor
+   ↓
+Implements IInteractableInterface?
+   ↓
 CanInteract
- ↓
-OnDetected
- ↓
-Prompt / Hold Duration
- ↓
-Input
- ↓
-Server_TryInteract
- ↓
-Interact_Implementation
-```
+   ↓
+Prompt / Hold
+   ↓
+Player Input
+   ↓
+Server Request
+   ↓
+IInteractableInterface::Execute_Interact
+   ↓
+대상 Actor의 Interact_Implementation
+~~~
 
-Detection, UI feedback, actual execution을 구분합니다.
-
----
-
-## Part 3. Context UI도 Target이 정보를 제공한다
-
-Detect Widget이 concrete type을 검사해:
-
-```text
-Item이면 "줍기"
-Crafting이면 "제작"
-Container면 "열기"
-```
-
-를 결정하지 않습니다.
-
-Target의 `GetInteractionName()`, `GetHoldDuration()` 같은 interface data를 소비합니다.
-
-새 Dungeon Lever가 추가돼도 Widget에 새로운 class branch를 추가할 필요가 없습니다.
+새 상호작용 Actor를 추가해도 Player 쪽에 class별 \`if / else\`를 추가할 필요가 없습니다.
 
 ---
 
-## Part 4. Instant / Hold
+## 3. 같은 Contract가 서로 다른 Gameplay를 실행
 
-`GetHoldDuration() == 0`이면 즉시 상호작용, 값이 있으면 Hold progress를 사용합니다.
+### Item — 획득
 
-같은 input layer에서:
+\`ABaseItem::Interact_Implementation()\`:
 
-- 즉시 줍기
-- 길게 눌러 줍기
-- Crafting 작업
-- Cancel hold
+~~~cpp
+void ABaseItem::Interact_Implementation(ASonheimPlayer* Player)
+{
+    if (CanInteract_Implementation() &&
+        CanBeCollectedBy(Player))
+    {
+        OnCollected(Player);
+        Multicast_OnCollected();
+    }
+}
+~~~
 
-같은 UX를 처리합니다.
+Interaction 결과는 Item 획득과 Inventory 보상으로 이어집니다.
+
+### Container — 보관함 열기
+
+\`ABaseContainer\`는 현재 다른 Player가 사용 중인지 확인하고, 상호작용하면 Container UI를 엽니다.
+
+~~~cpp
+bool ABaseContainer::CanInteract_Implementation() const
+{
+    return !bIsOpen || CurrentUser == nullptr;
+}
+
+void ABaseContainer::Interact_Implementation(
+    ASonheimPlayer* Player)
+{
+    if (!CanInteract_Implementation() || !Player)
+        return;
+
+    OpenContainer(Player);
+}
+~~~
+
+### Crafting Station — 현재 작업 상태에 따라 기능 변경
+
+같은 Station도 상태에 따라 Prompt와 실제 결과가 달라집니다.
+
+~~~text
+Idle
+→ "레시피 선택"
+→ Recipe UI Open
+
+Work 진행 중
+→ "제작"
+→ Work 추가
+
+완료 결과 존재
+→ "취득"
+→ Collect
+~~~
+
+\`IInteractableInterface\`가 “Actor 종류”뿐 아니라 **같은 Actor의 상태 변화**도 공통 입력 흐름 안에서 처리합니다.
+
+### Dungeon Lever — 콘텐츠 Event 발생
+
+Lever 자체는 다음 Stage를 결정하지 않습니다.
+
+~~~cpp
+void ADungeonShortcutSwitch::Interact_Implementation(
+    ASonheimPlayer* Player)
+{
+    if (HasAuthority())
+        GetWorld()
+            ->GetSubsystem<UDungeonStageRuntimeSubsystem>()
+            ->TryInteractSwitch(
+                this, Player, TestArea, SourceId);
+}
+~~~
+
+Lever는 자신의 \`SourceId\`와 상호작용 사실만 Dungeon Runtime에 전달하고, 실제 Branch 규칙은 Dungeon Definition이 결정합니다.
+
+### Dungeon Entrance — Run 시작
+
+Dungeon Entrance도 같은 interface를 사용합니다.
+
+~~~cpp
+void ADungeonTestArea::Interact_Implementation(
+    ASonheimPlayer* Player)
+{
+    if (HasAuthority())
+        GetWorld()
+            ->GetSubsystem<UDungeonStageRuntimeSubsystem>()
+            ->TryStart(this, Player);
+}
+~~~
+
+Interaction 계층은 Dungeon의 내부 진행 규칙을 알지 않습니다.
 
 ---
 
-## Part 5. Item의 “정적 정체성”과 “이번 Spawn 상황”을 분리한다
+## 4. Context UI도 같은 Contract에서 정보를 받는다
 
-Item의 `FItemData`는:
+Prompt Widget이 대상 class를 보고 문구를 선택하지 않습니다.
+
+~~~text
+Item
+→ Item Name
+
+Container
+→ Container Name + "열기"
+
+Crafting Station
+→ "레시피 선택" / "제작" / "취득"
+
+Shortcut Lever
+→ Owner 여부 / 현재 Stage에 맞는 문구
+
+Dungeon Entrance
+→ 요구 Level / Run 상태에 맞는 문구
+~~~
+
+대상이 \`GetInteractionName()\`, \`CanInteract()\`, \`GetHoldDuration()\` 등 필요한 정보를 제공합니다.
+
+따라서 새 Actor가 추가될 때 **UI Widget에 대상 class 분기문을 추가하는 대신 대상이 자신의 interaction context를 구현**합니다.
+
+---
+
+## 5. Instant / Hold / Cancel을 같은 입력 흐름에서 처리
+
+대상에 따라 즉시 실행하거나 일정 시간 Hold할 수 있습니다.
+
+~~~text
+GetHoldDuration() <= 0
+→ 즉시 Interact
+
+GetHoldDuration() > 0
+→ Hold Progress
+→ 완료 시 Interact
+~~~
+
+Crafting처럼 진행 중 작업을 취소할 수 있는 대상은:
+
+- \`CanHoldCancel()\`
+- \`GetCancelHoldDuration()\`
+- \`ExecuteCancel()\`
+
+을 통해 같은 component에서 Cancel Hold까지 처리합니다.
+
+Interaction UI의 progress도 대상이 \`UpdateHoldProgressUI()\`로 반영합니다.
+
+---
+
+## 6. Hold 중 대상의 의미가 바뀌면 자동으로 중단
+
+Crafting Station처럼 interaction 의미가 상태에 따라 바뀌는 Actor에서는 Hold 도중:
+
+~~~text
+"제작"
+   ↓ 작업 완료
+"취득"
+~~~
+
+처럼 action mode가 바뀔 수 있습니다.
+
+Hold를 시작할 때 \`GetInteractionModeCode()\`를 저장하고, 진행 중 mode가 달라지면 현재 Hold를 중단합니다.
+
+~~~cpp
+HoldInitialModeCode =
+    IInteractableInterface::Execute_GetInteractionModeCode(
+        CurrentInteractable);
+
+...
+
+if (CurrentMode != HoldInitialModeCode)
+{
+    StopHoldInteraction(Purpose);
+    return;
+}
+~~~
+
+상태가 “제작”에서 “수령”으로 바뀌었는데 같은 키 입력이 자동으로 다음 행동까지 연쇄 실행되는 것을 막습니다.
+
+---
+
+## 7. Detection과 실제 실행을 분리
+
+\`OnDetected()\`는 gameplay 결과를 만들지 않습니다.
+
+주요 역할:
+
+- Prompt 표시/숨김
+- Highlight
+- Hold progress 초기화
+- 현재 state에 맞는 문구 갱신
+
+실제 gameplay 결과는 Authority에서 \`Interact()\`를 실행할 때만 발생합니다.
+
+~~~text
+Detection
+→ Local Feedback
+
+Interaction
+→ Server-authoritative Gameplay
+~~~
+
+탐지 UX와 상태 변경 책임을 분리합니다.
+
+---
+
+## 8. Item은 정적 정의와 Spawn Context도 분리
+
+Item 자체의 정보와 “이번에 어떻게 월드에 등장했는가”는 다른 문제입니다.
+
+\`FItemData\`:
 
 - 이름
-- 카테고리
+- Item Category
 - Stack
 - Equipment
-- Mesh
-- Icon
+- Mesh / Icon
 
-같은 정적 성격을 가집니다.
+\`FItemSpawnOptions\`:
 
-하지만 같은 ItemID라도 어떤 상황에서 spawn됐는지는 다를 수 있습니다.
-
-그래서 실제 runtime option은 별도 구조체입니다.
-
-```cpp
-USTRUCT(BlueprintType)
+~~~cpp
 struct FItemSpawnOptions
 {
-    GENERATED_BODY()
-
     bool bRequireInteraction = false;
-    EItemInteractionType InteractionType =
-        EItemInteractionType::Instant;
+    EItemInteractionType InteractionType;
 
-    float HoldDuration = 1.0f;
+    float HoldDuration = 1.f;
     int32 ItemCount = 1;
 
-    float AutoPickupDelay = 0.0f;
+    float AutoPickupDelay = 0.f;
 
     bool bApplyPhysicsOnDrop = false;
-    float DropForce = 600.0f;
+    float DropForce = 600.f;
 
-    float LifeTime = 0.0f;
+    float LifeTime = 0.f;
 };
-```
+~~~
+
+같은 ItemID라도:
+
+- Monster Drop → Auto Pickup / Physics / Lifetime
+- Player Drop → Interaction / Hold
+
+처럼 다른 runtime context를 가질 수 있습니다.
+
+자주 쓰는 조합은 \`MakeDropped()\`, \`MakeInteractable()\` 같은 helper로 제공합니다.
 
 ---
 
-## Part 6. 같은 Item도 Spawn Context에 따라 다르다
+## 9. Dungeon 확장에서 기존 Interaction 계층을 그대로 재사용
 
-예:
+초기 Item / Container / Crafting에 사용하던 Interaction 구조가 이후 Dungeon에서도:
 
-### Monster Drop
-- Auto Pickup
-- Physics
-- Lifetime
-
-### Player가 버린 Item
-- 직접 Interaction 필요
-- Hold
-- 다시 주울 수 있음
-
-이 차이를 ItemData 자체에 넣으면 같은 Item 종류가 spawn 상황 때문에 중복 정의됩니다.
-
----
-
-## Part 7. 자주 쓰는 조합은 Preset으로 만든다
-
-실제 helper:
-
-```cpp
-FItemSpawnOptions MakeDropped(...);
-FItemSpawnOptions MakeInteractable(...);
-```
-
-Caller가 여러 bool/float 값을 매번 직접 맞추지 않고 의미가 드러나는 factory helper를 사용합니다.
-
----
-
-## Part 8. 물리 기반 Interaction은 Damage Pipeline을 사용한다
-
-나무를 도끼로 치는 것을 F키 Interaction으로 처리하지 않습니다.
-
-```text
-Melee Skill
- ↓
-Collision
- ↓
-ApplyDamage
- ↓
-Resource::TakeDamage
- ↓
-Harvest Progress
-```
-
-공격이라는 물리적 행위는 Combat system을 그대로 사용하고, Target이 Damage의 의미를 해석합니다.
-
----
-
-## Part 9. Resource는 Damage를 Harvest로 해석한다
-
-Resource Object는 `TakeDamage`를 override합니다.
-
-Monster라면 HP 감소/Death로 이어지는 같은 entry가 Resource에서는:
-
-- HP Segment 감소
-- Resource Drop
-- Harvest Feedback
-
-으로 이어집니다.
-
-공격자는 Target concrete type에 따라 “Harvest()”와 “Damage()”를 나누지 않습니다.
-
----
-
-## Part 10. HP Segment 기반 Reward
-
-큰 Damage가 여러 threshold를 한 번에 지나갈 수 있습니다.
-
-따라서 “이번 hit에 threshold를 넘었는가” bool만 보지 않고:
-
-```text
-Previous Segment = 9
-Current Segment  = 7
-
-Lost = 2
-→ Partial Reward ×2
-```
-
-처럼 손실 segment 수를 계산합니다.
-
----
-
-## Part 11. Dungeon도 같은 Interaction Contract를 사용한다
-
-- Portal
-- Shortcut Switch
+- Entrance
+- Shortcut Lever
 - Reward Chest
 
-가 기존 interaction layer에 들어갑니다.
+로 확장됐습니다.
 
-Dungeon Runtime은 “누가 Switch를 사용했다”는 event만 받고:
-
-- Detection
-- Prompt
-- Hold
-- Server interaction
-
-은 일반 시스템을 재사용합니다.
+Dungeon 기능을 추가하면서 Player Input / Detection / Prompt 체계를 새로 만들지 않았다는 점이 이 interface 경계의 실제 재사용 사례입니다.
 
 ---
 
-## Trade-offs
+## 보조 사례 — 공격 기반 Resource 상호작용
 
-### Interface contract가 커질 수 있다
-Interaction 종류가 계속 늘면 모든 구현체가 사용하지 않는 함수도 생길 수 있어 역할 분리가 필요합니다.
+Resource 채집은 버튼 Interaction이 아니라 실제 무기 공격이므로 \`IInteractableInterface\`에 억지로 포함하지 않았습니다.
 
-### Resource가 Damage를 재사용한다
-Combat pipeline 변경이 Resource에도 영향을 줄 수 있으므로 Target-specific response 경계를 유지해야 합니다.
+~~~text
+Melee Skill
+ → Collision
+ → Damage
+ → Resource::TakeDamage
+ → Resource Drop
+~~~
 
-### Spawn Options 조합
-Option이 너무 늘어나면 잘못된 조합이 가능해지므로 preset/validation이 중요합니다.
+Player 관점에서는 모두 World와의 상호작용이지만, **명시적인 사용 의도는 Interaction Interface**, **물리적 Hit은 Combat/Damage Pipeline**에서 처리합니다.
+
+이 구분은 Interaction contract의 범위를 필요 이상으로 넓히지 않기 위한 선택입니다.
+
+---
+
+## 설계 선택과 비용
+
+| 선택 | 얻은 것 | 비용 / 제약 |
+|---|---|---|
+| **Interface 기반 실행** | Player가 concrete Actor 종류를 모르고 동일 입력 흐름 사용 | Interface contract가 커지면 역할 재분리 필요 |
+| **Prompt / Hold 정보도 Target이 제공** | 새 Actor 추가 시 UI type branch 감소 | Target이 presentation context 일부를 제공 |
+| **InteractionModeCode** | 상태 변경 중 Hold의 잘못된 자동 연쇄 방지 | 각 stateful Actor가 mode 변화를 정의해야 함 |
+| **Detection / Execution 분리** | Local feedback과 authoritative 결과 분리 | 두 lifecycle을 함께 관리해야 함 |
+| **Resource는 Damage Pipeline 유지** | Interaction Interface가 물리 Hit 책임까지 떠안지 않음 | World interaction이 기술적으로 두 경로로 나뉨 |
 
 ---
 
 ## 연관 문서
 
-- Damage가 실제로 처리되는 방식 → [[5. Combat, Skill & Animation|05_Combat_Skill_Animation]]
-- Container/Crafting interaction → [[7. Inventory & Crafting|07_Inventory_Crafting]]
-- Dungeon switch가 event로 연결되는 방식 → [[9. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]]
+- [[07. Inventory & Crafting|07_Inventory_Crafting]] — Container / Crafting Station의 실제 상태 변화
+- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Lever / Entrance가 전달한 Event 이후 콘텐츠 진행
+- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — Interaction 요청의 Server 처리
+- [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Resource 채집이 재사용하는 Damage Pipeline
 
 ---
 
 ## 관련 코드
 
 - [InteractableInterface.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/InteractableInterface.h)
-- [InteractionComponent](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/Utility/InteractionComponent.h)
-- [BaseItem.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Items/BaseItem.h)
-- [BaseResourceObject](https://github.com/chungheonLee0325/Sonheim/tree/main/Sonheim/Source/Sonheim/GameObject/ResourceObject)
+- [InteractionComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/Utility/InteractionComponent.cpp)
+- [BaseItem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Items/BaseItem.cpp)
+- [BaseContainer.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Buildings/Storage/BaseContainer.cpp)
+- [CraftingStation.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Buildings/Crafting/CraftingStation.cpp)
+- [DungeonShortcutSwitch.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonShortcutSwitch.cpp)
