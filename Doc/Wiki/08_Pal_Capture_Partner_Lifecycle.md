@@ -10,14 +10,14 @@ Capture, Inventory, Summon을 한 Component에 몰아넣지 않고 각 단계의
 
 ~~~mermaid
 flowchart LR
-    WILD["Wild Monster"]
-    TRY["Capture Attempt"]
-    REVEAL["Capture Reveal"]
-    OWNED["Owned Pal"]
-    STORED["Stored / Selected"]
-    SUMMON["Summon"]
-    PARTNER["Partner AI"]
-    COMBAT["Combat"]
+    WILD["<b>Wild Monster</b>"]
+    TRY["<b>Capture Attempt</b>"]
+    REVEAL["<b>Capture Reveal</b>"]
+    OWNED["<b>Owned Pal</b>"]
+    STORED["<b>Stored / Selected</b>"]
+    SUMMON["<b>Summon</b>"]
+    PARTNER["<b>Partner AI</b>"]
+    COMBAT["<b>Combat</b>"]
 
     WILD --> TRY
     TRY --> REVEAL
