@@ -260,7 +260,7 @@ Gameplay Event
 - [[4. Player & Character Systems|04_Player_Character_Systems]] — Pawn / PlayerState / Component 구조
 - [[6. World Interaction Systems|06_World_Interaction_Systems]] — Interface 기반 Interaction
 - [[9. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Definition과 Runtime State의 실제 콘텐츠 적용
-- [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]] — Runtime State를 UI로 변환하는 구조
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Runtime State를 UI로 변환하는 구조
 - [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — RPC / Replication / Prediction의 적용 범위
 
 ---
