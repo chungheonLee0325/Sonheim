@@ -15,10 +15,10 @@ Player 관련 상태를 하나의 Character class에 모으지 않고, **World b
 
 ~~~mermaid
 flowchart LR
-    INPUT["PlayerController<br/>Input · UI Bootstrap"]
-    PS["PlayerState<br/>Inventory · Pal · Stat"]
-    PAWN["Player Pawn<br/>Movement · Mesh · Animation"]
-    AREA["AAreaObject Components<br/>Health · Stamina · Condition · Skill"]
+    INPUT["<b>PlayerController</b><br/>Input · UI Bootstrap"]
+    PS["<b>PlayerState</b><br/>Inventory · Pal · Stat"]
+    PAWN["<b>Player Pawn</b><br/>Movement · Mesh · Animation"]
+    AREA["<b>AAreaObject Components</b><br/>Health · Stamina · Condition · Skill"]
 
     EQUIP["Equipment"]
     BONUS["StatBonus"]
