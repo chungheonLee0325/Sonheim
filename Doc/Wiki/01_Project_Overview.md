@@ -106,11 +106,11 @@ flowchart TD
     WORLD["<b>Stage World</b><br/>Barrier · Lever · Spawn Group"]
     BATTLE["<b>Combat / Capture</b><br/>Monster · Guardian Boss"]
 
-    STATE["Replicated Run State"]
-    UI["HUD · Minimap · Marker · Result"]
+    STATE["<b>Replicated Run State</b>"]
+    UI["<b>HUD · Minimap · Marker · Result</b>"]
 
-    REWARD["Inventory Reward"]
-    RECORD["Best Time · Grade · SaveGame"]
+    REWARD["<b>Inventory Reward</b>"]
+    RECORD["<b>Best Time · Grade · SaveGame</b>"]
 
     ENTRY --> RUNTIME
     RUNTIME --> WORLD
