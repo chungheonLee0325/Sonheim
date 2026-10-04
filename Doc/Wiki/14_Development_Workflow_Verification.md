@@ -93,27 +93,49 @@ Runtime 흐름    → Scenario Verification
 
 ---
 
-## 2. AgentMcp — Coding Agent와 Unreal Editor 사이의 작업 경계 연결
+## 2. AgentMcp — UE 5.5에서 Agent가 Editor 결과까지 다루도록 연결
 
-[AgentMcp](https://github.com/chungheonLee0325/AgentMcp)는 Unreal Engine 5.5 Editor 내부에 MCP server를 실행해 coding agent가 **프로젝트 상태를 읽고, Editor asset을 수정하고, compile/PIE를 실행하고, 결과 화면과 log를 다시 확인**할 수 있게 만든 별도 plugin입니다.
+[AgentMcp](https://github.com/chungheonLee0325/AgentMcp)는 **Unreal Engine 5.8의 실험적 MCP/toolset과 Agent Skill 개념을 참고해 UE 5.5용으로 재구현한 Editor MCP plugin**입니다.
+
+목표는 source code를 작성하는 agent가 Unreal Editor 밖에서 멈추지 않고 **프로젝트를 inspect → edit → run → verify**할 수 있게 하는 것입니다.
 
 ~~~text
 Coding Agent
    ↓ MCP
 Unreal Editor
    ├─ Asset / Blueprint Inspect
-   ├─ Property Edit
-   ├─ Animation Asset Authoring
-   ├─ UMG Authoring
-   ├─ Compile
+   ├─ Data / Class Default Edit
+   ├─ UMG Widget Blueprint Authoring
+   ├─ Animation / Montage / BlendSpace Authoring
+   ├─ Compile / Save
    ├─ PIE
    ├─ Log
    └─ Viewport Capture
 ~~~
 
-단순 remote mouse/keyboard automation이 아니라 Unreal Reflection과 Editor API를 이용한 **구조화된 tool call**을 제공합니다.
+### Dynamic Agent Skills
 
-Sonheim Runtime 자체가 AgentMcp에 의존하는 것은 아니며, **개발/검증 workflow에서 사용하는 Editor tooling**입니다.
+Plugin / project의 <code>SKILL.md</code>를 Editor가 연결된 agent에 제공합니다.
+
+- skill file을 매 호출 시 읽어 수정 내용을 Editor 재시작 없이 반영
+- project skill이 plugin 기본 skill을 override
+- Claude Code / Codex가 같은 project-specific authoring rule을 사용
+
+### UMG에 특화한 도구
+
+일반 object property 수정만 제공하는 것이 아니라:
+
+- Widget Tree / Named Slot inspect
+- C++ <code>BindWidget / BindWidgetOptional</code> contract 검사
+- Widget Blueprint 생성
+- subtree 단위 Widget 추가
+- widget / slot property 수정
+- destructive edit 전 영향 범위 확인
+- compile → PIE → viewport capture
+
+까지 한 흐름으로 연결합니다.
+
+Sonheim Runtime 자체가 AgentMcp에 의존하는 것은 아니며, **게임 기능과 분리된 Editor authoring / verification tooling**입니다.
 
 ---
 
