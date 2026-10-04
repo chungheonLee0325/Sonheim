@@ -106,9 +106,9 @@ Reward / SaveGame
 
 ---
 
-## 문서 탐색 순서
+## 연관 문서
 
-프로젝트 구조를 먼저 보고 싶다면:
+프로젝트 구조와 핵심 구현은 다음 문서에서 이어집니다.
 
 1. [[Architecture Overview|2_Architecture_Overview]]
 2. [[Data & Content Architecture|3_Data_Content_Architecture]]
