@@ -14,7 +14,7 @@ Sonheim은 **Core Gameplay → Shared World Systems → Dungeon Vertical Slice**
 | 보유 Skill Logic을 일찍 생성 | Skill Spec과 Logic 분리, 필요 시 Instance 생성 | Runtime object 수명 분리 |
 | 장비가 Skill을 단순 Add/Remove | GrantId + RefCount | 여러 Source가 같은 Skill을 안전하게 공유 |
 | Item 상태 변화와 획득 의미가 섞임 | Inventory Changed / Item Acquired Event 분리 | 장비 해제·slot 이동에서 잘못된 획득 UI 방지 |
-| 모든 Item state를 같은 방식으로 생각 | Inventory / Container / Crafting의 ownership 분리 | 개인·공유·협력 상태에 서로 다른 lifecycle 적용 |
+| 개인/공유/협력 Item state의 ownership 경계가 불명확 | Inventory / Container / Crafting ownership 분리 | 각 상태에 맞는 lifecycle 적용 |
 | Dungeon Stage 규칙을 World Actor가 일부 앎 | Barrier / Transition rule을 Definition으로 이동 | World Actor와 콘텐츠 진행 규칙 분리 |
 | 문자열 중심 Dungeon ID | GameplayTag namespace | Stage/Group/Branch/Barrier 관계와 validation 강화 |
 | Dungeon UI가 여러 gameplay source를 직접 해석 | Snapshot → Presenter → ViewData | Runtime / UMG lifecycle 분리 |
