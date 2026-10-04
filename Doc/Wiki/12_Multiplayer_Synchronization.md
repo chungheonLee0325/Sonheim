@@ -269,9 +269,9 @@ Guardian wake 연출에서 Player teleport 직후 Boss가 아직 해당 Client�
 
 ## 연관 문서
 
-- [[2. Gameplay Architecture|2_Gameplay_Architecture]] — 네트워크 이전의 상태 소유권·수명·의존 구조
-- [[7. Inventory & Crafting|7_Inventory_Crafting]] — FastArray, Subscriber, Prediction의 실제 gameplay 적용
-- [[8. Pal Capture & Partner Lifecycle|8_Pal_Capture_Partner_Lifecycle]] — Capture 결과와 presentation 분리
+- [[2. Gameplay Architecture|02_Gameplay_Architecture]] — 네트워크 이전의 상태 소유권·수명·의존 구조
+- [[7. Inventory & Crafting|07_Inventory_Crafting]] — FastArray, Subscriber, Prediction의 실제 gameplay 적용
+- [[8. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — Capture 결과와 presentation 분리
 - [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]] — 복제 상태가 UI model로 변환되는 과정
 
 ---
