@@ -306,6 +306,6 @@ Dungeon은 한 path만 확인해서는 충분하지 않습니다.
 - Skill Cost는 Item 부분 rollback은 지원하지만 Stamina까지 포함한 전체 transaction rollback은 아님
 - Condition timer는 동일 condition의 여러 source 중첩에 한계가 있음
 - Animation-driven gameplay는 off-screen server animation tick 비용을 요구함
-- 일부 자동 verification script는 public main repository에 포함돼 있지 않음
+- 일부 자동 verification script는 공개 저장소에 포함돼 있지 않음
 
 이런 항목은 “향후 계획” 목록보다 각 시스템의 실제 설계 제약으로 관리합니다.
