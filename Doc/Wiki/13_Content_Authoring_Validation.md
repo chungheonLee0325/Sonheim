@@ -18,11 +18,11 @@ Sonheim은 Dungeon / Boss 콘텐츠에서 오류를 플레이 중에 발견하�
 ~~~mermaid
 flowchart LR
     AUTHOR["<b>Editor Authoring</b><br/>EditCondition · Tag Filter · Clamp"]
-    CORE["Shared Structural Validation"]
+    CORE["<b>Shared Structural Validation</b>"]
     EDITOR["<b>Editor Data Validation</b><br/>Dependency Check"]
-    GRAPH["Generated Stage Graph"]
-    RUNTIME["Runtime Entry Validation"]
-    PLAY["Playable Content"]
+    GRAPH["<b>Generated Stage Graph</b>"]
+    RUNTIME["<b>Runtime Entry Validation</b>"]
+    PLAY["<b>Playable Content</b>"]
 
     AUTHOR --> CORE
     CORE --> EDITOR
