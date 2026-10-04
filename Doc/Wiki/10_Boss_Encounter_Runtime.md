@@ -1,8 +1,8 @@
 # 10. Boss Encounter Runtime
 
-Guardian Boss는 일반 Monster Skill을 순서대로 호출하는 구조가 아니라, **Pattern Data + Server FSM + Replicated Boss Status**로 별도의 Encounter Runtime을 구성했습니다.
+Guardian Boss는 <code>ABaseMonster</code> 기반 위에 **<code>UBossFSM</code>, <code>UBossPatternDataAsset</code>, <code>FBossStatus</code>**를 추가해 Encounter Runtime을 구성합니다.
 
-일반 Combat의 `FAttackData`와 Damage Pipeline은 재사용하되, Boss에게 필요한 **거리 기반 Pattern 선택, Telegraph, Tracking, Phase, Down, Exhaust, Capture Window**를 별도 상태 머신에서 조율합니다.
+기존 Combat의 <code>FAttackData</code>와 Damage Pipeline을 사용하고, Boss 전용 FSM이 **거리 기반 Pattern 선택, Telegraph, Tracking, Phase, Down, Exhaust, Capture Window**를 관리합니다.
 
 ---
 
@@ -55,7 +55,7 @@ Boss Runtime은 **언제 어떤 공격을 선택하고 어디에 어떤 타격�
 
 ---
 
-## 1. Pattern을 “애니메이션”이 아니라 행동 단위로 정의
+## 1. Pattern = 선택 조건 + Timeline + Strike
 
 `FBossPattern`은 Montage 하나가 아니라 **선택 조건 + 실행 시간 + Strike 목록 + 이동/추적 규칙**을 묶은 행동 단위입니다.
 
@@ -339,7 +339,7 @@ Animation asset의 Section 구조와 Runtime 상태 전환을 연결합니다.
 
 ---
 
-## 9. Phase 2는 단순 Pattern 추가가 아니라 Encounter Tempo를 변경
+## 9. Phase 2에서 Tempo와 Strike 구성을 변경
 
 HP가 `PhaseTwoHealth` 이하가 되면 Pattern 사이에서 Phase 2로 전환합니다.
 
