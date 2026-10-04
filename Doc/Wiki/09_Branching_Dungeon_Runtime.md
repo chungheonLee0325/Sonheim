@@ -8,26 +8,39 @@ C++ Runtime은 Event/Condition/Action/Transition의 의미와 실행 방법을 �
 
 ## 1. 현재 구현된 Dungeon 흐름
 
-Forgotten Ruins는 입장부터 결과까지 한 Run 안에서 다음 요소를 연결합니다.
+아래 Stage Graph는 별도로 손으로 그린 다이어그램이 아니라 **Dungeon Definition의 `BuildStageGraph()` 결과**입니다.
 
 ~~~mermaid
-flowchart LR
-    ENTRY["<b>봉인된 전실</b><br/>Run Start · Entry"]
-    GUARD["<b>경비실</b><br/>Combat Objective"]
-    BRANCH{"<b>경로 선택</b><br/>Shortcut / Extra Wave"}
-    SHORT["<b>지름길</b><br/>Lever · Branch Tag"]
-    STORE["<b>창고</b><br/>Additional Wave"]
-    BOSS["<b>수호자의 방</b><br/>Guardian Boss"]
-    RESULT["<b>Run Result</b><br/>Reward · Grade · Record"]
-
-    ENTRY --> GUARD
-    GUARD --> BRANCH
-    BRANCH -->|"Shortcut"| SHORT
-    BRANCH -->|"Extra Wave"| STORE
-    SHORT --> BOSS
-    STORE --> BOSS
-    BOSS --> RESULT
+flowchart TD
+  %% Dungeon.ForgottenRuins, start Stage.Enter
+  %% Stage_Enter time limit 120s
+  %% Stage_Enter on AreaEntered Zone.GuardRoom: SpawnGroup Group.WaveA
+  Stage_Enter -->|"AreaEntered Zone.GuardRoom / Always"| Stage_Combat
+  Stage_Enter -->|"StageTimeout / Always"| Stage_Failed
+  %% Stage_Combat time limit 180s
+  %% Stage_Combat seals Barrier.GuardNorth, Barrier.GuardSouth
+  %% Stage_Combat on ActorInteracted Switch.Shortcut: SetRunTag State.ShortcutUnlocked
+  Stage_Combat -->|"StageTimeout / Always"| Stage_Failed
+  %% Stage_Combat on MonsterCaptured Group.WaveA: GrantReward 15 x1
+  Stage_Combat -->|"WaveCompleted Group.WaveA / HasRunTag State.ShortcutUnlocked => Branch.Shortcut"| Stage_Shortcut
+  Stage_Combat -->|"WaveCompleted Group.WaveA / Always => Branch.ExtraWave"| Stage_ExtraWave
+  Stage_Shortcut -->|"StageEntered / Always"| Stage_Boss
+  %% Stage_ExtraWave seals Barrier.StoreEast
+  %% Stage_ExtraWave on StageEntered: SpawnGroup Group.WaveB
+  %% Stage_ExtraWave on WaveCompleted Group.WaveB: GrantReward 10 x5
+  Stage_ExtraWave -->|"WaveCompleted Group.WaveB / Always"| Stage_Boss
+  %% Stage_Boss seals Barrier.Treasure
+  %% Stage_Boss on AreaEntered Zone.BossHall: SpawnGroup Group.Boss
+  %% Stage_Boss on MonsterCaptured Group.Boss: GrantReward 15 x2
+  %% Stage_Boss on BossDefeated Group.Boss: GrantReward 15 x3
+  Stage_Boss -->|"BossDefeated Group.Boss / SpawnGroupCompleted Group.Boss"| Stage_Result
+  Stage_Result[["Stage.Result 성공"]]
+  Stage_Failed[["Stage.Failed 실패"]]
 ~~~
+
+[Stage Graph 원본 (.mmd)](../Media/Wiki/09_Branching_Dungeon_Runtime/09_dungeon_stage_graph.mmd)
+
+레버 상호작용은 이 Graph에서 바로 Stage edge로 나타나지 않습니다. 레버는 Combat Stage에서 `ShortcutUnlocked` RunTag만 기록하고, **실제 Shortcut / ExtraWave 분기는 Wave A 완료 Event에서 Transition 조건을 평가할 때 결정**됩니다.
 
 Runtime 관점에서 구현된 범위는 다음과 같습니다.
 
@@ -43,7 +56,7 @@ Runtime 관점에서 구현된 범위는 다음과 같습니다.
 | **정산** | Reward, elapsed time, Grade, best record, clear count |
 | **Client 표현** | HUD 목표 추적, Party 상태, Minimap/Marker, Boss HUD, Result |
 
-마지막 Client 표현은 Dungeon Runtime이 직접 Widget을 조작하지 않고 Snapshot을 통해 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]으로 전달합니다.
+마지막 Client 표현은 Dungeon Runtime이 직접 Widget을 조작하지 않고 Snapshot을 통해 [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]]으로 전달합니다.
 
 ---
 
@@ -80,23 +93,34 @@ flowchart TB
     TRANS --> NEXT
 ~~~
 
-예를 들어 Shortcut Lever는 “지름길 Stage로 이동”을 직접 실행하지 않습니다.
+Shortcut Lever는 “지름길 Stage로 이동”을 직접 실행하지 않습니다. 실제 흐름은 **상태 기록과 분기 평가가 서로 다른 Event Rule에서 분리**되어 있습니다.
 
 ~~~text
 Lever Interact
    ↓
-ActorInteracted(SourceId)
+ActorInteracted(Switch.Shortcut)
    ↓
-현재 Stage의 EventRule
+Action: SetRunTag(State.ShortcutUnlocked)
    ↓
-Action: SetRunTag(Shortcut)
-   ↓
-Transition Condition: HasRunTag(Shortcut)
-   ↓
-NextStageId + BranchId
+Combat Stage 유지
 ~~~
 
-World Actor는 **무슨 일이 발생했는지**만 전달하고, 진행 규칙은 Definition이 소유합니다.
+![Shortcut Lever Rule](../Media/Wiki/09_Branching_Dungeon_Runtime/09_dungeon_definition_lever.png)
+
+Wave A가 완료된 뒤 별도의 `WaveCompleted` Rule이 분기를 평가합니다.
+
+~~~text
+WaveCompleted(Group.WaveA)
+   ├─ HasRunTag(State.ShortcutUnlocked)
+   │    → Stage.Shortcut / Branch.Shortcut
+   │
+   └─ Always
+        → Stage.ExtraWave / Branch.ExtraWave
+~~~
+
+![Branch Condition Rule](../Media/Wiki/09_Branching_Dungeon_Runtime/09_dungeon_definition_condition.png)
+
+World Actor는 **무슨 일이 발생했는지**만 전달하고, 진행 규칙과 실제 분기 결정은 Definition이 소유합니다.
 
 <details>
 <summary><b>실제 C++ 데이터 스키마 요약 보기</b></summary>
@@ -263,23 +287,28 @@ struct FDungeonStageTransition
 };
 ```
 
-예를 들어 Shortcut Lever를 사용한 경우 World Actor는 “Shortcut route로 이동하라”를 직접 실행하지 않습니다.
+Shortcut Lever의 `ActorInteracted` Rule은 `SetRunTag(State.ShortcutUnlocked)`만 실행하고 Transition을 갖지 않습니다.
 
-```text
-Lever Interact
-   ↓
-ActorInteracted(SourceId)
-   ↓
-현재 Stage의 EventRule 검색
-   ↓
-Action 실행
-   ├─ SetRunTag
-   └─ 기타 Gameplay Action
-   ↓
-Transition Conditions 평가
-   ↓
-NextStageId / BranchId 선택
-```
+이후 Wave A가 완료되면 `WaveCompleted(Group.WaveA)` Rule이 두 Transition을 순서대로 평가합니다.
+
+~~~text
+HasRunTag(State.ShortcutUnlocked)
+→ Stage.Shortcut / Branch.Shortcut
+
+조건 불충족
+→ Always
+→ Stage.ExtraWave / Branch.ExtraWave
+~~~
+
+즉 **상호작용은 분기 조건을 만들고, Objective 완료 Event가 실제 Stage 전환을 결정**합니다.
+
+### 실제 분기 시연
+
+- [▶ Shortcut Route 시연 (MP4)](../Media/Wiki/09_Branching_Dungeon_Runtime/09_dungeon_shortcut.mp4)  
+  전투 중 레버를 사용해 `ShortcutUnlocked`를 기록한 뒤 마지막 Wave A 적을 처치하면 Shortcut Branch가 선택되고 북쪽 경로가 열립니다.
+
+- [▶ ExtraWave Route 시연 (MP4)](../Media/Wiki/09_Branching_Dungeon_Runtime/09_dungeon_extrawave.mp4)  
+  레버를 사용하지 않은 상태에서 같은 Wave A를 완료하면 fallback Transition이 선택되고 추가 Wave가 새로운 Objective로 생성됩니다.
 
 **진행 규칙은 Definition, 상호작용 구현은 World Actor**가 담당합니다.
 
@@ -573,7 +602,7 @@ Server Runtime이 계산한 결과를 `FDungeonStageRuntimeState`에 모아 Game
 | 참가자 | Participants, OwnerPlayer |
 | Boss | Health, Action, Phase, Vulnerable, Break |
 
-이 Snapshot을 Client UI로 변환하는 과정은 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]에서 분리해 설명합니다.
+이 Snapshot을 Client UI로 변환하는 과정은 [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]]에서 분리해 설명합니다.
 
 ---
 
@@ -593,7 +622,7 @@ Server Runtime이 계산한 결과를 `FDungeonStageRuntimeState`에 모아 Game
 
 - [[03. Data & Content Architecture|03_Data_Content_Architecture]] — Catalog / PrimaryDataAsset / GameplayTag 구성
 - [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — Boss Stage 내부의 전투 Runtime
-- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Run State를 HUD/Minimap/Result로 변환
+- [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]] — Run State를 HUD/Minimap/Result로 변환
 - [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — Definition의 잘못된 조합을 Editor에서 검사
 
 ---

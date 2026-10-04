@@ -1,0 +1,26 @@
+flowchart TD
+  %% Dungeon.ForgottenRuins, start Stage.Enter
+  %% Stage_Enter time limit 120s
+  %% Stage_Enter on AreaEntered Zone.GuardRoom: SpawnGroup Group.WaveA
+  Stage_Enter -->|"AreaEntered Zone.GuardRoom / Always"| Stage_Combat
+  Stage_Enter -->|"StageTimeout / Always"| Stage_Failed
+  %% Stage_Combat time limit 180s
+  %% Stage_Combat seals Barrier.GuardNorth, Barrier.GuardSouth
+  %% Stage_Combat on ActorInteracted Switch.Shortcut: SetRunTag State.ShortcutUnlocked
+  Stage_Combat -->|"StageTimeout / Always"| Stage_Failed
+  %% Stage_Combat on MonsterCaptured Group.WaveA: GrantReward 15 x1
+  Stage_Combat -->|"WaveCompleted Group.WaveA / HasRunTag State.ShortcutUnlocked => Branch.Shortcut"| Stage_Shortcut
+  Stage_Combat -->|"WaveCompleted Group.WaveA / Always => Branch.ExtraWave"| Stage_ExtraWave
+  Stage_Shortcut -->|"StageEntered / Always"| Stage_Boss
+  %% Stage_ExtraWave seals Barrier.StoreEast
+  %% Stage_ExtraWave on StageEntered: SpawnGroup Group.WaveB
+  %% Stage_ExtraWave on WaveCompleted Group.WaveB: GrantReward 10 x5
+  Stage_ExtraWave -->|"WaveCompleted Group.WaveB / Always"| Stage_Boss
+  %% Stage_Boss seals Barrier.Treasure
+  %% Stage_Boss on AreaEntered Zone.BossHall: SpawnGroup Group.Boss
+  %% Stage_Boss on MonsterCaptured Group.Boss: GrantReward 15 x2
+  %% Stage_Boss on BossDefeated Group.Boss: GrantReward 15 x3
+  Stage_Boss -->|"BossDefeated Group.Boss / SpawnGroupCompleted Group.Boss"| Stage_Result
+  Stage_Result[["Stage.Result 성공"]]
+  Stage_Failed[["Stage.Failed 실패"]]
+  %% 오류 0, 경고 0
