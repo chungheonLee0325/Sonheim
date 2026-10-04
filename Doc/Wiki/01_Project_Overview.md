@@ -101,10 +101,10 @@ Forgotten Ruins Dungeon은 위 시스템들이 실제 콘텐츠 하나에서 함
 
 ```mermaid
 flowchart TD
-    ENTRY["Portal / Entrance<br/>Interaction"]
-    RUNTIME["Dungeon Runtime<br/>Event · Condition · Action · Transition"]
-    WORLD["Stage World<br/>Barrier · Lever · Spawn Group"]
-    BATTLE["Combat / Capture<br/>Monster · Guardian Boss"]
+    ENTRY["<b>Portal / Entrance</b><br/>Interaction"]
+    RUNTIME["<b>Dungeon Runtime</b><br/>Event · Condition · Action · Transition"]
+    WORLD["<b>Stage World</b><br/>Barrier · Lever · Spawn Group"]
+    BATTLE["<b>Combat / Capture</b><br/>Monster · Guardian Boss"]
 
     STATE["Replicated Run State"]
     UI["HUD · Minimap · Marker · Result"]
