@@ -1,6 +1,6 @@
 # 04. Player & Character Systems
 
-Player 관련 상태를 하나의 Character class에 모으지 않고, **World body의 수명과 Player identity의 수명을 분리**했습니다.
+Player의 지속 데이터는 **PlayerState**, 월드의 실제 body 상태는 **Pawn**, 독립 gameplay 기능은 **ActorComponent**가 소유합니다.
 
 - Pawn — 이동, Mesh, Animation, 실제 World action
 - PlayerState — Inventory, Pal Inventory, Stat처럼 Pawn 교체와 분리할 데이터
@@ -35,7 +35,7 @@ flowchart LR
     SKILL --> AREA
 ~~~
 
-핵심은 PlayerState와 Pawn을 단순히 UE 관례대로 나눈 것이 아니라, **장비/성장 데이터와 실제 World body가 서로 다른 lifecycle을 가진다는 점**을 코드에 반영한 것입니다.
+Inventory·Stat·Pal처럼 Player에 지속되는 상태와, Health/Movement/Animation처럼 현재 Pawn에 적용되는 상태를 서로 다른 lifecycle로 관리합니다.
 
 ---
 
@@ -193,7 +193,7 @@ AAreaObject
 
 같은 AreaObject 수준 API를 사용할 수 있고, 실제 상태 책임은 해당 component가 가집니다.
 
-상속 class가 Health/Skill/Condition 구현을 모두 직접 소유하지 않게 하면서 **외부 호출 API는 단순하게 유지**합니다.
+Health/Skill/Condition의 상태는 각 Component가 소유하고, 외부에서는 AreaObject 수준 API를 통해 접근합니다.
 
 ---
 
@@ -313,7 +313,7 @@ Timed Condition은 Condition type 중심으로 관리하므로 **같은 Conditio
 
 가 Client presentation에 영향을 줍니다.
 
-모든 이동을 별도 네트워크 layer로 다시 구현하지 않고 **엔진이 제공하는 movement 경계 위에 프로젝트 state를 추가**합니다.
+위치·속도 동기화는 CharacterMovement를 사용하고, Sprint·Glider·Lock-on·Weapon visibility 같은 프로젝트 상태를 추가로 관리합니다.
 
 자세한 동기화 방식은 [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]에서 다룹니다.
 
