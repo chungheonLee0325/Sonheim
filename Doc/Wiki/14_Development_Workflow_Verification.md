@@ -167,9 +167,9 @@ Sonheim에서 사용한 대표 작업:
 
 ---
 
-## 4. Editor 수정은 “쓰기”보다 “수정 후 검증”이 중요
+## 4. Editor 변경 후 Read-back / PIE 검증
 
-AgentMcp workflow는 asset을 바꿀 수 있다는 사실보다 **변경 직후 결과를 다시 읽을 수 있다는 점**을 중요하게 둡니다.
+AgentMcp 작업은 Editor write 이후 **read-back → compile → PIE → capture**를 연속해서 수행합니다.
 
 예:
 
@@ -209,9 +209,7 @@ Editor 수정 후 compile·PIE·capture까지 같은 session에서 이어서 확
 
 ## 5. Dungeon Scenario Matrix
 
-분기형 콘텐츠는 “Clear 한 번 됨”만 확인해서는 회귀를 찾기 어렵습니다.
-
-검증 대상은 서로 다른 축으로 나뉩니다.
+Dungeon scenario는 Route, Terminal, Objective, Boss, Client, Presentation 축으로 나눠 확인합니다.
 
 | 축 | 대표 Scenario |
 |---|---|
@@ -282,18 +280,13 @@ Barrier는 자신의 ID 포함 여부만 반영
 
 ---
 
-## 7. 자동 검증 결과와 공개 저장소의 근거를 구분
+## 7. 공개 Source와 개발 Checkout의 검증 근거
 
 개발 과정에서는 반복 scenario script와 check count를 사용했습니다.
 
 하지만 일부 verification script는 공개 저장소에 포함되어 있지 않습니다.
 
-따라서 Wiki에서는:
-
-- 공개 Source에서 직접 확인 가능한 구조 / Validation
-- 개발 checkout에서 반복 수행한 scenario verification
-
-을 구분합니다.
+Wiki에는 **공개 Source에서 직접 확인 가능한 구조/Validation**과 **개발 checkout에서 반복 수행한 scenario verification**을 구분해 기록합니다.
 
 검사 횟수 자체보다 **어떤 실패 경로까지 확인했는지와 코드에서 재현 가능한 근거**를 우선합니다.
 
@@ -328,9 +321,7 @@ Intermediate/
 
 ## 9. AgentMcp Verification
 
-AgentMcp repository에서는 Editor tool 자체를 별도 testbed와 smoke test로 검증합니다.
-
-AgentMcp repository 자체에서:
+AgentMcp repository의 testbed / smoke test는 다음 Editor 기능을 검증합니다.
 
 - MCP transport
 - Reflection 기반 tool schema
