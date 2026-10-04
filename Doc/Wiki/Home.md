@@ -6,6 +6,12 @@
 
 ---
 
+## Project Overview
+
+- [[1. Project Overview|1_Project_Overview]] — UE5.5/C++ 기반 멀티플레이 액션 어드벤처로, 전투·자원 수집·포획·인벤토리·제작·Dungeon까지 이어지는 전체 gameplay loop와 주요 시스템 구성을 요약합니다.
+
+---
+
 ## 런타임 아키텍처
 
 ```mermaid
@@ -31,6 +37,10 @@ flowchart TB
     CLIENT -. "RPC · 입력/행동 요청" .-> CORE
     CLIENT -. "RPC · Dungeon 상호작용 요청" .-> DUNGEON
 ```
+
+- **실선** — 데이터와 authoritative state가 전달되는 방향
+- **점선** — Client 입력/행동 요청이 Server로 전달되는 방향
+- **Core Gameplay → Dungeon** — 기존 gameplay system을 Dungeon 콘텐츠가 재사용하는 관계
 
 - **Content / Data** — Item·Skill 같은 반복 데이터는 DataTable, Dungeon·Boss 같은 콘텐츠 단위 정의는 DataAsset으로 관리합니다.
 - **Server-authoritative Runtime** — 전투 결과, 인벤토리 변경, 제작 진행, 포획 성공, Dungeon 진행 같은 최종 gameplay state는 서버가 결정합니다.
@@ -98,7 +108,6 @@ Sonheim에서는 이 도구를 이용해 **Animation Blueprint·Montage·BlendSp
 ## Development History
 
 - [[14. Development History & Retrospective|14_Development_History_Retrospective]] — 초기 Player·Combat·Inventory·Capture 시스템에서 시작해, 기존 시스템을 재사용하는 Dungeon Vertical Slice와 공용 UI/툴링으로 확장한 과정을 정리합니다.
-- [[1. Project Overview|1_Project_Overview]] — 전체 gameplay loop와 주요 시스템 구성을 요약합니다.
 
 ---
 
