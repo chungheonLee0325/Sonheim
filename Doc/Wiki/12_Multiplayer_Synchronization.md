@@ -17,9 +17,9 @@ Sonheim의 실제 네트워크 구현은 **Unreal Engine Listen Server + RPC / R
 ~~~mermaid
 flowchart LR
     INPUT["Client Input"]
-    REQUEST["Request<br/>Server RPC"]
+    REQUEST["<b>Request</b><br/>Server RPC"]
     AUTH["Authoritative Gameplay"]
-    STATE["State Update<br/>Replication / FastArray / Snapshot"]
+    STATE["<b>State Update</b><br/>Replication / FastArray / Snapshot"]
     LOCAL["Client Model"]
     VIEW["Presentation"]
 
@@ -303,7 +303,7 @@ Snapshot은:
 
 HUD가 늦게 생성되거나 다시 생성돼도 “과거 Event 목록”을 재생하지 않고 **현재 Snapshot으로 복원**할 수 있습니다.
 
-Presentation 변환은 [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]]에서 설명합니다.
+Presentation 변환은 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]에서 설명합니다.
 
 ---
 
@@ -356,7 +356,7 @@ Sonheim이 구현한 전송 계층은 Unreal Networking입니다.
 - [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Skill Spec과 authoritative cast
 - [[07. Inventory & Crafting|07_Inventory_Crafting]] — Inventory / Container / Crafting의 실제 상태
 - [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — Capture result / Reveal / Ownership
-- [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]] — Snapshot에서 Client UI model로 변환
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Snapshot에서 Client UI model로 변환
 
 ---
 
