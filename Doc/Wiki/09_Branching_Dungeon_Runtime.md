@@ -1,22 +1,185 @@
 # 09. Branching Dungeon Runtime
 
-Dungeon은 Stage별 C++ 분기문으로 진행 순서를 고정하지 않고, **Event / Condition / Action / Transition을 데이터로 정의하고 Server Runtime이 해석하는 콘텐츠 시스템**으로 구현했습니다.
+Dungeon은 **Stage graph를 데이터로 정의하고, Server Runtime이 Event를 받아 현재 Stage의 Rule을 해석하는 콘텐츠 시스템**으로 구현했습니다.
 
-분기, 제한시간, 보상, 실패 조건이 추가되어도 World Actor가 전체 진행 순서를 알 필요가 없고, 동일한 Runtime이 다른 Definition을 실행할 수 있습니다.
+C++ Runtime은 Event/Condition/Action/Transition의 의미와 실행 방법을 제공하고, 실제 Dungeon은 이 building block을 조합해 진행 순서·분기·목표·보상·실패 조건을 구성합니다.
 
 ---
 
-## 전체 구조
+## 1. 현재 구현된 Dungeon 흐름
 
-```mermaid
+Forgotten Ruins는 입장부터 결과까지 한 Run 안에서 다음 요소를 연결합니다.
+
+~~~mermaid
 flowchart LR
-    C["Dungeon Catalog<br/>입장 조건 · Definition ID"]
-    D["Dungeon Definition<br/>Stage · Rule · Transition · Grade"]
-    R["Server Runtime<br/>Event Queue · Action · Condition"]
-    W["World / Gameplay<br/>Spawn · Barrier · Switch · Boss"]
-    S["Run State<br/>Stage · Branch · Objective · Result"]
-    G["GameState Snapshot"]
-    P["Progress / Reward<br/>Inventory · SaveGame"]
+    ENTRY["<b>봉인된 전실</b><br/>Run Start · Entry"]
+    GUARD["<b>경비실</b><br/>Combat Objective"]
+    BRANCH{"<b>경로 선택</b><br/>Shortcut / Extra Wave"}
+    SHORT["<b>지름길</b><br/>Lever · Branch Tag"]
+    STORE["<b>창고</b><br/>Additional Wave"]
+    BOSS["<b>수호자의 방</b><br/>Guardian Boss"]
+    RESULT["<b>Run Result</b><br/>Reward · Grade · Record"]
+
+    ENTRY --> GUARD
+    GUARD --> BRANCH
+    BRANCH -->|"Shortcut"| SHORT
+    BRANCH -->|"Extra Wave"| STORE
+    SHORT --> BOSS
+    STORE --> BOSS
+    BOSS --> RESULT
+~~~
+
+Runtime 관점에서 구현된 범위는 다음과 같습니다.
+
+| 영역 | 구현 |
+|---|---|
+| **입장 / 참가자** | 요구 Level, Run Owner, Participants, Portal 이동 |
+| **Stage 진행** | Entry, Combat, Branch, Boss, Terminal Stage |
+| **목표** | Spawn Group, Defeat/Capture count, Main/Optional Objective |
+| **분기** | Lever interaction, RunTag, BranchId, Shortcut / ExtraWave |
+| **World 제어** | Stage별 Barrier, Trigger Zone, Shortcut Gate, Reward Chest |
+| **시간 / 실패** | Stage timeout, Owner down/leave, target lost |
+| **Boss** | Boss Objective, Phase/Break/Exhaust/Capture state 연동 |
+| **정산** | Reward, elapsed time, Grade, best record, clear count |
+| **Client 표현** | HUD 목표 추적, Party 상태, Minimap/Marker, Boss HUD, Result |
+
+마지막 Client 표현은 Dungeon Runtime이 직접 Widget을 조작하지 않고 Snapshot을 통해 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]으로 전달합니다.
+
+---
+
+## 2. Event / Condition / Action / Transition의 의미
+
+이 네 요소는 각각 다른 질문에 답합니다.
+
+| 요소 | 의미 | 예 |
+|---|---|---|
+| **Event** | **무슨 일이 발생했는가?** | StageEntered, WaveCompleted, ActorInteracted, MonsterCaptured |
+| **Condition** | **현재 상태에서 이 경로를 선택할 수 있는가?** | Always, HasRunTag, SpawnGroupCompleted |
+| **Action** | **Event를 처리하면서 무엇을 바꿀 것인가?** | SpawnGroup, SetRunTag, GrantReward |
+| **Transition** | **조건을 만족하면 다음 어디로 이동할 것인가?** | NextStageId + BranchId |
+
+데이터 관계는 다음과 같습니다.
+
+~~~mermaid
+flowchart TB
+    DEF["<b>Dungeon Definition</b><br/>UDungeonDefinitionDataAsset"]
+    STAGE["<b>Stage</b><br/>FDungeonStageDefinition[]"]
+    RULE["<b>Event Rule</b><br/>FDungeonStageEventRule[]"]
+    EVENT["<b>Trigger</b><br/>EDungeonStageEvent + SourceId"]
+    ACTION["<b>State / World 변경</b><br/>FDungeonStageAction[]"]
+    TRANS["<b>다음 경로 후보</b><br/>FDungeonStageTransition[]"]
+    COND["<b>Transition 조건</b><br/>FDungeonStageCondition[]"]
+    NEXT["<b>결과</b><br/>NextStageId · BranchId"]
+
+    DEF --> STAGE
+    STAGE --> RULE
+    RULE --> EVENT
+    RULE --> ACTION
+    RULE --> TRANS
+    TRANS --> COND
+    TRANS --> NEXT
+~~~
+
+예를 들어 Shortcut Lever는 “지름길 Stage로 이동”을 직접 실행하지 않습니다.
+
+~~~text
+Lever Interact
+   ↓
+ActorInteracted(SourceId)
+   ↓
+현재 Stage의 EventRule
+   ↓
+Action: SetRunTag(Shortcut)
+   ↓
+Transition Condition: HasRunTag(Shortcut)
+   ↓
+NextStageId + BranchId
+~~~
+
+World Actor는 **무슨 일이 발생했는지**만 전달하고, 진행 규칙은 Definition이 소유합니다.
+
+<details>
+<summary><b>실제 C++ 데이터 스키마 요약 보기</b></summary>
+
+~~~cpp
+struct FDungeonStageDefinition
+{
+    FGameplayTag StageId;
+    float TimeLimitSeconds;
+    TArray<FGameplayTag> SealedBarriers;
+    TArray<FDungeonStageEventRule> EventRules;
+};
+
+struct FDungeonStageEventRule
+{
+    EDungeonStageEvent Event;
+    FGameplayTag SourceId;
+    bool bOnce;
+
+    TArray<FDungeonStageAction> Actions;
+    TArray<FDungeonStageTransition> Transitions;
+};
+
+struct FDungeonStageTransition
+{
+    FName TransitionId;
+    TArray<FDungeonStageCondition> Conditions;
+
+    FGameplayTag NextStageId;
+    FGameplayTag BranchId;
+};
+~~~
+
+</details>
+
+---
+
+## 3. 고유 식별자에 GameplayTag를 사용한 이유
+
+Dungeon에서는 Stage 하나만 식별하면 끝나지 않습니다.
+
+~~~text
+Dungeon.ForgottenRuins.Stage.*
+Dungeon.ForgottenRuins.Group.*
+Dungeon.ForgottenRuins.Branch.*
+Dungeon.ForgottenRuins.PointSet.*
+Dungeon.ForgottenRuins.Zone.*
+Dungeon.ForgottenRuins.Switch.*
+Dungeon.ForgottenRuins.Barrier.*
+~~~
+
+이 ID들은 Definition, placed Actor, Runtime State, UI Presentation이 서로 참조합니다.
+
+GameplayTag를 사용하면:
+
+- **계층형 namespace**로 어느 Dungeon의 Stage/Group/Barrier인지 드러나고
+- Editor field에서 <code>Categories="Dungeon"</code>로 선택 범위를 제한할 수 있으며
+- Validation에서 다른 Dungeon의 Tag가 섞였는지 검사할 수 있고
+- 새 Stage/Branch를 추가할 때 전역 C++ enum을 계속 수정하지 않아도 됩니다.
+
+반대로 모든 이름을 GameplayTag로 만들지는 않습니다.
+
+<code>TransitionId</code>는 log와 generated graph에서만 해당 transition을 식별하고 다른 시스템이 참조하지 않으므로 <code>FName</code>으로 유지합니다.
+
+또 SaveGame record key는 rename 가능한 GameplayTag와 분리해 stable <code>DungeonNumber</code>를 사용합니다.
+
+즉 ID의 사용 범위에 따라 **GameplayTag / FName / stable numeric key를 구분**합니다.
+
+더 넓은 데이터 선택 기준은 [[03. Data & Content Architecture|03_Data_Content_Architecture]]에서 설명합니다.
+
+---
+
+## 전체 Runtime 구조
+
+~~~mermaid
+flowchart LR
+    C["<b>입장 Index</b><br/>FDungeonCatalogRow"]
+    D["<b>콘텐츠 규칙</b><br/>UDungeonDefinitionDataAsset"]
+    R["<b>Server Interpreter</b><br/>UDungeonStageRuntimeSubsystem"]
+    W["<b>World / Gameplay</b><br/>Spawn · Barrier · Switch · Boss"]
+    S["<b>현재 Run 상태</b><br/>FDungeonStageRuntimeState"]
+    G["<b>Client 공유 상태</b><br/>ASonheimGameState"]
+    P["<b>정산</b><br/>Inventory · Progress Save"]
 
     C --> D
     D --> R
@@ -25,16 +188,17 @@ flowchart LR
     R --> S
     S --> G
     R --> P
-```
+~~~
 
-- **Definition**은 콘텐츠 규칙을 소유합니다.
-- **Runtime**은 현재 Run에서 Event를 처리하고 다음 Stage를 결정합니다.
-- **World Actor**는 자신의 상호작용이나 전투 결과만 Event로 전달합니다.
-- **Run State**는 현재 진행 결과를 보관하고 Client/World가 소비할 수 있게 발행됩니다.
+- **Definition** — 콘텐츠 규칙
+- **Runtime** — 현재 Run에서 Event 처리와 Stage 전환
+- **World Actor** — 상호작용·전투 결과의 producer
+- **Run State** — 현재 진행 결과의 snapshot
+- **GameState** — Client가 소비할 shared state
 
 ---
 
-## 1. Catalog와 Definition의 역할을 분리
+## 4. Catalog와 Definition의 역할을 분리
 
 입구에서 필요한 정보와 Dungeon 전체 그래프를 한 데이터에 넣지 않습니다.
 
@@ -71,7 +235,7 @@ class UDungeonDefinitionDataAsset : public UPrimaryDataAsset
 
 ---
 
-## 2. Stage 진행을 Event Rule로 표현
+## 5. Stage 진행을 Event Rule로 표현
 
 Stage 하나는 “다음 Stage”만 갖지 않습니다.  
 **어떤 Event가 들어왔을 때 무엇을 실행하고, 어떤 조건에서 어디로 이동하는지**를 Rule로 정의합니다.
@@ -121,7 +285,7 @@ NextStageId / BranchId 선택
 
 ---
 
-## 3. Action과 Condition을 작은 Building Block으로 유지
+## 6. Action과 Condition을 작은 Building Block으로 유지
 
 현재 Runtime이 해석하는 주요 요소:
 
@@ -153,7 +317,7 @@ NextStageId / BranchId 선택
 
 ---
 
-## 4. Runtime은 Event Queue를 순서대로 처리
+## 7. Runtime은 Event Queue를 순서대로 처리
 
 World callback 안에서 바로 Stage를 재귀적으로 바꾸지 않고 Event Queue를 사용합니다.
 
@@ -213,7 +377,7 @@ while (!Queue.IsEmpty())
 
 ---
 
-## 5. Stage 진입 시 World 상태와 Timer를 한 번에 갱신
+## 8. Stage 진입 시 World 상태와 Timer를 한 번에 갱신
 
 `EnterStage()`는 Stage 전환 시 다음 상태를 설정합니다.
 
@@ -238,7 +402,7 @@ Server Timer
 
 ---
 
-## 6. 분기 결과는 Run State에 한 번만 저장
+## 9. 분기 결과는 Run State에 한 번만 저장
 
 Forgotten Ruins의 Shortcut / ExtraWave 선택은:
 
@@ -261,7 +425,7 @@ Forgotten Ruins의 Shortcut / ExtraWave 선택은:
 
 ---
 
-## 7. Objective는 Spawn 결과를 추적
+## 10. Objective는 Spawn 결과를 추적
 
 `SpawnGroup` Action이 Monster를 생성하면 `UDungeonObjectiveTracker`에 해당 Group을 등록합니다.
 
@@ -293,7 +457,7 @@ Capture된 Monster도 전투에서 영구 이탈하므로 **Defeat와 함께 Gro
 
 ---
 
-## 8. Barrier 규칙은 World Actor가 아니라 Stage가 소유
+## 11. Barrier 규칙은 World Actor가 아니라 Stage가 소유
 
 현재 Stage에서 어떤 문이 닫혀야 하는지는:
 
@@ -324,7 +488,7 @@ Barrier Actor가 Stage 이름을 직접 검사하지 않기 때문에 Stage 구�
 
 ---
 
-## 9. 실패와 Terminal Stage를 동일한 Run Lifecycle에서 처리
+## 12. 실패와 Terminal Stage를 동일한 Run Lifecycle에서 처리
 
 실패는 예외적인 UI 처리로 분리하지 않고 Run State의 결과로 기록합니다.
 
@@ -360,7 +524,7 @@ Cleanup을 즉시 하지 않고 다음 tick으로 미뤄 현재 Event Rule이나
 
 ---
 
-## 10. Reward와 Record도 같은 Runtime에서 정산
+## 13. Reward와 Record도 같은 Runtime에서 정산
 
 `GrantReward` Action은 참가 Player의 기존 Inventory API를 사용합니다.
 
@@ -390,7 +554,7 @@ SaveGame key에는 rename 가능한 GameplayTag 대신 안정적인 `DungeonNumb
 
 ---
 
-## 11. Runtime State는 실행 결과만 발행
+## 14. Runtime State는 실행 결과만 발행
 
 Definition 전체를 Client가 실행하지 않습니다.
 
