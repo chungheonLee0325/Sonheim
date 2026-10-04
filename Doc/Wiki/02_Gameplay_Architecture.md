@@ -40,7 +40,7 @@ flowchart LR
     VIEW --> UI
 ```
 
-이 그림은 네트워크 호출 순서가 아니라 **정의 → 실행 → 상태 → 표현**으로 책임을 나눈 구조를 나타냅니다.
+**Definition → Runtime → State → Presentation** 순서로 책임이 이어집니다.
 
 ---
 
@@ -184,7 +184,7 @@ Widget이 GameplayTag, Stage transition, Item lookup을 직접 해석하지 않�
 ### 선택 비용
 
 Presenter/ViewData layer는 mapping code를 추가합니다.  
-따라서 단순 HP bar까지 같은 구조로 만들지 않고, Dungeon처럼 **여러 gameplay state를 조합하고 UI가 재생성될 수 있는 화면**에 한정해 적용합니다.
+Presenter/ViewData는 Dungeon처럼 **여러 gameplay state를 조합하고 UI 재생성 시 현재 상태를 복원해야 하는 화면**에 적용합니다.
 
 ---
 
@@ -223,7 +223,7 @@ Gameplay Event
  → Banner / Title
 ```
 
-모든 변화를 하나의 Event Bus나 하나의 UI 패턴으로 통일하지 않고 **필요한 복구 가능성과 수명에 맞춰 구분**합니다.
+Health/Inventory처럼 owner가 명확한 상태는 Delegate로 전달하고, Dungeon처럼 여러 상태를 조합하는 화면은 Snapshot/ViewData를 사용하며, 일회성 피드백은 Notice/Event 경로로 전달합니다.
 
 ---
 
