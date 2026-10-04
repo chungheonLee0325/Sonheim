@@ -23,11 +23,11 @@ Gameplay 기능이 실제로 완성되려면:
 flowchart LR
     INSPECT["<b>Inspect</b><br/>Code · Asset · Editor State"]
     EDIT["<b>Edit</b><br/>C++ · Blueprint · Data"]
-    BUILD["Compile / Save"]
-    PIE["Play In Editor"]
+    BUILD["<b>Compile / Save</b>"]
+    PIE["<b>Play In Editor</b>"]
     VERIFY["<b>Verify</b><br/>State · Log · Scenario"]
     CAPTURE["<b>Viewport Capture</b><br/>Visual Review"]
-    FIX["Iterate"]
+    FIX["<b>Iterate</b>"]
 
     INSPECT --> EDIT
     EDIT --> BUILD
