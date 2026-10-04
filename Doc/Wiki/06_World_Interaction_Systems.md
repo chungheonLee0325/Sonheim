@@ -11,16 +11,16 @@ Detection·Prompt·Hold·Server 요청은 \`UInteractionComponent\`가 공통으
 ~~~mermaid
 flowchart LR
     INPUT["Player Input"]
-    COMP["Interaction Component<br/>Detection · Hold · Request"]
-    API["IInteractableInterface<br/>공통 Contract"]
+    COMP["<b>Interaction Component</b><br/>Detection · Hold · Request"]
+    API["<b>IInteractableInterface</b><br/>공통 Contract"]
 
-    ITEM["Item<br/>획득"]
-    BOX["Container<br/>보관함 열기"]
-    CRAFT["Crafting Station<br/>Recipe · Work · Collect"]
-    LEVER["Dungeon Lever<br/>Branch Event"]
-    PORTAL["Dungeon Entrance<br/>Run Start"]
+    ITEM["<b>Item</b><br/>획득"]
+    BOX["<b>Container</b><br/>보관함 열기"]
+    CRAFT["<b>Crafting Station</b><br/>Recipe · Work · Collect"]
+    LEVER["<b>Dungeon Lever</b><br/>Branch Event"]
+    PORTAL["<b>Dungeon Entrance</b><br/>Run Start"]
 
-    UI["Context UI<br/>Prompt · Hold Progress · Cancel"]
+    UI["<b>Context UI</b><br/>Prompt · Hold Progress · Cancel"]
 
     INPUT --> COMP
     COMP --> API
