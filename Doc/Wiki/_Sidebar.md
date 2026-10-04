@@ -12,10 +12,12 @@
   * [[07. Inventory & Crafting|07_Inventory_Crafting]]
   * [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]]
 
-* **Dungeon Vertical Slice**
+* **Integrated Content**
   * [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]]
   * [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]]
-  * [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]]
+
+* **UI & Presentation**
+  * [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]
 
 * **Multiplayer**
   * [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]
