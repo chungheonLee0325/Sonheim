@@ -573,7 +573,7 @@ Server Runtime이 계산한 결과를 `FDungeonStageRuntimeState`에 모아 Game
 | 참가자 | Participants, OwnerPlayer |
 | Boss | Health, Action, Phase, Vulnerable, Break |
 
-이 Snapshot을 Client UI로 변환하는 과정은 [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]]에서 분리해 설명합니다.
+이 Snapshot을 Client UI로 변환하는 과정은 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]에서 분리해 설명합니다.
 
 ---
 
@@ -593,7 +593,7 @@ Server Runtime이 계산한 결과를 `FDungeonStageRuntimeState`에 모아 Game
 
 - [[03. Data & Content Architecture|03_Data_Content_Architecture]] — Catalog / PrimaryDataAsset / GameplayTag 구성
 - [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — Boss Stage 내부의 전투 Runtime
-- [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]] — Run State를 HUD/Minimap/Result로 변환
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Run State를 HUD/Minimap/Result로 변환
 - [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — Definition의 잘못된 조합을 Editor에서 검사
 
 ---
