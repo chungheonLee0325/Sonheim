@@ -16,12 +16,12 @@ Sonheim의 실제 네트워크 구현은 **Unreal Engine Listen Server + RPC / R
 
 ~~~mermaid
 flowchart LR
-    INPUT["Client Input"]
+    INPUT["<b>Client Input</b>"]
     REQUEST["<b>Request</b><br/>Server RPC"]
-    AUTH["Authoritative Gameplay"]
+    AUTH["<b>Authoritative Gameplay</b>"]
     STATE["<b>State Update</b><br/>Replication / FastArray / Snapshot"]
-    LOCAL["Client Model"]
-    VIEW["Presentation"]
+    LOCAL["<b>Client Model</b>"]
+    VIEW["<b>Presentation</b>"]
 
     INPUT --> REQUEST
     REQUEST --> AUTH
