@@ -10,15 +10,15 @@ Sonheim의 전투는 **Skill Definition → Runtime State → Skill Logic → An
 
 ```mermaid
 flowchart LR
-    INPUT["Input / AI"]
-    COMP["Skill Component"]
-    DATA["FSkillData<br/>정적 정의"]
-    SPEC["Skill Spec<br/>현재 상태"]
-    LOGIC["UBaseSkill<br/>실행 Logic"]
-    ANIM["Montage / AnimNotify"]
-    HIT["Attack Logic<br/>Melee · Projectile"]
-    DAMAGE["FCustomDamageEvent"]
-    TARGET["Target<br/>Defense · HP · Feedback"]
+    INPUT["<b>Cast 요청</b><br/>Input / AI"]
+    COMP["<b>Skill 소유·상태</b><br/>USonheimSkillComponent"]
+    DATA["<b>정적 정의</b><br/>FSkillData"]
+    SPEC["<b>복제 상태</b><br/>FSonheimSkillSpecItem"]
+    LOGIC["<b>실행 Logic</b><br/>UBaseSkill"]
+    ANIM["<b>Gameplay Timing</b><br/>Montage / AnimNotify"]
+    HIT["<b>공격 판정</b><br/>Melee · Projectile"]
+    DAMAGE["<b>Damage Context</b><br/>FCustomDamageEvent"]
+    TARGET["<b>Target 처리</b><br/>Defense · HP · Feedback"]
 
     INPUT --> COMP
     DATA --> COMP
@@ -256,25 +256,37 @@ Animation이 **언제 실행할지**, Skill Logic이 **무엇을 실행할지** 
 
 ---
 
-## 7. Combo / Cancel Window도 Animation에서 조정
+## 7. Action / Cancel Window를 Animation에서 직접 조정
 
-Player 행동 가능 상태를 별도 Timer로 맞추지 않고 Animation Notify로 전환합니다.
+ARPG 전투에서는 “공격 중인가” 하나보다 **행동 도중 언제부터 무엇을 다시 허용할지**를 세밀하게 조정해야 합니다.
+
+Sonheim은 이 시점을 별도 C++ Timer로 맞추지 않고 Montage의 `USetPlayerStateNotify` 위치로 조정합니다.
 
 ```text
 ACTION
-  ↓
-Attack Window
-  ↓
-CANACTION
-  ├─ 다음 Combo
-  └─ Dodge 허용
-  ↓
-NORMAL
+  │  이동 / 새 Action 제한
+  │
+  ├─ Attack Notify Window
+  │
+  ├─ CANACTION
+  │    ├─ 다음 Combo 입력
+  │    ├─ Dodge Cancel
+  │    └─ 필요한 경우 방향 전환 허용
+  │
+  └─ NORMAL
+       └─ 일반 이동 / 회전 복귀
 ```
 
-Animation을 수정할 때 공격 판정뿐 아니라 Combo / Dodge cancel timing도 같은 timeline에서 조정할 수 있습니다.
+Notify 위치를 Animation timeline에서 직접 보며 조정하기 때문에 공격별로 다음과 같은 구간을 서로 다르게 튜닝할 수 있습니다.
 
-Player state 자체는 [[04. Player & Character Systems|04_Player_Character_Systems]]에서 설명합니다.
+- **행동 Cancel 가능 시점** — 공격 후딜 중 언제 Dodge나 다음 Action을 허용할지
+- **Combo 입력 가능 시점** — 다음 Skill로 이어지는 입력 window를 어디에 둘지
+- **이동 가능 시점** — Root Motion이나 공격 동작이 끝나기 전에 이동을 풀지 여부
+- **방향 전환 시점** — 공격 모션 중 어느 구간까지 Character의 회전을 제한하거나 다시 허용할지
+
+즉 AnimNotify를 Hit 발생 시점만 지정하는 용도로 쓰지 않고, **공격 모션과 Player control rule을 같은 timeline에서 맞추는 authoring point**로 사용합니다.
+
+Player state와 `FActionRestrictions` 자체는 [[04. Player & Character Systems|04_Player_Character_Systems]]에서 설명합니다.
 
 ---
 
