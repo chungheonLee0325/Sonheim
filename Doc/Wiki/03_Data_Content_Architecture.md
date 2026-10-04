@@ -19,10 +19,10 @@ Sonheim은 모든 데이터를 DataTable 하나에 넣지 않습니다.
 
 ~~~mermaid
 flowchart LR
-    ROW["Row Data<br/>Item · Skill · Stat"]
-    CATALOG["Catalog<br/>입장/조회용 Index"]
-    DEF["Content Definition<br/>Dungeon · Boss"]
-    TAG["GameplayTag<br/>Stage · Branch · Pattern"]
+    ROW["<b>Row Data</b><br/>Item · Skill · Stat"]
+    CATALOG["<b>Catalog</b><br/>입장/조회용 Index"]
+    DEF["<b>Content Definition</b><br/>Dungeon · Boss"]
+    TAG["<b>GameplayTag</b><br/>Stage · Branch · Pattern"]
     SOFT["Soft Asset Dependency"]
     RUNTIME["Runtime"]
 
@@ -328,7 +328,7 @@ Player-facing text인가?
 
 - [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Skill Data가 실제 실행 Logic으로 연결되는 과정
 - [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Dungeon Definition을 Server Runtime이 해석하는 과정
-- [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]] — Presentation Data와 Runtime State 결합
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Presentation Data와 Runtime State 결합
 - [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — GameplayTag / Definition / dependency 검사
 
 ---
