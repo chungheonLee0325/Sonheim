@@ -16,17 +16,17 @@ Sonheim은 **상태의 소유권과 수명, 기능 간 의존 방향, gameplay�
 
 ```mermaid
 flowchart LR
-    DATA["Content Definition<br/>DataTable · DataAsset · GameplayTag"]
+    DATA["<b>Content Definition</b><br/>DataTable · DataAsset · GameplayTag"]
 
     subgraph GAMEPLAY["Gameplay Runtime"]
-        PLAYER["Player / Character<br/>Pawn · PlayerState · Components"]
-        WORLD["World Systems<br/>Interaction · Item · Crafting"]
-        CONTENT["Content Runtime<br/>Dungeon · Boss"]
+        PLAYER["<b>Player / Character</b><br/>Pawn · PlayerState · Components"]
+        WORLD["<b>World Systems</b><br/>Interaction · Item · Crafting"]
+        CONTENT["<b>Content Runtime</b><br/>Dungeon · Boss"]
     end
 
-    STATE["Runtime State<br/>Health · Inventory · Objectives · Result"]
-    VIEW["Presentation Model<br/>Delegate · Presenter · ViewData"]
-    UI["Client Presentation<br/>HUD · UMG · Minimap · Notice"]
+    STATE["<b>Runtime State</b><br/>Health · Inventory · Objectives · Result"]
+    VIEW["<b>Presentation Model</b><br/>Delegate · Presenter · ViewData"]
+    UI["<b>Client Presentation</b><br/>HUD · UMG · Minimap · Notice"]
 
     DATA --> PLAYER
     DATA --> WORLD
@@ -227,7 +227,7 @@ Gameplay Event
 
 ---
 
-## 7. 실제 확장에서 확인된 재사용
+## 7. 실제 콘텐츠 적용 사례
 
 - `IInteractableInterface` — Item/Container/Crafting에서 Dungeon Portal/Lever까지 재사용
 - Monster death/capture event — Dungeon Objective progress에 연결
