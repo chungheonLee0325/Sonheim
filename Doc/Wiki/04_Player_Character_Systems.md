@@ -20,9 +20,9 @@ flowchart LR
     PAWN["<b>Player Pawn</b><br/>Movement · Mesh · Animation"]
     AREA["<b>AAreaObject Components</b><br/>Health · Stamina · Condition · Skill"]
 
-    EQUIP["Equipment"]
-    BONUS["StatBonus"]
-    SKILL["Skill Grant"]
+    EQUIP["<b>Equipment</b>"]
+    BONUS["<b>StatBonus</b>"]
+    SKILL["<b>Skill Grant</b>"]
 
     INPUT --> PAWN
     PS --> PAWN
