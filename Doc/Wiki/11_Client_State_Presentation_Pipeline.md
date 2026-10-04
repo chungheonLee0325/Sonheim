@@ -42,7 +42,7 @@ flowchart TB
 | Crafting | CraftingStation + CraftingWidget | Recipe + Inventory + ActiveWork |
 | Confirm Popup | InventoryWidget | ItemID / Count / Action mode |
 | Notice / Toast | UNoticeSubsystem | FNoticeData + Slot / Channel |
-| Dungeon HUD / Result | Presenter + UI Router | Run Snapshot + Presentation Data |
+| Dungeon HUD / Result | Presenter + UI Router | Run Snapshot + Presentation Data + 기존 Component/World State |
 
 ---
 
@@ -224,6 +224,10 @@ Queue policy는:
 
 를 사용합니다.
 
+[▶ Dungeon Notice Queue 시연 (MP4)](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_notice_system.mp4)
+
+실제 Lever 상호작용과 Wave 완료/Branch 변경에서 발생한 Dungeon Banner가 `ShortcutUnlocked → GroupClear → Branch.Shortcut` 순으로 표시되어 `TakeTurns` queue 동작을 보여줍니다. 이 영상은 producer와 표시 순서의 증거이며, Hold/Fade 시간을 정량 검증하는 자료로 사용하지 않습니다.
+
 ### Channel
 
 같은 Banner Slot에서도 producer별 channel을 유지합니다.
@@ -303,6 +307,10 @@ flowchart LR
     P --> V --> U --> W
 ~~~
 
+![Dungeon HUD](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_dungeon_hud.png)
+
+위 화면은 같은 Run의 **Stage / Main·Optional Objective / Timer / Party / World Marker / Minimap**을 한 Client 화면에 조합한 결과입니다. Dungeon progression은 Snapshot에서, Party HP는 기존 replicated `HealthComponent`에서, text·icon·room 영역은 Presentation Asset에서 가져옵니다.
+
 ### Presenter
 
 Presenter는 Runtime ID와 Presentation Data를 결합합니다.
@@ -327,6 +335,14 @@ World Marker
 ~~~
 
 Widget은 GameplayTag, ItemID, Stage transition을 해석하지 않고 화면용 ViewData를 소비합니다.
+
+### Presentation Definition
+
+Runtime Snapshot에는 화면 문구나 Map texture를 직접 넣지 않습니다. `UDungeonPresentationDataAsset`이 Stage title/objective/icon, room 영역, marker와 전체 map bounds 같은 presentation 정의를 소유합니다.
+
+![Dungeon Presentation DataAsset](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_dungeon_presentation_asset.png)
+
+Presenter는 Snapshot의 `StageId`와 Objective 상태를 이 정의에 결합해 ViewData를 만듭니다. 같은 gameplay state를 유지하면서도 화면 표현을 asset에서 조정할 수 있도록 분리한 구조입니다.
 
 ### Snapshot Revision
 
@@ -362,6 +378,8 @@ Dungeon progression은 Snapshot, Health는 기존 Component/Delegate 경로를 �
 
 ### Minimap / Marker
 
+Minimap은 **Presentation 정의와 현재 world state를 함께 사용**합니다.
+
 Presentation Data는:
 
 - Map Texture
@@ -369,9 +387,15 @@ Presentation Data는:
 - Stage Room Rect
 - Marker icon / kind
 
-을 정의하고, Presenter가 Current Stage와 Objective Marker target을 결합해 ViewData를 생성합니다.
+을 정의하고, Presenter는 Current Stage와 열린 Objective의 Marker target을 ViewData로 구성합니다. Local/remote Player 위치와 local camera 방향처럼 매 frame 변하는 값은 Minimap Widget이 실제 Pawn/PlayerState에서 읽어 map 좌표로 투영합니다.
 
-Widget은 World에서 Shortcut Actor나 Trigger Zone을 직접 검색하지 않습니다.
+![Multiplayer Minimap](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_minimap_multiplayer.png)
+
+위 화면에서는 Current Stage room highlight, Local Player arrow, Remote Player dot, Lever Objective marker와 room icon이 동시에 표시됩니다. Bounds 밖 Player는 edge로 clamp하지 않고 표시 대상에서 제외합니다.
+
+[▶ Minimap Runtime 시연 (MP4)](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_minimap_runtime.mp4)
+
+영상에서는 remote Player의 Dungeon 밖 이동/복귀, 두 Player의 위치 변화와 local camera 회전에 따른 arrow 방향 갱신을 확인할 수 있습니다.
 
 ### Server Time 기반 Progress
 
@@ -385,6 +409,14 @@ Stage countdown과 Boss action progress는 Snapshot의:
 을 synchronized server clock과 비교해 계산합니다.
 
 HUD가 늦게 생성되거나 재생성돼도 같은 현재 progress를 복원합니다.
+
+### Widget 재생성과 상태 복구
+
+Widget 자체는 Dungeon Run의 상태 owner가 아닙니다. 진행 중 HUD를 제거해도 Presenter와 Snapshot은 유지되고, 이후 UI 갱신이 발생하면 Router가 **새 Widget instance**를 만들어 Latest ViewData를 적용합니다.
+
+[▶ HUD 재생성 후 상태 복구 시연 (MP4)](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_state_reconstruction.mp4)
+
+촬영에서는 기존 HUD를 `RemoveFromParent`한 뒤 새 instance가 생성됐고, 같은 RunId / Stage / Objective 2/3 / Optional Objective / Minimap 상태를 다시 구성했습니다. Countdown과 elapsed time도 Widget 생성 시점에서 다시 시작하지 않고 기존 `StageDeadlineServerTime` / `RunStartedServerTime`과 synchronized server clock을 계속 사용했습니다.
 
 ### Boss Status
 
@@ -417,6 +449,10 @@ Terminal Snapshot
 ~~~
 
 진행 HUD와 Result는 같은 Run State의 서로 다른 presentation입니다.
+
+![Dungeon Result](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_dungeon_result.png)
+
+위 결과 화면은 진행 HUD와 **같은 Run**의 terminal Snapshot을 사용합니다. 실제 최종 state의 elapsed time, defeated/captured count, 선택 branch, reward, grade와 기존 best record를 Result ViewData로 변환해 표시합니다.
 
 ---
 
@@ -488,7 +524,7 @@ Dungeon Registry는 <code>Screen / Modal / HUD</code> layer와 <code>GameOnly / 
 | **Delegate Binding** | HP / Stamina / Inventory | owner가 명확한 독립 state 변경 |
 | **C++ Widget + WBP** | 기본 Screen / HUD | 데이터 계약과 visual authoring 분리 |
 | **LocalPlayer NoticeSubsystem** | Banner / Title | transient event의 queue / channel / style 관리 |
-| **Presenter → ViewData** | Dungeon | 여러 gameplay source를 하나의 화면 모델로 조합 |
+| **Presenter → ViewData** | Dungeon | Snapshot·Presentation 정의·기존 Component state를 하나의 화면 모델로 조합 |
 | **LocalPlayer UI Router** | Dungeon HUD / Result | async widget load와 content UI lifecycle 관리 |
 | **Local Popup Ownership** | Inventory Confirm | 부모 screen context 안에서 확인/결과 반환 |
 
