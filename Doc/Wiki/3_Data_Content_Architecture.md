@@ -61,7 +61,7 @@ struct FSkillData : public FTableRowBase
 
 Skill마다 독립 asset lifecycle이 필요한 것이 아니라 같은 schema를 가진 row를 ID로 반복 조회하므로 DataTable이 자연스럽습니다.
 
-Skill 자체의 실행 구조는 [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]]에서 설명합니다.
+Skill 자체의 실행 구조는 [[5. Combat, Skill & Animation|5_Combat_Skill_Animation]]에서 설명합니다.
 
 ---
 
@@ -274,9 +274,9 @@ Player가 읽는 문구인가?
 
 ## 연관 문서
 
-- 이 데이터가 실제 Dungeon Runtime에서 어떻게 해석되는지 → [[4. Branching Dungeon Runtime|4_Branching_Dungeon_Runtime]]
-- Definition 작성 실수를 어떻게 잡는지 → [[6. Content Authoring & Validation|6_Content_Authoring_Validation]]
-- Skill Data가 실제 실행과 어떻게 연결되는지 → [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]]
+- 이 데이터가 실제 Dungeon Runtime에서 어떻게 해석되는지 → [[9. Branching Dungeon Runtime|9_Branching_Dungeon_Runtime]]
+- Definition 작성 실수를 어떻게 잡는지 → [[13. Content Authoring & Validation|13_Content_Authoring_Validation]]
+- Skill Data가 실제 실행과 어떻게 연결되는지 → [[5. Combat, Skill & Animation|5_Combat_Skill_Animation]]
 
 ---
 
