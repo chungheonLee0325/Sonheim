@@ -2,7 +2,7 @@
 
 Sonheim은 **Unreal Engine 5.5 / C++ 기반 서버 권위 멀티플레이 액션 어드벤처** 프로젝트입니다.
 
-전투, 자원 수집, 포획, 인벤토리, 장비, 제작을 각각 독립 기능으로 구현하는 데서 끝내지 않고, 서로의 결과가 다음 시스템의 입력이 되도록 연결했습니다. 이후 이 기반 시스템을 재사용해 **분기형 Dungeon Vertical Slice**까지 확장했습니다.
+전투, 자원 수집, 포획, 인벤토리, 장비, 제작을 각각 독립 기능으로 구현하는 데서 끝내지 않고, 서로의 결과가 다음 시스템의 입력이 되도록 연결했습니다. 현재는 이 기반 시스템들을 함께 사용하는 **분기형 Dungeon을 주요 통합 콘텐츠 사례**로 구현했습니다.
 
 ---
 
@@ -12,21 +12,21 @@ Sonheim의 gameplay는 한 방향으로 끝나는 선형 진행보다, **전투�
 
 ```mermaid
 flowchart LR
-    WORLD["World Exploration"]
-    COMBAT["Combat"]
-    GATHER["Resource Gathering"]
-    INTERACT["Interaction"]
+    WORLD["<b>World Exploration</b>"]
+    COMBAT["<b>Combat</b>"]
+    GATHER["<b>Resource Gathering</b>"]
+    INTERACT["<b>Interaction</b>"]
 
-    LOOT["Items / Resources"]
-    INV["Inventory"]
-    CRAFT["Crafting"]
-    EQUIP["Equipment / Stats / Skills"]
+    LOOT["<b>Items / Resources</b>"]
+    INV["<b>Inventory</b>"]
+    CRAFT["<b>Crafting</b>"]
+    EQUIP["<b>Equipment / Stats / Skills</b>"]
 
-    CAPTURE["Pal Capture"]
-    PAL["Owned Pal / Partner"]
+    CAPTURE["<b>Pal Capture</b>"]
+    PAL["<b>Owned Pal / Partner</b>"]
 
-    DUNGEON["Dungeon Content"]
-    RECORD["Best Time / Grade / Record"]
+    DUNGEON["<b>Integrated Content</b><br/>Dungeon"]
+    RECORD["<b>Result / Record</b><br/>Best Time · Grade"]
 
     WORLD --> COMBAT
     WORLD --> GATHER
