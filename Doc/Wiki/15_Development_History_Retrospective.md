@@ -2,7 +2,7 @@
 
 Sonheim은 **Core Gameplay → Shared World Systems → Dungeon Vertical Slice** 순으로 확장되면서 상태 ownership과 시스템 경계를 여러 차례 수정했습니다.
 
-아래는 기능 추가 자체보다, 실제 확장에서 변경된 구조와 그 결과를 정리한 기록입니다.
+주요 구조 변화와 결과는 다음과 같습니다.
 
 ---
 
@@ -27,9 +27,7 @@ Sonheim은 **Core Gameplay → Shared World Systems → Dungeon Vertical Slice**
 
 ## 1. Pal 기능의 Component 분리
 
-초기에는 기능 하나를 빠르게 완성하는 것이 우선이었습니다.
-
-Pal 기능이 늘면서 Player 하나가:
+Pal 기능이 늘면서 Player class가 다음 책임을 함께 다루기 시작했습니다.
 
 ~~~text
 Capture
@@ -39,9 +37,7 @@ Summon
 Partner Skill
 ~~~
 
-을 모두 직접 다루기 시작하면 각 기능의 수명과 변경 이유가 달라집니다.
-
-그래서:
+각 기능의 state와 lifecycle을 분리하기 위해:
 
 ~~~text
 UPalCaptureComponent
@@ -56,16 +52,13 @@ UPalPartnerSkillComponent
 
 으로 책임을 나눴습니다.
 
-이후 Dungeon에서도 같은 기준을 사용했습니다.  
-“기능을 어느 class에 넣기 쉬운가”보다 **그 상태를 누가 소유하고 언제까지 살아야 하는가**를 먼저 보는 방향으로 바뀌었습니다.
+이후 Dungeon에서도 **state owner와 lifetime**을 기준으로 Runtime/World/UI 책임을 배치했습니다.
 
 ---
 
 ## 2. 새 콘텐츠에서 기존 경계 재사용
 
-추상화가 유효한지는 이름보다 새 콘텐츠에서 실제로 재사용되는지로 확인했습니다.
-
-Dungeon에서 그대로 재사용된 기존 경계:
+Dungeon 구현에서는 다음 기존 시스템 경계를 그대로 재사용했습니다.
 
 - Interaction → Entrance / Lever / Reward Chest
 - Inventory → Dungeon Reward
@@ -75,7 +68,7 @@ Dungeon에서 그대로 재사용된 기존 경계:
 - Health Component → Party HUD
 - Notice → Dungeon / Level-up / Capture / Crafting
 
-반대로 새 콘텐츠에서 Actor나 UI가 기존 시스템 내부 지식을 계속 알아야 했다면 책임 위치를 다시 조정했습니다.
+새 콘텐츠가 기존 시스템 내부 상태를 직접 알아야 했던 부분은 ownership 위치를 다시 조정했습니다.
 
 ---
 
@@ -110,7 +103,7 @@ Barrier Actor
 
 ---
 
-## 4. Data-driven의 의미도 프로젝트와 함께 바뀌었다
+## 4. DataTable 중심 구조에서 콘텐츠별 데이터 모델로
 
 초기에는 DataTable이 주요 gameplay data를 담당했습니다.
 
@@ -185,7 +178,7 @@ Snapshot/Presenter/ViewData 구조로 HUD 재생성 시 현재 Run state를 복�
 
 ---
 
-## 6. Dungeon 전용 기능이 범용성이 생기면 공통 계층으로 이동
+## 6. Dungeon Toast → NoticeSubsystem
 
 Dungeon 개발 중 처음 필요했던 Toast를 Dungeon 전용 helper로 계속 유지할 수 있었습니다.
 
@@ -244,7 +237,7 @@ Stage Graph도 Definition에서 직접 생성하도록 바꿔 문서와 콘텐�
 
 ---
 
-## 8. Multiplayer에서도 “Server Authority” 하나로 끝나지 않았다
+## 8. Server Authority + Limited Prediction
 
 공유 gameplay 결과를 Server가 결정하는 원칙은 유지했습니다.
 
@@ -271,7 +264,7 @@ Correction
 
 ---
 
-## 9. 자동화도 “코드 생성”보다 검증 루프를 닫는 방향으로 바뀌었다
+## 9. AgentMcp로 Editor 검증 Loop 연결
 
 Agent를 사용해 C++만 작성하면 Unreal 프로젝트의 실제 변경은 절반만 끝난 경우가 많았습니다.
 
