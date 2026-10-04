@@ -139,7 +139,7 @@ Regression을 개별 Actor patch로 끝내지 않고 state ownership을 수정�
 
 개발 과정에서는 여러 반복 검증 script와 check count를 사용했습니다.
 
-다만 일부 verification script는 현재 public `main` repository에 포함되어 있지 않습니다.
+일부 verification script는 공개 저장소에 포함되어 있지 않습니다.
 
 따라서 Wiki에서는:
 
