@@ -307,7 +307,7 @@ Player-facing text인가?
 → StringTable
 ~~~
 
-모든 콘텐츠를 한 형식에 맞추기보다 **데이터의 사용 방식이 달라지면 저장 방식도 달라지게 구성**했습니다.
+데이터의 조회 방식·identity·dependency·lifecycle에 따라 저장 형식을 구분합니다.
 
 ---
 
