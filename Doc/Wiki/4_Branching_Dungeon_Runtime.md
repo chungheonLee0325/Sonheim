@@ -24,8 +24,6 @@ FDungeonStageRuntimeState
 GameState Replication
 ```
 
-
-> **코드 예시:** 실제 구현에서 구조 이해에 필요한 선언과 함수만 발췌했으며, `UPROPERTY` metadata와 보조 필드는 일부 생략했습니다.
 ---
 
 ## Part 1. Dungeon 하나는 무엇으로 정의되는가
