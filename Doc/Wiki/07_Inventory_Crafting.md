@@ -17,15 +17,15 @@ Sonheim에서는 하나의 Item 흐름을 공유하되:
 
 ~~~mermaid
 flowchart LR
-    ITEM["Item / Resource"]
-    INV["Player Inventory"]
-    EQUIP["Equipment"]
-    STAT["Stat Bonus"]
-    SKILL["Skill Grant"]
+    ITEM["<b>Item Definition</b><br/>FItemData"]
+    INV["<b>Player Inventory</b><br/>UInventoryComponent"]
+    EQUIP["<b>Equipment State</b><br/>EquippedSlots"]
+    STAT["<b>Stat 적용</b><br/>UStatBonusComponent"]
+    SKILL["<b>Skill 교체</b><br/>ReplaceGrant"]
 
-    BOX["World Container"]
-    CRAFT["Crafting Station"]
-    RESULT["Crafted Item"]
+    BOX["<b>Shared Container</b><br/>UContainerComponent"]
+    CRAFT["<b>Collaborative Crafting</b><br/>ACraftingStation"]
+    RESULT["<b>완료 Item</b><br/>CompletedToCollect"]
 
     ITEM --> INV
     BOX <--> INV
@@ -119,16 +119,50 @@ Equip Item
    ↓
 Equipped Slot
    ├─ Stat Modifier 적용
-   ├─ Weapon Mesh 갱신
+   ├─ Weapon Mesh / Animation 갱신
    ├─ Weapon HUD 갱신
    └─ Skill Grant 교체
 ~~~
 
-Inventory Component는 현재 Weapon이 부여한 Skill Source를 <code>ActiveWeaponGrantId</code>로 추적합니다.
+무기 데이터에는 실제로 <code>WeaponType</code>과 <code>SkillID</code>가 함께 들어 있습니다.
 
-Weapon이 교체되면 Skill Component의 <code>ReplaceGrant()</code>를 사용해 **해당 장비가 제공한 Skill set만 교체**합니다.
+~~~cpp
+struct FEquipmentData
+{
+    EEquipmentKindType EquipKind;
+    EWeaponType WeaponType;
+    int SkillID = 0;
 
-이 때문에 Inventory / Stat / Combat이 서로 직접 뒤엉키기보다 Equipment change를 경계로 연결됩니다.
+    bool bUseBullet = false;
+    TSet<int> BulletItemID;
+
+    USkeletalMesh* EquipmentMesh;
+    TSoftObjectPtr<UAnimBlueprint> EquipmentAnim;
+};
+~~~
+
+현재 활성 Weapon Slot이 바뀌면 Inventory Component가 Item의 <code>SkillID</code>를 읽고 Skill Component의 <code>ReplaceGrant()</code>로 **그 무기가 제공하는 공격 Skill을 교체**합니다.
+
+예를 들면:
+
+- **곡괭이** — 장착한 도구에 맞는 근접/채굴 공격 Skill과 Mesh/Animation을 사용해 Resource를 공격
+- **샷건** — Shotgun 계열 Skill로 전환되고, WeaponType에 맞는 Animation/Crosshair와 탄약 정보가 함께 연결
+
+~~~text
+Weapon Item
+   ↓ FEquipmentData.SkillID
+Active Weapon Slot
+   ↓
+ReplaceGrant(ActiveWeaponGrantId, SkillID)
+   ↓
+Player Skill Set 변경
+   ↓
+Input은 같은 Cast 경로 사용
+~~~
+
+따라서 Player 입력 코드에 “곡괭이면 Mining, 샷건이면 Shotgun” 같은 무기별 분기문을 추가하기보다 **장비 데이터가 현재 사용할 Skill을 선택**합니다.
+
+Inventory Component는 현재 Weapon이 부여한 Skill Source를 <code>ActiveWeaponGrantId</code>로 추적하므로 무기를 바꿀 때 다른 Source가 제공한 Skill까지 제거하지 않습니다.
 
 ---
 
@@ -276,14 +310,14 @@ Station 전체를 한 Player에게 잠그지 않고 **실제로 경쟁 상태가
 
 ~~~mermaid
 flowchart LR
-    SELECT["Recipe Select"]
-    VALIDATE["Material / Units 검증"]
-    CONSUME["Material 소비"]
-    WORK["ActiveWork"]
-    ADD["Player Work 누적"]
-    DONE["Unit 완료"]
-    COLLECT["Collect"]
-    INV["Inventory 지급"]
+    SELECT["<b>Recipe 선택</b><br/>Crafting UI"]
+    VALIDATE["<b>Server 검증</b><br/>Material · Units"]
+    CONSUME["<b>재료 소비</b><br/>InventoryResourceProvider"]
+    WORK["<b>공유 작업 상태</b><br/>FActiveCraftWork"]
+    ADD["<b>협력 작업</b><br/>Player Work 누적"]
+    DONE["<b>Unit 완료</b><br/>CompletedToCollect"]
+    COLLECT["<b>결과 수령</b><br/>ServerCollectAll"]
+    INV["<b>Inventory 반영</b><br/>AddItem"]
 
     SELECT --> VALIDATE
     VALIDATE --> CONSUME
@@ -377,7 +411,110 @@ Crafting Queue도 <code>OnWorkChanged</code>, <code>OnCompletedChanged</code>로
 
 ---
 
-## 13. Dungeon Reward도 같은 Inventory API를 사용
+## 13. UI는 authoritative data를 소유하지 않고 변환해서 보여준다
+
+Inventory/Crafting UI의 실제 데이터 소유자는 Widget이 아닙니다.
+
+### Inventory Screen
+
+~~~mermaid
+flowchart LR
+    SERVER["<b>Authoritative Inventory</b><br/>UInventoryComponent"]
+    REP["<b>Client Mirror</b><br/>InventoryItems"]
+    EVENT["<b>변경 알림</b><br/>OnInventoryChanged<br/>OnEquipmentChanged"]
+    SCREEN["<b>Screen Controller</b><br/>ASonheimPlayerController"]
+    INVUI["<b>Inventory View</b><br/>UInventoryWidget"]
+    SLOT["<b>재사용 Slot</b><br/>USlotWidget"]
+    DATA["<b>정적 Item Data</b><br/>FItemData / GameInstance"]
+
+    SERVER --> REP
+    REP --> EVENT
+    EVENT --> INVUI
+    SCREEN --> INVUI
+    DATA --> INVUI
+    INVUI --> SLOT
+~~~
+
+PlayerController가 Inventory Screen을 열 때 <code>UInventoryWidget</code>을 생성하고 <code>UInventoryComponent</code>를 주입합니다.
+
+Widget은:
+
+1. <code>InventoryItems</code>에서 ItemID / Count를 받음
+2. GameInstance의 <code>FItemData</code>에서 이름·아이콘·rarity 같은 정적 정보를 조회
+3. 화면용 <code>USlotWidget</code>에 전달
+4. 이후 <code>OnInventoryChanged / OnEquipmentChanged</code>를 받아 다시 반영
+
+하는 역할입니다.
+
+즉 **replicated runtime state와 정적 Item definition을 UI에서 조합하되, Widget 자체가 원본 gameplay state를 만들지는 않습니다.**
+
+### 같은 Slot Widget을 여러 화면에서 재사용
+
+<code>USlotWidget</code>은 Inventory 전용 그림이 아니라 Item slot의 공통 interaction/view 역할을 갖습니다.
+
+- Player Inventory grid
+- Equipment slot
+- Container item
+- Crafting recipe/material 표현
+
+에서 같은 Item icon / quantity / drag-drop 기반을 재사용합니다.
+
+Container 화면도 별도 Inventory UI를 다시 만들지 않고 <code>UContainerInteractionWidget</code> 안에:
+
+~~~text
+PlayerInventoryWidget
++
+ContainerInventoryWidget
+~~~
+
+을 배치해 양쪽 Item state를 한 화면에서 연결합니다.
+
+### Crafting UI
+
+Crafting 화면은 두 종류의 source를 결합합니다.
+
+~~~text
+Recipe DataTable
+   ├─ 결과 Item
+   ├─ 필요 Material
+   └─ WorkRequired
+        +
+Player Inventory
+   └─ 현재 보유 수량
+        +
+Crafting Station
+   └─ ActiveWork / CompletedToCollect
+        ↓
+UCraftingWidget / Queue Widget
+~~~
+
+Recipe가 바뀔 때만 이름·아이콘·Material row 같은 **정적 구조**를 재구성하고, Inventory 수량이나 Quantity가 바뀔 때는 **동적 값만 갱신**합니다.
+
+Required Material row는 부모 Widget이 pool을 소유해 부족할 때만 생성하고 나머지는 <code>Collapsed</code>로 재사용합니다.
+
+### Confirm Popup
+
+버리기/폐기처럼 추가 확인이 필요한 동작은 <code>UInventoryWidget</code>이 <code>UConfirmWidget</code>을 생성하고:
+
+~~~text
+ItemID
+MaxCount
+Drop / Discard Mode
+   ↓
+Confirm Widget
+   ↓ OnConfirm
+InventoryWidget
+   ↓
+ServerDrop / ServerDiscard
+~~~
+
+로 결과를 돌려받습니다.
+
+현재 이 Confirm UI는 **프로젝트 전체 공용 modal manager에 등록되는 구조가 아니라 Inventory 화면이 직접 수명을 소유하는 local popup**입니다. 프로젝트 전체 Notice/Screen/Input 관리 구조와 이 한계는 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]에서 별도로 정리합니다.
+
+---
+
+## 14. Dungeon Reward도 같은 Inventory API를 사용
 
 Dungeon의 <code>GrantReward</code>는 별도의 Reward Inventory를 만들지 않고 기존 <code>Inventory.AddItem()</code> 경로로 지급합니다.
 
