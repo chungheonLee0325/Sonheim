@@ -1,15 +1,13 @@
 # 13. Content Authoring & Validation
 
-Data-driven 구조에서는 C++ 분기문이 줄어드는 대신 **잘못된 데이터 조합을 만들 수 있는 범위가 넓어집니다.**
+Dungeon/Boss 콘텐츠가 DataAsset으로 확장되면서 **field 단위 검사만으로는 cycle, unreachable path, 잘못된 producer 순서, timing/animation contract 오류를 잡기 어려워졌습니다.**
 
-Sonheim은 Dungeon / Boss 콘텐츠에서 오류를 플레이 중에 발견하는 대신:
+검증 흐름은 다음 네 단계로 구성합니다.
 
-1. **Editor 입력 자체를 제한하고**
-2. **구조적 규칙을 Validation으로 검사하고**
-3. **Stage Graph를 source-of-truth에서 생성하고**
-4. **Runtime entry에서도 핵심 구조를 다시 검증**
-
-하도록 구성했습니다.
+1. **Editor 입력 제한** — 잘못된 field 조합을 줄임
+2. **Structural / Graph Validation** — Stage/Transition/Producer 관계 검사
+3. **Generated Stage Graph** — 실제 Definition에서 흐름 시각화
+4. **Runtime Entry Validation** — 실행 전 핵심 구조 재검사
 
 ---
 
@@ -32,7 +30,7 @@ flowchart LR
     RUNTIME --> PLAY
 ~~~
 
-Validation을 별도 문서 체크리스트로 유지하지 않고 **실제 Definition과 같은 코드에서 실행**합니다.
+Validation rule은 실제 Definition 코드에 두고 Editor와 Runtime에서 같은 core 검사를 호출합니다.
 
 ---
 
@@ -76,7 +74,7 @@ struct FDungeonStageAction
 - <code>Categories="Dungeon"</code>
 - <code>ClampMin / ClampMax</code>
 
-목적은 Editor 화면을 꾸미는 것이 아니라 **유효하지 않은 조합을 작성할 기회를 줄이는 것**입니다.
+EditCondition·Category·Clamp metadata로 Type별 필요한 field만 노출하고 입력 범위를 제한합니다.
 
 ---
 
@@ -97,7 +95,7 @@ Dungeon.ForgottenRuins
 → Validation Error
 ~~~
 
-Tag를 문자열 ID처럼 자유롭게 입력하는 대신 **콘텐츠 namespace 자체를 authoring rule로 사용**합니다.
+Dungeon namespace를 GameplayTag 선택과 validation 기준으로 함께 사용합니다.
 
 ---
 
@@ -125,11 +123,11 @@ void ValidateNow();
 
 로 연결합니다.
 
-Editor용 버튼과 Runtime 검사가 서로 다른 규칙을 복사해 갖지 않습니다.
+<code>ValidateNow()</code>, Unreal Data Validation, Runtime entry가 같은 <code>ValidateDefinition()</code> core를 사용합니다.
 
 ---
 
-## 4. 단순 Null Check보다 “실행 가능한 Stage Graph인가”를 검사
+## 4. Stage Graph의 실행 가능성 검사
 
 Dungeon Validation에서 실제로 검사하는 범위는 크게 네 단계입니다.
 
@@ -165,7 +163,7 @@ ActorInteracted / AreaEntered / MonsterCaptured
 
 ## 5. Transition의 논리 오류를 검사
 
-Transition은 단순히 NextStage가 존재하는지만 검사하지 않습니다.
+Transition은 reference 존재 여부와 함께 실행 순서·도달 가능성을 검사합니다.
 
 대표적으로:
 
@@ -213,7 +211,7 @@ Cycle 검사
 - StartStage에서 도달할 수 없는 Stage → Warning
 - disconnected 영역 안의 cycle도 별도 검사
 
-Stage 배열을 눈으로 보고 모든 경로를 사람이 확인하지 않아도 됩니다.
+StartStage 기준 reachability와 cycle을 graph traversal로 계산합니다.
 
 ---
 
@@ -239,7 +237,7 @@ Stage B
 → Validation Error
 ~~~
 
-단순 reference 존재 여부가 아니라 **Producer가 Consumer보다 앞선 실행 경로에 존재할 수 있는지**까지 확인합니다.
+Group reference와 함께 **Producer가 Consumer보다 앞선 실행 경로에 존재할 수 있는지**를 확인합니다.
 
 이 검사는 데이터 기반 Dungeon이 커질수록 수동 검토보다 효과가 큰 부분입니다.
 
