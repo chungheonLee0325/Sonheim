@@ -121,9 +121,7 @@ void ValidateNow();
 - <code>IsDataValid()</code> — Unreal Data Validation
 - Runtime asset entry — 같은 <code>ValidateDefinition()</code> 검사
 
-로 연결합니다.
-
-<code>ValidateNow()</code>, Unreal Data Validation, Runtime entry가 같은 <code>ValidateDefinition()</code> core를 사용합니다.
+세 진입점이 같은 validation core를 사용합니다.
 
 ---
 
