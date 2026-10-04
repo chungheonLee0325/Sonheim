@@ -488,7 +488,7 @@ Dungeon Runtime은 Boss status를 다시 Run Snapshot에 반영해 HUD가 `UBoss
 - [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Boss Strike가 재사용하는 Attack/Damage Pipeline
 - [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — Exhaust 상태에서 연결되는 기존 Capture 처리
 - [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Boss가 Dungeon Stage의 Objective로 연결되는 과정
-- [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]] — Boss Status를 HUD로 변환하는 과정
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Boss Status를 HUD로 변환하는 과정
 - [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — Pattern / Timing 데이터 검증
 
 ---
