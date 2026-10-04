@@ -284,7 +284,7 @@ Notify 위치를 Animation timeline에서 직접 보며 조정하기 때문에 �
 - **이동 가능 시점** — Root Motion이나 공격 동작이 끝나기 전에 이동을 풀지 여부
 - **방향 전환 시점** — 공격 모션 중 어느 구간까지 Character의 회전을 제한하거나 다시 허용할지
 
-즉 AnimNotify를 Hit 발생 시점만 지정하는 용도로 쓰지 않고, **공격 모션과 Player control rule을 같은 timeline에서 맞추는 authoring point**로 사용합니다.
+AnimNotify는 Hit 발생 시점뿐 아니라 **공격 모션과 Player control rule을 같은 timeline에서 조정하는 authoring point**로 사용합니다.
 
 Player state와 `FActionRestrictions` 자체는 [[04. Player & Character Systems|04_Player_Character_Systems]]에서 설명합니다.
 
