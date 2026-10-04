@@ -261,7 +261,7 @@ TimeLimit == 0
 → Error
 ~~~
 
-개별 field의 값이 아니라 **서로 관련된 field의 의미 조합**을 검사합니다.
+TimeLimit과 Timeout Rule처럼 **서로 연관된 field의 의미 조합**도 함께 검사합니다.
 
 ---
 
