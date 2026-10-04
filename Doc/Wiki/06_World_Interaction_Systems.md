@@ -10,7 +10,7 @@ Detection·Prompt·Hold·Server 요청은 \`UInteractionComponent\`가 공통으
 
 ~~~mermaid
 flowchart LR
-    INPUT["Player Input"]
+    INPUT["<b>Player Input</b>"]
     COMP["<b>Interaction Component</b><br/>Detection · Hold · Request"]
     API["<b>IInteractableInterface</b><br/>공통 Contract"]
 
