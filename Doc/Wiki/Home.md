@@ -10,11 +10,11 @@
 
 ## System Architecture
 
-아래 그림은 기능 목록이 아니라 **현재 코드에서 각 책임이 어디에 위치하는지**를 기준으로 정리한 전체 구조입니다.
+**현재 코드의 주요 시스템과 책임 구조**입니다.
 
-- **굵은 첫 줄** — 해당 영역의 책임
+- **굵은 첫 줄** — 역할
 - **둘째 줄 이하** — 실제 UE / Sonheim class·data
-- **점선** — gameplay 소유 관계가 아닌 동기화·표현 연결
+- **점선** — 동기화·표현 연결
 
 ~~~mermaid
 flowchart TB
@@ -106,14 +106,10 @@ flowchart TB
 
 - [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — 기본 HUD의 Delegate binding, Inventory/Crafting screen, Confirm popup, Notice/Toast queue, Dungeon Presenter/ViewData와 LocalPlayer UI routing을 함께 설명합니다.
 
-UI는 한 종류의 manager로 모두 통일하지 않았습니다.
-
-- **지속 HUD** — component/player state delegate를 구독
-- **메뉴/상호작용 Screen** — PlayerController와 대상 Widget이 local lifecycle 관리
-- **일시적 Notice** — <code>UNoticeSubsystem</code>이 Slot/Queue/Channel 단위로 관리
-- **복합 콘텐츠 UI** — Presenter/ViewData/UI Router로 gameplay schema와 UMG를 분리
-
-현재 프로젝트에는 모든 popup을 통제하는 범용 modal stack이 있는 것은 아니며, Confirm popup과 menu/input ownership은 해당 화면에서 관리합니다. 이 경계와 개선 가능성도 UI 문서에 함께 남깁니다.
+- **Player HUD** — Health·Stamina·Level 등 gameplay state의 Delegate를 구독해 갱신
+- **Inventory / Container / Crafting** — PlayerController와 각 Widget이 화면 lifecycle과 데이터 바인딩을 관리
+- **Notice / Toast** — <code>UNoticeSubsystem</code>이 Banner·Title의 Queue와 Channel을 관리
+- **Dungeon HUD / Result** — Snapshot → Presenter → ViewData → UI Router로 복합 상태를 화면에 전달
 
 ---
 
@@ -121,13 +117,13 @@ UI는 한 종류의 manager로 모두 통일하지 않았습니다.
 
 현재 가장 큰 통합 적용 사례는 **분기형 Dungeon Vertical Slice**입니다.
 
-기존 Combat·Interaction·Inventory·Capture를 다시 만드는 대신, Dungeon Definition과 Runtime이 이 시스템들의 결과를 objective / branch / reward / boss encounter로 조합합니다.
+Dungeon Definition과 Runtime은 Combat·Interaction·Inventory·Capture의 결과를 objective / branch / reward / boss encounter로 연결합니다.
 
 - [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Branch, Objective, Barrier, Timer, Reward, Record를 Event/Condition/Action/Transition 데이터로 진행
 - [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — 기존 Monster/Combat 기반 위에 Boss FSM, Pattern/Strike, Telegraph, Phase, Down/Exhaust를 구성
 - [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — HUD, 목표 추적, Party 상태, Minimap/Marker, Boss HUD, Result를 current snapshot에서 구성
 
-Dungeon은 프로젝트 전체를 대표하는 유일한 구조가 아니라, **기존 시스템이 실제 콘텐츠 하나에서 함께 동작하는지 검증한 통합 사례**로 다룹니다.
+Forgotten Ruins는 **Combat·Interaction·Inventory·Capture·UI가 하나의 콘텐츠 흐름에서 연결되는 통합 구현 사례**입니다.
 
 ---
 
@@ -148,7 +144,7 @@ Dungeon은 프로젝트 전체를 대표하는 유일한 구조가 아니라, **
 
 Sonheim에서는 **Dungeon HUD/Result와 UMG 작성·검증, Animation Blueprint/Montage/BlendSpace 구성, Blueprint default/DataAsset/StringTable 편집, PIE 및 viewport capture**에 사용했습니다.
 
-자세한 개발/검증 흐름은 [[14. Development Workflow & Verification|14_Development_Workflow_Verification]]에서 다룹니다.
+[[14. Development Workflow & Verification|14_Development_Workflow_Verification]]에서 AgentMcp를 포함한 Editor 작업과 검증 흐름을 정리합니다.
 
 ---
 
