@@ -1,19 +1,8 @@
 # 14. Development Workflow & Verification
 
-Sonheim은 C++ 코드만 수정하고 끝내는 프로젝트가 아닙니다.
+Sonheim 개발에서는 C++ 변경 이후 **Blueprint/DataAsset/Animation/UMG와 PIE 결과까지 같은 변경 단위에서 확인**합니다.
 
-Gameplay 기능이 실제로 완성되려면:
-
-- C++ Runtime
-- Blueprint / DataAsset
-- Animation / Montage
-- UMG
-- PIE multiplayer session
-- 실제 화면 결과
-
-가 함께 맞아야 합니다.
-
-그래서 개발 과정을 **Inspect → Edit → Compile → PIE → Capture / Log → Review → Iterate**의 닫힌 루프로 구성하고, 각 단계에서 확인할 문제를 분리했습니다.
+검증 흐름은 **Authoring Validation → Scenario Verification → Visual Review**로 나누고, Editor 작업은 **Inspect → Edit → Compile → PIE → Log/Capture → Review** 순서로 반복합니다.
 
 ---
 
@@ -38,13 +27,13 @@ flowchart LR
     FIX --> INSPECT
 ~~~
 
-목표는 자동화 자체가 아니라 **변경한 코드와 실제 Unreal Editor 결과 사이의 확인 거리를 줄이는 것**입니다.
+코드·Asset 변경과 실제 Editor/PIE 결과를 같은 작업 흐름에서 확인합니다.
 
 ---
 
 ## 1. 검증을 세 종류로 나눈다
 
-같은 테스트 방식으로 모든 오류를 잡으려 하지 않습니다.
+오류 유형에 따라 검증 단계를 나눕니다.
 
 ### Authoring Validation
 
@@ -97,7 +86,7 @@ Runtime 흐름    → Scenario Verification
 
 [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)는 **Unreal Engine 5.8의 실험적 MCP/toolset과 Agent Skill 개념을 참고해 UE 5.5용으로 재구현한 Editor MCP plugin**입니다.
 
-목표는 source code를 작성하는 agent가 Unreal Editor 밖에서 멈추지 않고 **프로젝트를 inspect → edit → run → verify**할 수 있게 하는 것입니다.
+AgentMcp는 coding agent가 Unreal Editor에서 **inspect → edit → run → verify**까지 이어서 수행할 수 있도록 연결합니다.
 
 ~~~text
 Coding Agent
@@ -123,7 +112,7 @@ Plugin / project의 <code>SKILL.md</code>를 Editor가 연결된 agent에 제공
 
 ### UMG에 특화한 도구
 
-일반 object property 수정만 제공하는 것이 아니라:
+UMG 작업에는 다음 전용 도구를 사용합니다.
 
 - Widget Tree / Named Slot inspect
 - C++ <code>BindWidget / BindWidgetOptional</code> contract 검사
@@ -135,13 +124,13 @@ Plugin / project의 <code>SKILL.md</code>를 Editor가 연결된 agent에 제공
 
 까지 한 흐름으로 연결합니다.
 
-Sonheim Runtime 자체가 AgentMcp에 의존하는 것은 아니며, **게임 기능과 분리된 Editor authoring / verification tooling**입니다.
+AgentMcp는 Sonheim Runtime과 분리된 Editor authoring / verification plugin입니다.
 
 ---
 
 ## 3. 코드 밖에 있는 작업도 같은 변경 단위에서 처리
 
-예를 들어 Boss 기능 하나를 추가하면 C++만 수정해서 끝나지 않습니다.
+Boss 기능 변경은 Runtime C++과 Pattern/Animation/Blueprint asset을 함께 수정합니다.
 
 ~~~text
 Boss Runtime C++ 변경
@@ -214,11 +203,11 @@ Widget 수정
  → 다시 조정
 ~~~
 
-Editor 변경과 실제 runtime 결과를 별도 수동 작업으로 끊지 않습니다.
+Editor 수정 후 compile·PIE·capture까지 같은 session에서 이어서 확인합니다.
 
 ---
 
-## 5. Dungeon은 한 성공 경로만 테스트하지 않는다
+## 5. Dungeon Scenario Matrix
 
 분기형 콘텐츠는 “Clear 한 번 됨”만 확인해서는 회귀를 찾기 어렵습니다.
 
@@ -237,7 +226,7 @@ Editor 변경과 실제 runtime 결과를 별도 수동 작업으로 끊지 않�
 
 ---
 
-## 6. Regression을 단순 Patch가 아니라 경계 문제로 다시 본 사례
+## 6. Regression 사례와 구조 수정
 
 ### Boss Wake가 Remote Client에서 보이지 않음
 
@@ -267,7 +256,7 @@ Boss의 현재 Action / Phase / Break는 persistent status로 유지하고, 순�
 
 Server path에서는 이미 처리하던 null-state를 Client replication lifecycle에서도 안전하게 다루도록 수정했습니다.
 
-이 문제는 Capture 기능 자체보다 **“복제 callback은 로컬 UI 수명과 같은 순서로 도착하지 않는다”**는 lifecycle 문제였습니다.
+수정 기준은 **복제 callback과 Local UI lifecycle의 순서를 동일하다고 가정하지 않는 것**이었습니다.
 
 ---
 
@@ -337,9 +326,9 @@ Intermediate/
 
 ---
 
-## 9. AgentMcp 자체 개발은 별도 프로젝트에서 검증
+## 9. AgentMcp Verification
 
-Sonheim Wiki에서는 AgentMcp를 “Sonheim의 게임 기능”으로 설명하지 않습니다.
+AgentMcp repository에서는 Editor tool 자체를 별도 testbed와 smoke test로 검증합니다.
 
 AgentMcp repository 자체에서:
 
@@ -354,11 +343,9 @@ AgentMcp repository 자체에서:
 - Animation authoring
 - Agent Skill
 
-을 별도 testbed와 smoke test로 검증합니다.
+을 검증하며, 현재 AgentMcp README 기준 testbed smoke test는 **216 checks**를 수행합니다.
 
-현재 AgentMcp README 기준 testbed smoke test는 **216 checks**를 수행합니다.
-
-Sonheim에서는 검증된 Editor tool을 실제 프로젝트 workflow에 적용하는 관계입니다.
+Sonheim에서는 이 Editor tool을 실제 authoring / PIE 검증 workflow에 사용합니다.
 
 ---
 
@@ -370,24 +357,6 @@ Sonheim에서는 검증된 Editor tool을 실제 프로젝트 workflow에 적용
 | **AgentMcp 기반 Editor loop** | C++과 Editor asset 작업을 한 session에서 수정/검증 | UE Editor가 실행 중이어야 하고 Editor API 범위에 영향받음 |
 | **Scenario 중심 회귀 검사** | Branch / Client / Failure path를 반복 확인 | 전체 조합을 완전 탐색하는 자동 테스트는 아님 |
 | **Source-only Mirror** | 채용/리뷰 시 코드 접근성 향상 | mirror sync workflow 유지 필요 |
-
----
-
-## 시각 자료로 보여줄 핵심 Workflow
-
-이 문서는 최종적으로 한 개의 짧은 영상으로 설명하는 것이 가장 효과적입니다.
-
-~~~text
-Codex / Claude Code
- → AgentMcp로 UE Editor Inspect
- → Asset / Blueprint 수정
- → Compile
- → PIE
- → Log / Viewport 확인
- → 결과에 따라 재수정
-~~~
-
-단순 terminal transcript보다 **실제 Unreal Editor가 변경되고 PIE 결과를 다시 확인하는 흐름**을 중심으로 캡처할 예정입니다.
 
 ---
 
