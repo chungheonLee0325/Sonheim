@@ -1,114 +1,104 @@
 # 03. Data & Content Architecture
 
-> **핵심 구현 범위**
->
-> “왜 어떤 데이터는 DataTable이고, 어떤 콘텐츠는 PrimaryDataAsset이며, Runtime ID는 GameplayTag인가?”
+Sonheim은 모든 데이터를 DataTable 하나에 넣지 않습니다.  
+**데이터가 얼마나 반복되는지, 자체 identity와 dependency가 필요한지, Runtime에서 어떻게 찾고 저장할지**에 따라 표현 방식을 나눴습니다.
 
-Sonheim은 모든 데이터를 한 형태로 통일하지 않습니다.  
-**조회 방식, 수명, dependency, editor workflow**가 다르면 표현 방식도 달라집니다.
+실제 프로젝트에서는 다음처럼 사용합니다.
 
----
-
-## Part 1. 먼저 구분해야 할 네 종류
-
-| 문제 | 사용 방식 |
-|---|---|
-| 같은 schema의 row가 많고 ID로 자주 조회 | DataTable |
-| 자체 identity와 asset dependency가 있는 콘텐츠 | PrimaryDataAsset |
-| 계층적인 runtime identifier | GameplayTag |
-| 당장 load할 필요가 없는 asset dependency | Soft Reference |
-
-이 구분을 이해하면 Item/Skill과 Dungeon이 왜 다른 data model을 갖는지 설명됩니다.
+| 데이터 성격 | 사용 방식 | 실제 예 |
+|---|---|---|
+| 같은 schema의 row를 ID로 반복 조회 | **DataTable** | Item, Skill, AreaObject, Level, Resource |
+| 하나의 독립 콘텐츠 정의 | **PrimaryDataAsset / DataAsset** | Dungeon Definition, Boss Pattern |
+| 계층적 Runtime identifier | **GameplayTag** | Stage, Branch, Barrier, Boss Pattern |
+| 필요 시점에 Load할 dependency | **Soft Reference** | Dungeon Presentation, Spawn Rule |
+| Player-facing text | **StringTable** | Dungeon, Notice, Island text |
 
 ---
 
-## Part 2. DataTable — 대량 Row 데이터
+## 전체 데이터 흐름
 
-대표적으로:
+~~~mermaid
+flowchart LR
+    ROW["Row Data<br/>Item · Skill · Stat"]
+    CATALOG["Catalog<br/>입장/조회용 Index"]
+    DEF["Content Definition<br/>Dungeon · Boss"]
+    TAG["GameplayTag<br/>Stage · Branch · Pattern"]
+    SOFT["Soft Asset Dependency"]
+    RUNTIME["Runtime"]
 
-- Item
-- Skill
-- AreaObject
-- Level
-- Resource
-- Container
+    ROW --> RUNTIME
+    CATALOG --> DEF
+    DEF --> RUNTIME
+    TAG --> DEF
+    TAG --> RUNTIME
+    SOFT --> DEF
+~~~
 
-가 DataTable row입니다.
+핵심은 “어떤 UE 데이터 기능을 썼는가”보다 **한 데이터가 프로젝트에서 어떤 책임을 갖는지**입니다.
 
-예를 들어 Skill row는 실제로 다음 정보를 갖습니다.
+---
 
-```cpp
-USTRUCT(BlueprintType)
+## 1. Item / Skill처럼 반복되는 Gameplay Data — DataTable
+
+Item이나 Skill은 같은 schema를 가진 row가 많고, Runtime에서 ID로 반복 조회합니다.
+
+Skill Data:
+
+~~~cpp
 struct FSkillData : public FTableRowBase
 {
-    GENERATED_USTRUCT_BODY()
-
     int SkillID = 0;
-    TSubclassOf<UBaseSkill> SkillClass = nullptr;
+    TSubclassOf<UBaseSkill> SkillClass;
 
     TArray<FSkillStaminaCost> StaminaCosts;
     TArray<FSkillItemCost> ItemCosts;
 
-    float CastRange = 0.0f;
-    float CoolTime = 0.0f;
+    float CastRange = 0.f;
+    float CoolTime = 0.f;
 
     UAnimMontage* Montage = nullptr;
     TArray<FAttackData> AttackData;
 
     int NextSkillID = 0;
 };
-```
+~~~
 
-Skill마다 독립 asset lifecycle이 필요한 것이 아니라 같은 schema를 가진 row를 ID로 반복 조회하므로 DataTable이 자연스럽습니다.
+여기서 한 row는:
 
-Skill 자체의 실행 구조는 [[5. Combat, Skill & Animation|05_Combat_Skill_Animation]]에서 설명합니다.
+- 실행할 Skill class
+- Cost
+- Range / Cooldown
+- Animation
+- Attack Data
+- Combo 연결
+
+을 선택합니다.
+
+Skill마다 별도 asset lifecycle을 관리하기보다 **같은 구조의 대량 데이터를 빠르게 조회하는 문제**라 DataTable을 사용합니다.
+
+실제 실행 과정은 [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]]에서 이어집니다.
 
 ---
 
-## Part 3. Dungeon은 왜 PrimaryDataAsset인가
+## 2. Dungeon은 Row가 아니라 하나의 콘텐츠 단위
 
-Dungeon은 “row 하나”보다 하나의 **콘텐츠 패키지**에 가깝습니다.
+Dungeon은 Item/Skill과 요구사항이 다릅니다.
 
-필요한 것:
+하나의 Dungeon이 함께 소유하는 정보:
 
-- 자체 identity
-- 여러 Stage의 nested graph
-- Presentation asset
-- Spawn Rule
+- Start Stage
+- 여러 Stage와 Transition
+- Reward / Grade Rule
+- Presentation dependency
+- Spawn Rule dependency
 - Validation
-- 필요 시점 asset loading
+- PrimaryAsset identity
 
-그래서 Catalog와 실제 Definition을 분리합니다.
+이 구조를 DataTable의 한 row에 계속 중첩하기보다 \`UDungeonDefinitionDataAsset\`을 콘텐츠 단위로 사용합니다.
 
-### 3.1 Catalog Row
-
-```cpp
-USTRUCT(BlueprintType)
-struct FDungeonCatalogRow : public FTableRowBase
-{
-    GENERATED_BODY()
-
-    FGameplayTag DungeonId;
-    int32 DungeonNumber = 0;
-    FPrimaryAssetId DefinitionAssetId;
-    int32 RequiredLevel = 1;
-};
-```
-
-Catalog는 “어떤 Dungeon을 열 것인가”를 찾는 작은 index입니다.
-
-실제 Stage graph는 넣지 않습니다.
-
----
-
-### 3.2 Definition Asset
-
-```cpp
-UCLASS(BlueprintType)
+~~~cpp
 class UDungeonDefinitionDataAsset : public UPrimaryDataAsset
 {
-    GENERATED_BODY()
-
 public:
     FGameplayTag DungeonId;
     FGameplayTag StartStageId;
@@ -118,165 +108,228 @@ public:
     TArray<FDungeonStageDefinition> Stages;
     TArray<FDungeonGradeRule> GradeRules;
 };
-```
+~~~
 
-이 asset이 Dungeon 콘텐츠의 authoring unit입니다.
-
-```text
-Catalog Row
-   ↓ PrimaryAssetId
+\`\`\`text
 Dungeon Definition
-   ├─ Stage Graph
-   ├─ Grade Rules
-   └─ Soft Presentation Reference
-```
+ ├─ Identity
+ ├─ Stage Graph
+ ├─ Reward / Grade
+ └─ Asset Dependencies
+\`\`\`
+
+Definition 하나가 **작성·검증·Load의 단위**가 됩니다.
 
 ---
 
-## Part 4. GameplayTag — Runtime Identifier
+## 3. Catalog는 “콘텐츠 찾기”만 담당
 
-Dungeon의:
+Dungeon 입구에서 전체 Stage Graph를 알 필요는 없습니다.
 
-- Stage
-- Group
-- Branch
-- Barrier
-- Event Source
+\`FDungeonCatalogRow\`는 작은 index 역할만 가집니다.
 
-와 Boss Pattern은 GameplayTag 계층을 사용합니다.
+~~~cpp
+struct FDungeonCatalogRow : public FTableRowBase
+{
+    FGameplayTag DungeonId;
+    int32 DungeonNumber = 0;
+    FPrimaryAssetId DefinitionAssetId;
+    int32 RequiredLevel = 1;
+};
+~~~
+
+~~~text
+Entrance / Catalog
+      ↓
+DefinitionAssetId
+      ↓
+Dungeon Definition Load
+      ↓
+Runtime Start
+~~~
+
+입장 조건과 Definition 조회 정보만 Catalog에 두고 실제 콘텐츠 내용은 DataAsset으로 넘깁니다.
+
+---
+
+## 4. Runtime Identity — GameplayTag
+
+Dungeon에는 서로 관계 있는 ID가 많이 필요합니다.
 
 예:
 
-```text
+~~~text
 Dungeon.ForgottenRuins.Stage.*
 Dungeon.ForgottenRuins.Group.*
 Dungeon.ForgottenRuins.Branch.*
 Dungeon.ForgottenRuins.Barrier.*
 
 Boss.Grizzbolt.Pattern.*
-```
+~~~
 
-### 왜 enum이 아닌가
+GameplayTag를 사용한 이유는 단순히 문자열보다 편해서가 아닙니다.
 
-전역 enum에 콘텐츠별 값을 계속 추가하면:
+### 콘텐츠별 namespace
 
-- 서로 다른 Dungeon ID가 한 namespace에 섞이고
-- 콘텐츠 추가마다 C++ enum 수정이 필요하며
-- editor에서 유효 category를 제한하기 어렵습니다.
+Stage / Group / Barrier가 어느 Dungeon에 속하는지 이름 자체에 계층이 생깁니다.
 
-GameplayTag는 콘텐츠별 namespace와 editor category filter를 함께 사용할 수 있습니다.
+### Editor authoring
 
----
+Property metadata로 특정 category의 Tag만 선택하게 제한할 수 있습니다.
 
-## Part 5. Stable Save ID와 Runtime ID는 다르다
+### Runtime 비교
 
-Dungeon Record의 key는 `DungeonNumber`를 사용합니다.
+Branch 선택, RunTag, Barrier state처럼 서로 다른 시스템이 같은 identifier를 공유할 수 있습니다.
 
-왜 GameplayTag를 그대로 저장 key로 쓰지 않는가?
+### Validation
 
-GameplayTag 이름은 콘텐츠 정리 중 rename할 수 있습니다.  
-반면 SaveGame key가 바뀌면 기존 기록을 잃습니다.
+잘못된 Dungeon namespace의 Tag를 Definition에 넣으면 Editor Validation에서 탐지합니다.
 
-따라서:
-
-```text
-DungeonId (GameplayTag)
-→ Runtime / Authoring Identity
-
-DungeonNumber (int32)
-→ Persistent Save Identity
-```
-
-로 역할을 나눕니다.
+즉 GameplayTag가 **Runtime ID이면서 Authoring contract** 역할도 합니다.
 
 ---
 
-## Part 6. Soft Reference — Dependency를 Load Timing과 분리
+## 5. Runtime ID와 Save ID는 의도적으로 분리
 
-Definition은 Presentation을 soft reference로 가집니다.
+현재 Dungeon Record는 \`DungeonNumber\`를 Save key로 사용합니다.
 
-```cpp
+~~~text
+DungeonId : GameplayTag
+→ Runtime / Authoring identity
+
+DungeonNumber : int32
+→ Persistent Save identity
+~~~
+
+GameplayTag는 콘텐츠 정리 과정에서 rename될 수 있습니다.
+
+반면 SaveGame key가 같이 바뀌면 기존 Player record와의 호환 문제가 생깁니다.
+
+따라서 **읽기 좋은 콘텐츠 ID와 장기 저장용 stable ID를 같은 값에 묶지 않았습니다.**
+
+---
+
+## 6. Soft Reference — Dependency와 Load 시점을 분리
+
+Dungeon Definition은 Presentation을 soft reference로 갖습니다.
+
+~~~cpp
 TSoftObjectPtr<UDungeonPresentationDataAsset> Presentation;
-```
+~~~
 
-Stage Action의 SpawnRule도 soft reference입니다.
+Stage의 Spawn Action도 Spawn Rule을 soft reference로 참조합니다.
 
-콘텐츠를 참조한다고 프로젝트 시작 시 전부 강제로 memory에 올리지 않고, Dungeon 진입 시 Asset Subsystem이 필요한 dependency를 준비합니다.
+~~~text
+Dungeon Definition
+   ├─ Presentation (Soft)
+   └─ Spawn Rule (Soft)
+          ↓
+Dungeon 진입 시 Asset Subsystem 준비
+~~~
+
+콘텐츠가 존재한다는 이유만으로 모든 dependency를 프로젝트 시작 시 강제 load하지 않고 **사용 시점에 필요한 asset을 준비**합니다.
+
+Editor Validation에서는 필요하면 soft dependency를 load해 구조까지 검사하지만 Runtime structural validation과는 분리합니다.
 
 ---
 
-## Part 7. Runtime Data와 Presentation Data를 분리한다
+## 7. Gameplay Definition과 Presentation Data를 분리
 
-Dungeon gameplay definition과 화면 표현은 별도 asset입니다.
+Dungeon의 진행 규칙과 화면 문구/아이콘은 같은 이유로 바뀌지 않습니다.
 
-### Gameplay
-`UDungeonDefinitionDataAsset`
+### Gameplay Definition
 
 - Stage
-- Event
-- Action
+- Event / Condition / Action
 - Transition
 - Time Limit
 - Reward
-- Grade
+- Grade Rule
 
-### Presentation
-`UDungeonPresentationDataAsset`
+### Presentation Data
 
-- Title
+- Dungeon / Stage Title
 - Objective Text
 - Icon
-- Minimap
-- Room Rect
+- Minimap Texture / Room Rect
 - Notice
+- Boss Label
 - Result Text
 
-Runtime은 “Combat Stage”라는 ID를 다루고, Presenter가 이를 “경비실을 정리하세요” 같은 화면 정보로 변환합니다.
+~~~text
+Runtime
+StageId / GroupId / BossActionId
+        ↓
+Presenter
+        +
+Presentation Data
+        ↓
+HUD / Minimap / Result
+~~~
+
+예를 들어 Stage Transition 규칙을 바꾸지 않고도 Objective 문구나 icon을 수정할 수 있습니다.
+
+반대로 UI copy를 바꾸기 위해 gameplay Definition을 건드릴 필요도 없습니다.
 
 ---
 
-## Part 8. StringTable — Player-facing Text
+## 8. Player-facing Text — StringTable
 
-현재 주요 player-facing text는:
+현재 주요 text는:
 
-- `ST_Dungeon`
-- `ST_Notice`
-- `ST_Island`
+- \`ST_Dungeon\`
+- \`ST_Notice\`
+- \`ST_Island\`
 
-StringTable로 이동했습니다.
+StringTable로 관리합니다.
 
-코드와 DataAsset이 최종 문자열을 직접 소유하는 대신 localization key를 참조합니다.
+코드나 DataAsset에 최종 문자열을 반복 저장하기보다 key를 통해 text를 참조해 **같은 문구의 위치와 localization source를 분리**합니다.
 
-등급 기호나 단순 format처럼 번역 대상이 아닌 text는 `INVTEXT`와 구분합니다.
+등급 기호처럼 번역 대상이 아닌 고정 text는 \`INVTEXT\` 등과 구분합니다.
 
 ---
 
-## 선택 기준 요약
+## 실제 선택 기준
 
-```text
-대량 Row인가?
- └─ Yes → DataTable
+~~~text
+같은 구조의 Row가 많이 필요한가?
+→ DataTable
 
-하나의 독립 콘텐츠 단위인가?
- └─ Yes → PrimaryDataAsset
+자체 identity와 여러 dependency를 가진 콘텐츠인가?
+→ PrimaryDataAsset / DataAsset
 
-계층형 Runtime ID인가?
- └─ Yes → GameplayTag
+여러 시스템이 공유하는 계층형 Runtime ID인가?
+→ GameplayTag
 
-지금 즉시 Load할 필요가 없는 Asset인가?
- └─ Yes → Soft Reference
+Asset dependency를 Load 시점과 분리해야 하는가?
+→ Soft Reference
 
-Player가 읽는 문구인가?
- └─ Yes → StringTable
-```
+Player-facing text인가?
+→ StringTable
+~~~
+
+모든 콘텐츠를 한 형식에 맞추기보다 **데이터의 사용 방식이 달라지면 저장 방식도 달라지게 구성**했습니다.
+
+---
+
+## 설계 선택과 비용
+
+| 선택 | 얻은 것 | 비용 / 제약 |
+|---|---|---|
+| **DataTable for row data** | Item/Skill 같은 대량 schema를 한 곳에서 조회 | nested 콘텐츠 graph에는 부적합 |
+| **DataAsset for content definition** | Dungeon/Boss를 독립 authoring·validation 단위로 관리 | asset 수와 dependency 관리 증가 |
+| **GameplayTag identity** | 계층형 ID와 Editor/Validation 연계 | namespace 규칙을 지속적으로 관리해야 함 |
+| **Soft Reference** | Load timing 분리 | 비동기/실패 load path를 처리해야 함 |
+| **Gameplay / Presentation 분리** | 규칙과 UI 표현을 독립 수정 | ID mapping과 Presenter layer 추가 |
 
 ---
 
 ## 연관 문서
 
-- 이 데이터가 실제 Dungeon Runtime에서 어떻게 해석되는지 → [[9. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]]
-- Definition 작성 실수를 어떻게 잡는지 → [[13. Content Authoring & Validation|13_Content_Authoring_Validation]]
-- Skill Data가 실제 실행과 어떻게 연결되는지 → [[5. Combat, Skill & Animation|05_Combat_Skill_Animation]]
+- [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Skill Data가 실제 실행 Logic으로 연결되는 과정
+- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Dungeon Definition을 Server Runtime이 해석하는 과정
+- [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]] — Presentation Data와 Runtime State 결합
+- [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — GameplayTag / Definition / dependency 검사
 
 ---
 
@@ -285,3 +338,4 @@ Player가 읽는 문구인가?
 - [SonheimGameType.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/ResourceManager/SonheimGameType.h)
 - [DungeonDefinitionDataAsset.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonDefinitionDataAsset.h)
 - [DungeonStageDefinition.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonStageDefinition.h)
+- [DungeonAssetSubsystem](https://github.com/chungheonLee0325/Sonheim/tree/main/Sonheim/Source/Sonheim/GameManager/Dungeon)
