@@ -1,7 +1,6 @@
 # 03. Data & Content Architecture
 
-Sonheim은 모든 데이터를 DataTable 하나에 넣지 않습니다.  
-**데이터가 얼마나 반복되는지, 자체 identity와 dependency가 필요한지, Runtime에서 어떻게 찾고 저장할지**에 따라 표현 방식을 나눴습니다.
+Sonheim의 gameplay data는 **반복되는 row data, 독립 콘텐츠 정의, runtime identifier, asset dependency, player-facing text**의 성격에 따라 DataTable·DataAsset·GameplayTag·Soft Reference·StringTable로 나눠 관리합니다.
 
 실제 프로젝트에서는 다음처럼 사용합니다.
 
@@ -34,7 +33,7 @@ flowchart LR
     SOFT --> DEF
 ~~~
 
-핵심은 “어떤 UE 데이터 기능을 썼는가”보다 **한 데이터가 프로젝트에서 어떤 책임을 갖는지**입니다.
+각 데이터 형식은 프로젝트에서 맡는 책임과 lifecycle에 맞춰 사용합니다.
 
 ---
 
@@ -74,13 +73,13 @@ struct FSkillData : public FTableRowBase
 
 을 선택합니다.
 
-Skill마다 별도 asset lifecycle을 관리하기보다 **같은 구조의 대량 데이터를 빠르게 조회하는 문제**라 DataTable을 사용합니다.
+Skill은 같은 schema의 row가 많고 ID 기반 조회가 반복되므로 DataTable에 저장합니다.
 
 실제 실행 과정은 [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]]에서 이어집니다.
 
 ---
 
-## 2. Dungeon은 Row가 아니라 하나의 콘텐츠 단위
+## 2. Dungeon Definition — 독립 콘텐츠 단위
 
 Dungeon은 Item/Skill과 요구사항이 다릅니다.
 
@@ -94,7 +93,7 @@ Dungeon은 Item/Skill과 요구사항이 다릅니다.
 - Validation
 - PrimaryAsset identity
 
-이 구조를 DataTable의 한 row에 계속 중첩하기보다 \`UDungeonDefinitionDataAsset\`을 콘텐츠 단위로 사용합니다.
+이 정보는 <code>UDungeonDefinitionDataAsset</code> 하나가 콘텐츠 단위로 소유합니다.
 
 ~~~cpp
 class UDungeonDefinitionDataAsset : public UPrimaryDataAsset
@@ -167,7 +166,7 @@ Dungeon.ForgottenRuins.Barrier.*
 Boss.Grizzbolt.Pattern.*
 ~~~
 
-GameplayTag를 사용한 이유는 단순히 문자열보다 편해서가 아닙니다.
+GameplayTag는 Stage/Group/Branch/Barrier를 같은 Dungeon namespace 아래 계층적으로 구성하고, Editor filtering과 validation에도 같은 identifier를 사용하기 위해 적용했습니다.
 
 ### 콘텐츠별 namespace
 
@@ -185,7 +184,7 @@ Branch 선택, RunTag, Barrier state처럼 서로 다른 시스템이 같은 ide
 
 잘못된 Dungeon namespace의 Tag를 Definition에 넣으면 Editor Validation에서 탐지합니다.
 
-즉 GameplayTag가 **Runtime ID이면서 Authoring contract** 역할도 합니다.
+같은 GameplayTag가 Runtime ID와 Editor authoring/validation 기준을 함께 제공합니다.
 
 ---
 
@@ -227,7 +226,7 @@ Dungeon Definition
 Dungeon 진입 시 Asset Subsystem 준비
 ~~~
 
-콘텐츠가 존재한다는 이유만으로 모든 dependency를 프로젝트 시작 시 강제 load하지 않고 **사용 시점에 필요한 asset을 준비**합니다.
+Soft reference로 dependency를 유지하고, Dungeon 진입 등 실제 사용 시점에 필요한 asset을 준비합니다.
 
 Editor Validation에서는 필요하면 soft dependency를 load해 구조까지 검사하지만 Runtime structural validation과는 분리합니다.
 
@@ -235,7 +234,7 @@ Editor Validation에서는 필요하면 soft dependency를 load해 구조까지 
 
 ## 7. Gameplay Definition과 Presentation Data를 분리
 
-Dungeon의 진행 규칙과 화면 문구/아이콘은 같은 이유로 바뀌지 않습니다.
+Dungeon의 진행 규칙은 Gameplay Definition, 화면 문구·아이콘·Map 정보는 Presentation Data가 소유합니다.
 
 ### Gameplay Definition
 
