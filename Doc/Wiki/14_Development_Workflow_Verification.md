@@ -21,12 +21,12 @@ Gameplay 기능이 실제로 완성되려면:
 
 ~~~mermaid
 flowchart LR
-    INSPECT["Inspect<br/>Code · Asset · Editor State"]
-    EDIT["Edit<br/>C++ · Blueprint · Data"]
+    INSPECT["<b>Inspect</b><br/>Code · Asset · Editor State"]
+    EDIT["<b>Edit</b><br/>C++ · Blueprint · Data"]
     BUILD["Compile / Save"]
     PIE["Play In Editor"]
-    VERIFY["Verify<br/>State · Log · Scenario"]
-    CAPTURE["Viewport Capture<br/>Visual Review"]
+    VERIFY["<b>Verify</b><br/>State · Log · Scenario"]
+    CAPTURE["<b>Viewport Capture</b><br/>Visual Review"]
     FIX["Iterate"]
 
     INSPECT --> EDIT
@@ -374,7 +374,7 @@ Codex / Claude Code
 - [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — 실행 이전의 정적 검증
 - [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — scenario 검증의 중심 콘텐츠
 - [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — Animation / Pattern / Capture 검증 사례
-- [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]] — Client UI lifecycle 검증 대상
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Client UI lifecycle 검증 대상
 - [[15. Development History & Retrospective|15_Development_History_Retrospective]] — 구조가 변경된 과정
 
 ---
