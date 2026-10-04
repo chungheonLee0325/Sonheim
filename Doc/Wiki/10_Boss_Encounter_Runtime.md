@@ -304,8 +304,8 @@ Network delay가 있어도 gameplay 결과 기준은 Server이며, Client presen
 
 ## 연관 문서
 
-- 기반 Combat 구조 → [[5. Combat, Skill & Animation|5_Combat_Skill_Animation]]
-- Exhaust Capture가 연결되는 방식 → [[8. Pal Capture & Partner Lifecycle|8_Pal_Capture_Partner_Lifecycle]]
+- 기반 Combat 구조 → [[5. Combat, Skill & Animation|05_Combat_Skill_Animation]]
+- Exhaust Capture가 연결되는 방식 → [[8. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]]
 - Boss 상태가 HUD로 가는 방식 → [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]]
 - Pattern validation → [[13. Content Authoring & Validation|13_Content_Authoring_Validation]]
 
