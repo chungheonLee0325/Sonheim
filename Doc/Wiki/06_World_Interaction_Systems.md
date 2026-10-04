@@ -1,6 +1,6 @@
 # 06. World Interaction Systems
 
-Player가 Item, Container, Crafting Station, Dungeon Lever처럼 서로 다른 Actor와 상호작용할 때, Player code가 각 concrete class를 직접 구분하지 않도록 **공통 Interaction contract**를 구성했습니다.
+Item, Container, Crafting Station, Dungeon Lever는 **<code>IInteractableInterface</code> 기반의 공통 Detection / Prompt / Hold / 실행 흐름**을 사용합니다.
 
 Detection·Prompt·Hold·Server 요청은 \`UInteractionComponent\`가 공통으로 처리하고, 실제 결과는 \`IInteractableInterface\`를 구현한 Actor가 결정합니다.
 
@@ -394,7 +394,7 @@ Dungeon 기능을 추가하면서 Player Input / Detection / Prompt 체계를 �
 
 ## 보조 사례 — 공격 기반 Resource 상호작용
 
-Resource 채집은 버튼 Interaction이 아니라 실제 무기 공격이므로 \`IInteractableInterface\`에 억지로 포함하지 않았습니다.
+Resource 채집은 명시적 Interaction 입력이 아니라 실제 무기 Hit으로 발생하므로 Combat/Damage Pipeline을 사용합니다.
 
 ~~~text
 Melee Skill
