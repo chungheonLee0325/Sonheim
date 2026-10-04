@@ -83,17 +83,15 @@ flowchart LR
 
 | 기술적 선택 | 실제 적용 | 구현 목적 |
 |---|---|---|
-| **Server Authority + RPC / Replication 분리** | Skill 사용, Inventory 변경, Crafting, Capture, Dungeon 진행 | Client는 행동을 요청하고, 최종 gameplay state는 Server가 확정하도록 구성 |
-| **FastArray + Owner-only Replication** | Player Inventory, Skill Spec | 변경이 잦은 배열에서 변경 entry 중심으로 복제하고 개인 데이터는 소유자에게만 전달 |
-| **Client Prediction / Reconciliation** | Inventory Slot Swap, Pal Slot 변경 | 서버 판정을 유지하면서 Drag & Drop이나 Slot 전환의 입력 반응성을 보완 |
-| **Subscriber-based Replication** | Shared Container | 아무도 열지 않은 Container의 Item 목록은 복제하지 않고, viewer가 있을 때만 활성화 |
-| **DataTable** | Item, Skill, AreaObject, Level, Resource | 같은 schema를 가진 대량의 gameplay row를 ID 기반으로 관리 |
-| **PrimaryDataAsset + GameplayTag** | Dungeon Definition, Boss Pattern | 콘텐츠 단위 dependency와 분기/Stage/Pattern 식별자를 코드 분기문과 분리 |
-| **ActorComponent + Interface** | Health, Skill, Inventory, Capture, Interaction | Player/Monster/World Actor에 필요한 기능을 조합하고, concrete class 의존을 줄임 |
-| **Delegate / RepNotify** | Health, Inventory, Equipment, 일반 HUD | 독립 상태의 변경을 gameplay code가 Widget class를 직접 알지 않고 전달 |
-| **Replicated Snapshot + Presenter/ViewData** | Dungeon HUD, Boss UI, Minimap, Result | 복합적인 콘텐츠 상태를 Client가 다시 구성할 수 있게 하고 UMG와 runtime을 분리 |
-| **Editor Validation / Authoring Tool** | Dungeon Definition, Boss Pattern | 잘못된 Transition, 필수 데이터 누락, timing 오류를 플레이 이전에 확인 |
-| **AgentMcp** | Blueprint/Animation/UMG/DataAsset 편집, PIE·Viewport 검증 | Coding agent가 C++ 수정뿐 아니라 Unreal Editor 작업과 실행 결과 확인까지 이어서 수행 |
+| **ActorComponent + Interface** | Health, Skill, Capture, Interaction | 기능을 Actor 종류와 분리해 Player·Monster·World Object에서 조합하고 재사용 |
+| **DataTable** | Item, Skill, AreaObject, Level, Resource | 같은 schema의 gameplay 데이터를 ID 기반으로 관리 |
+| **PrimaryDataAsset + GameplayTag** | Dungeon Definition, Boss Pattern | 콘텐츠 구조와 식별자를 코드 분기에서 분리하고 Editor에서 authoring |
+| **Animation-driven Gameplay** | Skill Fire, Melee Window, Cancel Window | 공격 motion과 실제 판정 시점을 같은 Animation timeline에서 조정 |
+| **Delegate / Presenter / ViewData** | 일반 HUD, Dungeon HUD, Minimap, Result | gameplay state와 UMG를 직접 결합하지 않고 화면에 필요한 형태로 전달 |
+| **Server Authority + RPC / Replication** | Combat, Inventory, Crafting, Capture, Dungeon | Client 요청과 authoritative state 변경을 분리 |
+| **FastArray / Prediction / Reconciliation** | Inventory, Skill Spec, Pal Slot | 변경이 잦은 상태의 동기화와 입력 반응성을 보완 |
+| **Editor Validation / Authoring Tool** | Dungeon Definition, Boss Pattern | 잘못된 Transition·필수 데이터·timing을 플레이 이전에 확인 |
+| **AgentMcp** | Blueprint/Animation/UMG/DataAsset, PIE·Viewport 검증 | Coding agent가 C++뿐 아니라 Unreal Editor 작업과 결과 확인까지 수행 |
 
 ---
 
@@ -133,7 +131,7 @@ flowchart TD
 - **Objective / Failure** — 처치·포획·Area 진입·시간 초과·Owner 이탈을 같은 Stage Runtime에서 처리
 - **World State** — 현재 Stage Definition에 따라 Barrier, Lever, Spawn Group 상태 변경
 - **Boss Encounter** — Telegraph, Pattern, Phase, Down/Exhaust, Capture Window
-- **Multiplayer UI** — 서버 Snapshot을 HUD, Party, Boss, Minimap, Marker, Result로 변환
+- **Client Presentation** — Runtime Snapshot을 HUD, Party, Boss, Minimap, Marker, Result로 변환
 - **Result / Persistence** — Reward 지급, Best Time, Grade, Clear/Fail Record를 SaveGame에 저장
 - **Authoring / Validation** — Definition 검사와 Stage Graph 생성으로 콘텐츠 흐름을 Editor에서 검토
 
@@ -141,13 +139,13 @@ flowchart TD
 
 ## 연관 문서
 
-- [[2. Architecture Overview|2_Architecture_Overview]] — 서버 권위, 객체 수명, Replication 범위와 시스템 경계를 정한 기준
+- [[2. Gameplay Architecture|2_Gameplay_Architecture]] — 서버 권위, 객체 수명, Replication 범위와 시스템 경계를 정한 기준
 - [[3. Data & Content Architecture|3_Data_Content_Architecture]] — DataTable / DataAsset / GameplayTag의 역할 분리
-- [[4. Branching Dungeon Runtime|4_Branching_Dungeon_Runtime]] — Dungeon Definition을 실제 Server Runtime으로 실행하는 구조
-- [[10. Combat, Skill & Animation|10_Combat_Skill_Animation]] — Skill Data에서 Damage까지 이어지는 전투 실행 흐름
-- [[8. Multiplayer Inventory & Crafting|8_Multiplayer_Inventory_Crafting]] — 개인/공유 Item 상태의 서로 다른 네트워크 처리
-- [[9. Pal Capture & Partner Lifecycle|9_Pal_Capture_Partner_Lifecycle]] — Capture에서 Partner AI까지 이어지는 lifecycle
-- [[12. World Interaction Systems|12_World_Interaction_Systems]] — 하나의 Interaction contract로 서로 다른 World 기능을 연결한 구조
+- [[9. Branching Dungeon Runtime|9_Branching_Dungeon_Runtime]] — Dungeon Definition을 실제 Server Runtime으로 실행하는 구조
+- [[5. Combat, Skill & Animation|5_Combat_Skill_Animation]] — Skill Data에서 Damage까지 이어지는 전투 실행 흐름
+- [[7. Inventory & Crafting|7_Inventory_Crafting]] — 개인/공유 Item 상태의 서로 다른 네트워크 처리
+- [[8. Pal Capture & Partner Lifecycle|8_Pal_Capture_Partner_Lifecycle]] — Capture에서 Partner AI까지 이어지는 lifecycle
+- [[6. World Interaction Systems|6_World_Interaction_Systems]] — 하나의 Interaction contract로 서로 다른 World 기능을 연결한 구조
 
 ---
 
