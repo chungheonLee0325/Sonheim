@@ -8,7 +8,7 @@
 
 ## Project Overview
 
-- [[1. Project Overview|1_Project_Overview]] — 전투·수집·제작·포획·성장이 서로 연결되는 gameplay loop와, 이 시스템들이 Dungeon 콘텐츠에서 어떻게 다시 조합되는지 전체 구조를 요약합니다.
+- [[01. Project Overview|01_Project_Overview]] — 전투·수집·제작·포획·성장이 서로 연결되는 gameplay loop와, 이 시스템들이 Dungeon 콘텐츠에서 어떻게 다시 조합되는지 전체 구조를 요약합니다.
 
 ---
 
@@ -48,24 +48,24 @@ flowchart LR
 
 ## Architecture & Data
 
-- [[2. Gameplay Architecture|2_Gameplay_Architecture]] — 상태를 **Pawn·PlayerState·Subsystem 등 실제 수명에 맞춰 배치**하고, Component·Interface로 기능을 조합하며 gameplay와 UI의 책임을 분리했습니다.
-- [[3. Data & Content Architecture|3_Data_Content_Architecture]] — Item·Skill 같은 반복 데이터는 DataTable, Dungeon·Boss처럼 독립된 콘텐츠 정의는 DataAsset, 런타임 식별자는 GameplayTag로 관리합니다.
+- [[02. Gameplay Architecture|02_Gameplay_Architecture]] — 상태를 **Pawn·PlayerState·Subsystem 등 실제 수명에 맞춰 배치**하고, Component·Interface로 기능을 조합하며 gameplay와 UI의 책임을 분리했습니다.
+- [[03. Data & Content Architecture|03_Data_Content_Architecture]] — Item·Skill 같은 반복 데이터는 DataTable, Dungeon·Boss처럼 독립된 콘텐츠 정의는 DataAsset, 런타임 식별자는 GameplayTag로 관리합니다.
 
 ---
 
 ## Core Gameplay Systems
 
-- [[4. Player & Character Systems|4_Player_Character_Systems]] — Player의 World body와 지속 데이터를 Pawn/PlayerState로 나누고, Health·Condition·Stat·행동 가능 상태를 component 단위로 관리합니다.
-- [[5. Combat, Skill & Animation|5_Combat_Skill_Animation]] — Skill의 **정적 데이터·현재 상태·실행 로직을 분리**하고, Animation Notify 시점에 공격 판정과 Damage를 실행합니다. 빠른 melee는 frame 사이 이동을 보간해 판정 누락을 줄였습니다.
-- [[6. World Interaction Systems|6_World_Interaction_Systems]] — 하나의 `IInteractableInterface`로 **아이템 획득, 상자 열기, 제작대 작업, 레버·포털 작동**을 같은 입력/UI 흐름에 연결하고, 각 Actor가 실제 행동만 다르게 구현합니다.
-- [[7. Inventory & Crafting|7_Inventory_Crafting]] — Inventory·Container·Crafting Station의 Item 흐름을 연결하고, 개인 보관·공유 보관·협력 제작처럼 소유 범위가 다른 상태를 각각 관리합니다.
-- [[8. Pal Capture & Partner Lifecycle|8_Pal_Capture_Partner_Lifecycle]] — Monster 포획 판정과 연출, 소유권 적용, 보관·선택·소환·Partner AI까지 하나의 lifecycle로 연결했습니다.
+- [[04. Player & Character Systems|04_Player_Character_Systems]] — Player의 World body와 지속 데이터를 Pawn/PlayerState로 나누고, Health·Condition·Stat·행동 가능 상태를 component 단위로 관리합니다.
+- [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Skill의 **정적 데이터·현재 상태·실행 로직을 분리**하고, Animation Notify 시점에 공격 판정과 Damage를 실행합니다. 빠른 melee는 frame 사이 이동을 보간해 판정 누락을 줄였습니다.
+- [[06. World Interaction Systems|06_World_Interaction_Systems]] — 하나의 `IInteractableInterface`로 **아이템 획득, 상자 열기, 제작대 작업, 레버·포털 작동**을 같은 입력/UI 흐름에 연결하고, 각 Actor가 실제 행동만 다르게 구현합니다.
+- [[07. Inventory & Crafting|07_Inventory_Crafting]] — Inventory·Container·Crafting Station의 Item 흐름을 연결하고, 개인 보관·공유 보관·협력 제작처럼 소유 범위가 다른 상태를 각각 관리합니다.
+- [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — Monster 포획 판정과 연출, 소유권 적용, 보관·선택·소환·Partner AI까지 하나의 lifecycle로 연결했습니다.
 
 ---
 
 ## Dungeon Vertical Slice
 
-- [[9. Branching Dungeon Runtime|9_Branching_Dungeon_Runtime]] — Stage별 C++ 분기문 대신 **Event / Condition / Action / Transition을 데이터로 정의**하고, Runtime이 분기·Objective·시간 제한·실패·Reward를 진행합니다.
+- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Stage별 C++ 분기문 대신 **Event / Condition / Action / Transition을 데이터로 정의**하고, Runtime이 분기·Objective·시간 제한·실패·Reward를 진행합니다.
 - [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — 공격마다 예고 영역·타격 시점·범위·사거리·Phase 조건을 데이터로 정의하고, 공통 Boss Runtime이 Pattern을 실행합니다.
 - [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]] — Dungeon의 현재 상태를 화면용 ViewData로 변환해 HUD·Boss 정보·Minimap·Result를 구성하고, gameplay lifecycle과 Widget lifecycle을 분리합니다.
 
