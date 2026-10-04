@@ -125,7 +125,7 @@ Player teleport 직후 Boss wake multicast가 Client에 보이지 않는 문제�
 
 원인은 RPC 자체가 아니라 **Boss가 아직 Client에게 net-relevant하지 않은 시점**에 multicast가 발생한 것이었습니다.
 
-현재 상태가 반드시 남아야 하는 정보와 순간 RPC를 구분해야 한다는 [[2. Gameplay Architecture|2_Gameplay_Architecture]]의 원칙으로 이어집니다.
+현재 상태가 반드시 남아야 하는 정보와 순간 RPC를 구분해야 한다는 [[2. Gameplay Architecture|02_Gameplay_Architecture]]의 원칙으로 이어집니다.
 
 ### Barrier Rule
 
@@ -194,7 +194,7 @@ Sonheim Wiki에서는 이 기능들이 **게임 Runtime 기능인 것처럼 섞�
 ## 연관 문서
 
 - Editor validation 자체 → [[13. Content Authoring & Validation|13_Content_Authoring_Validation]]
-- 실제 Dungeon runtime → [[9. Branching Dungeon Runtime|9_Branching_Dungeon_Runtime]]
+- 실제 Dungeon runtime → [[9. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]]
 - 프로젝트 변화 과정 → [[15. Development History & Retrospective|15_Development_History_Retrospective]]
 
 ---
