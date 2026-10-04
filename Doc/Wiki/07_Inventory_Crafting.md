@@ -1,15 +1,11 @@
 # 07. Inventory & Crafting
 
-Inventory, Container, Equipment, Crafting은 모두 Item을 다루지만 **소유 범위와 상호작용 방식이 다릅니다.**
+Item은 Player Inventory를 중심으로 **Equipment, Container, Crafting**에 연결됩니다.
 
-Sonheim에서는 하나의 Item 흐름을 공유하되:
-
-- 개인 보관은 Player Inventory
-- 공유 보관은 Container
-- 장비는 Stat / Skill Source
-- 제작은 여러 Player가 참여하는 Shared Workflow
-
-로 역할을 나눴습니다.
+- **Player Inventory** — 개인 Item/Slot 상태
+- **Container** — 공유 World 보관 상태
+- **Equipment** — Stat / Skill 적용 source
+- **Crafting** — Recipe와 여러 Player가 공유하는 Work state
 
 ---
 
@@ -86,7 +82,7 @@ UI Delegate
 
 ---
 
-## 2. Inventory 변화와 “Item 획득”을 같은 Event로 취급하지 않는다
+## 2. Inventory 변경과 Item 획득 Event 분리
 
 Inventory 내용이 바뀌는 모든 경우에 획득 Popup을 띄우면 잘못된 UX가 됩니다.
 
@@ -110,7 +106,7 @@ Inventory 내용이 바뀌는 모든 경우에 획득 Popup을 띄우면 잘못�
 
 ---
 
-## 3. Equipment는 Inventory의 끝이 아니라 Stat / Skill의 Source
+## 3. Equipment 변경 → Stat / Skill 적용
 
 장비를 옮기는 것은 슬롯 변경만으로 끝나지 않습니다.
 
@@ -166,7 +162,7 @@ Inventory Component는 현재 Weapon이 부여한 Skill Source를 <code>ActiveWe
 
 ---
 
-## 4. Drag & Drop은 즉시 보이고 최종 상태는 다시 맞춘다
+## 4. Drag & Drop Prediction / Reconciliation
 
 Slot Swap은 조작감이 중요한 UI이므로 Client가 local mirror를 먼저 바꿀 수 있습니다.
 
@@ -216,9 +212,9 @@ Unsubscribe Viewer
 
 ---
 
-## 6. Crafting은 Recipe보다 “Shared Work State”가 핵심
+## 6. Recipe Definition과 Shared Work State
 
-Crafting Station은 단순히 재료를 Item으로 교환하는 메뉴가 아닙니다.
+Crafting Station은 Recipe 정의와 실행 중인 <code>FActiveCraftWork</code>를 분리해 제작 상태를 관리합니다.
 
 Recipe는:
 
@@ -252,7 +248,7 @@ struct FActiveCraftWork
 };
 ~~~
 
-즉 Recipe는 **무엇을 만드는가**, ActiveWork는 **현재 여러 Player가 어디까지 작업했는가**를 표현합니다.
+Recipe는 **무엇을 만드는가**, ActiveWork는 **현재 몇 Unit을 어느 정도 진행했는가**를 표현합니다.
 
 ---
 
@@ -272,11 +268,11 @@ Interact
    └─ No → Recipe UI Open
 ~~~
 
-별도의 “도움 버튼 / 수령 버튼 / 메뉴 버튼”을 World Actor에 각각 만들지 않고 **현재 authoritative work state가 Interaction 의미를 결정**합니다.
+현재 authoritative work state에 따라 같은 Interaction 입력이 Recipe UI, Work 추가, Collect로 연결됩니다.
 
 ---
 
-## 8. Recipe 선택 구간만 독점하고 실제 작업은 협력 가능
+## 8. Recipe 시작 구간의 UI Ownership과 협력 작업
 
 여러 Player가 동시에 Recipe UI를 열고 서로 다른 작업을 시작하면:
 
@@ -302,7 +298,7 @@ UIOwner = Player;
 
 에 참여할 수 있습니다.
 
-Station 전체를 한 Player에게 잠그지 않고 **실제로 경쟁 상태가 생기는 구간만 잠근 것**입니다.
+<code>UIOwner</code>는 Recipe 선택과 작업 시작 구간에만 적용되고, ActiveWork가 시작된 뒤에는 다른 Player도 Work 추가와 Collect에 참여할 수 있습니다.
 
 ---
 
@@ -333,7 +329,7 @@ Client UI에 표시된 “제작 가능 수량”을 최종 판정으로 사용�
 
 ---
 
-## 10. UI와 Server가 재료 계산 규칙을 따로 복사하지 않는다
+## 10. 공통 Resource Provider로 재료 계산 공유
 
 Crafting UI도:
 
@@ -411,7 +407,7 @@ Crafting Queue도 <code>OnWorkChanged</code>, <code>OnCompletedChanged</code>로
 
 ---
 
-## 13. UI는 authoritative data를 소유하지 않고 변환해서 보여준다
+## 13. Inventory / Crafting UI Data Flow
 
 Inventory/Crafting UI의 실제 데이터 소유자는 Widget이 아닙니다.
 
