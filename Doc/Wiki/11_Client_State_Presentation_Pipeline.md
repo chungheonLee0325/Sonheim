@@ -276,7 +276,7 @@ PlayerStatusWidget.DisplayItemPopup
 
 ## 3. Complex Content UI — Dungeon
 
-Dungeon UI는 Stage 하나가 아니라 다음 정보를 한 화면에서 조합합니다.
+Dungeon UI는 Stage, Objective, Party, Boss, Minimap, Reward 등 여러 gameplay state를 한 화면에서 조합합니다.
 
 - Stage / Main & Optional Objective
 - Branch / Route
