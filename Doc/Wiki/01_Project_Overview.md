@@ -2,13 +2,13 @@
 
 Sonheim은 **Unreal Engine 5.5 / C++ 기반 서버 권위 멀티플레이 액션 어드벤처** 프로젝트입니다.
 
-전투, 자원 수집, 포획, 인벤토리, 장비, 제작을 각각 독립 기능으로 구현하는 데서 끝내지 않고, 서로의 결과가 다음 시스템의 입력이 되도록 연결했습니다. 현재는 이 기반 시스템들을 함께 사용하는 **분기형 Dungeon을 주요 통합 콘텐츠 사례**로 구현했습니다.
+전투에서 획득한 Item은 Inventory·장비·Crafting으로 이어지고, 포획한 Monster는 Pal Inventory를 거쳐 Partner로 전투에 다시 참여합니다. 현재는 이 시스템들을 함께 사용하는 **분기형 Dungeon을 주요 통합 콘텐츠 사례**로 구현했습니다.
 
 ---
 
 ## Gameplay System Loop
 
-Sonheim의 gameplay는 한 방향으로 끝나는 선형 진행보다, **전투·수집·성장·제작·포획이 서로 다시 다음 행동에 영향을 주는 순환 구조**에 가깝습니다.
+Sonheim의 gameplay는 **전투·수집·성장·제작·포획의 결과가 서로 다음 시스템의 입력으로 이어지는 구조**입니다.
 
 ```mermaid
 flowchart LR
@@ -55,7 +55,7 @@ flowchart LR
 ```
 
 - **실선**은 실제 gameplay 결과가 다음 시스템의 입력으로 이어지는 흐름입니다.
-- **점선**은 Dungeon이 Combat·Interaction·Capture를 별도 구현하지 않고 기존 시스템을 재사용하는 관계입니다.
+- **점선**은 Dungeon이 Combat·Interaction·Capture의 결과를 콘텐츠 진행에 연결하는 관계입니다.
 
 ### 시스템이 연결되는 방식
 
@@ -75,7 +75,7 @@ flowchart LR
   Item 획득, 상자 열기, 제작대 사용, Dungeon Portal, Shortcut Lever가 같은 `IInteractableInterface` 기반 입력/UI 흐름을 사용합니다.
 
 - **Dungeon → 기존 시스템 재사용**  
-  Dungeon은 별도 게임 규칙을 다시 만드는 대신 Interaction, Combat, Capture, Inventory, UI 시스템을 조합해 하나의 콘텐츠 흐름으로 구성합니다.
+  Dungeon은 Interaction, Combat, Capture, Inventory, UI 시스템의 결과를 Stage 진행과 Objective, Reward, Result에 연결합니다.
 
 ---
 
