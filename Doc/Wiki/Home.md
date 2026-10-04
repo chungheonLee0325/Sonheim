@@ -86,8 +86,8 @@ flowchart TB
 
 ## Core Architecture
 
-- [[02. Gameplay Architecture|02_Gameplay_Architecture]] — PlayerState/Pawn/Subsystem 같은 **상태 소유 위치**, ActorComponent·Interface를 통한 기능 조합, Data/Runtime/Presentation 경계를 설명합니다.
-- [[03. Data & Content Architecture|03_Data_Content_Architecture]] — DataTable·DataAsset·GameplayTag·Soft Reference·StringTable을 실제 데이터 성격에 따라 어떻게 나눴는지 설명합니다.
+- [[02. Gameplay Architecture|02_Gameplay_Architecture]] — PlayerState/Pawn/Subsystem의 **상태 소유 위치**, ActorComponent·Interface 구성, Data/Runtime/Presentation 경계
+- [[03. Data & Content Architecture|03_Data_Content_Architecture]] — DataTable·DataAsset·GameplayTag·Soft Reference·StringTable의 적용 기준과 실제 사용처
 - [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — Request / State / Scope / Prediction / transient event를 UE Listen Server에서 어떻게 동기화했는지 정리합니다.
 
 ---
@@ -104,7 +104,7 @@ flowchart TB
 
 ## UI Architecture
 
-- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — 기본 HUD의 Delegate binding, Inventory/Crafting screen, Confirm popup, Notice/Toast queue, Dungeon Presenter/ViewData와 LocalPlayer UI routing을 함께 설명합니다.
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Delegate HUD, Inventory/Crafting screen, Confirm popup, Notice/Toast queue, Dungeon Presenter/ViewData와 LocalPlayer UI routing
 
 - **Player HUD** — Health·Stamina·Level 등 gameplay state의 Delegate를 구독해 갱신
 - **Inventory / Container / Crafting** — PlayerController와 각 Widget이 화면 lifecycle과 데이터 바인딩을 관리
