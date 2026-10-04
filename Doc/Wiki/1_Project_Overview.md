@@ -12,48 +12,50 @@ Sonheim의 gameplay는 한 방향으로 끝나는 선형 진행보다, **전투�
 
 ```mermaid
 flowchart LR
-    WORLD["World Exploration<br/>탐색 · 상호작용"]
-
-    COMBAT["Combat<br/>Monster · Boss"]
-    HARVEST["Resource Gathering<br/>채집"]
-    INTERACT["Interaction<br/>Item · Chest · Crafting · Lever · Portal"]
+    WORLD["World Exploration"]
+    COMBAT["Combat"]
+    GATHER["Resource Gathering"]
+    INTERACT["Interaction"]
 
     LOOT["Items / Resources"]
-    CAPTURE["Pal Capture"]
-    INV["Inventory / Equipment"]
+    INV["Inventory"]
     CRAFT["Crafting"]
-    PAL["Owned Pal / Partner"]
-    GROWTH["Stats / Skills / Equipment"]
+    EQUIP["Equipment / Stats / Skills"]
 
-    DUNGEON["Dungeon<br/>Branch · Objective · Boss"]
-    REWARD["Rewards / Records"]
+    CAPTURE["Pal Capture"]
+    PAL["Owned Pal / Partner"]
+
+    DUNGEON["Dungeon Content"]
+    RECORD["Best Time / Grade / Record"]
 
     WORLD --> COMBAT
-    WORLD --> HARVEST
+    WORLD --> GATHER
     WORLD --> INTERACT
 
-    COMBAT -->|"Drop / Reward"| LOOT
-    COMBAT -->|"Capture"| CAPTURE
-    HARVEST --> LOOT
-    INTERACT -->|"획득 / 보관 / 제작"| LOOT
-
+    COMBAT -->|"Drop"| LOOT
+    GATHER -->|"Resource"| LOOT
+    INTERACT -->|"Pickup / Container"| LOOT
     LOOT --> INV
-    INV --> CRAFT
-    CRAFT -->|"새 Item / Equipment"| INV
 
-    INV -->|"장비"| GROWTH
+    INV -->|"Material"| CRAFT
+    CRAFT -->|"Crafted Item"| INV
+
+    INV -->|"Equip"| EQUIP
+    EQUIP -->|"Character capability"| COMBAT
+
+    COMBAT -->|"Capture instead of defeat"| CAPTURE
     CAPTURE --> PAL
-    PAL -->|"전투 지원"| COMBAT
-    GROWTH -->|"전투 능력 변화"| COMBAT
+    PAL -->|"Partner combat"| COMBAT
 
-    INTERACT -->|"입장 / 레버 / 상자"| DUNGEON
-    COMBAT --> DUNGEON
-    CAPTURE -->|"Boss Capture"| DUNGEON
-
-    DUNGEON --> REWARD
-    REWARD --> INV
-    REWARD -->|"Best Time / Grade"| DUNGEON
+    DUNGEON -. "reuses" .-> COMBAT
+    DUNGEON -. "reuses" .-> INTERACT
+    DUNGEON -. "reuses" .-> CAPTURE
+    DUNGEON -->|"Reward"| INV
+    DUNGEON --> RECORD
 ```
+
+- **실선**은 실제 gameplay 결과가 다음 시스템의 입력으로 이어지는 흐름입니다.
+- **점선**은 Dungeon이 Combat·Interaction·Capture를 별도 구현하지 않고 기존 시스템을 재사용하는 관계입니다.
 
 ### 시스템이 연결되는 방식
 
@@ -105,21 +107,24 @@ flowchart TD
     RUNTIME["Dungeon Runtime<br/>Event · Condition · Action · Transition"]
     WORLD["Stage World<br/>Barrier · Lever · Spawn Group"]
     BATTLE["Combat / Capture<br/>Monster · Guardian Boss"]
+
     STATE["Replicated Run State"]
     UI["HUD · Minimap · Marker · Result"]
-    RESULT["Reward · Best Time · Grade · SaveGame"]
+
+    REWARD["Inventory Reward"]
+    RECORD["Best Time · Grade · SaveGame"]
 
     ENTRY --> RUNTIME
     RUNTIME --> WORLD
     WORLD --> BATTLE
-    BATTLE --> RUNTIME
+    BATTLE -->|"Progress / Defeat / Capture"| RUNTIME
 
     RUNTIME --> STATE
     BATTLE --> STATE
     STATE --> UI
 
-    RUNTIME --> RESULT
-    RESULT -->|"Item Reward"| ENTRY
+    RUNTIME -->|"Terminal Stage"| REWARD
+    RUNTIME -->|"Run Result"| RECORD
 ```
 
 이 Vertical Slice에서 구현한 범위:
