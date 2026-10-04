@@ -1,339 +1,169 @@
 # 05. Combat, Skill & Animation
 
-> **핵심 구현 범위**
->
-> 1. Sonheim에서 “Skill 하나”는 실제로 어떤 데이터와 객체로 구성되는가?
-> 2. Client 입력이 어떻게 Server 검증을 거쳐 실제 공격으로 이어지는가?
-> 3. 공격 타이밍을 왜 C++ Timer가 아니라 Animation Notify에 맡겼는가?
-> 4. 빠른 근접 공격의 판정 누락과 중복 Hit을 어떻게 처리했는가?
-> 5. Hit 이후 Element / Weak Point / Knockback / Hit Stop 정보는 어떻게 전달되는가?
+Sonheim의 전투는 **Skill Definition → Runtime State → Skill Logic → Animation Timing → Hit Detection → Damage Context**를 분리해 구성했습니다.
 
-전체 실행 흐름은 다음과 같습니다.
+공격 종류가 늘어나도 Input 코드나 Character class에 판정 로직을 계속 추가하지 않고, Skill Data와 실행 객체를 조합해 근접 공격·투사체·장비 Skill을 같은 흐름에서 처리합니다.
 
-```text
-Input / AI
-   ↓
-USonheimSkillComponent
-   ↓
-FSkillData + FSonheimSkillSpecItem
-   ↓
-UBaseSkill
-   ↓
-Montage / AnimNotify
-   ↓
-UMeleeAttack / Projectile / 기타 Skill Logic
-   ↓
-FCustomDamageEvent
-   ↓
-AAreaObject::TakeDamage
-   ↓
-HP / Condition / Feedback
+---
+
+## 전체 실행 흐름
+
+```mermaid
+flowchart LR
+    INPUT["Input / AI"]
+    COMP["Skill Component"]
+    DATA["FSkillData<br/>정적 정의"]
+    SPEC["Skill Spec<br/>현재 상태"]
+    LOGIC["UBaseSkill<br/>실행 Logic"]
+    ANIM["Montage / AnimNotify"]
+    HIT["Attack Logic<br/>Melee · Projectile"]
+    DAMAGE["FCustomDamageEvent"]
+    TARGET["Target<br/>Defense · HP · Feedback"]
+
+    INPUT --> COMP
+    DATA --> COMP
+    SPEC --> COMP
+    COMP --> LOGIC
+    LOGIC --> ANIM
+    ANIM --> HIT
+    HIT --> DAMAGE
+    DAMAGE --> TARGET
 ```
 
----
-
-## Part 1. Skill 하나를 어떻게 표현하는가
-
-### 1.1 세 층으로 분리한다
-
-Sonheim의 Skill은 하나의 거대한 replicated object가 아닙니다.
-
-| 역할 | 타입 | 의미 |
-|---|---|---|
-| **정적 정의** | `FSkillData` | 어떤 Skill인지 |
-| **복제 상태** | `FSonheimSkillSpecItem` | 지금 사용 중인지, Cooldown은 언제 끝나는지 |
-| **실행 로직** | `UBaseSkill` 파생 객체 | 실제로 어떻게 동작하는지 |
-
-이 세 층을 분리하면 “Skill의 정의”와 “현재 네트워크 상태”와 “실행 코드”를 서로 다른 수명으로 관리할 수 있습니다.
+핵심은 **Skill의 정의·현재 상태·실행 코드·Animation timing을 서로 다른 책임으로 둔 것**입니다.
 
 ---
 
-### 1.2 실제 `FSkillData`
+## 1. Skill을 Data / State / Logic으로 분리
 
-아래는 현재 `SonheimGameType.h`의 실제 정의입니다.
+### 정적 정의 — `FSkillData`
 
 ```cpp
-USTRUCT(BlueprintType)
 struct FSkillData : public FTableRowBase
 {
-    GENERATED_USTRUCT_BODY()
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     int SkillID = 0;
+    TSubclassOf<UBaseSkill> SkillClass;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    TSubclassOf<UBaseSkill> SkillClass = nullptr;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TArray<FSkillStaminaCost> StaminaCosts;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TArray<FSkillItemCost> ItemCosts;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float CastRange = 0.0f;
+    float CastRange = 0.f;
+    float CoolTime = 0.f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float CoolTime = 0.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float FireInvokeTime = -1.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float PostDelayTime = -1.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     UAnimMontage* Montage = nullptr;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TArray<FAttackData> AttackData;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    TSubclassOf<ABaseElement> ElementClass = nullptr;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    TSubclassOf<ABaseElement> ElementClass;
     int NextSkillID = 0;
 };
 ```
 
-#### 이 구조를 어떻게 읽어야 하는가
+한 Skill row가 다음을 연결합니다.
 
-- `SkillClass`  
-  데이터가 어떤 실행 로직 클래스를 사용할지 결정합니다.  
-  예: `UMeleeAttack`, Shotgun, Rocket 등.
+- 어떤 `UBaseSkill` 파생 로직을 사용할지
+- 언제 어떤 Cost를 소모할지
+- 어느 거리에서 사용할 수 있는지
+- 어떤 Montage를 재생할지
+- 몇 개의 `FAttackData`를 사용할지
+- Combo가 다음 Skill로 이어지는지
 
-- `StaminaCosts / ItemCosts`  
-  단순 “소모량 1개”가 아니라 **OnActivate / OnFire / OnComplete** 시점별 비용을 가질 수 있습니다.
+Skill마다 별도 Character 코드를 추가하기보다 **Data가 실행 로직과 공격 데이터를 선택**합니다.
 
-- `CastRange`  
-  AI와 Skill 사용 가능 거리 판단에 사용합니다.
-
-- `CoolTime`  
-  Server가 Cooldown 종료 시각을 계산해 Skill Spec에 반영합니다.
-
-- `Montage`  
-  Skill의 표현뿐 아니라 실제 Gameplay timing의 기준이 됩니다.
-
-- `AttackData`  
-  한 Skill 안에서 여러 타격을 정의할 수 있습니다.  
-  3연타라면 각 타격이 서로 다른 `FAttackData`를 사용할 수 있습니다.
-
-- `NextSkillID`  
-  Combo처럼 다음 Skill로 이어지는 연결을 표현합니다.
-
-현재 주요 Gameplay timing은 Montage / AnimNotify 기반입니다. 따라서 `FireInvokeTime`, `PostDelayTime` 같은 필드는 schema에 남아 있지만 핵심 실행 경로를 이해할 때는 Notify 기반 흐름을 먼저 보는 편이 정확합니다.
-
----
-
-### 1.3 실제 복제 상태: `FSonheimSkillSpecItem`
-
-Skill Logic UObject 전체를 복제하지 않고 Client가 알아야 할 작은 상태만 FastArray에 넣습니다.
+### Runtime State — `FSonheimSkillSpecItem`
 
 ```cpp
-USTRUCT(BlueprintType)
 struct FSonheimSkillSpecItem : public FFastArraySerializerItem
 {
-    GENERATED_BODY()
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
     int32 SkillId = 0;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
     int32 Level = 1;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     bool bIsCasting = false;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    float CooldownEndTime = 0.0f;
+    float CooldownEndTime = 0.f;
 };
 ```
 
-```cpp
-USTRUCT(BlueprintType)
-struct FSonheimSkillSpecContainer : public FFastArraySerializer
-{
-    GENERATED_BODY()
+Client에 필요한 것은 `UBaseSkill*` 자체가 아니라:
 
-    UPROPERTY()
-    TArray<FSonheimSkillSpecItem> Items;
+- 어떤 Skill을 사용할 수 있는지
+- 현재 Casting 중인지
+- Cooldown이 언제 끝나는지
 
-    bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms)
-    {
-        return FFastArraySerializer::FastArrayDeltaSerialize<
-            FSonheimSkillSpecItem,
-            FSonheimSkillSpecContainer>(Items, DeltaParms, *this);
-    }
-};
-```
+같은 작은 상태입니다.
 
-즉 Client에게 필요한 것은 “어떤 `UBaseSkill*` 주소를 갖는가”가 아니라:
-
-- 어떤 Skill을 보유하는가
-- 지금 Casting 중인가
-- Cooldown은 언제 끝나는가
-
-입니다.
-
----
-
-### 1.4 실행 객체: `UBaseSkill`
-
-`UBaseSkill`은 실제 동작을 담당합니다.
-
-핵심 lifecycle:
+### 실행 Logic — `UBaseSkill`
 
 ```cpp
 virtual bool Activate(AAreaObject* Caster, AAreaObject* Target);
 virtual bool Fire();
 virtual bool Complete();
 virtual void Cancel();
-
-bool CheckCosts(...);
-bool ApplyCosts(...);
-void BindMontageDelegates(UAnimInstance* AnimInstance, UAnimMontage* Montage);
 ```
 
-Skill별 차이는 이 실행 객체의 파생 클래스에 둡니다.
+공통 lifecycle은 `UBaseSkill`이 제공하고, Melee / Projectile 같은 차이는 파생 class가 구현합니다.
 
 ---
 
-## Part 2. Skill은 언제 생성되고 누가 소유하는가
+## 2. Skill Logic은 필요할 때 생성
 
-### 2.1 필요할 때 Logic Instance를 만든다
-
-현재 코드는 모든 `UBaseSkill`을 시작 시점에 생성하지 않습니다.
+보유 가능한 모든 Skill UObject를 시작 시점에 미리 만들지 않습니다.
 
 ```cpp
 UBaseSkill* USonheimSkillComponent::EnsureSkillInstance(int32 SkillId)
 {
     if (TObjectPtr<UBaseSkill>* Found = SkillInstances.Find(SkillId))
-        if (IsValid(*Found)) return *Found;
+        if (IsValid(*Found))
+            return *Found;
 
-    if (FSkillData* Data = GI->GetDataSkill(SkillId))
-    {
-        UBaseSkill* NewSkill =
-            NewObject<UBaseSkill>(OwnerArea, Data->SkillClass);
+    FSkillData* Data = GI->GetDataSkill(SkillId);
+    if (!Data)
+        return nullptr;
 
-        NewSkill->InitSkill(Data);
-        SkillInstances.Add(SkillId, NewSkill);
-        return NewSkill;
-    }
-    return nullptr;
+    UBaseSkill* Skill =
+        NewObject<UBaseSkill>(OwnerArea, Data->SkillClass);
+
+    Skill->InitSkill(Data);
+    SkillInstances.Add(SkillId, Skill);
+    return Skill;
 }
 ```
 
-정적 Data와 replicated Spec은 먼저 존재할 수 있지만 실제 Logic UObject는 필요해질 때 만들어 cache합니다.
+Skill Spec과 Data는 먼저 존재할 수 있지만 실행 UObject는 실제 사용 시점에 만들어 cache합니다.
 
 ---
 
-### 2.2 장비/Buff가 Skill을 부여할 때
+## 3. Skill 소유권은 Grant Source를 추적
 
-Skill을 단순 bool 보유 상태로 두면 두 Source가 같은 Skill을 줄 때 문제가 생깁니다.
+장비·Buff·Skill Tree처럼 여러 Source가 같은 Skill을 부여할 수 있습니다.
 
-예:
-
-```text
-Weapon A ─┐
-          ├─ Skill 101
-Buff B  ──┘
-```
-
-Weapon A가 해제됐다고 Skill 101을 바로 제거하면 Buff B의 권한까지 사라집니다.
-
-그래서 `USonheimSkillComponent`는:
+단순히 `AddSkill / RemoveSkill`로 처리하면 한 Source가 해제될 때 다른 Source가 제공한 Skill까지 사라질 수 있습니다.
 
 ```cpp
 TMap<FGuid, TArray<int32>> GrantsById;
 TMap<int32, int32> GrantRefCounts;
 ```
 
-를 갖습니다.
+예:
 
-- Source별 `GrantId`
-- Skill별 reference count
+```text
+Weapon A ─┐
+          ├─ Skill 101   RefCount = 2
+Buff B  ──┘
 
-를 나눠 관리합니다.
+Weapon A 해제
+→ RefCount = 1
+→ Skill 유지
 
-무기 교체는 `ReplaceGrant`로 같은 source identity의 Skill set만 교체합니다.
-
----
-
-## Part 3. 한 번의 Cast가 실행되는 과정
-
-### 3.1 전체 Sequence
-
-```mermaid
-sequenceDiagram
-    participant Input as Input / AI
-    participant Comp as USonheimSkillComponent
-    participant Server as Server
-    participant Skill as UBaseSkill
-    participant Anim as Montage / Notify
-    participant Hit as Attack Logic
-
-    Input->>Comp: TryCastSkillById
-    Comp->>Server: Server_TryCastSkill (Client인 경우)
-    Server->>Comp: IsSkillAllowed / CanCastSkill
-    Comp->>Skill: EnsureSkillInstance + Activate
-    Skill->>Anim: Montage Play
-    Anim->>Skill: SkillFireNotify → Fire
-    Anim->>Hit: MeleeAttackNotifyState
-    Hit->>Server: Hit / Damage
-    Anim->>Skill: Montage End → Complete / Cancel
+Buff B 해제
+→ RefCount = 0
+→ Skill 회수
 ```
 
----
+무기 교체는 `ReplaceGrant()`를 사용해 **해당 장비 Source가 부여한 Skill set만 교체**합니다.
 
-### 3.2 Server가 최종 Cast를 결정한다
-
-핵심 흐름은 다음과 같습니다.
-
-```cpp
-bool USonheimSkillComponent::TryCastSkillById(
-    int32 SkillId,
-    AAreaObject* Target)
-{
-    if (!IsSkillAllowed(SkillId))
-        return false;
-
-    if (!GetOwner()->HasAuthority())
-    {
-        Server_TryCastSkill(SkillId, Target);
-        return true;
-    }
-
-    EnsureSkillInstance(SkillId);
-
-    UBaseSkill* Skill = GetSkillById(SkillId);
-    if (!Skill || !OwnerArea->CanCastSkill(Skill, Target))
-        return false;
-
-    if (!Skill->Activate(OwnerArea, Target))
-        return false;
-
-    OnServerSkillActivated(SkillId);
-    OwnerArea->MultiCast_CastSkill(SkillId, Target);
-    return true;
-}
-```
-
-Client의 요청이 곧 결과가 되지 않습니다.
-
-Server가 다시:
-
-- 허용 Skill인가
-- Target이 유효한가
-- Range/상태 조건을 만족하는가
-- 비용을 낼 수 있는가
-
-를 판단합니다.
+Inventory/Equipment와 Combat이 연결되는 실제 경계입니다.
 
 ---
 
-## Part 4. 비용과 Phase
-
-### 4.1 Phase
+## 4. Cast는 공통 Lifecycle을 따른다
 
 ```text
 Ready
@@ -347,7 +177,29 @@ CoolTime
 Ready
 ```
 
-`FSkillStaminaCost`, `FSkillItemCost`는 비용이 어느 phase에 발생하는지 포함합니다.
+Client 입력이 들어와도 최종 실행 조건은 authoritative path에서 다시 검사합니다.
+
+```text
+Input
+  ↓
+TryCastSkillById
+  ↓
+Skill Allowed / CanCast
+  ↓
+EnsureSkillInstance
+  ↓
+Activate
+  ↓
+Montage
+```
+
+RPC / FastArray를 포함한 동기화 방식 자체는 [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]에서 분리해 설명합니다.
+
+---
+
+## 5. Cost는 실행 Phase에 연결
+
+Skill은 Stamina / Item Cost를 특정 시점에 소모할 수 있습니다.
 
 ```cpp
 enum class ESkillCostPhase : uint8
@@ -358,311 +210,274 @@ enum class ESkillCostPhase : uint8
 };
 ```
 
-예를 들어 탄약은 실제 발사 Notify가 발생했을 때 `OnFire`로 소모할 수 있습니다.
+예를 들어:
+
+- 행동을 시작할 때 Stamina 소모
+- 실제 발사 시점에 Ammo 소모
+- 완료 시점에 후속 Cost 적용
+
+같은 구성이 가능합니다.
+
+`CheckCosts()`는 상태를 바꾸지 않고 사용 가능 여부만 판단하고, `ApplyCosts()`가 실제 상태를 변경합니다.
+
+### 현재 rollback 범위
+
+Item Cost를 여러 개 차감하다 중간에 실패하면 이미 차감된 **Item은 복원**합니다.
+
+다만 먼저 소비된 Stamina까지 포함해 전체 Cost transaction을 되돌리지는 않습니다.
+
+따라서 현재 구현은 **Item 부분 실패에 대한 rollback은 지원하지만 전체 Cost의 완전한 atomic transaction은 아닙니다.**
 
 ---
 
-### 4.2 Check와 Apply를 분리한다
+## 6. Gameplay Timing은 Animation Timeline에 둔다
 
-- `CheckCosts`: 상태를 변경하지 않는 검사
-- `ApplyCosts`: Authority에서 실제 소모
+공격 판정을 C++의 고정 Delay로 실행하면 Montage 길이·PlayRate·Animation 수정과 실제 타격 시점이 어긋날 수 있습니다.
 
-현재 `ApplyCosts`는 Item 여러 개를 차감하다 중간 실패하면 이미 차감된 **Item cost를 환불**합니다.
+그래서 주요 gameplay timing을 AnimNotify에 연결합니다.
 
-다만 Stamina를 먼저 소비한 뒤 Item 단계에서 실패하면 Stamina까지 복구하지는 않습니다.
-
-따라서 현재 구현을 “전체 비용이 완전히 atomic하다”고 표현하지 않습니다.
-
----
-
-## Part 5. Animation이 실제 Gameplay Timing을 결정한다
-
-### 5.1 왜 Timer 대신 Notify인가
-
-공격 효과가 C++의 `Delay(0.3f)`에 묶여 있으면:
-
-- Montage 길이 변경
-- PlayRate 변경
-- Animation 수정
-
-때마다 실제 타격 시점과 화면이 어긋날 수 있습니다.
-
-그래서 실제 timing을 animation timeline에서 지정합니다.
-
-| Notify | 역할 |
+| Notify | Gameplay 역할 |
 |---|---|
-| `USkillFireNotify` | Skill `Fire()` |
-| `UMeleeAttackNotifyState` | 근접 판정 구간 |
-| `USetPlayerStateNotify` | ACTION / CANACTION / NORMAL |
-| `UAddConditionNotify` | Invincible 등 상태 적용 |
-
----
-
-### 5.2 Server Authority와 Notify
-
-Animation은 각 machine에서 재생되지만 최종 Gameplay 판정은 Authority가 담당합니다.
-
-`SkillFireNotify`는 실행 위치에 따라:
-
-- Authority → `Skill->Fire()`
-- Client → Server Notify RPC
-
-로 연결됩니다.
-
-Melee 판정 NotifyState는 Authority에서 실제 hit detection window를 시작합니다.
-
----
-
-## Part 6. 실제 근접 공격 데이터
-
-### 6.1 `FHitBoxData`
-
-```cpp
-USTRUCT(BlueprintType)
-struct FHitBoxData
-{
-    GENERATED_BODY()
-
-    EHitDetectionType DetectionType = EHitDetectionType::Line;
-    FName MeshComponentTag = NAME_None;
-
-    FName StartSocketName;
-    FName EndSocketName;
-
-    float Radius = 15.0f;
-    float HalfHeight = 30.0f;
-    FVector BoxExtent = FVector(15.0f);
-
-    bool bUseInterpolation = false;
-    int32 InterpolationSteps = 4;
-};
-```
-
-한 데이터 구조로:
-
-- Line
-- Sphere
-- Capsule
-- Box
-
-판정을 선택합니다.
-
-`MeshComponentTag`가 없으면 Character Mesh, 값이 있으면 해당 tag의 Weapon Mesh를 찾습니다.
-
----
-
-### 6.2 `FAttackData`
-
-실제 `FAttackData`는 판정 정보뿐 아니라 Damage와 Feedback context를 함께 갖습니다.
-
-```cpp
-USTRUCT(BlueprintType)
-struct FAttackData
-{
-    GENERATED_USTRUCT_BODY()
-
-    float HealthDamageAmountMin = 0.0f;
-    float HealthDamageAmountMax = 0.0f;
-    float StaminaDamageAmount = 0.0f;
-
-    EAttackType AttackType = EAttackType::Normal;
-    EElementalAttribute AttackElementalAttribute = EElementalAttribute::None;
-
-    FHitBoxData HitBoxData;
-
-    bool bEnableHitStop = false;
-    float HitStopDuration = 0.1f;
-
-    float KnockBackForce = 0.0f;
-    bool bUseCustomKnockBackDirection = false;
-    FVector KnockBackDirection = FVector::ForwardVector;
-
-    // Fire / Hit VFX, SFX fields...
-};
-```
-
-즉 “어디를 때리는가”와 “맞았을 때 어떤 전투 context를 전달하는가”가 한 공격 단위에 묶입니다.
-
----
-
-### 6.3 AttackDataIndex
-
-하나의 Skill은 `TArray<FAttackData>`를 갖습니다.
-
-Animation의 `UMeleeAttackNotifyState`가 `AttackDataIndex`를 지정합니다.
+| `USkillFireNotify` | Skill `Fire()` 실행 |
+| `UMeleeAttackNotifyState` | 근접 판정이 활성화되는 구간 |
+| `USetPlayerStateNotify` | ACTION / CANACTION / NORMAL 전환 |
+| `UAddConditionNotify` | Invincible 등 Condition 적용 |
 
 ```text
-3-hit Montage
-
-Notify Window #1 → AttackData[0]
-Notify Window #2 → AttackData[1]
-Notify Window #3 → AttackData[2]
+Montage
+ ├─ Wind-up
+ ├─ SkillFireNotify
+ ├─ MeleeAttackNotifyState
+ ├─ CANACTION
+ └─ NORMAL
 ```
 
-따라서 한 `UMeleeAttack` class로도 각 타격의:
-
-- Socket
-- Shape
-- Element
-- Damage
-- Knockback
-
-을 다르게 만들 수 있습니다.
+Animation이 **언제 실행할지**, Skill Logic이 **무엇을 실행할지** 담당합니다.
 
 ---
 
-## Part 7. Melee 판정의 실제 문제 해결
+## 7. Combo / Cancel Window도 Animation에서 조정
 
-### 7.1 빠른 Swing에서 Hit이 빠지는 문제
-
-현재 frame 위치에서 한 번만 sweep하면 무기가 한 frame 사이에 Target을 지나칠 수 있습니다.
-
-그래서 `bUseInterpolation`이 true인 경우:
-
-```text
-Previous ──•──•──•── Current
-           ↑  ↑  ↑
-       중간 위치에서도 Sweep
-```
-
-을 수행합니다.
-
-`InterpolationSteps`만큼 previous/current socket transform 사이를 보간해 각각 collision check합니다.
-
----
-
-### 7.2 보간하면 중복 Hit이 늘어난다
-
-여러 sweep에서 같은 Actor가 반복 검출되므로 두 단계로 제거합니다.
-
-- `ProcessedActors`  
-  현재 `ProcessHitDetection` 호출 안의 중복 제거
-
-- `AttackCollision.HitActors`  
-  현재 Notify Window 전체에서 이미 Hit한 Actor 제거
-
-Interpolation 정밀도를 높여도 한 window에서 의도치 않은 다단 damage가 생기지 않게 합니다.
-
----
-
-### 7.3 Socket 기반 판정과 Animation Optimization 충돌
-
-Gameplay 판정이 bone/socket 위치에 의존하면 off-screen animation optimization이 correctness에 영향을 줄 수 있습니다.
-
-`AAreaObject`는:
-
-```cpp
-GetMesh()->VisibilityBasedAnimTickOption =
-    EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
-```
-
-를 사용합니다.
-
-또한 Melee 판정 window 동안 source mesh에 최고 LOD를 강제하고 종료 시 복원합니다.
-
-이 선택은 CPU 비용과 Server 판정 정확성 사이의 trade-off입니다.
-
----
-
-## Part 8. Hit 이후 Damage Pipeline
-
-### 8.1 float Damage만 전달하지 않는다
-
-Sonheim 공격은 단순 damage 값 외에도 다음 정보가 필요합니다.
-
-- Element
-- Attack Type
-- Weak Point 판단용 Hit
-- Knockback
-- Hit Stop
-- VFX / SFX
-
-그래서 Unreal의 Damage Event를 확장합니다.
-
-```cpp
-USTRUCT(BlueprintType)
-struct FCustomDamageEvent : public FPointDamageEvent
-{
-    GENERATED_BODY()
-
-    UPROPERTY()
-    FAttackData AttackData;
-};
-```
-
----
-
-### 8.2 Server의 `TakeDamage` 흐름
-
-```text
-Hit
- ↓
-FCustomDamageEvent
- ↓
-CanAttack / Dead / Invincible / Hidden 검사
- ↓
-Defence 계산
- ↓
-Weak Point
- ↓
-Element multiplier
- ↓
-HP / Stamina 감소
- ↓
-Death
- ↓
-Hit Stop / Knockback / Multicast Feedback
-```
-
-피격 Target이 자신의 방어/상태 규칙을 적용하기 때문에 공격자는 Target 종류별 branch를 계속 추가할 필요가 없습니다.
-
----
-
-## Part 9. Player Cancel Window
-
-Player의 행동 가능 여부는 `EPlayerState`와 `FActionRestrictions`로 관리합니다.
-
-Animation에서:
+Player 행동 가능 상태를 별도 Timer로 맞추지 않고 Animation Notify로 전환합니다.
 
 ```text
 ACTION
   ↓
 Attack Window
   ↓
-CANACTION   ← Combo / Dodge 허용
+CANACTION
+  ├─ 다음 Combo
+  └─ Dodge 허용
   ↓
-NORMAL      ← 이동까지 복귀
+NORMAL
 ```
 
-처럼 Notify를 배치합니다.
+Animation을 수정할 때 공격 판정뿐 아니라 Combo / Dodge cancel timing도 같은 timeline에서 조정할 수 있습니다.
 
-이렇게 Combat timing과 Input restriction timing을 같은 animation timeline에서 조정합니다.
-
-자세한 Player state 구조는 [[4. Player & Character Systems|04_Player_Character_Systems]]에서 설명합니다.
+Player state 자체는 [[04. Player & Character Systems|04_Player_Character_Systems]]에서 설명합니다.
 
 ---
 
-## Trade-offs / 현재 한계
+## 8. `FAttackData`가 판정과 Damage Context를 함께 전달
 
-### Animation-driven gameplay
-Gameplay timing과 motion은 잘 맞지만 Server에서도 필요한 animation/bone update 비용이 생깁니다.
+```cpp
+struct FAttackData
+{
+    float HealthDamageAmountMin = 0.f;
+    float HealthDamageAmountMax = 0.f;
+    float StaminaDamageAmount = 0.f;
 
-### 높은 Data 자유도
-Socket, Mesh Tag, AttackDataIndex가 잘못 설정되면 runtime 문제로 이어질 수 있어 validation을 더 강화할 여지가 있습니다.
+    EAttackType AttackType;
+    EElementalAttribute AttackElementalAttribute;
 
-### Cost transaction
-Item partial rollback은 있지만 Stamina까지 포함한 전체 transaction rollback은 아닙니다.
+    FHitBoxData HitBoxData;
 
-### 하나의 `FSkillData`가 많은 책임을 갖는다
-프로젝트 규모가 더 커지면 Cost / Presentation / Attack Definition을 별도 nested type이나 asset으로 분리할 여지가 있습니다.
+    bool bEnableHitStop = false;
+    float HitStopDuration = 0.1f;
+
+    float KnockBackForce = 0.f;
+    FVector KnockBackDirection;
+};
+```
+
+Attack 하나가:
+
+- 판정 Shape / Socket
+- Damage
+- Element
+- Hit Stop
+- Knockback
+- VFX / SFX
+
+context를 함께 가집니다.
+
+한 Skill은 여러 `FAttackData`를 가질 수 있고, `UMeleeAttackNotifyState::AttackDataIndex`로 각 타격 Window와 연결합니다.
+
+```text
+3 Hit Combo
+
+Notify #1 → AttackData[0]
+Notify #2 → AttackData[1]
+Notify #3 → AttackData[2]
+```
+
+하나의 `UMeleeAttack` 로직으로 Combo 각 타격의 판정과 성격을 다르게 설정할 수 있습니다.
+
+---
+
+## 9. Hit Shape를 Data로 선택
+
+`FHitBoxData`는 공통 Melee Logic이 사용할 판정을 정의합니다.
+
+```cpp
+struct FHitBoxData
+{
+    EHitDetectionType DetectionType;
+
+    FName MeshComponentTag;
+    FName StartSocketName;
+    FName EndSocketName;
+
+    float Radius = 15.f;
+    float HalfHeight = 30.f;
+    FVector BoxExtent = FVector(15.f);
+
+    bool bUseInterpolation = false;
+    int32 InterpolationSteps = 4;
+};
+```
+
+지원하는 판정:
+
+- Line
+- Sphere
+- Capsule
+- Box
+
+`MeshComponentTag`를 이용해 Character Mesh뿐 아니라 Weapon SkeletalMesh의 Socket도 같은 판정 로직에서 사용할 수 있습니다.
+
+---
+
+## 10. 빠른 Melee의 Frame 누락을 보간
+
+빠른 무기 Swing은 한 frame 사이에 Target을 통과할 수 있습니다.
+
+현재 Socket 위치에서 한 번만 Sweep하면 다음과 같은 구간이 비게 됩니다.
+
+```text
+Frame N                     Frame N+1
+Socket ● -----------------------> ●
+              Target X
+```
+
+`bUseInterpolation`이 켜진 공격은 previous/current socket transform 사이를 나누어 중간 Sweep을 추가합니다.
+
+```text
+Previous ●──●──●──● Current
+           ↑  ↑
+        추가 Sweep
+```
+
+`InterpolationSteps`로 공격별 보간 밀도를 조절합니다.
+
+---
+
+## 11. 보간으로 생기는 중복 Hit을 두 단계에서 제거
+
+여러 Sweep을 수행하면 같은 Actor가 반복 검출될 수 있습니다.
+
+- `ProcessedActors` — 현재 `ProcessHitDetection()` 호출 안에서 중복 제거
+- `AttackCollision.HitActors` — 현재 Notify Window 전체에서 이미 맞은 Actor 제거
+
+따라서 interpolation step을 늘려도 한 공격 Window에서 같은 Target에 의도하지 않은 다단 Damage가 들어가지 않습니다.
+
+---
+
+## 12. Socket 판정 때문에 Animation Tick 정확성을 우선
+
+Server의 Melee 판정이 AnimNotify와 Bone/Socket Transform에 의존합니다.
+
+Off-screen Character의 Animation update가 생략되면 gameplay 판정까지 달라질 수 있어 `AAreaObject`는:
+
+```cpp
+VisibilityBasedAnimTickOption =
+    EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+```
+
+를 사용합니다.
+
+또 Melee 판정 Window에서는 source mesh의 높은 LOD를 사용해 Socket 위치를 안정적으로 유지하고, Window가 끝나면 원래 설정으로 복원합니다.
+
+이는 **CPU 비용보다 Server hit correctness를 우선한 선택**입니다.
+
+---
+
+## 13. Damage Event로 공격 Context를 Target까지 전달
+
+단순 `float Damage`만 전달하면 Target에서 Element, Knockback, Weak Point, HitStop 정보를 복원하기 어렵습니다.
+
+```cpp
+struct FCustomDamageEvent : public FPointDamageEvent
+{
+    FAttackData AttackData;
+};
+```
+
+Damage 처리 흐름:
+
+```text
+Hit
+ ↓
+FCustomDamageEvent
+ ↓
+IFF / Dead / Invincible / Hidden
+ ↓
+Defense
+ ↓
+Weak Point
+ ↓
+Element Multiplier
+ ↓
+HP / Stamina
+ ↓
+Death
+ ↓
+Hit Stop / Knockback / Feedback
+```
+
+공격자는 Target 종류마다 별도 Damage 함수를 호출하지 않고, Target이 자신의 방어/상태 규칙을 적용합니다.
+
+Boss도 같은 `FAttackData`를 Strike 내부에서 재사용합니다.
+
+---
+
+## 설계 선택과 비용
+
+| 선택 | 얻은 것 | 비용 / 제약 |
+|---|---|---|
+| **Data / State / Logic 분리** | Skill 정의·네트워크 상태·실행 객체의 수명 분리 | 타입과 mapping 증가 |
+| **Lazy Skill Instance** | 실제 사용하는 Skill Logic만 생성 | 최초 사용 시 생성 경로 필요 |
+| **Grant + RefCount** | 여러 Source가 같은 Skill을 안전하게 공유 | Grant lifecycle 관리 필요 |
+| **AnimNotify 기반 timing** | Motion과 실제 판정/Cancel 시점 일치 | Server Animation/Bone update 비용 증가 |
+| **Interpolated Melee Sweep** | 빠른 Swing의 frame 누락 감소 | Sweep 횟수와 중복 제거 비용 증가 |
+| **AttackData 기반 Damage Context** | Combat/Boss에서 동일 Damage semantics 재사용 | 데이터 자유도가 높아 잘못된 Socket/Index 검증 필요 |
+
+---
+
+## 현재 한계
+
+- Cost rollback은 Stamina까지 포함한 완전한 transaction이 아닙니다.
+- `FSkillData`가 Cost / Animation / Attack을 함께 가져 프로젝트 규모가 커질수록 더 세분화할 여지가 있습니다.
+- Socket / AttackDataIndex 같은 authoring 오류는 Dungeon/Boss 수준만큼 자동 Validation이 강화되어 있지 않습니다.
 
 ---
 
 ## 연관 문서
 
-- Player action/state가 궁금하면 → [[4. Player & Character Systems|04_Player_Character_Systems]]
-- Capture가 Combat 위에 어떻게 얹히는지 → [[8. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]]
-- Boss가 이 전투 기반을 어떻게 확장하는지 → [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]]
+- [[04. Player & Character Systems|04_Player_Character_Systems]] — Action State / Stat / Equipment
+- [[07. Inventory & Crafting|07_Inventory_Crafting]] — Equipment 변경과 Skill Grant 연결
+- [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — 같은 AttackData를 사용하는 Boss Pattern
+- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — Skill Spec / RPC 동기화
 
 ---
 
