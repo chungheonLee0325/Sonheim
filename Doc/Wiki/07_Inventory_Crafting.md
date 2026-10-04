@@ -34,7 +34,7 @@ flowchart LR
     RESULT --> INV
 ~~~
 
-Inventory를 단순 슬롯 UI가 아니라 **Item 상태가 다른 gameplay system으로 들어가는 중심 경계**로 사용합니다.
+Player Inventory는 Loot, Equipment, Container, Crafting, Dungeon Reward가 공유하는 Item 상태의 중심 경계입니다.
 
 ---
 
@@ -446,7 +446,7 @@ Widget은:
 
 ### 같은 Slot Widget을 여러 화면에서 재사용
 
-<code>USlotWidget</code>은 Inventory 전용 그림이 아니라 Item slot의 공통 interaction/view 역할을 갖습니다.
+<code>USlotWidget</code>은 Item slot의 공통 interaction/view 역할을 맡아 여러 화면에서 재사용됩니다.
 
 - Player Inventory grid
 - Equipment slot
@@ -506,7 +506,7 @@ ServerDrop / ServerDiscard
 
 로 결과를 돌려받습니다.
 
-현재 이 Confirm UI는 **프로젝트 전체 공용 modal manager에 등록되는 구조가 아니라 Inventory 화면이 직접 수명을 소유하는 local popup**입니다. 프로젝트 전체 Notice/Screen/Input 관리 구조와 이 한계는 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]에서 별도로 정리합니다.
+Confirm UI의 수명은 <code>UInventoryWidget</code>이 소유하며, 확인 결과를 부모 화면으로 반환합니다. 프로젝트 전체 Screen/Input 구조는 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]에서 정리합니다.
 
 ---
 
