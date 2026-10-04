@@ -1,311 +1,346 @@
 # 15. Development History & Retrospective
 
-Sonheim은 처음부터 현재 규모의 시스템으로 설계된 프로젝트가 아닙니다.  
-2025년에는 핵심 gameplay loop와 multiplayer 기반을 만들었고, 2026년에는 그 기반 위에 **콘텐츠 하나를 처음부터 결과 정산까지 완성하는 Dungeon Vertical Slice**를 추가하면서 구조를 다시 검증했습니다.
+Sonheim은 처음부터 현재 구조를 완성해 두고 기능을 채운 프로젝트가 아닙니다.
+
+초기에는 Player·Combat·Item·Capture 같은 개별 gameplay 기능을 만드는 데 집중했고, 이후 Container/Crafting과 Dungeon처럼 **여러 시스템이 동시에 연결되는 콘텐츠**를 만들면서 기존 책임 경계를 반복해서 수정했습니다.
+
+이 페이지는 기능 추가 순서보다 **어떤 구조가 실제 확장에서 문제가 되었고 어떻게 바꿨는지**를 중심으로 정리합니다.
 
 ---
 
-## 2025 — Core Foundation
+## 변화 요약
 
-### 2025.03–04 — Core Foundation
-
-2인 팀으로 시작해 Player와 World gameplay의 기본 구조를 구축했습니다.
-
-주요 작업:
-
-- Player movement / action
-- `AAreaObject` 공통 framework
-- Attribute / Skill / Combat
-- DataTable 기반 gameplay data
-- Interaction
-- Resource
-- Multiplayer authority 기본 원칙
-
-이 시기에 만든 핵심 경계 중 일부는 이후 시스템에서도 유지됩니다.
-
-예:
-
-- ActorComponent 단위 기능 분리
-- `TakeDamage` 기반 response
-- Interface 기반 interaction
-- Server authority / replication
+| 초기 구조 / 문제 | 변경 | 결과 |
+|---|---|---|
+| Player class에 Pal 관련 책임 증가 | Capture / Inventory / Partner를 Component로 분리 | ownership lifecycle별 책임 분리 |
+| 보유 Skill Logic을 일찍 생성 | Skill Spec과 Logic 분리, 필요 시 Instance 생성 | Runtime object 수명 분리 |
+| 장비가 Skill을 단순 Add/Remove | GrantId + RefCount | 여러 Source가 같은 Skill을 안전하게 공유 |
+| Item 상태 변화와 획득 의미가 섞임 | Inventory Changed / Item Acquired Event 분리 | 장비 해제·slot 이동에서 잘못된 획득 UI 방지 |
+| 모든 Item state를 같은 방식으로 생각 | Inventory / Container / Crafting의 ownership 분리 | 개인·공유·협력 상태에 서로 다른 lifecycle 적용 |
+| Dungeon Stage 규칙을 World Actor가 일부 앎 | Barrier / Transition rule을 Definition으로 이동 | World Actor와 콘텐츠 진행 규칙 분리 |
+| 문자열 중심 Dungeon ID | GameplayTag namespace | Stage/Group/Branch/Barrier 관계와 validation 강화 |
+| Dungeon UI가 여러 gameplay source를 직접 해석 | Snapshot → Presenter → ViewData | Runtime / UMG lifecycle 분리 |
+| Dungeon 전용 Toast | 공용 NoticeSubsystem | Level-up / Capture / Crafting / Region에서도 재사용 |
+| 사람이 Stage flow를 별도 문서로 관리 | Definition → Mermaid Stage Graph 생성 | 문서와 실제 데이터의 drift 감소 |
+| 플레이 후 오류 발견 | Editor / Graph Validation 강화 | Cycle, unreachable, producer 순서, Boss timing을 실행 전 검사 |
+| C++ 변경과 Editor 작업이 분리 | AgentMcp 기반 Inspect→Edit→PIE→Review | Asset 작업과 runtime 검증을 같은 loop에서 수행 |
 
 ---
 
-### 2025.06 — Pal Lifecycle와 구조 분리
+## 1. 기능 수가 늘면서 “어디에 둘 것인가”가 더 중요해졌다
 
-Capture / Inventory / Partner 기능을 Player에 직접 계속 추가하기보다 component로 분리했습니다.
+초기에는 기능 하나를 빠르게 완성하는 것이 우선이었습니다.
 
-- `UPalCaptureComponent`
-- `UPalInventoryComponent`
-- `UPalPartnerSkillComponent`
+Pal 기능이 늘면서 Player 하나가:
 
-동시에:
+~~~text
+Capture
+Pal List
+Selection
+Summon
+Partner Skill
+~~~
 
-- Capture reveal
-- Pal Activate / Deactivate
-- Partner AI
-- IFF
-- UI event 연결
-
-을 정리했습니다.
-
-이 시기의 가장 큰 변화는 “기능 구현”보다 **소유권과 lifecycle 기준으로 책임을 다시 나눈 것**입니다.
-
----
-
-### 2025.07 — Combat / Item 확장
-
-- Shotgun
-- 다양한 Attack 형태
-- Item rarity
-- Combat feedback
-- Damage / weak point / element
-- Item drop / pickup flow
-
-공격 종류가 늘어나면서 `FAttackData`, `UMeleeAttack`, Animation Notify 기반 timing 같은 공통 구조의 필요성이 커졌습니다.
-
----
-
-### 2025.08 — Shared World Systems
-
-- Container
-- Crafting
-- 협력 작업
-- Crafting UI
-- Queue / Collect
-- Inventory / Container interaction
-
-개인 소유 state와 shared world state가 처음 본격적으로 충돌한 시기입니다.
-
-그 결과:
-
-- Inventory owner-only replication
-- Container subscriber-based replication
-- Crafting `UIOwner` 동시성 제어
-
-처럼 system별 network policy가 분화됐습니다.
-
----
-
-### 2025.09–10 — Networking / UI 안정화
-
-- Inventory FastArray
-- Client prediction
-- Skill FastArray spec
-- Skill Grant / Revoke
-- Crafting interaction 개선
-- Event-driven UI
-- UI pooling
-- Wiki / source documentation
-
-특히 UI에서는 “Widget에서 gameplay state를 직접 polling하지 않는다”는 방향을 정리했습니다.
-
----
-
-## 2026 — Forgotten Ruins Vertical Slice
-
-2026년에는 새로운 개별 feature를 여러 개 추가하는 대신, 기존 시스템이 실제 콘텐츠 하나에서 함께 동작하도록 Dungeon을 만들었습니다.
-
----
-
-### 2026.09.15 — Dungeon Runtime
-
-첫 단계에서 구현한 핵심 flow:
-
-```text
-Catalog
- → PrimaryAsset
- → Definition DataAsset
- → Server Runtime
- → Objective / Condition / Transition
- → Replicated Snapshot
- → Client UI
-```
-
-동시에 Shortcut / ExtraWave 두 경로와 성공/실패 path를 테스트 공간에 연결했습니다.
-
----
-
-### 2026.09.16–17 — Content Flow 완성
-
-추가된 항목:
-
-- Dungeon Entrance / Switch interaction
-- Physical branch layout
-- Branch-specific reward
-- Result settlement
-- Required Level
-- Stage timeout
-- SaveGame progress
-- Definition validation / graph
-
-이 시점부터 Dungeon은 단순 Stage FSM이 아니라 **입장 → 진행 → 분기 → 실패/성공 → 정산 → 기록**을 가진 콘텐츠 단위가 됐습니다.
-
----
-
-### 2026.09.26–28 — World / HUD / Barrier
-
-- Modular dungeon space
-- Island ↔ Dungeon Portal
-- HUD 구조 개편
-- Objective hierarchy
-- Optional objective
-- Stage barrier
-- Barrier rule의 Definition 이동
-- Dungeon identifier의 GameplayTag 전환
-
-Barrier를 Actor 내부에 stage별로 하드코딩했다가 Definition의 `SealedBarriers`로 옮긴 것은 중요한 리팩토링입니다.
-
-**“현재 Stage에서 어떤 문이 닫혀야 하는가”는 World Actor보다 Dungeon Definition이 소유해야 한다**고 판단했습니다.
-
----
-
-### 2026.09.28–30 — Guardian Boss
-
-일반 Monster 스킬 조합에서 별도 Boss Runtime으로 확장했습니다.
-
-- `UBossFSM`
-- `UBossPatternDataAsset`
-- Telegraph
-- Phase 2
-- Re-aim / movement
-- Leap / Charge
-- Down / Exhaust
-- Capture Window
-- HUD Boss state
-
-Boss도 Dungeon Runtime에 별도 특수 UI callback을 직접 넣지 않고 Snapshot의 Boss state를 통해 presentation에 연결했습니다.
-
----
-
-### 2026.09.30–10.01 — Navigation / Result
-
-- Dungeon UI icon
-- Objective world marker
-- Minimap
-- Player / remote marker
-- elapsed time
-- best record
-- grade
-- result comparison
-
-Minimap은 수동 이미지 위에 임의 좌표를 찍는 대신 Dungeon을 생성하는 동일 cell grid의 데이터를 기반으로 map data를 만들었습니다.
-
----
-
-### 2026.10.02–03 — Workflow / Common Systems
-
-- Agent MCP project config
-- Boss presentation polish
-- Dungeon Toast → `UNoticeSubsystem`
-- Notice의 Level-up / Capture / Crafting / Region 확장
-- StringTable localization
-
-Dungeon을 위해 만든 기능이 범용성이 생긴 경우 Dungeon namespace에 남겨두지 않고 common system으로 이동했습니다.
-
-`UNoticeSubsystem`이 대표적입니다.
-
----
-
-## Retrospective
-
-### 1. “처음부터 완벽한 구조”보다 ownership을 계속 수정했다
-
-Sonheim의 구조는 한 번 설계하고 유지된 것이 아닙니다.
-
-예:
-
-- Barrier state → Actor에서 Definition으로 이동
-- Dungeon Toast → NoticeSubsystem으로 이동
-- String literal → StringTable
-- 문자열 ID → GameplayTag tree
-- Skill instance → 필요 시 생성
-- UI direct state access → Presenter/ViewData가 필요한 영역 분리
-
-기능이 늘어날수록 **현재 책임이 어느 layer에 있어야 하는가**를 다시 판단했습니다.
-
----
-
-### 2. Data-driven은 DataTable 하나를 의미하지 않는다
-
-초기에는 DataTable이 대부분의 gameplay data를 담당했습니다.
-
-Dungeon을 만들면서 다음 요구가 생겼습니다.
-
-- 콘텐츠 identity
-- asset dependency
-- nested stage graph
-- soft loading
-- validation
-- presentation 분리
-
-그래서 DataTable을 버린 것이 아니라:
-
-- Row data → DataTable
-- Content definition → PrimaryDataAsset
-- Runtime identifier → GameplayTag
-- Player text → StringTable
-
-로 역할을 나눴습니다.
-
----
-
-### 3. Server Authority만으로 UX가 좋아지지는 않는다
-
-모든 결과를 Server가 결정해도 Client가 매번 round-trip을 기다리면 Inventory 같은 UI는 답답해집니다.
+을 모두 직접 다루기 시작하면 각 기능의 수명과 변경 이유가 달라집니다.
 
 그래서:
 
-- 결과 권위 → Server
-- 즉각적인 조작 피드백 → Client Prediction
-- 최종 일치 → Replication
+~~~text
+UPalCaptureComponent
+→ 포획 과정
 
-으로 역할을 분리했습니다.
+UPalInventoryComponent
+→ 소유 / 선택
 
----
+UPalPartnerSkillComponent
+→ 소환 / Partner Action
+~~~
 
-### 4. 재사용 여부가 추상화의 실제 검증이었다
+으로 책임을 나눴습니다.
 
-2025년에 만든 시스템 중 2026 Dungeon에서 다시 사용된 것:
-
-- Interaction → Portal / Lever / Chest
-- Inventory → Reward
-- Capture → Boss Capture
-- Monster lifecycle event → Objective
-- Damage / Skill → Boss Combat
-- Notice → 여러 gameplay producer
-
-새 콘텐츠에서 재사용되지 못한 추상화는 다시 경계를 조정했습니다.
+이후 Dungeon에서도 같은 기준을 사용했습니다.  
+“기능을 어느 class에 넣기 쉬운가”보다 **그 상태를 누가 소유하고 언제까지 살아야 하는가**를 먼저 보는 방향으로 바뀌었습니다.
 
 ---
 
-### 5. 자동 검증은 기능 규모가 커질수록 중요해졌다
+## 2. 재사용되지 않는 추상화는 다시 경계를 조정했다
 
-Dungeon은 한 path만 확인해서는 충분하지 않습니다.
+추상화가 유효한지는 이름보다 새 콘텐츠에서 실제로 재사용되는지로 확인했습니다.
 
-- Shortcut / ExtraWave
-- Success / Timeout / Death / Leave
-- Server / Client
-- HUD / Result
-- Definition validity
-- Boss state
+Dungeon에서 그대로 재사용된 기존 경계:
 
-조합이 늘어나면서 반복 가능한 verification과 editor-side validation의 가치가 커졌습니다.
+- Interaction → Entrance / Lever / Reward Chest
+- Inventory → Dungeon Reward
+- Capture → Guardian Capture
+- Monster Death / Capture → Objective Tracker
+- \`FAttackData\` → Boss Strike
+- Health Component → Party HUD
+- Notice → Dungeon / Level-up / Capture / Crafting
 
-자세한 내용은 [[14. Development Workflow & Verification|14_Development_Workflow_Verification]]에서 다룹니다.
+반대로 새 콘텐츠에서 Actor나 UI가 기존 시스템 내부 지식을 계속 알아야 했다면 책임 위치를 다시 조정했습니다.
 
 ---
 
-### 현재 남아 있는 개선 지점
+## 3. Barrier 규칙 — World Actor에서 Content Definition으로 이동
 
-문서에서는 구현된 내용을 과장하지 않고 현재 trade-off도 함께 남깁니다.
+초기에는 Barrier가 현재 Stage를 기준으로 자신의 동작을 판단하는 방향이 자연스러웠습니다.
+
+하지만 분기가 늘어나면 Barrier가 Dungeon 진행 규칙을 알아야 합니다.
+
+~~~text
+Before
+
+Barrier Actor
+ └─ "Combat Stage면 닫힘"
+~~~
+
+이를 다음처럼 변경했습니다.
+
+~~~text
+After
+
+Dungeon Definition
+ └─ Stage.SealedBarriers
+       ↓
+Dungeon Runtime State
+       ↓
+Barrier Actor
+ └─ "내 ID가 현재 sealed 목록에 있는가?"
+~~~
+
+**어떤 문을 닫을지는 콘텐츠 규칙**, **실제로 문을 닫아 표현하는 것은 World Actor**로 나눴습니다.
+
+---
+
+## 4. Data-driven의 의미도 프로젝트와 함께 바뀌었다
+
+초기에는 DataTable이 주요 gameplay data를 담당했습니다.
+
+Item / Skill처럼 같은 schema의 row를 관리하는 데는 여전히 적합합니다.
+
+Dungeon을 만들면서 추가 요구가 생겼습니다.
+
+- 자체 콘텐츠 identity
+- nested Stage graph
+- asset dependency
+- soft loading
+- GameplayTag namespace
+- validation
+- Presentation 분리
+
+그래서 DataTable을 대체한 것이 아니라 역할을 세분화했습니다.
+
+~~~text
+Repeated Row Data
+→ DataTable
+
+Independent Content Definition
+→ PrimaryDataAsset / DataAsset
+
+Runtime Identity
+→ GameplayTag
+
+Player-facing Text
+→ StringTable
+~~~
+
+“Data-driven = DataTable 사용”에서 **데이터 성격에 맞는 authoring/runtime 모델을 선택한다**는 방향으로 확장됐습니다.
+
+---
+
+## 5. Dungeon UI — Event 연결에서 현재 상태 모델로 확장
+
+Health나 Inventory처럼 독립 값은 Delegate 기반 UI로 충분했습니다.
+
+Dungeon은:
+
+- Stage
+- Objective
+- Branch
+- Timer
+- Party
+- Boss
+- Reward
+- Result
+
+가 동시에 하나의 화면을 구성합니다.
+
+개별 callback을 Widget에 계속 추가하면 UMG가 gameplay 구조를 너무 많이 알아야 합니다.
+
+그래서:
+
+~~~text
+Server Runtime
+    ↓
+Replicated Snapshot
+    ↓
+Presenter
+    ↓
+ViewData
+    ↓
+UMG
+~~~
+
+로 변경했습니다.
+
+이 구조는 UI 코드량을 줄이기 위한 것이 아니라 **HUD가 늦게 만들어져도 현재 Run state를 다시 구성하고, gameplay schema와 Widget layout의 변경 이유를 분리**하기 위한 선택이었습니다.
+
+---
+
+## 6. Dungeon 전용 기능이 범용성이 생기면 공통 계층으로 이동
+
+Dungeon 개발 중 처음 필요했던 Toast를 Dungeon 전용 helper로 계속 유지할 수 있었습니다.
+
+하지만 같은 요구가:
+
+- Level-up
+- Capture
+- Crafting
+- Region / Dungeon Title
+
+에서도 나타났습니다.
+
+그래서 \`UNoticeSubsystem\`으로 이동해:
+
+- Slot
+- Queue / Replace policy
+- Producer Channel
+- Style / Widget config
+
+를 공통화했습니다.
+
+**처음부터 범용 시스템을 예측해 만드는 것보다, 두 번째 실제 사용처가 생겼을 때 공통 경계를 추출**하는 쪽을 선택했습니다.
+
+---
+
+## 7. Validation은 콘텐츠 복잡도와 함께 강화
+
+초기 시스템은 개별 row나 reference가 올바른지 확인하는 정도로도 관리할 수 있었습니다.
+
+Dungeon graph와 Boss Pattern은 field 하나가 유효해도 전체 조합이 잘못될 수 있습니다.
 
 예:
 
-- Skill Cost는 Item 부분 rollback은 지원하지만 Stamina까지 포함한 전체 transaction rollback은 아님
-- Condition timer는 동일 condition의 여러 source 중첩에 한계가 있음
-- Animation-driven gameplay는 off-screen server animation tick 비용을 요구함
-- 일부 자동 verification script는 공개 저장소에 포함돼 있지 않음
+~~~text
+존재하는 Stage 두 개
++ 각각 유효한 Transition
+→ 서로 Cycle이면 콘텐츠는 잘못됨
 
-이런 항목은 “향후 계획” 목록보다 각 시스템의 실제 설계 제약으로 관리합니다.
+존재하는 GroupId
++ 유효한 WaveCompleted Rule
+→ 앞선 경로에서 Group을 Spawn하지 않으면 완료될 수 없음
+~~~
+
+그래서 Validation 범위를:
+
+~~~text
+Field
+ → Relation
+ → Graph
+ → Timing / Animation Contract
+~~~
+
+까지 확대했습니다.
+
+Stage Graph도 Definition에서 직접 생성하도록 바꿔 문서와 콘텐츠 source를 분리하지 않았습니다.
+
+---
+
+## 8. Multiplayer에서도 “Server Authority” 하나로 끝나지 않았다
+
+공유 gameplay 결과를 Server가 결정하는 원칙은 유지했습니다.
+
+하지만 Inventory UI처럼 round-trip latency가 직접 느껴지는 영역에서는 Authority만 강조하면 조작감이 떨어집니다.
+
+그래서:
+
+~~~text
+Final Result
+→ Server Authority
+
+Immediate Feedback
+→ Limited Client Prediction
+
+Correction
+→ Reconciliation
+~~~
+
+으로 나눴습니다.
+
+반대로 Crafting resource 소비나 Capture 성공처럼 잘못 예측했을 때 결과가 큰 상태는 Client가 먼저 확정하지 않습니다.
+
+기술 하나를 전체 프로젝트에 일괄 적용하기보다 **결과의 중요도와 복구 비용에 따라 범위를 정했습니다.**
+
+---
+
+## 9. 자동화도 “코드 생성”보다 검증 루프를 닫는 방향으로 바뀌었다
+
+Agent를 사용해 C++만 작성하면 Unreal 프로젝트의 실제 변경은 절반만 끝난 경우가 많았습니다.
+
+Blueprint / DataAsset / Animation / UMG를 수정한 뒤 사람이 다시 Editor를 열어 확인해야 했기 때문입니다.
+
+AgentMcp를 통해:
+
+~~~text
+Inspect
+ → Edit
+ → Compile
+ → PIE
+ → Log / Viewport
+ → Review
+~~~
+
+를 같은 작업 흐름에서 연결했습니다.
+
+목표는 작성 속도 자체보다 **변경과 검증 사이의 수동 전환을 줄이고, agent가 자신이 만든 결과를 다시 확인하게 하는 것**이었습니다.
+
+---
+
+## 짧은 개발 Timeline
+
+### 2025 — Core Gameplay
+
+Player / AreaObject, Combat / Skill, Interaction / Item, Pal Capture / Partner, Inventory / Container / Crafting을 구축했습니다.
+
+이 시기에 만들어진 Component / Interface / Damage / Item 경계가 이후 Dungeon의 기반이 됐습니다.
+
+### 2026 — Dungeon Vertical Slice
+
+기존 시스템을 하나의 콘텐츠에서 결합하는 Forgotten Ruins를 추가했습니다.
+
+~~~text
+Entrance
+ → Branch
+ → Objective
+ → Boss
+ → Success / Failure
+ → Reward
+ → Record / Grade
+~~~
+
+이 과정에서 DataAsset / GameplayTag / Snapshot / Presenter / Validation / AgentMcp workflow가 크게 확장됐습니다.
+
+---
+
+## 현재 남아 있는 제약
+
+구현된 내용을 완성형으로 표현하지 않고 현재 구조의 한계도 함께 관리합니다.
+
+- Skill Cost rollback은 Item 부분 실패를 복구하지만 Stamina까지 포함한 전체 transaction은 아님
+- Condition timer는 같은 condition을 여러 Source가 독립 duration으로 중첩하는 요구에 제한이 있음
+- Animation-driven melee correctness를 위해 Server animation/bone update 비용을 더 사용
+- Container subscriber 방식은 connection별 세밀한 replication filtering까지는 수행하지 않음
+- 일부 scenario verification script는 공개 저장소에 포함되어 있지 않음
+- Sonheim networking은 UE Listen Server 기반이며 외부 dedicated-server protocol stack 구현과는 범위가 다름
+
+각 제약은 [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]], [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]], [[14. Development Workflow & Verification|14_Development_Workflow_Verification]] 등 실제 시스템 문서에 더 구체적으로 남깁니다.
+
+---
+
+## 연관 문서
+
+- [[02. Gameplay Architecture|02_Gameplay_Architecture]] — 현재 책임 경계
+- [[03. Data & Content Architecture|03_Data_Content_Architecture]] — 변화된 데이터 모델
+- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — 기존 시스템을 결합한 Vertical Slice
+- [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — 콘텐츠 규모 증가에 따른 검증
+- [[14. Development Workflow & Verification|14_Development_Workflow_Verification]] — Editor automation / regression workflow
