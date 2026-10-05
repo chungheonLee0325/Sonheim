@@ -1,369 +1,130 @@
-# 14. Development Workflow & Verification
-
-Sonheim 개발에서는 C++ 변경 이후 **Blueprint/DataAsset/Animation/UMG와 PIE 결과까지 같은 변경 단위에서 확인**합니다.
-
-검증 흐름은 **Authoring Validation → Scenario Verification → Visual Review**로 나누고, Editor 작업은 **Inspect → Edit → Compile → PIE → Log/Capture → Review** 순서로 반복합니다.
-
----
-
-## 개발 루프
-
-~~~mermaid
-flowchart LR
-    INSPECT["<b>Inspect</b><br/>Code · Asset · Editor State"]
-    EDIT["<b>Edit</b><br/>C++ · Blueprint · Data"]
-    BUILD["<b>Compile / Save</b>"]
-    PIE["<b>Play In Editor</b>"]
-    VERIFY["<b>Verify</b><br/>State · Log · Scenario"]
-    CAPTURE["<b>Viewport Capture</b><br/>Visual Review"]
-    FIX["<b>Iterate</b>"]
-
-    INSPECT --> EDIT
-    EDIT --> BUILD
-    BUILD --> PIE
-    PIE --> VERIFY
-    VERIFY --> CAPTURE
-    CAPTURE --> FIX
-    FIX --> INSPECT
-~~~
-
-코드·Asset 변경과 실제 Editor/PIE 결과를 같은 작업 흐름에서 확인합니다.
-
----
-
-## 1. 검증을 세 종류로 나눈다
-
-오류 유형에 따라 검증 단계를 나눕니다.
-
-### Authoring Validation
-
-실행하지 않아도 판단 가능한 구조 오류:
-
-- 잘못된 Dungeon Transition
-- 없는 Stage / Group
-- GameplayTag namespace 오류
-- Boss Strike timing 오류
-- Montage Section contract 오류
-
-는 Editor/Data Validation 단계에서 차단합니다.
-
-→ [[13. Content Authoring & Validation|13_Content_Authoring_Validation]]
-
-### Scenario Verification
-
-실제 Runtime을 실행해야 확인 가능한 흐름:
-
-- Shortcut / ExtraWave branch
-- Success / Timeout
-- Owner death / leave
-- Boss wake / phase / down / exhaust / capture
-- Reward / Result
-- HUD / Minimap / Marker
-
-은 PIE scenario로 반복 확인합니다.
-
-### Visual / Gameplay Review
-
-자동 state check만으로 판단하기 어려운:
-
-- Telegraph가 실제로 읽히는가
-- Montage와 Hit timing이 맞는가
-- HUD가 gameplay를 가리지 않는가
-- Minimap marker가 panel 밖으로 나가지 않는가
-- Result 정보가 한눈에 읽히는가
-
-는 viewport와 실제 play 화면을 확인합니다.
-
-~~~text
-정적 오류       → Authoring Validation
-Runtime 흐름    → Scenario Verification
-화면 / 감각     → Visual Review
-~~~
-
----
-
-## 2. AgentMcp — UE 5.5에서 Agent가 Editor 결과까지 다루도록 연결
+# 14. Unreal Editor Automation & Verification
 
 [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)는 **Unreal Engine 5.8의 실험적 MCP/toolset과 Agent Skill 개념을 참고해 UE 5.5용으로 재구현한 Editor MCP plugin**입니다.
 
-AgentMcp는 coding agent가 Unreal Editor에서 **inspect → edit → run → verify**까지 이어서 수행할 수 있도록 연결합니다.
+Sonheim에서는 coding agent가 source code 수정에서 끝나지 않고 **Unreal Editor의 asset을 읽고 수정한 뒤 Compile → PIE → Log / Viewport 결과까지 다시 확인하는 작업 흐름**에 사용합니다.
 
-~~~text
-Coding Agent
-   ↓ MCP
-Unreal Editor
-   ├─ Asset / Blueprint Inspect
-   ├─ Data / Class Default Edit
-   ├─ UMG Widget Blueprint Authoring
-   ├─ Animation / Montage / BlendSpace Authoring
-   ├─ Compile / Save
-   ├─ PIE
-   ├─ Log
-   └─ Viewport Capture
+---
+
+## 1. AgentMcp
+
+~~~mermaid
+flowchart LR
+    AGENT["<b>Coding Agent</b><br/>Codex · Claude Code"]
+    MCP["<b>Editor Tool Interface</b><br/>AgentMcp"]
+    EDITOR["<b>Unreal Editor</b><br/>Blueprint · UMG · Data · Animation"]
+    BUILD["<b>Build / Run</b><br/>Compile · Save · PIE"]
+    VERIFY["<b>Verification</b><br/>Read-back · Log · Viewport"]
+
+    AGENT --> MCP --> EDITOR --> BUILD --> VERIFY
+    VERIFY --> AGENT
 ~~~
 
 ### Dynamic Agent Skills
 
-Plugin / project의 <code>SKILL.md</code>를 Editor가 연결된 agent에 제공합니다.
+Plugin / project의 <code>SKILL.md</code>를 Editor가 connected agent에 제공합니다.
 
-- skill file을 매 호출 시 읽어 수정 내용을 Editor 재시작 없이 반영
+- skill file 변경을 Editor 재시작 없이 다음 호출부터 반영
 - project skill이 plugin 기본 skill을 override
-- Claude Code / Codex가 같은 project-specific authoring rule을 사용
+- 프로젝트별 authoring / verification rule을 agent context에 제공
 
-### UMG에 특화한 도구
+### UMG / Editor Authoring
 
-UMG 작업에는 다음 전용 도구를 사용합니다.
+AgentMcp는 일반 property 수정 외에 Unreal Editor 작업에 필요한 tool을 제공합니다.
 
 - Widget Tree / Named Slot inspect
 - C++ <code>BindWidget / BindWidgetOptional</code> contract 검사
-- Widget Blueprint 생성
-- subtree 단위 Widget 추가
-- widget / slot property 수정
-- destructive edit 전 영향 범위 확인
-- compile → PIE → viewport capture
+- Widget Blueprint 생성과 subtree 편집
+- Blueprint Class Default read / write
+- DataAsset / DataTable / StringTable 편집
+- Animation Blueprint / Montage / BlendSpace authoring
+- Compile / Save / PIE
+- Editor log / viewport capture
 
-까지 한 흐름으로 연결합니다.
-
-AgentMcp는 Sonheim Runtime과 분리된 Editor authoring / verification plugin입니다.
+Sonheim에서는 Dungeon HUD/Result와 UMG 작성·검증, Animation asset 구성, Blueprint default/DataAsset/StringTable 편집에 사용했습니다.
 
 ---
 
-## 3. 코드 밖에 있는 작업도 같은 변경 단위에서 처리
+## 2. Closed-loop Editor Verification
 
-Boss 기능 변경은 Runtime C++과 Pattern/Animation/Blueprint asset을 함께 수정합니다.
+Editor write 이후 결과를 다시 읽고 Runtime까지 확인합니다.
 
 ~~~text
-Boss Runtime C++ 변경
-      ↓
-Pattern DataAsset 수정
-      ↓
-Montage Section / Animation 구성
-      ↓
-Blueprint Default 적용
-      ↓
-Compile
-      ↓
+Inspect
+  ↓
+Edit
+  ↓
+Independent Read-back
+  ↓
+Compile / Save
+  ↓
 PIE
-      ↓
-Boss State / Log 확인
-      ↓
+  ↓
+Runtime Read-back / Log
+  ↓
 Viewport Capture
 ~~~
 
-AgentMcp를 통해 이 작업을 같은 agent session에서 이어갈 수 있습니다.
+대표 workflow에서는 disposable Blueprint copy를 사용해:
 
-Sonheim에서 사용한 대표 작업:
+1. Class Default를 inspect
+2. property를 수정
+3. 별도 read-back으로 실제 값 확인
+4. Blueprint compile / save
+5. PIE 실행
+6. runtime instance 값을 다시 확인
+7. log와 viewport를 capture
 
-- Animation Blueprint 구성/검사
-- Montage / Section 구성
-- BlendSpace / Inertialization
-- Blueprint Class Default 수정 후 read-back
-- DataAsset property 편집
-- StringTable 편집
-- UI texture import / mipmap 설정
-- PIE 실행
-- Editor log 확인
-- viewport capture
+하는 순서를 한 agent session에서 수행했습니다.
 
----
-
-## 4. Editor 변경 후 Read-back / PIE 검증
-
-AgentMcp 작업은 Editor write 이후 **read-back → compile → PIE → capture**를 연속해서 수행합니다.
-
-예:
-
-~~~text
-Blueprint Default 변경
- → object_set_properties
- → read-back
- → blueprint_compile
- → PIE
- → viewport_capture
-~~~
-
-Animation:
-
-~~~text
-Montage / BlendSpace 구성
- → compile
- → PIE
- → 실제 전환 확인
- → capture
-~~~
-
-UI:
-
-~~~text
-Widget 수정
- → BindWidget / tree 검사
- → compile
- → PIE
- → viewport capture
- → 다시 조정
-~~~
-
-Editor 수정 후 compile·PIE·capture까지 같은 session에서 이어서 확인합니다.
+촬영용 검증은 production asset을 수정하지 않고 disposable copy에서 실행했습니다.
 
 ---
 
-## 5. Dungeon Scenario Matrix
+## 3. Scenario Verification
 
-Dungeon scenario는 Route, Terminal, Objective, Boss, Client, Presentation 축으로 나눠 확인합니다.
+Editor authoring 검증과 실제 gameplay scenario 검증은 분리합니다.
 
-2026-10-05 현재 main Editor에서 실행한 Boss scenario helper는 **7/8 PASS, 1 FAIL**을 기록했습니다. 실패 항목은 summon/approach 직후 Remote Client의 Wake montage 확인이며, 나머지 Pattern/Telegraph/Hop/Re-aim/Down/Phase2/Exhaust-Capture 항목은 통과했습니다.
+- **Authoring Validation** — Stage graph, dependency, Boss timing/section contract  
+  → [[13. Content Authoring & Validation|13_Content_Authoring_Validation]]
+- **Runtime Scenario** — Branch, failure path, Boss state, Remote Client, HUD/Result
+- **Visual Review** — Telegraph, Montage timing, Minimap/Marker, Result layout
 
-이 결과는 all-pass 증거로 사용하지 않고, **실제 scenario verification이 현재 회귀를 드러낸 실행 기록**으로 남깁니다.
+2026-10-05 main Editor에서 실행한 Boss scenario helper는 **7/8 PASS, 1 FAIL**을 기록했습니다.
 
-| 축 | 대표 Scenario |
+| 결과 | Scenario |
 |---|---|
-| Route | Shortcut / ExtraWave |
-| Terminal | Success / Timeout / OwnerDown / OwnerLeft |
-| Objective | Defeat / Capture / Optional |
-| Boss | Wake / Pattern / Phase2 / Down / Exhaust / Capture |
-| Client | Server / Remote Client |
-| Presentation | HUD / Minimap / Marker / Result |
+| FAIL | summon/approach 직후 Remote Client Wake montage |
+| PASS | Pattern 실행 / 길이 / mark |
+| PASS | Client별 Telegraph 색상 |
+| PASS | 근거리 Hop / Target facing |
+| PASS | Claw re-aim |
+| PASS | Break → Down |
+| PASS | Phase 2 / Tempo |
+| PASS | Exhaust / Capture eligibility |
 
-이 조합을 통해 한 기능 수정이 다른 branch나 Client 화면을 깨뜨리지 않는지 확인합니다.
-
----
-
-## 6. Regression 사례와 구조 수정
-
-### Boss Wake — 현재 Scenario에서 다시 검출
-
-2026-10-05 Boss scenario에서도 summon/approach 직후 Remote Client의 Wake montage 항목이 FAIL로 검출됐습니다.
-
-과거 조사에서는 Server가 Client의 갱신 전 위치를 기준으로 Boss를 아직 net-relevant하지 않게 판단한 시점에 순간 Multicast가 발생하는 문제가 확인된 적이 있습니다. 다만 이번 촬영 실행의 FAIL 원인은 별도 진단으로 확정하지 않았습니다.
-
-현재 구조에서는:
-
-~~~text
-반드시 복구되어야 하는 현재 상태
-→ Replicated Status
-
-그 순간의 연출
-→ Multicast / Presentation
-~~~
-
-을 더 명확히 분리했습니다.
-
-Boss의 현재 Action / Phase / Break는 persistent status로 유지하고, 순간 animation/effect와 구분합니다. Scenario FAIL은 production code를 촬영 편의로 변경하지 않은 상태로 그대로 기록합니다.
+이 기록은 all-pass 결과가 아니라 **현재 regression을 실제로 검출한 scenario 실행 결과**로 사용합니다. 촬영을 위해 production code나 asset을 변경하지 않았고, Wake montage FAIL의 이번 실행 원인은 별도 진단으로 확정하지 않았습니다.
 
 ---
 
-### Guardian Capture 후 Client Crash
+## 4. 적용 범위
 
-실제 multiplayer capture scenario에서 Remote Client의 <code>OnRep_PartnerOwner</code>가 실행될 때 UI Widget이 아직 존재하지 않는 상태가 드러났습니다.
+AgentMcp는 Sonheim Runtime의 gameplay dependency가 아니라 **Editor authoring / verification 도구**입니다.
 
-Server path에서는 이미 처리하던 null-state를 Client replication lifecycle에서도 안전하게 다루도록 수정했습니다.
+| 적용 | 역할 |
+|---|---|
+| **UMG / Blueprint / Data / Animation authoring** | 코드 밖의 Editor asset 작업 |
+| **Read-back / Compile / PIE** | 변경 결과 확인 |
+| **Log / Viewport capture** | Runtime / visual 결과 확인 |
+| **Scenario helper** | 반복 gameplay path 검증 |
 
-수정 기준은 **복제 callback과 Local UI lifecycle의 순서를 동일하다고 가정하지 않는 것**이었습니다.
-
----
-
-### Barrier Rule의 소유 위치 변경
-
-초기에는 World Barrier 쪽에서 Stage별 동작을 알고 있었습니다.
-
-Dungeon branch가 늘어나면서:
-
-~~~text
-Barrier가 Stage 규칙을 앎
-        ↓
-Dungeon Definition이 SealedBarriers를 소유
-        ↓
-Runtime State가 현재 결과를 발행
-        ↓
-Barrier는 자신의 ID 포함 여부만 반영
-~~~
-
-으로 변경했습니다.
-
-버그를 Actor 조건문 하나로 막기보다 **규칙의 ownership 자체를 옮긴 사례**입니다.
+Agent가 사용할 수 있는 범위는 Editor API와 제공한 tool contract에 의해 결정됩니다. Gameplay correctness 자체는 Data Validation, scenario verification, 실제 visual review를 함께 사용해 확인합니다.
 
 ---
 
-## 7. 공개 Source와 개발 Checkout의 검증 근거
+## 관련 문서 / 저장소
 
-개발 과정에서는 반복 scenario script와 check count를 사용했습니다.
-
-하지만 일부 verification script는 공개 저장소에 포함되어 있지 않습니다.
-
-Wiki에는 **공개 Source에서 직접 확인 가능한 구조/Validation**과 **개발 checkout에서 반복 수행한 scenario verification**을 구분해 기록합니다.
-
-검사 횟수 자체보다 **어떤 실패 경로까지 확인했는지와 코드에서 재현 가능한 근거**를 우선합니다.
-
----
-
-## 8. Source-only Mirror로 코드 리뷰 경로 분리
-
-전체 Unreal Project에는 Content asset과 binary가 많아 Source 리뷰가 불편합니다.
-
-main branch가 갱신되면 GitHub Actions가 별도 [Sonheim.Source](https://github.com/chungheonLee0325/Sonheim.Source) repository에 다음을 동기화합니다.
-
-~~~text
-Source/
-Config/
-Plugins/*/Source/
-Sonheim.uproject
-Doc/
-README.md
-~~~
-
-제외:
-
-~~~text
-Content/
-Binaries/
-Intermediate/
-~~~
-
-전체 프로젝트를 실행하려는 경로와 **코드만 빠르게 검토하려는 경로**를 분리합니다.
-
----
-
-## 9. AgentMcp Verification
-
-AgentMcp repository의 testbed / smoke test는 다음 Editor 기능을 검증합니다.
-
-- MCP transport
-- Reflection 기반 tool schema
-- Undo / rollback
-- PIE / viewport capture
-- Live Coding
-- Blueprint / UMG
-- DataAsset / DataTable / StringTable
-- Animation authoring
-- Agent Skill
-
-Smoke test의 check 수는 실행 section과 fixture에 따라 달라지므로 고정된 숫자를 Wiki의 품질 지표로 사용하지 않습니다. Sonheim에서는 별도 AgentMcp testbed 결과와 프로젝트 runtime scenario 검증을 구분하고, Editor tool은 실제 authoring / PIE workflow에 적용합니다.
-
----
-
-## 설계 선택과 비용
-
-| 선택 | 얻은 것 | 비용 / 제약 |
-|---|---|---|
-| **검증 층 분리** | 정적 오류·Runtime 오류·Visual 문제를 각자 적합한 단계에서 발견 | 여러 종류의 검사 workflow 유지 필요 |
-| **AgentMcp 기반 Editor loop** | C++과 Editor asset 작업을 한 session에서 수정/검증 | UE Editor가 실행 중이어야 하고 Editor API 범위에 영향받음 |
-| **Scenario 중심 회귀 검사** | Branch / Client / Failure path를 반복 확인 | 전체 조합을 완전 탐색하는 자동 테스트는 아님 |
-| **Source-only Mirror** | 채용/리뷰 시 코드 접근성 향상 | mirror sync workflow 유지 필요 |
-
----
-
-## 연관 문서
-
-- [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — 실행 이전의 정적 검증
-- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — scenario 검증의 중심 콘텐츠
-- [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — Animation / Pattern / Capture 검증 사례
-- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Client UI lifecycle 검증 대상
-- [[15. Development History & Retrospective|15_Development_History_Retrospective]] — 구조가 변경된 과정
-
----
-
-## 관련 저장소
-
-- [Sonheim](https://github.com/chungheonLee0325/Sonheim)
-- [Sonheim.Source](https://github.com/chungheonLee0325/Sonheim.Source)
-- [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — UMG / Client Presentation 구조
+- [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — 실행 전 Data / Graph Validation
+- [[15. Development History & Retrospective|15_Development_History_Retrospective]] — Editor automation이 추가된 개발 흐름
+- [AgentMcp](https://github.com/chungheonLee0325/AgentMcp) — UE 5.5 Editor MCP plugin
