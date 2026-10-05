@@ -43,7 +43,9 @@ Player는 “현재 대상이 Item인가 Lever인가”를 판단하지 않습�
 동일한 Detection / Prompt / Hold / Input 흐름이 **Item, Container, Crafting Station, Dungeon Portal, Lever**에서 서로 다른 결과로 이어집니다. Player 쪽 입력 흐름은 그대로 유지되고, 각 Actor가 `IInteractableInterface` 구현을 통해 자신의 UI 문맥과 실제 동작을 결정합니다.
 
 
-[▶ Interaction Contract Runtime 시연 (MP4)](../Media/Wiki/06_World_Interaction_Systems/06_interaction_polymorphism.mp4)
+https://github.com/user-attachments/assets/4ecbc1bc-8c72-4493-8a66-a7b2a0918a36
+
+*Item·Container·Crafting Station·Dungeon Interaction이 같은 Detection / Prompt / Hold / Input 흐름을 공유하는 Runtime 시연.*
 
 ---
 
