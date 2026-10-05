@@ -147,7 +147,7 @@ struct FBossStrike
 
 **보여주는 영역과 실제 맞는 영역의 source를 하나로 유지**하기 위한 구조입니다.
 
-[▶ Telegraph → 실제 Hit 시연 (MP4)](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_telegraph_hit.mp4)
+https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
 
 영상에서는 Telegraph가 먼저 표시되고, 같은 범위를 기준으로 실제 Strike가 이어집니다.
 
@@ -268,7 +268,7 @@ Pattern 시작 시:
 
 Animation, Telegraph, 실제 Hit이 서로 다른 독립 Timer로 흩어지지 않습니다.
 
-[▶ Discharge Pattern Runtime 시연 (MP4)](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_pattern_runtime.mp4)
+https://github.com/user-attachments/assets/fbee5e3c-767d-4b20-b18a-8dffa4c8cc4c
 
 위 DataAsset에서 확인한 `Discharge` Pattern이 실제로 **Tracking → Telegraph → Strike → Recovery** 순서로 실행되는 장면입니다.
 
@@ -332,7 +332,7 @@ Pattern이 Target을 추적하는 구간과 Telegraph가 기준 위치를 유지
 <details>
 <summary><b>Tracking / Anchor Runtime 시연</b></summary>
 
-[▶ MP4 보기](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_tracking_anchor.mp4)
+https://github.com/user-attachments/assets/91dbe45d-4a18-4934-ba9e-d732858faa88
 
 </details>
 
@@ -385,7 +385,7 @@ Phase 2에서는:
 
 가 같은 Phase state를 기준으로 적용됩니다.
 
-[▶ Phase 1 → Roar → Phase 2 전환 시연 (MP4)](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_phase2.mp4)
+https://github.com/user-attachments/assets/00111f16-35b0-451a-af2c-4cdb72f506f5
 
 HP threshold를 통과하면 현재 공격을 바로 Phase 2로 덮어쓰는 대신, **Roaring 상태를 거쳐 Phase가 전환된 뒤** 다음 Pattern부터 Phase 2 설정을 적용합니다.
 
@@ -412,7 +412,7 @@ Down은 Break 누적으로 발생하는 일시적인 공격 기회이며, 이 �
 <details>
 <summary><b>Break → Down → 전투 복귀 Runtime 시연</b></summary>
 
-[▶ MP4 보기](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_down.mp4)
+https://github.com/user-attachments/assets/7553e42f-54d6-4265-a445-17cba43a15d3
 
 </details>
 
@@ -447,7 +447,7 @@ bool IsVulnerable() const
 
 실제 Capture 확률 판정, Reveal, ownership 적용은 기존 Pal Capture 시스템으로 연결합니다.
 
-[▶ Exhaust → Capture Window → 실제 Capture 시연 (MP4)](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_exhaust_capture.mp4)
+https://github.com/user-attachments/assets/46026e10-a197-4c98-b244-260dd2fe42d3
 
 영상에서는 낮은 HP threshold에서 Boss가 `Resting`으로 전환되고 Capture 안내가 활성화된 뒤, 기존 Pal Capture 흐름을 통해 실제 포획까지 이어집니다.
 
