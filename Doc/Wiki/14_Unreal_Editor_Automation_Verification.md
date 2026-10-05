@@ -9,6 +9,12 @@
 - Editor write 이후 Read-back → Compile → PIE → Log/Viewport까지 같은 workflow에서 검증합니다.
 - Sonheim에서는 UI/Animation/Data authoring과 gameplay scenario verification에 사용했습니다.
 
+## Runtime Demo
+
+https://github.com/user-attachments/assets/e61d53e3-c94b-4062-99dc-be11dd261ea5
+
+*AgentMcp로 **Inspect → Edit → Read-back → Compile / Save → PIE → Runtime Verify → Viewport Capture**까지 수행한 실제 UE Editor workflow.*
+
 ---
 
 ## AgentMcp
@@ -85,12 +91,6 @@ Viewport Capture
 7. log와 viewport를 capture
 
 하는 순서를 한 agent session에서 수행했습니다.
-
-### Editor Automation Demo
-
-https://github.com/user-attachments/assets/e61d53e3-c94b-4062-99dc-be11dd261ea5
-
-AgentMcp로 **Inspect → Edit → Read-back → Compile / Save → PIE → Runtime Verify → Viewport Capture**까지 수행한 실제 UE Editor workflow입니다.
 
 ---
 
