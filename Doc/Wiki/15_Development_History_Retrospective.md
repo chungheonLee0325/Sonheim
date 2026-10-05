@@ -258,19 +258,13 @@ Correction
 
 으로 나눴습니다.
 
-반대로 Crafting resource 소비나 Capture 성공처럼 잘못 예측했을 때 결과가 큰 상태는 Client가 먼저 확정하지 않습니다.
-
-Prediction은 Inventory처럼 즉각적인 조작 피드백이 필요한 상태에 적용하고, Crafting 소비나 Capture 성공 판정은 Server 결과를 기다립니다.
+Prediction은 Inventory처럼 즉각적인 조작 피드백이 필요한 상태에 적용하고, Crafting resource 소비나 Capture 성공 판정은 Server 결과를 기다립니다.
 
 ---
 
 ## 9. AgentMcp로 Editor 검증 Loop 연결
 
-Agent를 사용해 C++만 작성하면 Unreal 프로젝트의 실제 변경은 절반만 끝난 경우가 많았습니다.
-
-Blueprint / DataAsset / Animation / UMG를 수정한 뒤 사람이 다시 Editor를 열어 확인해야 했기 때문입니다.
-
-AgentMcp를 통해:
+AgentMcp를 통해 C++ 작업과 Blueprint / DataAsset / Animation / UMG authoring, Editor 검증을 같은 흐름으로 연결했습니다.
 
 ~~~text
 Inspect
