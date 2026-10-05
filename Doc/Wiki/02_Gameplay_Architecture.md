@@ -1,14 +1,24 @@
 # 02. Gameplay Architecture
 
-Sonheim은 **상태의 소유권과 수명, 기능 간 의존 방향, gameplay와 presentation의 경계**를 먼저 정한 뒤 각 시스템을 배치합니다.
+Sonheim은 **상태의 소유권과 수명, 기능 간 의존 방향, gameplay와 presentation의 경계**를 기준으로 시스템을 배치합니다.
 
-핵심 원칙은 다음과 같습니다.
+## 요약
 
-1. **Player·World·Content 상태를 실제 수명에 맞는 UE 계층에 둡니다.**
-2. **독립적으로 바뀌는 기능은 ActorComponent로 분리하고, 서로 다른 Actor의 공통 행동은 Interface로 연결합니다.**
-3. **정적 정의(Data)와 실행 중 상태(Runtime State)를 분리합니다.**
-4. **Gameplay 상태와 UI가 소비하는 Presentation State를 분리합니다.**
-5. **멀티플레이 동기화는 이 경계 위에서 필요한 범위에만 적용합니다.**
+- Player·World·Content state를 실제 lifecycle에 맞는 UE 계층에 배치합니다.
+- 독립적인 기능은 ActorComponent, 서로 다른 Actor의 공통 행동은 Interface로 구성합니다.
+- Content Definition과 Runtime State를 분리합니다.
+- Gameplay State와 UI가 소비하는 Presentation Model을 분리합니다.
+- Multiplayer synchronization은 각 state의 owner와 consumer scope에 맞춰 적용합니다.
+
+## 목차
+
+- [Architecture at a Glance](#architecture-at-a-glance)
+- [Lifetime & Ownership](#lifetime--ownership)
+- [Composition & Capability](#composition--capability)
+- [Data / Runtime / Presentation](#data--runtime--presentation)
+- [State Change Propagation](#state-change-propagation)
+- [Integrated Content Example](#integrated-content-example)
+- [Trade-offs](#trade-offs)
 
 ---
 
@@ -44,7 +54,7 @@ flowchart LR
 
 ---
 
-## 1. Lifetime — 상태가 얼마나 오래 살아야 하는가
+## Lifetime & Ownership
 
 UE Gameplay Framework의 객체 수명에 맞춰 데이터를 배치합니다.
 
@@ -72,7 +82,7 @@ World body에 가까운 State    → Pawn
 
 ---
 
-## 2. Composition — 기능 단위로 조합한다
+## Composition & Capability
 
 `AAreaObject`는 Player/Monster 공통 gameplay facade이고, 실제 기능은 component가 소유합니다.
 
@@ -97,7 +107,7 @@ Component 분리 기준은 **독립적인 상태/lifecycle과 여러 Actor에서
 
 ---
 
-## 3. Interface — Actor 종류보다 Capability에 의존한다
+### Interface — Actor 종류보다 Capability에 의존
 
 Item, Container, Crafting Station, Lever, Portal은 서로 다른 class지만 Player의 Interaction 흐름에서는 모두 `IInteractableInterface`를 사용합니다.
 
@@ -126,7 +136,7 @@ Player 입력이나 UI가 concrete class마다 `if Item ... else if Lever ...` �
 
 ---
 
-## 4. Data와 Runtime State를 분리한다
+## Data / Runtime / Presentation
 
 Skill이나 Dungeon은 “무엇인지 정의하는 데이터”와 “지금 어떤 상태인지”가 다릅니다.
 
@@ -161,7 +171,7 @@ FDungeonStageRuntimeState
 
 ---
 
-## 5. Gameplay State와 Presentation을 분리한다
+### Gameplay State → Presentation
 
 Health처럼 단순한 값은 RepNotify/Delegate를 통해 HUD가 갱신됩니다.
 
@@ -188,7 +198,7 @@ Presenter/ViewData는 Dungeon처럼 **여러 gameplay state를 조합하고 UI �
 
 ---
 
-## 6. 시스템 간 변화 전달
+## State Change Propagation
 
 상태 성격에 따라 연결 방식을 나눕니다.
 
@@ -227,7 +237,7 @@ Health/Inventory처럼 owner가 명확한 상태는 Delegate로 전달하고, Du
 
 ---
 
-## 7. 실제 콘텐츠 적용 사례
+## Integrated Content Example
 
 - `IInteractableInterface` — Item/Container/Crafting에서 Dungeon Portal/Lever까지 재사용
 - Monster death/capture event — Dungeon Objective progress에 연결
@@ -240,7 +250,7 @@ Health/Inventory처럼 owner가 명확한 상태는 Delegate로 전달하고, Du
 
 ---
 
-## 설계 선택 요약
+## Trade-offs
 
 | 문제 | 선택 | 비용 | 선택 이유 |
 |---|---|---|---|
