@@ -211,6 +211,10 @@ Editor 수정 후 compile·PIE·capture까지 같은 session에서 이어서 확
 
 Dungeon scenario는 Route, Terminal, Objective, Boss, Client, Presentation 축으로 나눠 확인합니다.
 
+2026-10-05 현재 main Editor에서 실행한 Boss scenario helper는 **7/8 PASS, 1 FAIL**을 기록했습니다. 실패 항목은 summon/approach 직후 Remote Client의 Wake montage 확인이며, 나머지 Pattern/Telegraph/Hop/Re-aim/Down/Phase2/Exhaust-Capture 항목은 통과했습니다.
+
+이 결과는 all-pass 증거로 사용하지 않고, **실제 scenario verification이 현재 회귀를 드러낸 실행 기록**으로 남깁니다.
+
 | 축 | 대표 Scenario |
 |---|---|
 | Route | Shortcut / ExtraWave |
@@ -226,13 +230,13 @@ Dungeon scenario는 Route, Terminal, Objective, Boss, Client, Presentation 축�
 
 ## 6. Regression 사례와 구조 수정
 
-### Boss Wake가 Remote Client에서 보이지 않음
+### Boss Wake — 현재 Scenario에서 다시 검출
 
-Dungeon 이동 직후 Boss Wake Multicast가 Client에 보이지 않는 문제가 있었습니다.
+2026-10-05 Boss scenario에서도 summon/approach 직후 Remote Client의 Wake montage 항목이 FAIL로 검출됐습니다.
 
-원인은 Montage 자체가 아니라 **Server에서 해당 Client에 Boss가 아직 net-relevant하지 않은 시점에 순간 RPC가 발생한 것**이었습니다.
+과거 조사에서는 Server가 Client의 갱신 전 위치를 기준으로 Boss를 아직 net-relevant하지 않게 판단한 시점에 순간 Multicast가 발생하는 문제가 확인된 적이 있습니다. 다만 이번 촬영 실행의 FAIL 원인은 별도 진단으로 확정하지 않았습니다.
 
-이 문제를 통해:
+현재 구조에서는:
 
 ~~~text
 반드시 복구되어야 하는 현재 상태
@@ -244,7 +248,7 @@ Dungeon 이동 직후 Boss Wake Multicast가 Client에 보이지 않는 문제�
 
 을 더 명확히 분리했습니다.
 
-Boss의 현재 Action / Phase / Break는 persistent status로 유지하고, 순간 animation/effect와 구분합니다.
+Boss의 현재 Action / Phase / Break는 persistent status로 유지하고, 순간 animation/effect와 구분합니다. Scenario FAIL은 production code를 촬영 편의로 변경하지 않은 상태로 그대로 기록합니다.
 
 ---
 
@@ -326,17 +330,14 @@ AgentMcp repository의 testbed / smoke test는 다음 Editor 기능을 검증합
 - MCP transport
 - Reflection 기반 tool schema
 - Undo / rollback
-- PIE
-- viewport capture
+- PIE / viewport capture
 - Live Coding
 - Blueprint / UMG
-- DataAsset / DataTable
+- DataAsset / DataTable / StringTable
 - Animation authoring
 - Agent Skill
 
-을 검증하며, 현재 AgentMcp README 기준 testbed smoke test는 **216 checks**를 수행합니다.
-
-Sonheim에서는 이 Editor tool을 실제 authoring / PIE 검증 workflow에 사용합니다.
+Smoke test의 check 수는 실행 section과 fixture에 따라 달라지므로 고정된 숫자를 Wiki의 품질 지표로 사용하지 않습니다. Sonheim에서는 별도 AgentMcp testbed 결과와 프로젝트 runtime scenario 검증을 구분하고, Editor tool은 실제 authoring / PIE workflow에 적용합니다.
 
 ---
 
