@@ -79,6 +79,12 @@ Viewport Capture
 
 촬영용 검증은 production asset을 수정하지 않고 disposable copy에서 실행했습니다.
 
+### Editor Automation Demo
+
+https://github.com/user-attachments/assets/e61d53e3-c94b-4062-99dc-be11dd261ea5
+
+AgentMcp로 **Inspect → Edit → Read-back → Compile / Save → PIE → Runtime Verify → Viewport Capture**까지 수행한 실제 UE Editor workflow입니다.
+
 ---
 
 ## 3. Scenario Verification
