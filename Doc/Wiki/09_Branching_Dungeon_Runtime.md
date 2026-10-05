@@ -8,7 +8,7 @@ C++ Runtime은 Event/Condition/Action/Transition의 의미와 실행 방법을 �
 
 ## 1. 현재 구현된 Dungeon 흐름
 
-아래 Stage Graph는 별도로 손으로 그린 다이어그램이 아니라 **Dungeon Definition의 `BuildStageGraph()` 결과**입니다.
+아래 Stage Graph는 **Dungeon Definition의 `BuildStageGraph()`에서 생성한 결과**입니다.
 
 ~~~mermaid
 flowchart TD
@@ -224,7 +224,7 @@ flowchart LR
 
 ## 4. Catalog와 Definition의 역할을 분리
 
-입구에서 필요한 정보와 Dungeon 전체 그래프를 한 데이터에 넣지 않습니다.
+입구에서 조회하는 Catalog와 Dungeon 전체 Stage graph를 소유하는 Definition을 분리합니다.
 
 ```cpp
 struct FDungeonCatalogRow : public FTableRowBase
@@ -265,8 +265,7 @@ class UDungeonDefinitionDataAsset : public UPrimaryDataAsset
 
 ## 5. Stage 진행을 Event Rule로 표현
 
-Stage 하나는 “다음 Stage”만 갖지 않습니다.  
-**어떤 Event가 들어왔을 때 무엇을 실행하고, 어떤 조건에서 어디로 이동하는지**를 Rule로 정의합니다.
+Stage는 **Event가 들어왔을 때 실행할 Action과, 조건을 만족했을 때 이동할 Transition**을 Rule로 정의합니다.
 
 핵심 구조는 다음과 같습니다.
 
