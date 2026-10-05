@@ -305,13 +305,9 @@ Presentation 변환은 [[11. UI Architecture & Client Presentation|11_Client_Sta
 
 ---
 
-## 10. 구현 범위
+## 10. UE 동기화 수단과 상태 설계
 
-> **Scope**
->
-> Sonheim은 Unreal Engine Listen Server 기반으로 구현했으며, 별도 socket protocol·packet framing/serialization·reconnect protocol·server-process routing은 이 프로젝트의 구현 범위에 포함되지 않습니다.
-
-UE API에 대응되는 상태 설계 문제는 다음처럼 정리할 수 있습니다.
+Sonheim은 Unreal Engine Listen Server의 RPC / Property Replication / FastArray를 사용합니다. 각 수단이 담당하는 상태 설계 문제는 다음과 같습니다.
 
 | Sonheim 구현 | 다루는 문제 |
 |---|---|
