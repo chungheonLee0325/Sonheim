@@ -2,11 +2,28 @@
 
 Sonheim의 전투는 **Skill Definition → Runtime State → Skill Logic → Animation Timing → Hit Detection → Damage Context**를 분리해 구성했습니다.
 
-공격 종류가 늘어나도 Input 코드나 Character class에 판정 로직을 계속 추가하지 않고, Skill Data와 실행 객체를 조합해 근접 공격·투사체·장비 Skill을 같은 흐름에서 처리합니다.
+## 요약
+
+- Skill을 **Data / Replicated State / Runtime Logic**으로 분리하고 Logic instance는 필요할 때 생성합니다.
+- `GrantId + RefCount`로 Equipment·기본 보유 등 여러 source의 Skill ownership을 추적합니다.
+- Cast Cost와 Gameplay timing을 Phase / AnimNotify에 연결해 Fire·Hit·Cancel 시점을 animation timeline에서 조정합니다.
+- `FAttackData`가 Hit Shape와 Damage context를 정의하고 빠른 melee는 frame 사이 sweep을 보간합니다.
+- `FCustomDamageEvent`로 Element·Knockback·WeakPoint 등 공격 context를 Target까지 전달합니다.
+
+## 목차
+
+- [Execution Overview](#execution-overview)
+- [Skill Model](#skill-model)
+- [Skill Ownership & Lifecycle](#skill-ownership--lifecycle)
+- [Cast & Cost](#cast--cost)
+- [Animation-authored Timing](#animation-authored-timing)
+- [Hit Detection](#hit-detection)
+- [Damage Pipeline](#damage-pipeline)
+- [Trade-offs](#trade-offs)
 
 ---
 
-## 전체 실행 흐름
+## Execution Overview
 
 ```mermaid
 flowchart LR
@@ -34,7 +51,7 @@ flowchart LR
 
 ---
 
-## 1. Skill을 Data / State / Logic으로 분리
+## Skill Model
 
 ### 정적 정의 — `FSkillData`
 
@@ -102,7 +119,9 @@ virtual void Cancel();
 
 ---
 
-## 2. Skill Logic은 필요할 때 생성
+## Skill Ownership & Lifecycle
+
+### Lazy Skill Instance
 
 보유 가능한 모든 Skill UObject를 시작 시점에 미리 만들지 않습니다.
 
@@ -130,7 +149,7 @@ Skill Spec과 Data는 먼저 존재할 수 있지만 실행 UObject는 실제 �
 
 ---
 
-## 3. Skill 소유권은 Grant Source를 추적
+### Grant Source / RefCount
 
 장비·Buff·Skill Tree처럼 여러 Source가 같은 Skill을 부여할 수 있습니다.
 
@@ -163,7 +182,9 @@ Inventory/Equipment와 Combat이 연결되는 실제 경계입니다.
 
 ---
 
-## 4. Cast는 공통 Lifecycle을 따른다
+## Cast & Cost
+
+### Cast Lifecycle
 
 ```text
 Ready
@@ -197,7 +218,7 @@ RPC / FastArray를 포함한 동기화 방식 자체는 [[12. Multiplayer Synchr
 
 ---
 
-## 5. Cost는 실행 Phase에 연결
+### Phase-based Cost
 
 Skill은 Stamina / Item Cost를 특정 시점에 소모할 수 있습니다.
 
@@ -230,7 +251,9 @@ Item Cost를 여러 개 차감하다 중간에 실패하면 이미 차감된 **I
 
 ---
 
-## 6. Gameplay Timing은 Animation Timeline에 둔다
+## Animation-authored Timing
+
+### Gameplay Timing
 
 공격 판정을 C++의 고정 Delay로 실행하면 Montage 길이·PlayRate·Animation 수정과 실제 타격 시점이 어긋날 수 있습니다.
 
@@ -260,7 +283,7 @@ Animation이 **언제 실행할지**, Skill Logic이 **무엇을 실행할지** 
 
 ---
 
-## 7. Action / Cancel Window를 Animation에서 직접 조정
+### Action / Cancel Window
 
 ARPG 전투에서는 “공격 중인가” 하나보다 **행동 도중 언제부터 무엇을 다시 허용할지**를 세밀하게 조정해야 합니다.
 
@@ -294,7 +317,9 @@ Player state와 `FActionRestrictions` 자체는 [[04. Player & Character Systems
 
 ---
 
-## 8. `FAttackData`가 판정과 Damage Context를 함께 전달
+## Hit Detection
+
+### AttackData
 
 ```cpp
 struct FAttackData
@@ -341,7 +366,7 @@ Notify #3 → AttackData[2]
 
 ---
 
-## 9. Hit Shape를 Data로 선택
+### Hit Shape
 
 `FHitBoxData`는 공통 Melee Logic이 사용할 판정을 정의합니다.
 
@@ -374,7 +399,7 @@ struct FHitBoxData
 
 ---
 
-## 10. 빠른 Melee의 Frame 누락을 보간
+### Frame Interpolation
 
 빠른 무기 Swing은 한 frame 사이에 Target을 통과할 수 있습니다.
 
@@ -398,7 +423,7 @@ Previous ●──●──●──● Current
 
 ---
 
-## 11. 보간으로 생기는 중복 Hit을 두 단계에서 제거
+### Duplicate Hit Suppression
 
 여러 Sweep을 수행하면 같은 Actor가 반복 검출될 수 있습니다.
 
@@ -409,7 +434,7 @@ Previous ●──●──●──● Current
 
 ---
 
-## 12. Socket 판정 때문에 Animation Tick 정확성을 우선
+### Animation Tick Accuracy
 
 Server의 Melee 판정이 AnimNotify와 Bone/Socket Transform에 의존합니다.
 
@@ -428,7 +453,7 @@ VisibilityBasedAnimTickOption =
 
 ---
 
-## 13. Damage Event로 공격 Context를 Target까지 전달
+## Damage Pipeline
 
 단순 `float Damage`만 전달하면 Target에서 Element, Knockback, Weak Point, HitStop 정보를 복원하기 어렵습니다.
 
@@ -467,7 +492,7 @@ Boss도 같은 `FAttackData`를 Strike 내부에서 재사용합니다.
 
 ---
 
-## 설계 선택과 비용
+## Trade-offs
 
 | 선택 | 얻은 것 | 비용 / 제약 |
 |---|---|---|
@@ -480,13 +505,6 @@ Boss도 같은 `FAttackData`를 Strike 내부에서 재사용합니다.
 
 ---
 
-## 현재 한계
-
-- Cost rollback은 Stamina까지 포함한 완전한 transaction이 아닙니다.
-- `FSkillData`가 Cost / Animation / Attack을 함께 가져 프로젝트 규모가 커질수록 더 세분화할 여지가 있습니다.
-- Socket / AttackDataIndex 같은 authoring 오류는 Dungeon/Boss 수준만큼 자동 Validation이 강화되어 있지 않습니다.
-
----
 
 ## 연관 문서
 
