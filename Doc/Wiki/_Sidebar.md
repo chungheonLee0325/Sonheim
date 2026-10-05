@@ -24,7 +24,7 @@
 
 * **Content & Engineering**
   * [[13. Content Authoring & Validation|13_Content_Authoring_Validation]]
-  * [[14. Development Workflow & Verification|14_Development_Workflow_Verification]]
+  * [[14. Unreal Editor Automation & Verification|14_Development_Workflow_Verification]]
   * [[15. Development History & Retrospective|15_Development_History_Retrospective]]
 
 * **Repositories**
