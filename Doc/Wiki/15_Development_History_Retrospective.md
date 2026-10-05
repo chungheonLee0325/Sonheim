@@ -2,11 +2,7 @@
 
 Sonheim은 **Core Gameplay → Shared World Systems → Dungeon Vertical Slice** 순으로 확장되면서 상태 ownership과 시스템 경계를 여러 차례 수정했습니다.
 
-주요 구조 변화와 결과는 다음과 같습니다.
-
----
-
-## 변화 요약
+## 요약
 
 | 초기 구조 / 문제 | 변경 | 결과 |
 |---|---|---|
@@ -23,9 +19,19 @@ Sonheim은 **Core Gameplay → Shared World Systems → Dungeon Vertical Slice**
 | 플레이 후 오류 발견 | Editor / Graph Validation 강화 | Cycle, unreachable, producer 순서, Boss timing을 실행 전 검사 |
 | C++ 변경과 Editor 작업이 분리 | AgentMcp 기반 Inspect→Edit→PIE→Review | Asset 작업과 runtime 검증을 같은 loop에서 수행 |
 
+## 목차
+
+- [Ownership & Runtime Boundaries](#ownership--runtime-boundaries)
+- [Data & Presentation Evolution](#data--presentation-evolution)
+- [Validation & Synchronization](#validation--synchronization)
+- [Development Workflow](#development-workflow)
+- [Timeline](#timeline)
+
 ---
 
-## 1. Pal 기능의 Component 분리
+## Ownership & Runtime Boundaries
+
+### Pal Component Split
 
 Pal 기능이 늘면서 Player class가 다음 책임을 함께 다루기 시작했습니다.
 
@@ -56,7 +62,7 @@ UPalPartnerSkillComponent
 
 ---
 
-## 2. 새 콘텐츠에서 기존 경계 재사용
+### Reuse in Dungeon
 
 Dungeon 구현에서는 다음 기존 시스템 경계를 그대로 재사용했습니다.
 
@@ -72,7 +78,7 @@ Dungeon 구현에서는 다음 기존 시스템 경계를 그대로 재사용했
 
 ---
 
-## 3. Barrier 규칙 — World Actor에서 Content Definition으로 이동
+### Barrier Rule Ownership
 
 초기에는 Barrier가 현재 Stage를 기준으로 자신의 동작을 판단하는 방향이 자연스러웠습니다.
 
@@ -103,7 +109,9 @@ Barrier Actor
 
 ---
 
-## 4. DataTable 중심 구조에서 콘텐츠별 데이터 모델로
+## Data & Presentation Evolution
+
+### DataTable → Content Data Models
 
 초기에는 DataTable이 주요 gameplay data를 담당했습니다.
 
@@ -139,7 +147,7 @@ Player-facing Text
 
 ---
 
-## 5. Dungeon UI — Event 연결에서 현재 상태 모델로 확장
+### Dungeon UI → Current State Model
 
 Health나 Inventory처럼 독립 값은 Delegate 기반 UI로 충분했습니다.
 
@@ -178,7 +186,7 @@ Snapshot/Presenter/ViewData 구조로 HUD 재생성 시 현재 Run state를 복�
 
 ---
 
-## 6. Dungeon Toast → NoticeSubsystem
+### Dungeon Toast → NoticeSubsystem
 
 Dungeon 개발 중 처음 필요했던 Toast를 Dungeon 전용 helper로 계속 유지할 수 있었습니다.
 
@@ -204,7 +212,9 @@ Dungeon Toast를 Level-up / Capture / Crafting / Region에서도 사용하게 �
 
 ---
 
-## 7. Validation은 콘텐츠 복잡도와 함께 강화
+## Validation & Synchronization
+
+### Validation Growth
 
 초기 시스템은 개별 row나 reference가 올바른지 확인하는 정도로도 관리할 수 있었습니다.
 
@@ -237,7 +247,7 @@ Stage Graph도 Definition에서 직접 생성하도록 바꿔 문서와 콘텐�
 
 ---
 
-## 8. Server Authority + Limited Prediction
+### Server Authority + Limited Prediction
 
 공유 gameplay 결과를 Server가 결정하는 원칙은 유지했습니다.
 
@@ -262,7 +272,9 @@ Prediction은 Inventory처럼 즉각적인 조작 피드백이 필요한 상태�
 
 ---
 
-## 9. AgentMcp로 Editor 검증 Loop 연결
+## Development Workflow
+
+### AgentMcp Editor Verification Loop
 
 AgentMcp를 통해 C++ 작업과 Blueprint / DataAsset / Animation / UMG authoring, Editor 검증을 같은 흐름으로 연결했습니다.
 
@@ -281,7 +293,7 @@ Inspect
 
 ---
 
-## 짧은 개발 Timeline
+## Timeline
 
 ### 2025 — Core Gameplay
 
