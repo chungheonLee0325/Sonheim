@@ -1,186 +1,154 @@
-﻿# Sonheim 프로젝트 기술 문서
+# Sonheim Engineering Wiki
 
-> 이 문서는 Sonheim 프로젝트의 핵심 시스템 설계와 구현 내용을 종합한 기술 문서입니다.
+> **Unreal Engine 5.5 / C++ 기반 멀티플레이 액션 어드벤처**
+>
+> 전투·상호작용·인벤토리/제작·Pal 포획/파트너·UI·데이터 기반 콘텐츠를 구현하고, 각 시스템을 서버 권위 gameplay와 client presentation 구조로 연결했습니다.
 
----
-
-### **주요 기술 시연 (For Busy Interviewer)**
-> 바쁘신 분들을 위해, 이 프로젝트의 핵심적인 기술 구현 사례 4가지를 먼저 소개합니다.
-*   [[사례 연구: 팰 포획 시퀀스|8.1_Case_Study_Pal_Capture_Sequence]]: 여러 시스템이 협력하여 복잡한 기능을 완성하는 과정
-*   [[사례 연구: 서버 권위 제작|8.2_Case_Study_Server_Authority_Crafting]]: 멀티플레이 동시성 문제를 해결하는 방법
-*   [[사례 연구: 데이터 기반 근접 공격|8.3_Case_Study_Melee_Attack]]: 데이터와 애니메이션으로 스킬을 확장하는 방법
-*   [[사례 연구: 반응형 인벤토리 UX|8.4_Case_Study_Inventory_Interaction]]: 클라이언트 예측으로 온라인 게임의 랙(Lag)을 감추는 방법
-
-### **구현된 기능 한눈에 보기 (Full Feature List)**
-> 이 프로젝트에 구현된 모든 기능의 상세 목록과 관련 기술 문서는 [[1.2 주요 기능 요약|1.2_Key_Features]] 문서에서 한눈에 확인하실 수 있습니다.
-
-### **개발 과정 요약 (Development Overview)**
-> 6개월간의 개발 과정을 월별로 요약했습니다. 각 항목에 대한 자세한 내용은 전체 개발 일지에서 확인하실 수 있습니다.\
-> ➡️ **[[전체 개발 일지 보러가기|10.1_Development_History]]**
-*   **(25.09) 프로젝트 안정화 및 문서화** : Wiki 시스템을 개편하고 인벤토리 시스템 안정화 및 주요 버그를 수정했습니다.
-*   **(25.08) 게임플레이 시스템 확장** : 상자(Chest) 컨테이너와 제작(Crafting) 시스템을 완성하고 전투 시스템을 고도화했습니다.
-*   **(25.07) 전투 경험 다양화** : 신규 무기 'Shotgun'을 추가하고 아이템 희귀도 시스템을 도입했으며, 피드백을 강화했습니다.
-*   **(25.06) 아키텍처 리팩토링 및 성능 최적화** : 'Pal' 시스템을 컴포넌트로 분리하고 Object Pooling을 적용해 성능을 최적화했습니다.
-*   **(25.04) 월드 탐험 및 콘텐츠 확장** : 'Glider' 이동 시스템을 도입하고 보스 몬스터 등 월드 콘텐츠를 추가했습니다.
-*   **(25.03) 핵심 시스템 기반 구축** : Player, Inventory, Skill System 등 핵심 시스템의 기반과 네트워크 아키텍처를 확립했습니다.
+[[01. Project Overview|01_Project_Overview]]에서는 실제 gameplay loop와 구현 범위를 먼저 볼 수 있습니다.
 
 ---
 
-## 📚 목차 (Table of Contents)
+## System Architecture
 
-### 1. 프로젝트 개요
-> 프로젝트의 비전, 핵심 게임플레이 루프, 그리고 전체 아키텍처를 관통하는 설계 원칙을 소개합니다.
-*   [[1.1 프로젝트 비전 및 목표|1.1_Project_Overview]]: 이 프로젝트가 추구하는 핵심 목표와 게임의 전체적인 구조를 설명합니다.
-*   [[1.2 주요 기능 요약|1.2_Key_Features]]: 현재 구현된 모든 게임플레이 기능 목록을 상세히 나열하고 관련 시스템을 안내합니다.
+**현재 코드의 주요 시스템과 책임 구조**입니다.
 
-### 2. 핵심 설계 원칙
-> Sonheim의 아키텍처를 지탱하는 가장 근본적인 기술 철학을 다룹니다.
-*   [[2.1 서버 권위 원칙|2.1_Server_Authority_Architecture]]: 멀티플레이어 게임의 보안과 데이터 일관성을 보장하는 서버 중심 아키텍처를 설명합니다.
-*   [[2.2 데이터 주도 설계|2.2_Data_Driven_Design]]: 코드 수정 없이 콘텐츠를 확장할 수 있게 하는 데이터 기반 설계 방식을 설명합니다.
-*   [[2.3 컴포넌트 기반 설계|2.3_Component_Based_Design]]: 기능의 재사용성과 확장성을 극대화하는 컴포넌트 기반 아키텍처를 설명합니다.
-*   [[2.4 플레이어 클래스 아키텍처|2.4_Player_Class_Architecture]]: 데이터 영속성을 위해 언리얼 엔진의 표준 플레이어 클래스(Pawn, Controller, PlayerState)를 어떻게 활용했는지 설명합니다.
+- **굵은 첫 줄** — 역할
+- **둘째 줄 이하** — 실제 UE / Sonheim class·data
+- **점선** — 동기화·표현 연결
 
-### 3. 공용 프레임워크 (AAreaObject)
-> 플레이어와 몬스터를 포함한 모든 살아있는 개체(AAreaObject)가 공유하는 공통 기능의 기반을 설명합니다.
-*   [[3.1 AAreaObject: 모든 개체의 기반|3.1_AreaObject_Framework]]: 모든 캐릭터가 공유하는 기능들을 어떻게 프레임워크로 제공하는지 설명합니다.
-*   [[3.2 어트리뷰트 시스템|3.2_Attribute_System]]: HP, 스태미나, 레벨 등 모든 캐릭터의 기본 능력치를 관리하는 컴포넌트들을 설명합니다.
-*   [[3.3 스킬 시스템|3.3_Skill_Architecture]]: 데이터, 상태, 로직을 분리하여 확장성 높은 스킬 시스템을 구축한 방법을 설명합니다.
-*   [[3.4 애니메이션 시스템|3.4_Animation_System]]: 애니메이터가 직접 게임플레이 타이밍을 제어하는 애니메이션 주도 설계 방식을 설명합니다.
-*   [[3.5 전투 및 피드백 시스템|3.5_Combat_and_Feedback_System]]: 타격감과 전략성을 모두 잡은 전투 시스템의 피해 처리 파이프라인을 설명합니다.
+~~~mermaid
+flowchart TB
+    subgraph DATA["Content / Authoring"]
+        ROW["<b>반복 Gameplay Data</b><br/>DataTable · StringTable"]
+        DEF["<b>콘텐츠 정의</b><br/>UDungeonDefinitionDataAsset<br/>UBossPatternDataAsset · GameplayTag"]
+    end
 
-### 4. 플레이어 (ASonheimPlayer)
-> 게임의 주인공인 플레이어 캐릭터의 고유한 기능들을 심층적으로 다룹니다.
-*   [[4.1 플레이어 캐릭터 컨트롤|4.1_Player_Character_Control]]: 안정적인 네트워크 이동과 반응성 높은 컨트롤을 모두 만족시킨 방법을 설명합니다.
-*   [[4.2 인벤토리 시스템|4.2_Inventory_System]]: 네트워크에 최적화된 반응형 인벤토리의 백엔드 시스템을 설명합니다.
-*   [[4.3 스탯 시스템|4.3_Stat_System]]: 장비와 버프에 따라 실시간으로 능력치가 변하는 동적 스탯 계산 파이프라인을 설명합니다.
-*   [[4.4 팰 관리 시스템|4.4_Pal_Management_System]]: 팰의 포획, 보관, 활용으로 이어지는 전체 생명주기를 관리하는 컴포넌트들의 협력 구조를 설명합니다.
+    subgraph GAME["Gameplay Runtime"]
+        BASE["<b>공통 Character 기반</b><br/>AAreaObject : ACharacter<br/>Health · Condition · Skill Components"]
+        BODY["<b>World Body</b><br/>ASonheimPlayer / ABaseMonster"]
+        PSTATE["<b>Player 지속 상태</b><br/>ASonheimPlayerState<br/>Inventory · StatBonus · PalInventory"]
+        WORLD["<b>World 상호작용</b><br/>UInteractionComponent<br/>IInteractableInterface"]
+        CONTENT["<b>콘텐츠 실행</b><br/>UDungeonStageRuntimeSubsystem<br/>UBossFSM : UBaseAiFSM"]
+    end
 
-### 5. AI (ABaseMonster)
-> 살아있는 생명체처럼 행동하는 몬스터의 인공지능을 다룹니다.
-*   [[5.1 FSM 기반 AI 프레임워크|5.1_FSM_based_AI]]: 상태 패턴을 활용하여 확장 가능한 FSM(유한 상태 머신) AI 프레임워크를 직접 구현한 과정을 설명합니다.
-*   [[5.2 파트너 AI|5.2_Partner_AI]]: FSM 프레임워크를 확장하여, 플레이어를 따라다니며 전투를 돕는 동료 AI를 구현한 방법을 설명합니다.
+    subgraph STATE["Authoritative / Replicated State"]
+        ACTORSTATE["<b>Actor 단위 상태</b><br/>Health · SkillSpec · Inventory · BossStatus"]
+        GAMESTATE["<b>공유 콘텐츠 상태</b><br/>ASonheimGameState<br/>FDungeonStageRuntimeState"]
+    end
 
-### 6. 월드와 상호작용
-> 플레이어가 월드에 존재하는 다양한 오브젝트들과 상호작용하는 방식을 설명합니다.
-*   [[6.1 통합 상호작용 원칙|6.1_Unified_Interaction_System]]: 성격이 다른 두 종류의 상호작용(의도/물리)을 각기 다른 시스템으로 분리하여 처리하는 방법을 설명합니다.
-*   [[6.2 아이템 시스템|6.2_Item_System]]: 월드에 드롭되는 아이템의 데이터와 동작 방식을 분리하여 유연성을 확보한 설계를 설명합니다.
-*   [[6.3 자원 시스템|6.3_Resource_System]]: 전투 시스템을 재활용하여 타격감 있는 자원 채집 시스템을 구현한 방법을 설명합니다.
-*   [[6.4 보관함 시스템|6.4_Container_System]]: 대규모 월드에서도 효율적으로 동작하는 공유 보관함의 네트워크 최적화 기법을 설명합니다.
-*   [[6.5 제작 시스템|6.5_Crafting_System]]: 멀티플레이 환경에서 동시성 문제를 해결한 서버 권위 제작 시스템의 백엔드를 설명합니다.
+    subgraph UI["Client Presentation"]
+        HUD["<b>기본 HUD / Screen</b><br/>PlayerController · UMG Widgets"]
+        NOTICE["<b>일시적 알림</b><br/>UNoticeSubsystem : ULocalPlayerSubsystem"]
+        VIEW["<b>복합 콘텐츠 UI</b><br/>Presenter → ViewData<br/>LocalPlayer UI Router"]
+    end
 
-### 7. UI 시스템
-> UI 시스템의 근간을 이루는 **설계 원칙**부터, 공통 문제를 해결하는 **솔루션**, 그리고 이 모든 것을 종합하여 완성한 **핵심 시스템 심층 분석**까지, 체계적인 접근 방식을 통해 UI 시스템을 구축한 과정을 설명합니다.
-*   **UI Architecture Principles**
-    *   [[7.1 이벤트 기반 아키텍처|7.1_Event-Driven_UI_Architecture]]: 데이터와 UI의 의존성을 분리하는 이벤트 기반 UI 업데이트 방식을 설명합니다.
-    *   [[7.2 중앙화된 디자인 시스템|7.2_Centralized_UI_Design_System]]: 프로젝트 전체의 UI 스타일 일관성을 유지하는 중앙화된 디자인 시스템을 설명합니다.
-*   **Solving Common UI Problems**
-    *   [[7.3 UI 최적화: 오브젝트 풀링|7.3_Optimizing_UI_with_Object_Pooling]]: UI 요소의 사용 패턴에 따라 각기 다른 최적화 전략을 적용한 사례를 설명합니다.
-    *   [[7.4 확장 가능한 컨텍스트 UI|7.4_Scalable_Contextual_UI]]: 인터페이스를 활용하여 새로운 상호작용 UI를 코드 수정 없이 확장하는 방법을 설명합니다.
-*   **UI System Deep Dives**
-    *   [[7.5 인벤토리 UI 심층 분석|7.5_Building_a_Reusable_Inventory_UI]]: 전략 패턴을 활용하여 재사용 가능한 인벤토리 UI를 구축한 과정을 심층 분석합니다.
-    *   [[7.6 제작 UI 심층 분석|7.6_Designing_a_Collaborative_Crafting_UI]]: 여러 플레이어의 협력 플레이를 고려한 제작 UI의 내부 설계를 심층 분석합니다.
+    ROW --> BASE
+    ROW --> PSTATE
+    DEF --> CONTENT
 
-### 8. 사례 연구
-> 각 시스템들이 어떻게 유기적으로 협력하여 하나의 완전한 기능을 완성하는지 실제 사례를 통해 보여줍니다.
-*   [[8.1 팰 포획 시퀀스|8.1_Case_Study_Pal_Capture_Sequence]]: 여러 시스템이 협력하여 복잡한 팰 포획 기능을 완성하는 전체 데이터 흐름을 추적합니다.
-*   [[8.2 서버 권위 제작|8.2_Case_Study_Server_Authority_Crafting]]: 멀티플레이 환경에서 제작 시스템의 동시성 문제를 해결하는 과정을 심층 분석합니다.
-*   [[8.3 데이터 기반 근접 공격|8.3_Case_Study_Melee_Attack]]: 데이터와 애니메이션의 조합만으로 다양한 근접 공격을 대량 생산하는 아키텍처를 분석합니다.
-*   [[8.4 반응형 인벤토리 UX|8.4_Case_Study_Inventory_Interaction]]: 클라이언트 예측을 통해 온라인 게임의 랙(Lag)을 감추는 방법을 실제 코드로 분석합니다.
+    BASE --> BODY
+    PSTATE --> BODY
+    WORLD --> BODY
+    BODY --> CONTENT
 
-### 9. 회고 및 향후 계획
-> 프로젝트를 통해 얻은 기술적 교훈과 미래 발전 가능성을 다룹니다.
-*   [[9.1 프로젝트 회고|9.1_Project_Retrospective]]: 프로젝트 전체를 진행하며 얻은 기술적 교훈과 성장 과정을 기록합니다.
-*   [[9.2 향후 작업 계획|9.2_Future_Work]]: 현재 시스템의 한계점을 분석하고, 앞으로 개선해나갈 기술 부채 목록을 정리합니다.
+    BODY --> ACTORSTATE
+    CONTENT --> GAMESTATE
 
-### 10. 부록
-> 프로젝트의 진행 과정 및 기타 자료를 포함합니다.
-*   [[10.1 전체 개발 일지|10.1_Development_History]]: 7개월간의 프로젝트 개발 과정을 월별로 상세히 기록한 문서입니다.
+    ACTORSTATE -. "Delegate / Replication" .-> HUD
+    ACTORSTATE -. "Replicated State" .-> VIEW
+    GAMESTATE -. "Snapshot" .-> VIEW
+    CONTENT -. "Transient Event" .-> NOTICE
+~~~
+
+### 구현 경계
+
+**C++ Runtime**
+- Server authority와 state ownership
+- Character/Component/Interface 공통 로직
+- Combat·Inventory·Crafting·Capture·Dungeon/Boss 실행
+- RPC / Replication / FastArray와 Presenter/ViewData 변환
+
+**Data / Content**
+- Item·Skill·AreaObject·Level·Resource처럼 반복되는 값은 DataTable
+- Dungeon Stage/Branch/Objective, Boss Pattern/Strike처럼 중첩된 콘텐츠는 DataAsset
+- Stage·Group·Barrier·Pattern처럼 계층 관계가 필요한 runtime ID는 GameplayTag
+- 화면 문구·아이콘·Map 정보는 gameplay rule과 분리된 presentation data / StringTable
+
+**Blueprint / UMG / Animation**
+- C++ parent와 <code>BindWidget</code> contract 위에서 Widget Blueprint 구성
+- Animation Blueprint·Montage·Notify로 locomotion과 action timing 조정
+- DataAsset/Blueprint default로 콘텐츠 asset 연결과 presentation tuning
+- UMG는 gameplay rule을 직접 소유하지 않고 delegate 또는 ViewData를 소비
+
+즉 **C++이 실행 규칙과 상태를 소유하고, Data가 콘텐츠 조합과 tuning을 제공하며, Blueprint/UMG/Animation이 asset과 표현을 구성**하는 형태입니다.
 
 ---
-## 시스템 개요 (아키텍처)
 
-<details>
-<summary><b> 전체 시스템 아키텍처 다이어그램 펼쳐보기 </b></summary>
-<br>
+## Core Architecture
 
-```mermaid
-classDiagram
-    direction TB
+- [[02. Gameplay Architecture|02_Gameplay_Architecture]] — PlayerState/Pawn/Subsystem의 **상태 소유 위치**, ActorComponent·Interface 구성, Data/Runtime/Presentation 경계
+- [[03. Data & Content Architecture|03_Data_Content_Architecture]] — DataTable·DataAsset·GameplayTag·Soft Reference·StringTable의 적용 기준과 실제 사용처
+- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — Request / State / Scope / Prediction / transient event를 UE Listen Server에서 어떻게 동기화했는지 정리합니다.
 
-    class ACharacter
-    class AActor
-    class UActorComponent
+---
 
-    class AAreaObject {
-        +TakeDamage()
-        +OnDie()
-    }
-    class ASonheimPlayer
-    class ABaseMonster
-    class AResourceObject
-    class ABaseItem
-    class ABaseContainer
-    class ACraftingStation
+## Gameplay Systems
 
-    class UHealthComponent
-    class USkillComponent
-    class UInteractionComponent
-    class UInventoryComponent
-    class UContainerComponent
+- [[04. Player & Character Systems|04_Player_Character_Systems]] — Pawn/PlayerState 수명 분리, Attribute/Condition/Stat과 장비 변경의 실제 상태 흐름
+- [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Skill Data/State/Logic, AnimNotify 기반 action timing, melee interpolation, Damage context
+- [[06. World Interaction Systems|06_World_Interaction_Systems]] — Item·Container·Crafting·Lever·Portal을 하나의 <code>IInteractableInterface</code> 입력/Prompt/Hold 흐름으로 연결
+- [[07. Inventory & Crafting|07_Inventory_Crafting]] — Item/Equipment/Container/Crafting의 데이터와 UI, 협력 제작 lifecycle
+- [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — Wild Monster → Capture → Ownership → Storage → Summon → Partner AI
 
-    class IInteractableInterface {
-        +Interact()
-    }
-    class UDataTable{
-        +Recipes
-        +DropTables
-    }
+---
 
-%% Inheritance
-    ACharacter <|-- AAreaObject
-    AAreaObject <|-- ASonheimPlayer
-    AAreaObject <|-- ABaseMonster
+## UI Architecture
 
-    AActor <|-- AResourceObject
-    AActor <|-- ABaseItem
-    AActor <|-- ABaseContainer
-    AActor <|-- ACraftingStation
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Delegate HUD, Inventory/Crafting screen, Confirm popup, Notice/Toast queue, Dungeon Presenter/ViewData와 LocalPlayer UI routing
 
-    UActorComponent <|-- UHealthComponent
-    UActorComponent <|-- USkillComponent
-    UActorComponent <|-- UInteractionComponent
-    UActorComponent <|-- UInventoryComponent
-    UActorComponent <|-- UContainerComponent
+- **Player HUD** — Health·Stamina·Level 등 gameplay state의 Delegate를 구독해 갱신
+- **Inventory / Container / Crafting** — PlayerController와 각 Widget이 화면 lifecycle과 데이터 바인딩을 관리
+- **Notice / Toast** — <code>UNoticeSubsystem</code>이 Banner·Title의 Queue와 Channel을 관리
+- **Dungeon HUD / Result** — Snapshot → Presenter → ViewData → UI Router로 복합 상태를 화면에 전달
 
-%% Composition / Aggregation
-AAreaObject o-- "1" UHealthComponent : has
-AAreaObject o-- "1" USkillComponent  : has
-AResourceObject o-- "1" UHealthComponent : has
-ASonheimPlayer o-- "1" UInventoryComponent : has
-ASonheimPlayer o-- "1" UInteractionComponent : has
-ABaseContainer o-- "1" UContainerComponent : has
+---
 
-%% Interface Implementation
-ABaseItem ..|> IInteractableInterface
-ABaseContainer ..|> IInteractableInterface
-ACraftingStation ..|> IInteractableInterface
+## Integrated Content Case Study — Forgotten Ruins
 
-%% Item & Loop Relations
-ABaseMonster ..> ABaseItem : SpawnsLoot
-UInventoryComponent o-- "1" ABaseItem : Contains
-ABaseContainer   o-- "1" ABaseItem : Contains
-ACraftingStation ..> ABaseItem : UsesOrCreates
+현재 가장 큰 통합 적용 사례는 **분기형 Dungeon Vertical Slice**입니다.
 
-%% Key Dependencies
-UInteractionComponent ..> IInteractableInterface : TriggersInteraction
-USkillComponent ..> AAreaObject     : DealsDamage
-USkillComponent ..> AResourceObject : DealsDamage
-UInventoryComponent .. UContainerComponent : ManagesItems
+Dungeon Definition과 Runtime은 Combat·Interaction·Inventory·Capture의 결과를 objective / branch / reward / boss encounter로 연결합니다.
 
-%% Data Lookups
-ABaseMonster    ..> UDataTable : Reads
-AResourceObject ..> UDataTable : Reads
-ACraftingStation..> UDataTable : Reads
-```
-</br>
-</details>
+- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Branch, Objective, Barrier, Timer, Reward, Record를 Event/Condition/Action/Transition 데이터로 진행
+- [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — 기존 Monster/Combat 기반 위에 Boss FSM, Pattern/Strike, Telegraph, Phase, Down/Exhaust를 구성
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — HUD, 목표 추적, Party 상태, Minimap/Marker, Boss HUD, Result를 current snapshot에서 구성
+
+Forgotten Ruins는 **Combat·Interaction·Inventory·Capture·UI가 하나의 콘텐츠 흐름에서 연결되는 통합 구현 사례**입니다.
+
+---
+
+## Content Authoring & Engineering
+
+- [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — Stage graph, dependency, Boss timing처럼 데이터 조합에서 생기는 오류를 Editor / graph validation으로 검사
+- [[14. Unreal Editor Automation & Verification|14_Unreal_Editor_Automation_Verification]] — AgentMcp를 이용한 UE Editor authoring과 Compile → PIE → Log/Viewport 검증
+- [[15. Development History & Retrospective|15_Development_History_Retrospective]] — 기능 추가보다 ownership과 시스템 경계가 실제 확장에서 어떻게 바뀌었는지 정리
+
+### AgentMcp
+
+[AgentMcp](https://github.com/chungheonLee0325/AgentMcp)는 **UE 5.8의 실험적 MCP/toolset과 Agent Skill 개념을 참고해 UE 5.5용으로 재구현한 Editor MCP plugin**입니다.
+
+Sonheim에서는 **UMG/BindWidget authoring, Blueprint/Data/Animation 편집, Compile → PIE → Log/Viewport 검증**에 사용했습니다. 자세한 구현과 실제 검증 흐름은 [[14. Unreal Editor Automation & Verification|14_Unreal_Editor_Automation_Verification]]에서 확인할 수 있습니다.
+
+---
+
+## Source
+
+- [Sonheim](https://github.com/chungheonLee0325/Sonheim) — 전체 Unreal Engine 프로젝트
+- [Sonheim.Source](https://github.com/chungheonLee0325/Sonheim.Source) — Source / Config / Docs 중심 코드 검토용
+- [AgentMcp](https://github.com/chungheonLee0325/AgentMcp) — UE 5.5 Editor MCP / agent workflow plugin
+
+---
+
+## 코드 표기
+
+Wiki의 코드 블록은 구현 구조를 설명하는 데 필요한 선언과 함수만 발췌합니다. 생략된 <code>UPROPERTY</code> metadata나 보조 필드는 각 문서 하단의 **관련 코드** 링크에서 확인할 수 있습니다.
