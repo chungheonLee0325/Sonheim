@@ -10,8 +10,17 @@ Sonheim UI는 **Persistent HUD, Interaction Screen, Transient Notice, Complex Co
 - Dungeon UI는 Snapshot → Presenter → ViewData → UI Router로 복합 gameplay state를 화면 모델로 변환합니다.
 - UI Router가 async Widget load, state reconstruction, 기존 HUD visibility 등 content UI lifecycle을 관리합니다.
 
+## Runtime Demo
+
+### Notice / Toast
+
+https://github.com/user-attachments/assets/bc9e4305-62f6-43bb-b1fa-2b109a06eb5b
+
+*Lever 상호작용과 Wave 완료/Branch 변경에서 발생한 Dungeon Banner가 `ShortcutUnlocked → GroupClear → Branch.Shortcut` 순으로 표시되는 `TakeTurns` queue 시연.*
+
 ## 목차
 
+- [Runtime Demo](#runtime-demo)
 - [System Overview](#system-overview)
 - [Base HUD & Interaction Screen](#base-hud--interaction-screen)
 - [Notice / Toast](#notice--toast)
@@ -245,9 +254,7 @@ Queue policy는:
 
 를 사용합니다.
 
-https://github.com/user-attachments/assets/bc9e4305-62f6-43bb-b1fa-2b109a06eb5b
-
-Lever 상호작용과 Wave 완료/Branch 변경에서 발생한 Dungeon Banner가 `ShortcutUnlocked → GroupClear → Branch.Shortcut` 순으로 표시되어 `TakeTurns` queue 동작을 보여줍니다.
+실제 `TakeTurns` 동작은 상단 Runtime Demo에서 확인할 수 있습니다.
 
 ### Channel
 
