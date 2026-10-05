@@ -43,6 +43,10 @@ AgentMcp는 일반 property 수정 외에 Unreal Editor 작업에 필요한 tool
 
 Sonheim에서는 Dungeon HUD/Result와 UMG 작성·검증, Animation asset 구성, Blueprint default/DataAsset/StringTable 편집에 사용했습니다.
 
+![AgentMcp로 Unreal Editor를 inspect/edit하고 PIE 결과를 확인하는 화면](../Media/Wiki/14_Unreal_Editor_Automation_Verification/14_agentmcp_editor.png)
+
+*AgentMcp tool 실행 내역과 UE Editor/PIE 결과를 같은 작업 흐름에서 확인한 예시.*
+
 ---
 
 ## 2. Closed-loop Editor Verification
@@ -110,6 +114,10 @@ Editor authoring 검증과 실제 gameplay scenario 검증은 분리합니다.
 | PASS | Exhaust / Capture eligibility |
 
 이 기록은 all-pass 결과가 아니라 **현재 regression을 실제로 검출한 scenario 실행 결과**로 사용합니다. 촬영을 위해 production code나 asset을 변경하지 않았고, Wake montage FAIL의 이번 실행 원인은 별도 진단으로 확정하지 않았습니다.
+
+![Boss scenario verification 결과 — 7/8 PASS, Remote Client Wake montage FAIL](../Media/Wiki/14_Unreal_Editor_Automation_Verification/14_scenario_verification.png)
+
+*Boss scenario helper 실행 결과. Remote Client Wake montage 항목의 실패가 그대로 기록되어 있습니다.*
 
 ---
 
