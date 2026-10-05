@@ -2,11 +2,27 @@
 
 Guardian Boss는 <code>ABaseMonster</code> 기반 위에 **<code>UBossFSM</code>, <code>UBossPatternDataAsset</code>, <code>FBossStatus</code>**를 추가해 Encounter Runtime을 구성합니다.
 
-기존 Combat의 <code>FAttackData</code>와 Damage Pipeline을 사용하고, Boss 전용 FSM이 **거리 기반 Pattern 선택, Telegraph, Tracking, Phase, Down, Exhaust, Capture Window**를 관리합니다.
+## 요약
+
+- Boss Actor / FSM은 기존 Monster 기반을 유지하고 Encounter state만 전용 계층으로 확장합니다.
+- Pattern Data가 Range / Phase / Cooldown / Weight와 Timeline / Strike를 정의합니다.
+- 하나의 Pattern Clock이 Tracking, Telegraph, Strike, Leap, Recovery timing을 조율합니다.
+- Break / Down / Exhaust / Capture Window를 서로 다른 encounter state로 관리합니다.
+- 실제 Hit 이후의 Damage semantics는 기존 <code>FAttackData → FCustomDamageEvent</code> pipeline을 재사용합니다.
+
+## 목차
+
+- [Encounter Architecture](#encounter-architecture)
+- [Pattern Model](#pattern-model)
+- [FSM & Pattern Selection](#fsm--pattern-selection)
+- [Pattern Execution & Telegraph](#pattern-execution--telegraph)
+- [Phase / Break / Capture](#phase--break--capture)
+- [Combat & Replication](#combat--replication)
+- [Trade-offs](#trade-offs)
 
 ---
 
-## 전체 구조
+## Encounter Architecture
 
 Boss는 기존 Character/Monster 기반을 유지하고, Encounter에 필요한 상태와 Pattern 실행만 전용 계층으로 확장합니다.
 
@@ -55,7 +71,9 @@ Boss Runtime은 **언제 어떤 공격을 선택하고 어디에 어떤 타격�
 
 ---
 
-## 1. Pattern = 선택 조건 + Timeline + Strike
+## Pattern Model
+
+### Pattern Definition
 
 <code>FBossPattern</code>은 **선택 조건 + 실행 시간 + Strike 목록 + 이동/추적 규칙**을 하나의 행동 단위로 묶습니다.
 
@@ -103,7 +121,7 @@ struct FBossPattern
 
 ---
 
-## 2. Strike 하나가 Telegraph와 실제 공격을 함께 정의
+### Strike Definition
 
 `FBossStrike`는 공격의 warning과 hit을 같은 데이터로 묶습니다.
 
@@ -153,7 +171,9 @@ https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
 
 ---
 
-## 3. Server FSM이 Encounter 전체 상태를 관리
+## FSM & Pattern Selection
+
+### Encounter FSM
 
 Boss 상태는 다음과 같이 구분합니다.
 
@@ -195,7 +215,7 @@ stateDiagram-v2
 
 ---
 
-## 4. Pattern 선택은 Range / Phase / Cooldown / Weight를 함께 사용
+### Pattern Selection
 
 Pattern이 끝나면 Target과 현재 상태를 기준으로 candidate를 만듭니다.
 
@@ -233,7 +253,9 @@ Pattern Data의 Range / Phase / Cooldown / Weight가 candidate 선택 조건을 
 
 ---
 
-## 5. Pattern 실행은 하나의 Clock으로 Telegraph와 Strike를 조율
+## Pattern Execution & Telegraph
+
+### Pattern Clock
 
 Pattern 시작 시:
 
@@ -274,7 +296,7 @@ https://github.com/user-attachments/assets/fbee5e3c-767d-4b20-b18a-8dffa4c8cc4c
 
 ---
 
-## 6. Telegraph는 공격 종류에 따라 위치를 고정하거나 따라간다
+### Telegraph Anchor
 
 `EBossAreaAnchor`로 mark 기준을 나눕니다.
 
@@ -300,7 +322,7 @@ Target 위치를 기준으로 하는 공격은 **Mark가 생긴 순간의 위치
 
 ---
 
-## 7. Tracking과 Re-aim을 분리해 회피 가능성을 유지
+### Tracking / Re-aim
 
 Pattern 전체에서 Target을 끝까지 추적하면 Telegraph를 보고 피하는 의미가 없어집니다.
 
@@ -338,7 +360,7 @@ https://github.com/user-attachments/assets/91dbe45d-4a18-4934-ba9e-d732858faa88
 
 ---
 
-## 8. Montage Section Cue로 Charge / Release를 연결
+### Montage Section Cue
 
 Pattern이 항상 Montage를 처음부터 끝까지 그대로 재생하지는 않습니다.
 
@@ -362,7 +384,9 @@ Animation asset의 Section 구조와 Runtime 상태 전환을 연결합니다.
 
 ---
 
-## 9. Phase 2에서 Tempo와 Strike 구성을 변경
+## Phase / Break / Capture
+
+### Phase Transition
 
 HP가 `PhaseTwoHealth` 이하가 되면 Pattern 사이에서 Phase 2로 전환합니다.
 
@@ -391,7 +415,7 @@ HP threshold를 통과하면 현재 공격을 바로 Phase 2로 덮어쓰는 대
 
 ---
 
-## 10. Break와 Exhaust는 Damage 흐름에 연결
+### Break / Down / Exhaust
 
 Boss가 Fighting 중 Damage를 받으면 Break를 누적합니다.
 
@@ -432,7 +456,7 @@ Capture 가능
 
 ---
 
-## 11. Capture는 기존 Pal Pipeline을 재사용
+### Capture Window
 
 Boss FSM은 **Capture가 가능한 상태인지**만 결정합니다.
 
@@ -455,7 +479,9 @@ Boss 전용 Capture 결과 처리 코드를 별도로 만들지 않았습니다.
 
 ---
 
-## 12. 타격 이후 처리는 기존 Combat Pipeline을 재사용
+## Combat & Replication
+
+### Combat Pipeline Reuse
 
 Boss Strike에는 별도 Boss Damage 구조체 대신:
 
@@ -479,7 +505,7 @@ Boss Runtime은 **언제·어디서 공격을 발생시킬지**를 결정하고,
 
 ---
 
-## 13. Client에는 Encounter 상태만 복제
+### Replicated Boss Status
 
 Boss 자체의 실행 FSM을 Client가 다시 돌리지 않습니다.
 
@@ -511,7 +537,7 @@ Dungeon Runtime은 Boss status를 다시 Run Snapshot에 반영해 HUD가 `UBoss
 
 ---
 
-## 설계 선택과 비용
+## Trade-offs
 
 | 선택 | 얻은 것 | 비용 / 제약 |
 |---|---|---|
