@@ -301,7 +301,7 @@ Animation이 끝난 시점에 Authority가 실제 World participation을 바꿉�
 
 보관된 Pal을 매번 Destroy하고 다시 Spawn하지 않습니다.
 
-### Deactivate
+#### Deactivate
 
 - FSM Stop
 - Current Skill 정리
@@ -310,7 +310,7 @@ Animation이 끝난 시점에 Authority가 실제 World participation을 바꿉�
 - UI Off
 - AI Tick Off
 
-### Activate
+#### Activate
 
 - Hidden Condition 제거
 - FSM을 다시 Select Mode로 전환
