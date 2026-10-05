@@ -298,11 +298,9 @@ enum class EConditionBitsType : uint32
 
 같은 lifecycle과 함께 사용할 수 있습니다.
 
-### 현재 한계
+### Timed Condition 처리
 
-Timed Condition은 Condition type 중심으로 관리하므로 **같은 Condition을 여러 Source가 서로 다른 duration으로 중첩**해야 하는 요구에는 적합하지 않습니다.
-
-그 요구가 커지면 Source token/GUID 단위 instance 관리가 필요합니다.
+Timed Condition은 Condition type을 key로 사용해 duration을 관리합니다. 같은 type의 재적용은 해당 Condition의 현재 timer를 기준으로 처리합니다.
 
 ---
 
