@@ -224,7 +224,7 @@ Queue policy는:
 
 를 사용합니다.
 
-[▶ Dungeon Notice Queue 시연 (MP4)](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_notice_system.mp4)
+https://github.com/user-attachments/assets/bc9e4305-62f6-43bb-b1fa-2b109a06eb5b
 
 실제 Lever 상호작용과 Wave 완료/Branch 변경에서 발생한 Dungeon Banner가 `ShortcutUnlocked → GroupClear → Branch.Shortcut` 순으로 표시되어 `TakeTurns` queue 동작을 보여줍니다. 이 영상은 producer와 표시 순서의 증거이며, Hold/Fade 시간을 정량 검증하는 자료로 사용하지 않습니다.
 
@@ -393,7 +393,7 @@ Presentation Data는:
 
 위 화면에서는 Current Stage room highlight, Local Player arrow, Remote Player dot, Lever Objective marker와 room icon이 동시에 표시됩니다. Bounds 밖 Player는 edge로 clamp하지 않고 표시 대상에서 제외합니다.
 
-[▶ Minimap Runtime 시연 (MP4)](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_minimap_runtime.mp4)
+https://github.com/user-attachments/assets/fa7c4755-16dd-47fb-a558-80b74aa536b2
 
 영상에서는 remote Player의 Dungeon 밖 이동/복귀, 두 Player의 위치 변화와 local camera 회전에 따른 arrow 방향 갱신을 확인할 수 있습니다.
 
@@ -414,7 +414,7 @@ HUD가 늦게 생성되거나 재생성돼도 같은 현재 progress를 복원�
 
 Widget 자체는 Dungeon Run의 상태 owner가 아닙니다. 진행 중 HUD를 제거해도 Presenter와 Snapshot은 유지되고, 이후 UI 갱신이 발생하면 Router가 **새 Widget instance**를 만들어 Latest ViewData를 적용합니다.
 
-[▶ HUD 재생성 후 상태 복구 시연 (MP4)](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_state_reconstruction.mp4)
+https://github.com/user-attachments/assets/6c4f9601-8fbe-4957-87d4-d4ad230f3211
 
 촬영에서는 기존 HUD를 `RemoveFromParent`한 뒤 새 instance가 생성됐고, 같은 RunId / Stage / Objective 2/3 / Optional Objective / Minimap 상태를 다시 구성했습니다. Countdown과 elapsed time도 Widget 생성 시점에서 다시 시작하지 않고 기존 `StageDeadlineServerTime` / `RunStartedServerTime`과 synchronized server clock을 계속 사용했습니다.
 
