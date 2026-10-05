@@ -130,21 +130,14 @@ Forgotten Ruins는 **Combat·Interaction·Inventory·Capture·UI가 하나의 �
 ## Content Authoring & Engineering
 
 - [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — Stage graph, dependency, Boss timing처럼 데이터 조합에서 생기는 오류를 Editor / graph validation으로 검사
-- [[14. Development Workflow & Verification|14_Development_Workflow_Verification]] — Inspect → Edit → Compile → PIE → Log/Capture → Review의 반복 검증 workflow
+- [[14. Unreal Editor Automation & Verification|14_Development_Workflow_Verification]] — AgentMcp를 이용한 UE Editor authoring과 Compile → PIE → Log/Viewport 검증
 - [[15. Development History & Retrospective|15_Development_History_Retrospective]] — 기능 추가보다 ownership과 시스템 경계가 실제 확장에서 어떻게 바뀌었는지 정리
 
 ### AgentMcp
 
-[AgentMcp](https://github.com/chungheonLee0325/AgentMcp)는 **Unreal Engine 5.8의 실험적 MCP/toolset과 Agent Skill 개념을 참고해 UE 5.5용으로 재구현한 Editor MCP plugin**입니다.
+[AgentMcp](https://github.com/chungheonLee0325/AgentMcp)는 **UE 5.8의 실험적 MCP/toolset과 Agent Skill 개념을 참고해 UE 5.5용으로 재구현한 Editor MCP plugin**입니다.
 
-- <code>SKILL.md</code>를 Editor에서 읽어 connected agent에 제공하고 프로젝트별 skill override를 지원
-- UMG tree / C++ <code>BindWidget</code> contract 검사, Widget Blueprint 생성·subtree 편집 등 **UMG authoring에 특화된 toolset**
-- Blueprint/DataTable/DataAsset/StringTable/Animation asset 편집
-- Compile → PIE → Log → Viewport Capture까지 같은 tool path에서 검증
-
-Sonheim에서는 **Dungeon HUD/Result와 UMG 작성·검증, Animation Blueprint/Montage/BlendSpace 구성, Blueprint default/DataAsset/StringTable 편집, PIE 및 viewport capture**에 사용했습니다.
-
-[[14. Development Workflow & Verification|14_Development_Workflow_Verification]]에서 AgentMcp를 포함한 Editor 작업과 검증 흐름을 정리합니다.
+Sonheim에서는 **UMG/BindWidget authoring, Blueprint/Data/Animation 편집, Compile → PIE → Log/Viewport 검증**에 사용했습니다. 자세한 구현과 실제 검증 흐름은 [[14. Unreal Editor Automation & Verification|14_Development_Workflow_Verification]]에서 확인할 수 있습니다.
 
 ---
 
