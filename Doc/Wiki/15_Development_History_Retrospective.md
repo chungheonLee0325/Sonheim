@@ -200,7 +200,7 @@ Dungeon 개발 중 처음 필요했던 Toast를 Dungeon 전용 helper로 계속 
 
 를 공통화했습니다.
 
-**처음부터 범용 시스템을 예측해 만드는 것보다, 두 번째 실제 사용처가 생겼을 때 공통 경계를 추출**하는 쪽을 선택했습니다.
+Dungeon Toast를 Level-up / Capture / Crafting / Region에서도 사용하게 되면서 `UNoticeSubsystem`으로 공통 경계를 추출했습니다.
 
 ---
 
@@ -260,7 +260,7 @@ Correction
 
 반대로 Crafting resource 소비나 Capture 성공처럼 잘못 예측했을 때 결과가 큰 상태는 Client가 먼저 확정하지 않습니다.
 
-기술 하나를 전체 프로젝트에 일괄 적용하기보다 **결과의 중요도와 복구 비용에 따라 범위를 정했습니다.**
+Prediction은 Inventory처럼 즉각적인 조작 피드백이 필요한 상태에 적용하고, Crafting 소비나 Capture 성공 판정은 Server 결과를 기다립니다.
 
 ---
 
@@ -283,7 +283,7 @@ Inspect
 
 를 같은 작업 흐름에서 연결했습니다.
 
-목표는 작성 속도 자체보다 **변경과 검증 사이의 수동 전환을 줄이고, agent가 자신이 만든 결과를 다시 확인하게 하는 것**이었습니다.
+이 흐름으로 Editor 작업과 runtime 결과 확인을 같은 작업 단위에서 이어갈 수 있게 했습니다.
 
 ---
 
@@ -313,20 +313,6 @@ Entrance
 
 ---
 
-## 현재 남아 있는 제약
-
-현재 구현에서 확인된 제약은 다음과 같습니다.
-
-- Skill Cost rollback은 Item 부분 실패를 복구하지만 Stamina까지 포함한 전체 transaction은 아님
-- Condition timer는 같은 condition을 여러 Source가 독립 duration으로 중첩하는 요구에 제한이 있음
-- Animation-driven melee correctness를 위해 Server animation/bone update 비용을 더 사용
-- Container subscriber 방식은 connection별 세밀한 replication filtering까지는 수행하지 않음
-- 일부 scenario verification script는 공개 저장소에 포함되어 있지 않음
-- Sonheim networking은 UE Listen Server 기반이며 외부 dedicated-server protocol stack 구현과는 범위가 다름
-
-각 제약은 [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]], [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]], [[14. Unreal Editor Automation & Verification|14_Unreal_Editor_Automation_Verification]] 등 실제 시스템 문서에 더 구체적으로 남깁니다.
-
----
 
 ## 연관 문서
 
