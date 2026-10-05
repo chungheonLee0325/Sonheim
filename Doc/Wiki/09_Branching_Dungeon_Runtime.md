@@ -2,11 +2,26 @@
 
 Dungeon은 **Stage graph를 데이터로 정의하고, Server Runtime이 Event를 받아 현재 Stage의 Rule을 해석하는 콘텐츠 시스템**으로 구현했습니다.
 
-C++ Runtime은 Event/Condition/Action/Transition의 의미와 실행 방법을 제공하고, 실제 Dungeon은 이 building block을 조합해 진행 순서·분기·목표·보상·실패 조건을 구성합니다.
+## 요약
+
+- Dungeon Definition이 Stage / Event Rule / Transition / Grade를 소유하고 Server Runtime이 이를 해석합니다.
+- Event / Condition / Action / Transition을 building block으로 조합해 분기·목표·Barrier·실패 조건을 구성합니다.
+- Runtime은 Event Queue, <code>RunId</code> stale-event guard, cascade budget으로 Stage mutation 순서를 관리합니다.
+- Branch / Objective / Barrier는 현재 Run State에 기록되고 GameState Snapshot으로 Client에 전달됩니다.
+- Reward / Grade / Best Record까지 같은 Run lifecycle에서 정산합니다.
+
+## 목차
+
+- [Dungeon Flow](#dungeon-flow)
+- [Definition & Identity](#definition--identity)
+- [Event-driven Runtime](#event-driven-runtime)
+- [World State & Objectives](#world-state--objectives)
+- [Terminal / Progress / Replication](#terminal--progress--replication)
+- [Trade-offs](#trade-offs)
 
 ---
 
-## 1. 현재 구현된 Dungeon 흐름
+## Dungeon Flow
 
 아래 Stage Graph는 **Dungeon Definition의 `BuildStageGraph()`에서 생성한 결과**입니다.
 
@@ -60,7 +75,9 @@ Runtime 관점에서 구현된 범위는 다음과 같습니다.
 
 ---
 
-## 2. Event / Condition / Action / Transition의 의미
+## Definition & Identity
+
+### Event / Condition / Action / Transition
 
 이 네 요소는 각각 다른 질문에 답합니다.
 
@@ -158,7 +175,7 @@ struct FDungeonStageTransition
 
 ---
 
-## 3. 고유 식별자에 GameplayTag를 사용한 이유
+### GameplayTag Identity
 
 Dungeon에서는 Stage 하나만 식별하면 끝나지 않습니다.
 
@@ -193,7 +210,9 @@ GameplayTag를 사용하면:
 
 ---
 
-## 전체 Runtime 구조
+## Event-driven Runtime
+
+### Runtime Architecture
 
 ~~~mermaid
 flowchart LR
@@ -222,7 +241,7 @@ flowchart LR
 
 ---
 
-## 4. Catalog와 Definition의 역할을 분리
+### Catalog / Definition
 
 입구에서 조회하는 Catalog와 Dungeon 전체 Stage graph를 소유하는 Definition을 분리합니다.
 
@@ -263,7 +282,7 @@ class UDungeonDefinitionDataAsset : public UPrimaryDataAsset
 
 ---
 
-## 5. Stage 진행을 Event Rule로 표현
+### Stage Event Rules
 
 Stage는 **Event가 들어왔을 때 실행할 Action과, 조건을 만족했을 때 이동할 Transition**을 Rule로 정의합니다.
 
@@ -317,7 +336,7 @@ https://github.com/user-attachments/assets/af8228c3-f403-41e1-947b-ba3f3d3f5da6
 
 ---
 
-## 6. Action과 Condition을 작은 Building Block으로 유지
+### Building Blocks
 
 현재 Runtime이 해석하는 주요 요소:
 
@@ -349,7 +368,7 @@ https://github.com/user-attachments/assets/af8228c3-f403-41e1-947b-ba3f3d3f5da6
 
 ---
 
-## 7. Runtime은 Event Queue를 순서대로 처리
+### Event Queue
 
 World callback 안에서 바로 Stage를 재귀적으로 바꾸지 않고 Event Queue를 사용합니다.
 
@@ -409,7 +428,7 @@ while (!Queue.IsEmpty())
 
 ---
 
-## 8. Stage 진입 시 World 상태와 Timer를 한 번에 갱신
+### Stage Entry
 
 `EnterStage()`는 Stage 전환 시 다음 상태를 설정합니다.
 
@@ -434,7 +453,9 @@ Server Timer
 
 ---
 
-## 9. 분기 결과는 Run State에 한 번만 저장
+## World State & Objectives
+
+### Branch State
 
 Forgotten Ruins의 Shortcut / ExtraWave 선택은:
 
@@ -457,7 +478,7 @@ Forgotten Ruins의 Shortcut / ExtraWave 선택은:
 
 ---
 
-## 10. Objective는 Spawn 결과를 추적
+### Objective Tracking
 
 `SpawnGroup` Action이 Monster를 생성하면 `UDungeonObjectiveTracker`에 해당 Group을 등록합니다.
 
@@ -489,7 +510,7 @@ Capture된 Monster도 전투에서 영구 이탈하므로 **Defeat와 함께 Gro
 
 ---
 
-## 11. Barrier 규칙은 World Actor가 아니라 Stage가 소유
+### Barrier Ownership
 
 현재 Stage에서 어떤 문이 닫혀야 하는지는:
 
@@ -520,7 +541,9 @@ Barrier Actor가 Stage 이름을 직접 검사하지 않기 때문에 Stage 구�
 
 ---
 
-## 12. 실패와 Terminal Stage를 동일한 Run Lifecycle에서 처리
+## Terminal / Progress / Replication
+
+### Failure / Terminal Stage
 
 실패는 예외적인 UI 처리로 분리하지 않고 Run State의 결과로 기록합니다.
 
@@ -556,7 +579,7 @@ Cleanup을 즉시 하지 않고 다음 tick으로 미뤄 현재 Event Rule이나
 
 ---
 
-## 13. Reward와 Record도 같은 Runtime에서 정산
+### Reward / Record
 
 `GrantReward` Action은 참가 Player의 기존 Inventory API를 사용합니다.
 
@@ -586,7 +609,7 @@ SaveGame key에는 rename 가능한 GameplayTag 대신 안정적인 `DungeonNumb
 
 ---
 
-## 14. Runtime State는 실행 결과만 발행
+### Runtime Snapshot
 
 Definition 전체를 Client가 실행하지 않습니다.
 
@@ -609,7 +632,7 @@ Server Runtime이 계산한 결과를 `FDungeonStageRuntimeState`에 모아 Game
 
 ---
 
-## 설계 선택과 비용
+## Trade-offs
 
 | 선택 | 얻은 것 | 비용 / 제약 |
 |---|---|---|
