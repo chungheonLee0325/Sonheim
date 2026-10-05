@@ -10,8 +10,17 @@ Item, Container, Crafting Station, Dungeon Lever는 **<code>IInteractableInterfa
 - Hold 중 target의 interaction mode가 바뀌면 기존 hold를 취소해 stale action을 막습니다.
 - Detection/UI context와 authoritative gameplay execution을 분리합니다.
 
+## Runtime Demo
+
+동일한 Detection / Prompt / Hold / Input 흐름이 **Item, Container, Crafting Station, Dungeon Portal, Lever**에서 서로 다른 결과로 이어집니다.
+
+https://github.com/user-attachments/assets/4ecbc1bc-8c72-4493-8a66-a7b2a0918a36
+
+*Player 쪽 입력 흐름은 유지하고, 각 Actor가 `IInteractableInterface` 구현으로 UI 문맥과 실제 동작을 결정하는 Runtime 시연.*
+
 ## 목차
 
+- [Runtime Demo](#runtime-demo)
 - [System Overview](#system-overview)
 - [Interaction Contract](#interaction-contract)
 - [Player Flow](#player-flow)
@@ -52,17 +61,6 @@ flowchart LR
 
 Player는 “현재 대상이 Item인가 Lever인가”를 판단하지 않습니다.  
 대상이 **무엇을 보여주고, 얼마나 눌러야 하며, 실행되면 무엇을 할지**를 contract로 제공합니다.
-
----
-
-### Runtime Demo
-
-동일한 Detection / Prompt / Hold / Input 흐름이 **Item, Container, Crafting Station, Dungeon Portal, Lever**에서 서로 다른 결과로 이어집니다. Player 쪽 입력 흐름은 그대로 유지되고, 각 Actor가 `IInteractableInterface` 구현을 통해 자신의 UI 문맥과 실제 동작을 결정합니다.
-
-
-https://github.com/user-attachments/assets/4ecbc1bc-8c72-4493-8a66-a7b2a0918a36
-
-*Item·Container·Crafting Station·Dungeon Interaction이 같은 Detection / Prompt / Hold / Input 흐름을 공유하는 Runtime 시연.*
 
 ---
 
