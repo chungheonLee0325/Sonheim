@@ -10,8 +10,15 @@ Pal 시스템은 **Wild Monster → Capture → Ownership → Storage → Select
 - 같은 Monster Actor를 deactivate/activate해 Storage와 Summon 사이의 world lifecycle을 유지합니다.
 - Ownership 관계에 따라 같은 Monster가 Partner AI / IFF 규칙으로 전환됩니다.
 
+## Runtime Demo
+
+Capture 시도부터 Reveal과 성공/실패 연출까지 실제 사용자 흐름을 확인할 수 있습니다.
+
+https://github.com/user-attachments/assets/57246d79-bd3b-473f-85fc-762670023729
+
 ## 목차
 
+- [Runtime Demo](#runtime-demo)
 - [Lifecycle Overview](#lifecycle-overview)
 - [Capture Attempt](#capture-attempt)
 - [Reveal & Ownership](#reveal--ownership)
@@ -54,14 +61,6 @@ flowchart LR
 | \`UPalInventoryComponent\` | 소유 Pal 목록과 선택 Slot |
 | \`UPalPartnerSkillComponent\` | 소환/회수, Partner Skill |
 | \`ABaseMonster\` | Ownership, Active/Inactive, AI/IFF |
-
----
-
-### Runtime Demo
-
-기존 Pal Capture 시연 영상입니다. Capture 시도부터 Reveal과 성공/실패 연출까지 실제 사용자 흐름을 확인할 수 있습니다.
-
-https://github.com/user-attachments/assets/57246d79-bd3b-473f-85fc-762670023729
 
 ---
 
