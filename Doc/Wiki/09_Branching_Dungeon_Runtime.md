@@ -56,7 +56,7 @@ Runtime 관점에서 구현된 범위는 다음과 같습니다.
 | **정산** | Reward, elapsed time, Grade, best record, clear count |
 | **Client 표현** | HUD 목표 추적, Party 상태, Minimap/Marker, Boss HUD, Result |
 
-마지막 Client 표현은 Dungeon Runtime이 직접 Widget을 조작하지 않고 Snapshot을 통해 [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]]으로 전달합니다.
+마지막 Client 표현은 Dungeon Runtime이 직접 Widget을 조작하지 않고 Snapshot을 통해 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]으로 전달합니다.
 
 ---
 
@@ -257,6 +257,10 @@ class UDungeonDefinitionDataAsset : public UPrimaryDataAsset
 };
 ```
 
+![Forgotten Ruins Dungeon Definition](../Media/Wiki/09_Branching_Dungeon_Runtime/09_dungeon_definition.png)
+
+*실제 Definition DataAsset에서 Stage별 EventRule·Action·Transition을 authoring하는 화면.*
+
 ---
 
 ## 5. Stage 진행을 Event Rule로 표현
@@ -302,7 +306,7 @@ HasRunTag(State.ShortcutUnlocked)
 
 즉 **상호작용은 분기 조건을 만들고, Objective 완료 Event가 실제 Stage 전환을 결정**합니다.
 
-### 실제 분기 시연
+### Runtime 분기 시연
 
 - [▶ Shortcut Route 시연 (MP4)](../Media/Wiki/09_Branching_Dungeon_Runtime/09_dungeon_shortcut.mp4)  
   전투 중 레버를 사용해 `ShortcutUnlocked`를 기록한 뒤 마지막 Wave A 적을 처치하면 Shortcut Branch가 선택되고 북쪽 경로가 열립니다.
@@ -602,7 +606,7 @@ Server Runtime이 계산한 결과를 `FDungeonStageRuntimeState`에 모아 Game
 | 참가자 | Participants, OwnerPlayer |
 | Boss | Health, Action, Phase, Vulnerable, Break |
 
-이 Snapshot을 Client UI로 변환하는 과정은 [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]]에서 분리해 설명합니다.
+이 Snapshot을 Client UI로 변환하는 과정은 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]에서 분리해 설명합니다.
 
 ---
 
@@ -622,7 +626,7 @@ Server Runtime이 계산한 결과를 `FDungeonStageRuntimeState`에 모아 Game
 
 - [[03. Data & Content Architecture|03_Data_Content_Architecture]] — Catalog / PrimaryDataAsset / GameplayTag 구성
 - [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — Boss Stage 내부의 전투 Runtime
-- [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]] — Run State를 HUD/Minimap/Result로 변환
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Run State를 HUD/Minimap/Result로 변환
 - [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — Definition의 잘못된 조합을 Editor에서 검사
 
 ---
