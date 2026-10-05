@@ -2,16 +2,27 @@
 
 Player의 지속 데이터는 **PlayerState**, 월드의 실제 body 상태는 **Pawn**, 독립 gameplay 기능은 **ActorComponent**가 소유합니다.
 
-- Pawn — 이동, Mesh, Animation, 실제 World action
-- PlayerState — Inventory, Pal Inventory, Stat처럼 Pawn 교체와 분리할 데이터
-- ActorComponent — Health, Skill, Condition 등 독립적으로 변하는 기능
-- PlayerController — Input, connection, Client UI bootstrap
+## 요약
 
-이 구조 위에서 장비·Stat·Skill·Animation이 실제 gameplay로 연결됩니다.
+- **PlayerState** — Inventory, Pal Inventory, Stat처럼 Pawn lifecycle과 분리할 Player state
+- **Pawn** — Movement, Mesh, Animation, 실제 World action
+- **ActorComponent** — Health, Skill, Condition처럼 독립적인 gameplay state
+- **Equipment** — Inventory Slot 변경을 Stat / Skill / Weapon presentation으로 연결
+- **Action / Condition State** — Animation timing과 입력 가능 범위를 gameplay state로 연결
+
+## 목차
+
+- [System Overview](#system-overview)
+- [Ownership Model](#ownership-model)
+- [Stat & Equipment](#stat--equipment)
+- [Character Gameplay State](#character-gameplay-state)
+- [Animation & Conditions](#animation--conditions)
+- [Movement & Replication Lifecycle](#movement--replication-lifecycle)
+- [Trade-offs](#trade-offs)
 
 ---
 
-## 전체 구조
+## System Overview
 
 ~~~mermaid
 flowchart LR
@@ -39,7 +50,9 @@ Inventory·Stat·Pal처럼 Player에 지속되는 상태와, Health/Movement/Ani
 
 ---
 
-## 1. PlayerState는 Player identity에 가까운 상태를 소유
+## Ownership Model
+
+### PlayerState — Player identity state
 
 \`ASonheimPlayerState\`는 다음 component를 생성합니다.
 
@@ -63,7 +76,7 @@ Pawn이 다시 Possess되더라도 이런 데이터를 World body의 생성/파�
 
 ---
 
-## 2. Pawn은 계산된 결과를 실제 World 상태에 적용
+### Pawn — World body state
 
 PlayerState가 계산한 Stat을 Pawn이 실제 gameplay component에 반영합니다.
 
@@ -122,7 +135,9 @@ void ASonheimPlayer::StatChanged(
 
 ---
 
-## 3. Stat Modifier는 값을 만든 Source를 추적
+## Stat & Equipment
+
+### Stat Modifier Source
 
 \`FStatModifier\`는 단순 +10 같은 값뿐 아니라 어디서 온 보너스인지 함께 저장합니다.
 
@@ -151,7 +166,7 @@ Base HP
 
 ---
 
-## 4. Weapon Slot은 Stat과 Skill을 함께 바꾼다
+### Weapon Slot → Stat / Skill
 
 장비 변경은 Inventory UI의 slot 이동으로 끝나지 않습니다.
 
@@ -177,7 +192,9 @@ https://github.com/user-attachments/assets/2079af91-4ad9-4f93-99e1-3e21efbca57f
 
 ---
 
-## 5. AAreaObject는 공통 Gameplay Facade
+## Character Gameplay State
+
+### AAreaObject Gameplay Facade
 
 Player와 Monster가 공유하는 기능은 \`AAreaObject\` 아래 component로 분리합니다.
 
@@ -203,7 +220,7 @@ Health/Skill/Condition의 상태는 각 Component가 소유하고, 외부에서�
 
 ---
 
-## 6. Player Action State로 입력 가능 범위를 묶어 관리
+### Player Action State
 
 Combat 중 행동 제한을 입력 함수마다 서로 다른 bool 조건으로 관리하지 않습니다.
 
@@ -255,7 +272,9 @@ GLIDING
 
 ---
 
-## 7. Animation이 Action State의 전환 시점도 결정
+## Animation & Conditions
+
+### Animation-driven Action State
 
 Combat Montage의 Notify는 공격 판정뿐 아니라 Player Action State도 전환합니다.
 
@@ -277,7 +296,7 @@ C++ Timer와 Animation timing을 따로 맞추지 않고 **공격 motion과 canc
 
 ---
 
-## 8. Condition은 여러 Character 상태를 Bitmask로 표현
+### Condition Bitmask
 
 Dead / Invincible / Hidden처럼 동시에 조합될 수 있는 상태를 각각 독립 bool로 늘리지 않습니다.
 
@@ -304,7 +323,9 @@ Timed Condition은 Condition type을 key로 사용해 duration을 관리합니�
 
 ---
 
-## 9. Movement는 UE 기본 동기화 위에 프로젝트 상태만 추가
+## Movement & Replication Lifecycle
+
+### CharacterMovement + Project State
 
 기본 위치/속도 이동은 CharacterMovement의 역할을 사용하고, 프로젝트 고유 상태만 별도로 관리합니다.
 
@@ -323,7 +344,7 @@ Timed Condition은 Condition type을 key로 사용해 duration을 관리합니�
 
 ---
 
-## 10. PlayerState가 늦게 도착해도 Pawn 기능을 다시 연결
+### PlayerState Rebind
 
 Remote Client에서는 Pawn이 생성되는 시점과 PlayerState가 유효해지는 시점이 같다고 가정하지 않습니다.
 
@@ -345,7 +366,7 @@ PlayerState / Pawn 수명을 나눈 만큼 **둘이 만나는 초기화 경계�
 
 ---
 
-## 설계 선택과 비용
+## Trade-offs
 
 | 선택 | 얻은 것 | 비용 / 제약 |
 |---|---|---|
