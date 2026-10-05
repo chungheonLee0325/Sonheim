@@ -38,7 +38,7 @@ Player Inventory는 Loot, Equipment, Container, Crafting, Dungeon Reward가 공�
 
 ---
 
-## 시연 영상
+## Inventory / Container Runtime
 
 기존 Inventory / Chest 시연 영상입니다. Drag & Drop과 Container 간 Item 이동이 같은 Inventory UI 흐름에서 동작하는 모습을 확인할 수 있습니다.
 
@@ -249,6 +249,12 @@ struct FActiveCraftWork
 ~~~
 
 Recipe는 **무엇을 만드는가**, ActiveWork는 **현재 몇 Unit을 어느 정도 진행했는가**를 표현합니다.
+
+### Collaborative Crafting Runtime
+
+https://github.com/user-attachments/assets/df9a30d1-8d52-4b86-9f18-790474fdbda2
+
+*Recipe 선택과 재료 확인부터 Shared Work 진행, 완료 결과 수령, Inventory 반영까지 이어지는 제작 흐름.*
 
 ---
 
