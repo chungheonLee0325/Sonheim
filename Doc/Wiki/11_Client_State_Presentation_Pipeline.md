@@ -226,7 +226,7 @@ Queue policy는:
 
 https://github.com/user-attachments/assets/bc9e4305-62f6-43bb-b1fa-2b109a06eb5b
 
-실제 Lever 상호작용과 Wave 완료/Branch 변경에서 발생한 Dungeon Banner가 `ShortcutUnlocked → GroupClear → Branch.Shortcut` 순으로 표시되어 `TakeTurns` queue 동작을 보여줍니다. 이 영상은 producer와 표시 순서의 증거이며, Hold/Fade 시간을 정량 검증하는 자료로 사용하지 않습니다.
+Lever 상호작용과 Wave 완료/Branch 변경에서 발생한 Dungeon Banner가 `ShortcutUnlocked → GroupClear → Branch.Shortcut` 순으로 표시되어 `TakeTurns` queue 동작을 보여줍니다.
 
 ### Channel
 
