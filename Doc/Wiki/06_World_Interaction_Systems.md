@@ -2,11 +2,28 @@
 
 Item, Container, Crafting Station, Dungeon Lever는 **<code>IInteractableInterface</code> 기반의 공통 Detection / Prompt / Hold / 실행 흐름**을 사용합니다.
 
-Detection·Prompt·Hold·Server 요청은 \`UInteractionComponent\`가 공통으로 처리하고, 실제 결과는 \`IInteractableInterface\`를 구현한 Actor가 결정합니다.
+## 요약
+
+- <code>UInteractionComponent</code>가 Detection·Prompt·Hold·Server request를 담당합니다.
+- <code>IInteractableInterface</code>가 대상별 Prompt, Hold duration, Cancel rule, 실제 Interaction을 제공합니다.
+- Item·Container·Crafting Station·Dungeon Lever/Entrance가 같은 Player input flow를 재사용합니다.
+- Hold 중 target의 interaction mode가 바뀌면 기존 hold를 취소해 stale action을 막습니다.
+- Detection/UI context와 authoritative gameplay execution을 분리합니다.
+
+## 목차
+
+- [System Overview](#system-overview)
+- [Interaction Contract](#interaction-contract)
+- [Player Flow](#player-flow)
+- [Concrete Implementations](#concrete-implementations)
+- [Input & Context UI](#input--context-ui)
+- [Authority & Runtime Context](#authority--runtime-context)
+- [Reuse & Integration](#reuse--integration)
+- [Trade-offs](#trade-offs)
 
 ---
 
-## 전체 구조
+## System Overview
 
 ~~~mermaid
 flowchart LR
@@ -38,7 +55,7 @@ Player는 “현재 대상이 Item인가 Lever인가”를 판단하지 않습�
 
 ---
 
-## Runtime Demo
+### Runtime Demo
 
 동일한 Detection / Prompt / Hold / Input 흐름이 **Item, Container, Crafting Station, Dungeon Portal, Lever**에서 서로 다른 결과로 이어집니다. Player 쪽 입력 흐름은 그대로 유지되고, 각 Actor가 `IInteractableInterface` 구현을 통해 자신의 UI 문맥과 실제 동작을 결정합니다.
 
@@ -49,7 +66,7 @@ https://github.com/user-attachments/assets/4ecbc1bc-8c72-4493-8a66-a7b2a0918a36
 
 ---
 
-## 1. Interaction Contract
+## Interaction Contract
 
 핵심 interface는 다음 책임을 제공합니다.
 
@@ -93,7 +110,7 @@ public:
 
 ---
 
-## 2. Player 쪽 흐름은 대상 종류와 무관하다
+## Player Flow
 
 \`UInteractionComponent::TryInteract()\`는 concrete class를 검사하지 않고 interface를 호출합니다.
 
@@ -140,7 +157,7 @@ IInteractableInterface::Execute_Interact
 
 ---
 
-## 3. 같은 Contract가 서로 다른 Gameplay를 실행
+## Concrete Implementations
 
 ### Item — 획득
 
@@ -237,7 +254,9 @@ Interaction 계층은 Dungeon의 내부 진행 규칙을 알지 않습니다.
 
 ---
 
-## 4. Context UI도 같은 Contract에서 정보를 받는다
+## Input & Context UI
+
+### Context UI
 
 Prompt Widget이 대상 class를 보고 문구를 선택하지 않습니다.
 
@@ -264,7 +283,7 @@ Dungeon Entrance
 
 ---
 
-## 5. Instant / Hold / Cancel을 같은 입력 흐름에서 처리
+### Instant / Hold / Cancel
 
 대상에 따라 즉시 실행하거나 일정 시간 Hold할 수 있습니다.
 
@@ -289,7 +308,7 @@ Interaction UI의 progress도 대상이 \`UpdateHoldProgressUI()\`로 반영합�
 
 ---
 
-## 6. Hold 중 대상의 의미가 바뀌면 자동으로 중단
+### Interaction Mode Change
 
 Crafting Station처럼 interaction 의미가 상태에 따라 바뀌는 Actor에서는 Hold 도중:
 
@@ -321,7 +340,9 @@ if (CurrentMode != HoldInitialModeCode)
 
 ---
 
-## 7. Detection과 실제 실행을 분리
+## Authority & Runtime Context
+
+### Detection / Execution Boundary
 
 \`OnDetected()\`는 gameplay 결과를 만들지 않습니다.
 
@@ -346,7 +367,7 @@ Interaction
 
 ---
 
-## 8. Item은 정적 정의와 Spawn Context도 분리
+### Item Definition / Spawn Context
 
 Item 자체의 정보와 “이번에 어떻게 월드에 등장했는가”는 다른 문제입니다.
 
@@ -389,7 +410,9 @@ struct FItemSpawnOptions
 
 ---
 
-## 9. Dungeon 확장에서 기존 Interaction 계층을 그대로 재사용
+## Reuse & Integration
+
+### Dungeon Integration
 
 초기 Item / Container / Crafting에 사용하던 Interaction 구조가 이후 Dungeon에서도:
 
@@ -403,7 +426,7 @@ Dungeon 기능을 추가하면서 Player Input / Detection / Prompt 체계를 �
 
 ---
 
-## 보조 사례 — 공격 기반 Resource 상호작용
+### Attack-based Resource Interaction
 
 Resource 채집은 명시적 Interaction 입력이 아니라 실제 무기 Hit으로 발생하므로 Combat/Damage Pipeline을 사용합니다.
 
@@ -421,7 +444,7 @@ Player 관점에서는 모두 World와의 상호작용이지만, **명시적인 
 
 ---
 
-## 설계 선택과 비용
+## Trade-offs
 
 | 선택 | 얻은 것 | 비용 / 제약 |
 |---|---|---|
