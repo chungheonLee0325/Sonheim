@@ -2,14 +2,27 @@
 
 Pal 시스템은 **Wild Monster → Capture → Ownership → Storage → Selection → Summon → Partner AI**로 이어지는 lifecycle을 관리합니다.
 
-- <code>UPalCaptureComponent</code> — 포획 판정과 Reveal
-- <code>UPalInventoryComponent</code> — 소유 Pal 목록과 선택 Slot
-- <code>UPalPartnerSkillComponent</code> — 소환/회수와 Partner action
-- <code>ABaseMonster</code> — ownership, active state, AI/IFF
+## 요약
+
+- <code>UPalCaptureComponent</code>가 Capture eligibility, 확률, Server 결과와 Reveal을 관리합니다.
+- Capture 결과와 실제 Ownership mutation 시점을 분리하고 적용 직전에 현재 상태를 다시 검증합니다.
+- <code>UPalInventoryComponent</code>가 Owned Pal 목록과 Selected Slot을 관리합니다.
+- 같은 Monster Actor를 deactivate/activate해 Storage와 Summon 사이의 world lifecycle을 유지합니다.
+- Ownership 관계에 따라 같은 Monster가 Partner AI / IFF 규칙으로 전환됩니다.
+
+## 목차
+
+- [Lifecycle Overview](#lifecycle-overview)
+- [Capture Attempt](#capture-attempt)
+- [Reveal & Ownership](#reveal--ownership)
+- [Storage & Selection](#storage--selection)
+- [Summon & Partner Runtime](#summon--partner-runtime)
+- [Boss Capture](#boss-capture)
+- [Trade-offs](#trade-offs)
 
 ---
 
-## 전체 Lifecycle
+## Lifecycle Overview
 
 ~~~mermaid
 flowchart LR
@@ -44,7 +57,7 @@ flowchart LR
 
 ---
 
-## 시연 영상
+### Runtime Demo
 
 기존 Pal Capture 시연 영상입니다. Capture 시도부터 Reveal과 성공/실패 연출까지 실제 사용자 흐름을 확인할 수 있습니다.
 
@@ -52,7 +65,9 @@ https://github.com/user-attachments/assets/57246d79-bd3b-473f-85fc-762670023729
 
 ---
 
-## 1. Capture 가능 여부와 확률을 분리
+## Capture Attempt
+
+### Eligibility / Probability
 
 먼저 Monster가 현재 Capture 대상이 될 수 있는지 검사합니다.
 
@@ -86,7 +101,7 @@ Client는 같은 계산으로 예상 확률을 화면에 보여줄 수 있지만
 
 ---
 
-## 2. Capture 시도 중 Monster를 Gameplay에서 격리
+### Capture Isolation
 
 Sphere가 Target에 닿고 Capture가 시작되면 Monster를 즉시 일반 전투 상태에 그대로 두지 않습니다.
 
@@ -115,7 +130,9 @@ Capture 연출 중 같은 Target이:
 
 ---
 
-## 3. 결과 판정과 Ownership 적용 시점을 분리
+## Reveal & Ownership
+
+### Result / Ownership Timing
 
 Capture 결과를 판정하자마자 Monster를 Partner로 바꾸지 않습니다.
 
@@ -137,7 +154,7 @@ sequenceDiagram
 
 ---
 
-## 4. Reveal도 각 Client가 따로 Randomize하지 않는다
+### Shared Reveal Result
 
 Server가 \`FPalCaptureRevealParams\`를 만들어 모든 Client에 전달합니다.
 
@@ -156,7 +173,7 @@ Capture Rate가 높을수록 더 적은 Segment로 결과에 도달할 수 있�
 
 ---
 
-## 5. Outcome 적용 시 다시 현재 상태를 검증
+### Outcome Revalidation
 
 Capture 시작 시 Inventory에 자리가 있었더라도 Reveal이 진행되는 동안 다른 Pal이 들어올 수 있습니다.
 
@@ -185,7 +202,9 @@ if (bSuccess)
 
 ---
 
-## 6. Ownership 변경과 보관을 분리
+## Storage & Selection
+
+### Ownership / Storage
 
 Capture 성공 시 두 변화가 일어납니다.
 
@@ -203,7 +222,7 @@ Ownership과 selection state를 한 Actor 안에 섞지 않습니다.
 
 ---
 
-## 7. Pal 목록은 작은 배열에 맞는 단순 Replication을 사용
+### Owned Pal Replication
 
 Item Inventory는 slot 수와 변경 빈도가 높아 FastArray를 사용하지만, Pal 목록은 최대 개수가 작은 collection입니다.
 
@@ -226,7 +245,7 @@ New가 추가/교체
 
 ---
 
-## 8. Selected Pal은 입력 반응성을 위해 먼저 표시
+### Selected Pal Prediction
 
 Pal slot을 넘길 때 HUD가 매번 Server round-trip을 기다리면 선택감이 둔해집니다.
 
@@ -252,7 +271,9 @@ Final UI State
 
 ---
 
-## 9. Summon Animation과 실제 World 상태 전환을 맞춘다
+## Summon & Partner Runtime
+
+### Summon Timing
 
 소환 버튼을 누른 순간 Pal을 먼저 활성화하지 않습니다.
 
@@ -276,7 +297,7 @@ Animation이 끝난 시점에 Authority가 실제 World participation을 바꿉�
 
 ---
 
-## 10. Destroy / Respawn 대신 같은 Monster Actor를 활성/비활성화
+### Monster Actor Lifecycle
 
 보관된 Pal을 매번 Destroy하고 다시 Spawn하지 않습니다.
 
@@ -300,7 +321,7 @@ Animation이 끝난 시점에 Authority가 실제 World participation을 바꿉�
 
 ---
 
-## 11. 같은 Monster가 Ownership에 따라 Partner AI로 동작
+### Partner AI
 
 Capture 성공 후 별도의 “PartnerMonster” class로 교체하지 않습니다.
 
@@ -326,7 +347,7 @@ Capture 전후에 class identity는 유지하고 **ownership이 behavior context
 
 ---
 
-## 12. IFF도 Ownership 관계를 기준으로 판단
+### IFF
 
 \`CanAttack()\`은 Target이 Monster / Player인지와 \`PartnerOwner\` 관계를 함께 봅니다.
 
@@ -344,7 +365,7 @@ Capture로 ownership이 바뀌면 같은 Monster의 피아식별 규칙도 함�
 
 ---
 
-## 13. Boss Capture는 같은 Lifecycle의 입구만 제한
+## Boss Capture
 
 Guardian Boss는 평상시 Sphere가 닿아도 \`CanCapture()\`에서 차단됩니다.
 
@@ -362,7 +383,7 @@ Boss 전용 Capture ownership 시스템을 따로 만들지 않고 **기존 Capt
 
 ---
 
-## 설계 선택과 비용
+## Trade-offs
 
 | 선택 | 얻은 것 | 비용 / 제약 |
 |---|---|---|
