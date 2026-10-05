@@ -2,17 +2,28 @@
 
 Sonheim의 실제 네트워크 구현은 **Unreal Engine Listen Server + RPC / Replication / FastArray**를 사용합니다.
 
-동기화 구조는 **Request / State / Scope / Prediction / Transient Event**의 다섯 문제로 나눠 구현했습니다.
+## 요약
 
-- **Request와 State를 분리**
-- **State를 필요한 소비자 범위에만 전달**
-- **입력 반응성이 필요한 곳만 Prediction**
-- **현재 상태와 순간 연출을 분리**
-- **UI는 동기화 모델을 그대로 그리지 않고 Presentation Model로 변환**
+- Client Command는 Server RPC, authoritative current state는 Property/FastArray/Snapshot으로 분리합니다.
+- State owner와 consumer 범위에 따라 owner-only, shared actor, GameState snapshot을 선택합니다.
+- Inventory Slot / Selected Pal처럼 입력 반응성이 중요한 상태에 limited prediction과 reconciliation을 적용합니다.
+- 지속되어야 하는 current state와 순간 presentation event를 서로 다른 동기화 수단으로 전달합니다.
+- 복합 gameplay state는 Presenter/ViewData를 거쳐 UI에 전달합니다.
+
+## 목차
+
+- [Synchronization Overview](#synchronization-overview)
+- [Request & State](#request--state)
+- [Replication Scope & Collections](#replication-scope--collections)
+- [Prediction & Reconciliation](#prediction--reconciliation)
+- [Persistent State / Transient Events](#persistent-state--transient-events)
+- [Case Studies](#case-studies)
+- [UE Synchronization Mapping](#ue-synchronization-mapping)
+- [Trade-offs](#trade-offs)
 
 ---
 
-## 전체 동기화 모델
+## Synchronization Overview
 
 ~~~mermaid
 flowchart LR
@@ -37,7 +48,7 @@ Client가 요청을 보내는 것과 Server가 확정한 현재 상태를 받는
 
 ---
 
-## 1. Request와 State
+## Request & State
 
 ### Request
 
@@ -82,7 +93,9 @@ State Synchronization
 
 ---
 
-## 2. 동기화 범위는 데이터의 소비자를 기준으로 선택
+## Replication Scope & Collections
+
+### Consumer Scope
 
 Replicated state는 실제 소비 범위에 따라 전송 scope와 형태를 구분합니다.
 
@@ -100,7 +113,7 @@ State의 소비 범위에 따라 owner-only, shared actor replication, condition
 
 ---
 
-## 3. 변경이 잦은 Collection — FastArray
+### FastArray
 
 Player Inventory는 일부 slot만 자주 바뀝니다.
 
@@ -132,7 +145,7 @@ Skill 실행 UObject와 Client에 필요한 network state를 분리합니다.
 
 ---
 
-## 4. 개인 State와 공유 World State는 같은 Item이어도 정책이 다르다
+### Player-owned / Shared World State
 
 Player Inventory:
 
@@ -164,7 +177,7 @@ DOREPLIFETIME_ACTIVE_OVERRIDE(
 
 ---
 
-## 5. Prediction은 조작 피드백이 중요한 곳만 사용
+## Prediction & Reconciliation
 
 Server Authority가 필요한 것과 Client가 즉시 보여줄 수 있는 것은 별개입니다.
 
@@ -192,7 +205,7 @@ Prediction 적용 범위를 UX 효과와 복구 비용을 비교해 제한했습
 
 ---
 
-## 6. 현재 상태와 순간 연출은 서로 다른 수단을 사용
+## Persistent State / Transient Events
 
 ### 지속되어야 하는 현재 상태
 
@@ -216,7 +229,9 @@ Prediction 적용 범위를 UX 효과와 복구 비용을 비교해 제한했습
 
 ---
 
-## 7. Net Relevancy로 놓친 Boss Wake 사례
+## Case Studies
+
+### Boss Wake / Net Relevancy
 
 Dungeon 입장 직후 Server는 Player를 이동시키고 Boss Wake 연출을 시작했습니다.
 
@@ -245,7 +260,7 @@ Reliable Multicast도 해당 시점에 Actor가 Client에 relevant하지 않으�
 
 ---
 
-## 8. Capture — 판정 State와 Reveal Event 분리
+### Capture Result / Reveal
 
 Capture는 Server가 성공 여부를 먼저 확정하지만 ownership을 즉시 적용하지 않습니다.
 
@@ -272,7 +287,7 @@ PartnerOwner / PalInventory
 
 ---
 
-## 9. Dungeon — 복합 상태는 Snapshot으로 전달
+### Dungeon Snapshot
 
 Dungeon은 Stage 변화마다 작은 RPC를 여러 개 쏘는 대신 현재 Run 전체를 \`FDungeonStageRuntimeState\`로 발행합니다.
 
@@ -305,7 +320,7 @@ Presentation 변환은 [[11. UI Architecture & Client Presentation|11_Client_Sta
 
 ---
 
-## 10. UE 동기화 수단과 상태 설계
+## UE Synchronization Mapping
 
 Sonheim은 Unreal Engine Listen Server의 RPC / Property Replication / FastArray를 사용합니다. 각 수단이 담당하는 상태 설계 문제는 다음과 같습니다.
 
@@ -320,7 +335,7 @@ Sonheim은 Unreal Engine Listen Server의 RPC / Property Replication / FastArray
 | Presenter / ViewData | Game/Network State와 UI Model 분리 |
 | Multicast | Transient Event / Presentation |
 
-## 설계 선택과 비용
+## Trade-offs
 
 | 선택 | 얻은 것 | 비용 / 제약 |
 |---|---|---|
