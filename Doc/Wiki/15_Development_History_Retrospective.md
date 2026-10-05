@@ -324,7 +324,7 @@ Entrance
 - 일부 scenario verification script는 공개 저장소에 포함되어 있지 않음
 - Sonheim networking은 UE Listen Server 기반이며 외부 dedicated-server protocol stack 구현과는 범위가 다름
 
-각 제약은 [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]], [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]], [[14. Development Workflow & Verification|14_Development_Workflow_Verification]] 등 실제 시스템 문서에 더 구체적으로 남깁니다.
+각 제약은 [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]], [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]], [[14. Unreal Editor Automation & Verification|14_Development_Workflow_Verification]] 등 실제 시스템 문서에 더 구체적으로 남깁니다.
 
 ---
 
@@ -334,4 +334,4 @@ Entrance
 - [[03. Data & Content Architecture|03_Data_Content_Architecture]] — 변화된 데이터 모델
 - [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — 기존 시스템을 결합한 Vertical Slice
 - [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — 콘텐츠 규모 증가에 따른 검증
-- [[14. Development Workflow & Verification|14_Development_Workflow_Verification]] — Editor automation / regression workflow
+- [[14. Unreal Editor Automation & Verification|14_Development_Workflow_Verification]] — Editor automation / regression workflow
