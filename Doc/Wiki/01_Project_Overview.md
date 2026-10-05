@@ -89,7 +89,8 @@ flowchart LR
 | **Animation-driven Gameplay** | Skill Fire, Melee Window, Cancel Window | 공격 motion과 실제 판정 시점을 같은 Animation timeline에서 조정 |
 | **Delegate / Presenter / ViewData** | 일반 HUD, Dungeon HUD, Minimap, Result | gameplay state와 UMG를 직접 결합하지 않고 화면에 필요한 형태로 전달 |
 | **Server Authority + RPC / Replication** | Combat, Inventory, Crafting, Capture, Dungeon | Client 요청과 authoritative state 변경을 분리 |
-| **FastArray / Prediction / Reconciliation** | Inventory, Skill Spec, Pal Slot | 변경이 잦은 상태의 동기화와 입력 반응성을 보완 |
+| **FastArray** | Inventory, Skill Spec | 변경된 collection entry를 delta 단위로 동기화 |
+| **Prediction / Reconciliation** | Inventory Slot, Selected Pal Slot | 입력 직후 화면 반응을 제공하고 Server 결과로 보정 |
 | **Editor Validation / Authoring Tool** | Dungeon Definition, Boss Pattern | 잘못된 Transition·필수 데이터·timing을 플레이 이전에 확인 |
 | **AgentMcp** | Blueprint/Animation/UMG/DataAsset, PIE·Viewport 검증 | Coding agent가 C++뿐 아니라 Unreal Editor 작업과 결과 확인까지 수행 |
 
