@@ -254,6 +254,10 @@ Montage
 
 Animation이 **언제 실행할지**, Skill Logic이 **무엇을 실행할지** 담당합니다.
 
+![Montage Notify 기반 Gameplay Timing](https://github.com/user-attachments/assets/aa7f6632-c6a6-498a-8eab-9692620a507d)
+
+*SkillFire, Melee Attack Window, CANACTION, NORMAL을 같은 Montage Timeline에 배치해 공격 판정과 Action/Cancel 상태 전환 시점을 조정합니다.*
+
 ---
 
 ## 7. Action / Cancel Window를 Animation에서 직접 조정
