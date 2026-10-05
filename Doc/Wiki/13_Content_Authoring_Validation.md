@@ -226,7 +226,7 @@ Cycle 검사
 - StartStage에서 도달할 수 없는 Stage → Warning
 - disconnected 영역 안의 cycle도 별도 검사
 
-StartStage 기준 reachability와 cycle을 graph traversal로 계산합니다. 이 검사는 정적으로 구성된 Stage graph의 연결 관계를 확인하는 것이며, 모든 runtime condition의 실현 가능성을 형식적으로 증명하는 검사는 아닙니다.
+StartStage 기준 reachability와 cycle을 graph traversal로 계산합니다.
 
 ---
 
@@ -253,8 +253,6 @@ Stage B
 ~~~
 
 Group reference와 함께 **reachable graph 상에서 Producer가 Consumer보다 앞선 경로에 존재할 수 있는지**를 확인합니다. `WaveCompleted`, `BossDefeated`, `MonsterCaptured`처럼 producer 유형이 중요한 event는 group type도 함께 검사합니다.
-
-다만 이 검사는 graph path와 producer precedence를 정적으로 확인하는 범위입니다. 모든 조건 조합이 실제 플레이에서 반드시 실현 가능한지까지 증명하지는 않습니다.
 
 ---
 
@@ -384,7 +382,7 @@ StrikeSeconds - MarkSeconds >= 0.4s
 
 ![Boss Telegraph Timing Validation](../Media/Wiki/13_Content_Authoring_Validation/13_boss_validation_error.png)
 
-위 임시 Pattern은 `Mark=1.0`, `Strike=1.2`로 0.2초밖에 확보하지 않아 실제 Data Validation Error가 발생합니다. `Shape=None`인 projectile-only 분기까지 동일한 0.4초 규칙이 적용된다고 확대해서 설명하지 않습니다.
+위 임시 Pattern은 `Mark=1.0`, `Strike=1.2`로 0.2초밖에 확보하지 않아 실제 Data Validation Error가 발생합니다.
 
 ### Area Geometry
 
@@ -415,7 +413,7 @@ StrikeSeconds - MarkSeconds >= 0.4s
 
 Boss Data가 많아질수록 “에디터에서 값은 입력됐지만 실제 encounter에서는 성립하지 않는 조합”을 줄이기 위한 검사입니다.
 
-현재 Boss `Validate()`가 반환하는 문제는 Unreal Data Validation에서 모두 **Error**로 전달합니다. 반면 balance 자체나 Montage 실제 길이, 모든 projectile behavior까지 검증하는 것은 아닙니다.
+Boss `Validate()`가 반환하는 문제는 Unreal Data Validation에서 **Error**로 전달합니다.
 
 ---
 
@@ -425,7 +423,7 @@ Boss Data가 많아질수록 “에디터에서 값은 입력됐지만 실제 en
 |---|---|---|
 | **Editor Metadata Constraint** | 잘못된 field 입력 자체 감소 | 복잡한 관계는 metadata만으로 막을 수 없음 |
 | **Shared Validation Core** | Editor와 Runtime 규칙 불일치 감소 | Validation 코드도 콘텐츠 schema와 함께 유지해야 함 |
-| **Graph-level Validation** | Cycle / Reachability / Transition order / Producer precedence 탐지 | 모든 runtime 조건의 실현 가능성까지 증명하지는 않음 |
+| **Graph-level Validation** | Cycle / Reachability / Transition order / Producer precedence 탐지 | schema가 바뀌면 graph rule도 함께 유지 필요 |
 | **Generated Stage Graph** | 문서와 실제 Definition의 drift 감소 | Graph 가독성을 위한 naming/tag discipline 필요 |
 | **Boss timing validation** | Telegraph와 Animation 계약 오류를 실행 전에 탐지 | Pattern schema가 바뀌면 검사 규칙도 함께 갱신 필요 |
 
