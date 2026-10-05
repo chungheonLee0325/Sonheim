@@ -2,11 +2,16 @@
 
 [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)는 **Unreal Engine 5.8의 실험적 MCP/toolset과 Agent Skill 개념을 참고해 UE 5.5용으로 재구현한 Editor MCP plugin**입니다.
 
-Sonheim에서는 coding agent가 source code 수정에서 끝나지 않고 **Unreal Editor의 asset을 읽고 수정한 뒤 Compile → PIE → Log / Viewport 결과까지 다시 확인하는 작업 흐름**에 사용합니다.
+## 요약
+
+- Coding agent가 Unreal Editor의 Blueprint/UMG/Data/Animation state를 inspect하고 수정할 수 있게 합니다.
+- Dynamic <code>SKILL.md</code>와 UMG/<code>BindWidget</code> 특화 tool을 제공합니다.
+- Editor write 이후 Read-back → Compile → PIE → Log/Viewport까지 같은 workflow에서 검증합니다.
+- Sonheim에서는 UI/Animation/Data authoring과 gameplay scenario verification에 사용했습니다.
 
 ---
 
-## 1. AgentMcp
+## AgentMcp
 
 ~~~mermaid
 flowchart LR
@@ -49,7 +54,7 @@ Sonheim에서는 Dungeon HUD/Result와 UMG 작성·검증, Animation asset 구�
 
 ---
 
-## 2. Closed-loop Editor Verification
+## Closed-loop Editor Verification
 
 Editor write 이후 결과를 다시 읽고 Runtime까지 확인합니다.
 
@@ -89,7 +94,7 @@ AgentMcp로 **Inspect → Edit → Read-back → Compile / Save → PIE → Runt
 
 ---
 
-## 3. Scenario Verification
+## Scenario Verification
 
 Editor authoring 검증과 gameplay scenario 검증을 분리합니다.
 
@@ -102,7 +107,7 @@ Boss scenario helper는 Wake, Pattern/Telegraph, Hop/Facing, Re-aim, Down, Phase
 
 ---
 
-## 4. 적용 범위
+## Application Scope
 
 AgentMcp는 **Editor authoring / verification plugin**으로 Sonheim의 runtime module과 분리되어 있습니다.
 
