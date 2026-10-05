@@ -2,7 +2,9 @@
 
 Sonheim의 gameplay data는 **반복되는 row data, 독립 콘텐츠 정의, runtime identifier, asset dependency, player-facing text**의 성격에 따라 DataTable·DataAsset·GameplayTag·Soft Reference·StringTable로 나눠 관리합니다.
 
-실제 프로젝트에서는 다음처럼 사용합니다.
+## 요약
+
+실제 프로젝트의 데이터 역할은 다음과 같습니다.
 
 | 데이터 성격 | 사용 방식 | 실제 예 |
 |---|---|---|
@@ -12,9 +14,21 @@ Sonheim의 gameplay data는 **반복되는 row data, 독립 콘텐츠 정의, ru
 | 필요 시점에 Load할 dependency | **Soft Reference** | Dungeon Presentation, Spawn Rule |
 | Player-facing text | **StringTable** | Dungeon, Notice, Island text |
 
+## 목차
+
+- [Data Flow](#data-flow)
+- [Row Data — DataTable](#row-data--datatable)
+- [Content Definition & Catalog](#content-definition--catalog)
+- [Runtime Identity & Persistence](#runtime-identity--persistence)
+- [Asset Dependencies](#asset-dependencies)
+- [Gameplay / Presentation Data](#gameplay--presentation-data)
+- [Player-facing Text](#player-facing-text)
+- [Selection Guide](#selection-guide)
+- [Trade-offs](#trade-offs)
+
 ---
 
-## 전체 데이터 흐름
+## Data Flow
 
 ~~~mermaid
 flowchart LR
@@ -37,7 +51,7 @@ flowchart LR
 
 ---
 
-## 1. Item / Skill처럼 반복되는 Gameplay Data — DataTable
+## Row Data — DataTable
 
 Item이나 Skill은 같은 schema를 가진 row가 많고, Runtime에서 ID로 반복 조회합니다.
 
@@ -79,7 +93,7 @@ Skill은 같은 schema의 row가 많고 ID 기반 조회가 반복되므로 Data
 
 ---
 
-## 2. Dungeon Definition — 독립 콘텐츠 단위
+## Content Definition & Catalog
 
 Dungeon은 Item/Skill과 요구사항이 다릅니다.
 
@@ -121,7 +135,7 @@ Definition 하나가 **작성·검증·Load의 단위**가 됩니다.
 
 ---
 
-## 3. Catalog는 “콘텐츠 찾기”만 담당
+### Catalog — 콘텐츠 조회용 Index
 
 Dungeon 입구에서 전체 Stage Graph를 알 필요는 없습니다.
 
@@ -151,7 +165,7 @@ Runtime Start
 
 ---
 
-## 4. Runtime Identity — GameplayTag
+## Runtime Identity & Persistence
 
 Dungeon에는 서로 관계 있는 ID가 많이 필요합니다.
 
@@ -188,7 +202,7 @@ Branch 선택, RunTag, Barrier state처럼 서로 다른 시스템이 같은 ide
 
 ---
 
-## 5. Runtime ID와 Save ID는 의도적으로 분리
+### Runtime ID / Save ID
 
 현재 Dungeon Record는 \`DungeonNumber\`를 Save key로 사용합니다.
 
@@ -208,7 +222,7 @@ GameplayTag는 콘텐츠 정리 과정에서 rename될 수 있습니다.
 
 ---
 
-## 6. Soft Reference — Dependency와 Load 시점을 분리
+## Asset Dependencies
 
 Dungeon Definition은 Presentation을 soft reference로 갖습니다.
 
@@ -232,7 +246,7 @@ Editor Validation에서는 필요하면 soft dependency를 load해 구조까지 
 
 ---
 
-## 7. Gameplay Definition과 Presentation Data를 분리
+## Gameplay / Presentation Data
 
 Dungeon의 진행 규칙은 Gameplay Definition, 화면 문구·아이콘·Map 정보는 Presentation Data가 소유합니다.
 
@@ -272,7 +286,7 @@ HUD / Minimap / Result
 
 ---
 
-## 8. Player-facing Text — StringTable
+## Player-facing Text
 
 현재 주요 text는:
 
@@ -288,7 +302,7 @@ StringTable로 관리합니다.
 
 ---
 
-## 실제 선택 기준
+## Selection Guide
 
 ~~~text
 같은 구조의 Row가 많이 필요한가?
@@ -311,7 +325,7 @@ Player-facing text인가?
 
 ---
 
-## 설계 선택과 비용
+## Trade-offs
 
 | 선택 | 얻은 것 | 비용 / 제약 |
 |---|---|---|
