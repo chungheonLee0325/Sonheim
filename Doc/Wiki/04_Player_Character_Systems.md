@@ -10,8 +10,15 @@ Player의 지속 데이터는 **PlayerState**, 월드의 실제 body 상태는 *
 - **Equipment** — Inventory Slot 변경을 Stat / Skill / Weapon presentation으로 연결
 - **Action / Condition State** — Animation timing과 입력 가능 범위를 gameplay state로 연결
 
+## Runtime Demo
+
+https://github.com/user-attachments/assets/2079af91-4ad9-4f93-99e1-3e21efbca57f
+
+*곡괭이와 Shotgun 장비 전환에 따라 Weapon Mesh/HUD와 실제 공격 방식이 함께 바뀌는 흐름.*
+
 ## 목차
 
+- [Runtime Demo](#runtime-demo)
 - [System Overview](#system-overview)
 - [Ownership Model](#ownership-model)
 - [Stat & Equipment](#stat--equipment)
@@ -183,12 +190,6 @@ Inventory Component
 Stat 쪽은 현재 활성 Weapon Slot의 modifier를 적용하고, Skill 쪽은 \`ActiveWeaponGrantId\`와 \`ReplaceGrant()\`로 해당 무기가 제공한 Skill set을 교체합니다.
 
 따라서 Weapon이 바뀌면 **외형·능력치·사용 가능한 공격**이 같은 equipment change에서 함께 갱신됩니다.
-
-### Weapon / Skill Switch Runtime
-
-https://github.com/user-attachments/assets/2079af91-4ad9-4f93-99e1-3e21efbca57f
-
-*곡괭이와 Shotgun 장비 전환에 따라 Weapon Mesh/HUD와 실제 공격 방식이 함께 바뀌는 흐름.*
 
 ---
 
