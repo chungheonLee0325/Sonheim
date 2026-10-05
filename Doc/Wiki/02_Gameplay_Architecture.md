@@ -88,12 +88,12 @@ AAreaObject
 
 외부 시스템은 `DecreaseHP()`, `AddCondition()`, `CastSkill()` 같은 일관된 API를 사용하고, 내부 상태 변경은 각 component에 위임합니다.
 
-상속 계층으로 `CanAttack`, `HasInventory`, `CanCapture` 같은 기능 조합을 표현하기보다 **독립적으로 바뀌는 기능을 필요한 Actor에 조합**하는 쪽을 선택했습니다.
+`Health`, `Skill`, `Condition`처럼 독립적인 상태와 lifecycle을 가진 기능은 ActorComponent로 구성합니다.
 
 ### 선택 비용
 
 Component 수가 늘면 orchestration과 의존 관계를 별도로 관리해야 합니다.  
-그래서 모든 로직을 component로 쪼개기보다 **독립적인 상태/수명을 갖고 재사용되는 기능**을 중심으로 분리합니다.
+Component 분리 기준은 **독립적인 상태/lifecycle과 여러 Actor에서의 재사용 가능성**입니다.
 
 ---
 
