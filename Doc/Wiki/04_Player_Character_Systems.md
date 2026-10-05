@@ -169,6 +169,12 @@ Stat 쪽은 현재 활성 Weapon Slot의 modifier를 적용하고, Skill 쪽은 
 
 따라서 Weapon이 바뀌면 **외형·능력치·사용 가능한 공격**이 같은 equipment change에서 함께 갱신됩니다.
 
+### Weapon / Skill Switch Runtime
+
+https://github.com/user-attachments/assets/2079af91-4ad9-4f93-99e1-3e21efbca57f
+
+*곡괭이와 Shotgun 장비 전환에 따라 Weapon Mesh/HUD와 실제 공격 방식이 함께 바뀌는 흐름.*
+
 ---
 
 ## 5. AAreaObject는 공통 Gameplay Facade
