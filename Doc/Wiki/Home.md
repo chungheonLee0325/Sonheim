@@ -69,7 +69,7 @@ flowchart TB
 - RPC / Replication / FastArray와 Presenter/ViewData 변환
 
 **Data / Content**
-- Item·Skill·Monster처럼 반복되는 값은 DataTable
+- Item·Skill·AreaObject·Level·Resource처럼 반복되는 값은 DataTable
 - Dungeon Stage/Branch/Objective, Boss Pattern/Strike처럼 중첩된 콘텐츠는 DataAsset
 - Stage·Group·Barrier·Pattern처럼 계층 관계가 필요한 runtime ID는 GameplayTag
 - 화면 문구·아이콘·Map 정보는 gameplay rule과 분리된 presentation data / StringTable
