@@ -1,4 +1,4 @@
-# 11. Client State & Presentation Pipeline
+# 11. UI Architecture & Client Presentation
 
 Sonheim UI는 **Persistent HUD, Interaction Screen, Transient Notice, Complex Content UI**의 네 흐름으로 구성됩니다.
 
