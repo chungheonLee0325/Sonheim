@@ -2,6 +2,27 @@
 
 Sonheim UI는 **Persistent HUD, Interaction Screen, Transient Notice, Complex Content UI**의 네 흐름으로 구성됩니다.
 
+## 요약
+
+- Persistent HUD는 Health/Stamina/Level 같은 독립 state를 Component Delegate로 구독합니다.
+- Inventory/Container/Crafting은 PlayerController와 Screen Widget이 state와 static definition을 조합합니다.
+- <code>UNoticeSubsystem</code>이 Banner/Title의 queue, channel, style을 LocalPlayer 단위로 관리합니다.
+- Dungeon UI는 Snapshot → Presenter → ViewData → UI Router로 복합 gameplay state를 화면 모델로 변환합니다.
+- UI Router가 async Widget load, state reconstruction, 기존 HUD visibility 등 content UI lifecycle을 관리합니다.
+
+## 목차
+
+- [System Overview](#system-overview)
+- [Base HUD & Interaction Screen](#base-hud--interaction-screen)
+- [Notice / Toast](#notice--toast)
+- [Complex Content UI — Dungeon](#complex-content-ui--dungeon)
+- [UI Lifecycle & Reuse](#ui-lifecycle--reuse)
+- [Trade-offs](#trade-offs)
+
+---
+
+## System Overview
+
 ~~~mermaid
 flowchart TB
     subgraph SOURCE["Gameplay / State"]
@@ -46,7 +67,7 @@ flowchart TB
 
 ---
 
-## 1. Base HUD & Interaction Screen
+## Base HUD & Interaction Screen
 
 ### C++ Widget Contract와 Widget Blueprint
 
@@ -165,7 +186,7 @@ Confirm Widget은 gameplay mutation을 직접 수행하지 않고 결과를 부�
 
 ---
 
-## 2. Notice / Toast
+## Notice / Toast
 
 Level Up, Capture 결과, Crafting 완료, Region Title, Dungeon 진행처럼 **현재 상태를 저장할 필요 없이 짧게 전달하는 정보**는 <code>UNoticeSubsystem</code>이 관리합니다.
 
@@ -278,7 +299,7 @@ PlayerStatusWidget.DisplayItemPopup
 
 ---
 
-## 3. Complex Content UI — Dungeon
+## Complex Content UI — Dungeon
 
 Dungeon UI는 Stage, Objective, Party, Boss, Minimap, Reward 등 여러 gameplay state를 한 화면에서 조합합니다.
 
@@ -456,7 +477,7 @@ Terminal Snapshot
 
 ---
 
-## 4. UI Lifecycle / Reuse
+## UI Lifecycle & Reuse
 
 ### LocalPlayer UI Router
 
@@ -517,7 +538,7 @@ Dungeon Registry는 <code>Screen / Modal / HUD</code> layer와 <code>GameOnly / 
 
 ---
 
-## 설계 선택 요약
+## Trade-offs
 
 | 구조 | 적용 위치 | 이유 |
 |---|---|---|
