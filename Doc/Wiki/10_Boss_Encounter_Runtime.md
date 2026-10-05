@@ -327,9 +327,14 @@ bReaim이면 다시 Track
 
 Tracking의 종료 시점 자체를 Pattern tuning 값으로 둡니다.
 
-[▶ Tracking / Anchor 동작 시연 (MP4)](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_tracking_anchor.mp4)
-
 Pattern이 Target을 추적하는 구간과 Telegraph가 기준 위치를 유지하는 구간을 분리해, 경고를 본 뒤 회피할 수 있는 시간을 확보합니다.
+
+<details>
+<summary><b>Tracking / Anchor Runtime 시연</b></summary>
+
+[▶ MP4 보기](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_tracking_anchor.mp4)
+
+</details>
 
 ---
 
@@ -402,9 +407,14 @@ Down
 
 Down, Waking, Resting 중 받은 Damage는 다음 Knockdown으로 이어지는 Break에 누적하지 않습니다.
 
-[▶ Break 누적 → Down → 전투 복귀 시연 (MP4)](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_down.mp4)
-
 Down은 Break 누적으로 발생하는 일시적인 공격 기회이며, 이 상태 자체는 Capture Window가 아닙니다.
+
+<details>
+<summary><b>Break → Down → 전투 복귀 Runtime 시연</b></summary>
+
+[▶ MP4 보기](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_down.mp4)
+
+</details>
 
 Exhaust는 Break와 별도로 HP threshold를 사용합니다.
 
@@ -518,7 +528,7 @@ Dungeon Runtime은 Boss status를 다시 Run Snapshot에 반영해 HUD가 `UBoss
 - [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Boss Strike가 재사용하는 Attack/Damage Pipeline
 - [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — Exhaust 상태에서 연결되는 기존 Capture 처리
 - [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Boss가 Dungeon Stage의 Objective로 연결되는 과정
-- [[11. Client State & Presentation Pipeline|11_Client_State_Presentation_Pipeline]] — Boss Status를 HUD로 변환하는 과정
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Boss Status를 HUD로 변환하는 과정
 - [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — Pattern / Timing 데이터 검증
 
 ---
