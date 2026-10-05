@@ -1,0 +1,64 @@
+name: Publish Sonheim Wiki
+
+on:
+  push:
+    branches:
+      - docs/wiki-2026-refresh
+    paths:
+      - "Doc/Wiki/**"
+      - "Doc/Media/Wiki/**"
+      - ".github/workflows/publish-sonheim-wiki.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout documentation branch
+        uses: actions/checkout@v4
+
+      - name: Prepare wiki tree
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf .wiki-publish
+          mkdir -p .wiki-publish/Media/Wiki
+
+          cp Doc/Wiki/*.md .wiki-publish/
+          cp -R Doc/Media/Wiki/. .wiki-publish/Media/Wiki/
+
+          # Repository docs live under Doc/Wiki, while GitHub Wiki pages live
+          # at the wiki repository root. Adjust only repository-media links.
+          find .wiki-publish -type f -name '*.md' -print0 \
+            | xargs -0 sed -i 's#../Media/Wiki/#Media/Wiki/#g'
+
+      - name: Publish to GitHub Wiki
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" .wiki-repo
+
+          # Replace the legacy Wiki with the curated engineering Wiki.
+          find .wiki-repo -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -R .wiki-publish/. .wiki-repo/
+
+          cd .wiki-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Wiki is already up to date."
+            exit 0
+          fi
+
+          git commit -m "Publish Sonheim engineering wiki"
+          git push origin HEAD
