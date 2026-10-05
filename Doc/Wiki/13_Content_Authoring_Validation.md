@@ -438,7 +438,7 @@ Boss Data가 많아질수록 “에디터에서 값은 입력됐지만 실제 en
 - [[03. Data & Content Architecture|03_Data_Content_Architecture]] — DataTable / PrimaryDataAsset / GameplayTag 선택 기준
 - [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Validation 대상인 Dungeon 실행 구조
 - [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — Pattern / Strike 데이터의 실제 실행
-- [[14. Development Workflow & Verification|14_Development_Workflow_Verification]] — Authoring Validation 이후 PIE / scenario 검증
+- [[14. Unreal Editor Automation & Verification|14_Development_Workflow_Verification]] — Authoring Validation 이후 PIE / scenario 검증
 
 ---
 
