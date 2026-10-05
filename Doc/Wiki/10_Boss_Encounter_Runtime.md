@@ -113,7 +113,7 @@ struct FBossPattern
 - Montage의 어떤 Section을 언제 전환할 것인가
 - 어떤 Strike를 어떤 시점에 실행할 것인가
 
-### 실제 Pattern Definition
+#### Editor Asset Example
 
 아래는 `Boss.Grizzbolt.Pattern.Discharge`의 실제 설정입니다. Pattern 선택 조건과 전체 실행 시간, Strike의 Mark/Hit timing과 공격 범위를 같은 Definition에서 확인할 수 있습니다.
 
@@ -206,7 +206,7 @@ stateDiagram-v2
     Fighting --> Defeated: HP 0
 ```
 
-### Down과 Resting을 분리
+#### Down / Resting
 
 - **Down** — 누적 Break damage로 발생하는 knockdown. 공격 기회이지만 Capture는 불가합니다.
 - **Resting / Exhaust** — 특정 HP threshold를 통과할 때 발생하며, 이때만 Boss Capture가 가능합니다.
@@ -300,7 +300,7 @@ https://github.com/user-attachments/assets/fbee5e3c-767d-4b20-b18a-8dffa4c8cc4c
 
 `EBossAreaAnchor`로 mark 기준을 나눕니다.
 
-### Boss Anchor
+#### Boss Anchor
 
 Boss 발밑 기준 Telegraph는 Strike 순간까지 Boss Transform을 따라갑니다.
 
@@ -309,7 +309,7 @@ Boss 발밑 기준 Telegraph는 Strike 순간까지 Boss Transform을 따라갑�
 - 근거리 원형 공격
 - 전방 Cone / Line
 
-### Target Anchor
+#### Target Anchor
 
 Target 위치를 기준으로 하는 공격은 **Mark가 생긴 순간의 위치를 저장**하고 이후 움직이지 않습니다.
 
