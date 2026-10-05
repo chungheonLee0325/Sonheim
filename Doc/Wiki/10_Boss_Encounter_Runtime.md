@@ -170,7 +170,7 @@ enum class EBossStage : uint8
 };
 ```
 
-흐름은 단순한 Attack loop가 아닙니다.
+Encounter FSM은 Wake, Fighting, Phase 전환, Down, Resting, Defeated 상태를 관리합니다.
 
 ```mermaid
 stateDiagram-v2
@@ -191,7 +191,7 @@ stateDiagram-v2
 - **Down** — 누적 Break damage로 발생하는 knockdown. 공격 기회이지만 Capture는 불가합니다.
 - **Resting / Exhaust** — 특정 HP threshold를 통과할 때 발생하며, 이때만 Boss Capture가 가능합니다.
 
-단순 `bStunned` 하나로 처리하지 않아 **전투상의 공격 기회와 Capture 기회를 서로 다른 상태로 표현**합니다.
+**Down은 공격 기회, Resting은 Capture 가능 상태**로 서로 다른 의미를 가집니다.
 
 ---
 
@@ -229,7 +229,7 @@ Weighted Random
 Selected Pattern
 ```
 
-거리나 Phase마다 별도 `if/else attack` 함수를 작성하지 않고 Pattern Data가 선택 조건을 제공합니다.
+Pattern Data의 Range / Phase / Cooldown / Weight가 candidate 선택 조건을 제공합니다.
 
 ---
 
@@ -266,7 +266,7 @@ Pattern 시작 시:
 3.0s        Pattern End
 ```
 
-Animation, Telegraph, 실제 Hit이 서로 다른 독립 Timer로 흩어지지 않습니다.
+Animation Cue, Telegraph, 실제 Hit은 하나의 Pattern Clock을 기준으로 실행됩니다.
 
 https://github.com/user-attachments/assets/fbee5e3c-767d-4b20-b18a-8dffa4c8cc4c
 
