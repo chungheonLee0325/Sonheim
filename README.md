@@ -1,278 +1,243 @@
-# Sonheim — Multiplayer 3D Action Adventure
+# Sonheim — Multiplayer Action Adventure
 
-![Project Banner](Sonheim.png)
+![Sonheim](Sonheim.png)
 
-**Unreal Engine 5.5 / C++** 기반. 팰월드(Palworld)에서 영감을 받은 **수집·전투·협동** 루프를
-처음부터 **완전한 멀티플레이어**로 설계했습니다. 데이터 테이블로 몬스터/플레이어/상자/아이템/자원 등
-모든 오브젝트를 운용하여 **컴파일 없이 컨텐츠 추가/밸런스 패치**가 가능합니다.
+**Unreal Engine 5.5 / C++ 기반 서버 권위 멀티플레이 액션 어드벤처**입니다.  
+전투·수집·장비·제작·Pal 포획/파트너 시스템을 하나의 gameplay loop로 연결하고, 이후 **Forgotten Ruins 분기형 Dungeon Vertical Slice**를 통해 Boss Encounter, 복합 HUD, Minimap, Result, Data Validation까지 확장했습니다.
 
----
-
-## **✨ 개발 과정 및 기여 내역 (Development Process & Contributions)**
-
-이 프로젝트는 초기 팀 빌딩 단계부터 개인 심화 개발까지 약 5개월(팀 1M + 개인 4M)간 진행되었습니다. **README와 [Git Wiki(Tech Doc)](https://github.com/chungheonLee0325/Sonheim/wiki)에 기술된 모든 기능은 아래 과정 속에서 제가 직접 설계하고 구현**했습니다.
-
-### **🚀 Phase 1: 핵심 기반 구축 (2025.03 ~ 2025.04(1M), 2인 팀)**
-
-* **담당 역할**: 시스템 아키텍트 및 클라이언트 프로그래머  
-* **주요 활동**: 프로젝트의 핵심 아키텍처(서버 권위, 데이터 주도)를 설계하고, 기본 전투 시스템(속성, 스킬, 데미지 처리), 플레이어 구현, 자원 및 상호작용 등 게임의 핵심 기반을 구축했습니다.
-
-### **🛠️ Phase 2: 심화 개발 및 완성 (2025.06 ~ 2025.09(4M), 개인)**
-
-* **담당 역할**: 모든 시스템의 단독 개발 및 고도화  
-* **주요 활동**: 초기 버전을 기반으로 **팰 포획** 및 **제작(Crafting) 시스템 등 추가 시스템**들을 완성했습니다. 인벤토리와 스킬 시스템의 네트워크 로직을 리팩토링하여 **안정성**과 **반응성(클라이언트 예측)** 을 크게 향상시켰으며, **오브젝트 풀링**, **Fast Array 적용** 등 최적화 작업을 진행했습니다. 또한, 전체 시스템을 완성하고 Wiki/README 문서화를 통해 프로젝트를 마무리했습니다.
+[**Technical Wiki**](https://github.com/chungheonLee0325/Sonheim/wiki) ·
+[**Source-only Mirror**](https://github.com/chungheonLee0325/Sonheim.Source) ·
+[**AgentMcp**](https://github.com/chungheonLee0325/AgentMcp) ·
+[**YouTube Demo**](https://www.youtube.com/watch?v=TDRRWp6M_9E)
 
 ---
 
-## 🎬 프로젝트 시연 영상
-프로젝트의 주요 결과물과 핵심 기능을 한눈에 볼 수 있는 영상입니다.
+## Project Demo
 
- <p align="center">
- <a href="https://www.youtube.com/watch?v=TDRRWp6M_9E">
- <img src="Doc/Gifs/Project_Overview.gif" alt="프로젝트 하이라이트 영상 GIF" width="100%">
- </a>
- </p>
- <p align="center">
- <a href="https://www.youtube.com/watch?v=TDRRWp6M_9E"><b>▶ YouTube에서 고화질로 시청하기</b></a>
- </p>
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=TDRRWp6M_9E">
+    <img src="Doc/Gifs/Project_Overview.gif" alt="Sonheim gameplay overview" width="100%">
+  </a>
+</p>
 
----
-
-### 💡 프로젝트 탐색 가이드
-> 이 README는 프로젝트의 핵심 기능을 요약한 '쇼케이스'입니다. 더 깊은 기술적 내용이 궁금하다면 Tech Docs를 확인해 보세요.
-
-| 문서                                                                         | 역할                | 내용 |
-|:---------------------------------------------------------------------------|:------------------|:---|
-| 📋 [Project Gallery](https://github.com/chungheonLee0325/chungheonLee0325) | Root (전체 개요)      | 주요 프로젝트 목록, 핵심 역량 요약        |
-| 📁 **Repository README**                                                   | **What (개요)**     | 프로젝트 요약, 데모 영상, 핵심 기능 목록 |
-| 🔗 [Tech Docs (Wiki)](https://github.com/chungheonLee0325/Sonheim/wiki)   | How & Why (상세 구현) | 코드 분석, 설계 과정, 기술 회고, 트러블슈팅 |
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=TDRRWp6M_9E"><b>▶ 전체 프로젝트 데모 보기</b></a>
+</p>
 
 ---
 
-## 목차 (Table of Contents)
+## Project Overview
 
-1.  [팰 포획 시스템](#팰-포획-시스템-pal-capture-system)
-2.  [아이템 및 상호작용 시스템](#아이템-및-상호작용-시스템-items--interaction)
-3.  [전투 및 피드백 시스템](#전투-및-피드백-시스템-combat--feedback)
-4.  [플레이어 액션 및 스킬 시스템](#플레이어-액션-및-스킬-시스템-player-actions--skills)
-5.  [멀티플레이 아키텍처 및 세션](#멀티플레이-아키텍처-및-세션-multiplayer--session)
+| 항목 | 내용 |
+|---|---|
+| **Engine / Language** | Unreal Engine 5.5 / C++ |
+| **Networking** | Listen Server, Server RPC, Property Replication, FastArray, limited client prediction |
+| **Gameplay** | Combat / Skill / Equipment / Interaction / Inventory / Crafting / Pal Capture & Partner |
+| **Integrated Content** | Branching Dungeon / Boss Encounter / Reward / Record & Grade |
+| **UI** | UMG, Delegate HUD, Notice Queue, Presenter → ViewData → LocalPlayer UI Router |
+| **Data** | DataTable, PrimaryDataAsset / DataAsset, GameplayTag, StringTable |
+| **Authoring / Verification** | Data Validation, generated Stage Graph, AgentMcp Editor automation |
 
+초기 2인 팀 개발 이후 개인적으로 시스템을 확장하면서, 기존 gameplay 기능을 **재사용 가능한 runtime boundary**로 정리하고 Dungeon/Boss/UI/Validation까지 통합했습니다.
 
 ---
 
-## 주요 기능 (Implemented Features)
+## Architecture at a Glance
 
-###  팰 포획 시스템 (Pal Capture System)
-> 팰월드의 핵심 재미인 몬스터 포획 시스템을 구현했습니다. 플레이어는 팰 스피어를 조준하여 던질 수 있으며, 조준 중인 대상 몬스터의 HP에 따라 실시간으로 계산되는 포획 확률을 UI로 확인할 수 있습니다. 포획 시도 시, 서버는 성공 여부를 즉시 판정하지만, 클라이언트에서는 긴장감 넘치는 연출 시퀀스가 재생된 후 최종 결과가 공개됩니다.
->
-> 🔗 **관련 위키:** [8.1 Case Study: Pal Capture Sequence](https://github.com/chungheonLee0325/Sonheim/wiki/8.1_Case_Study_Pal_Capture_Sequence)
+```mermaid
+flowchart LR
+    DATA["<b>Content / Data</b><br/>DataTable · DataAsset · GameplayTag"]
+    GAME["<b>Gameplay Runtime</b><br/>Player · Combat · Interaction · Inventory · Capture"]
+    CONTENT["<b>Integrated Content</b><br/>Dungeon Runtime · Boss FSM"]
+    STATE["<b>Authoritative State</b><br/>Replication · FastArray · GameState Snapshot"]
+    VIEW["<b>Client Presentation</b><br/>Delegate · Presenter · ViewData · UMG"]
 
-► **주요 기술:**
-1.  **조준:** `UInteractionComponent`가 전방의 몬스터를 탐지하고, `UPalCaptureComponent`는 이 정보를 받아 `CalculateCaptureRate` 함수로 HP 기반 포획률을 실시간 계산하여 UI에 표시합니다.
-2.  **투척:** `SuggestProjectileVelocity_CustomArc` 함수를 사용하여 목표 지점을 향하는 자연스러운 포물선 궤도를 계산하고 `APalSphere`를 발사합니다.
-3.  **판정 및 연출:** 서버는 포획 성공 여부를 즉시 판정하고, `Multicast` RPC로 연출 데이터만 클라이언트에 전송합니다. 클라이언트의 `UCaptureProgressWidget`은 이 데이터를 받아 연출을 "지휘"하고, 서버는 연출 시간에 맞춰 실제 결과를 게임 월드에 적용합니다.
+    DATA --> GAME
+    DATA --> CONTENT
+    GAME --> STATE
+    CONTENT --> STATE
+    STATE --> VIEW
+```
 
-#### 시연 영상 - 팰 포획 기능
+상세한 ownership / lifecycle / synchronization 구조는 [Gameplay Architecture](https://github.com/chungheonLee0325/Sonheim/wiki/02_Gameplay_Architecture)와 [Multiplayer Synchronization](https://github.com/chungheonLee0325/Sonheim/wiki/12_Multiplayer_Synchronization)에 정리했습니다.
+
+---
+
+## Engineering Highlights
+
+### Forgotten Ruins — Branching Dungeon Runtime
+
+Dungeon을 고정된 Stage script가 아니라 **Event / Condition / Action / Transition** 조합으로 실행하는 Server Runtime으로 구성했습니다.
+
+- GameplayTag 기반 Stage / Branch / Group / Barrier identity
+- Event Queue + RunId stale-event guard + cascade budget
+- Shortcut / ExtraWave branch, Objective, Barrier, Failure / Terminal state
+- Reward, Best Time, Grade, SaveGame record 정산
+- Runtime Snapshot → Presenter → HUD / Minimap / Result
+- Definition 기반 Stage Graph 생성과 structural validation
+
+**Shortcut branch runtime**
+
+https://github.com/user-attachments/assets/29858da6-7d13-4297-9d71-41f53272a952
+
+[Dungeon Runtime 상세](https://github.com/chungheonLee0325/Sonheim/wiki/09_Branching_Dungeon_Runtime)
+
+---
+
+### Boss Encounter — Data-driven Pattern + FSM
+
+기존 Monster / Combat pipeline 위에 Boss 전용 FSM과 Pattern DataAsset을 추가했습니다.
+
+- Range / Phase / Cooldown / Weight 기반 Pattern 선택
+- Pattern clock 기반 Tracking → Telegraph → Strike → Recovery
+- Boss/Target anchor, re-aim, Montage Section Cue
+- Phase 2 / Break / Down / Exhaust / Capture Window
+- 기존 `FAttackData → FCustomDamageEvent`와 Pal Capture pipeline 재사용
+
+**Telegraph → Hit**
+
+https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
+
+[Boss Encounter 상세](https://github.com/chungheonLee0325/Sonheim/wiki/10_Boss_Encounter_Runtime)
+
+---
+
+### Inventory / Equipment / Collaborative Crafting
+
+Item state를 Player Inventory 중심으로 두고 Equipment, Container, Crafting, Dungeon Reward가 같은 경계를 사용하도록 구성했습니다.
+
+- Inventory / Skill Spec FastArray
+- Slot drag & drop limited prediction + reconciliation
+- Equipment `SkillID` → `ReplaceGrant()`로 현재 공격 Skill 교체
+- shared Container viewer lifecycle
+- Recipe Definition / `FActiveCraftWork` 분리
+- Recipe 시작 ownership과 이후 collaborative work 분리
+- completed result / unfinished unit lifecycle 분리
+
+**Collaborative Crafting**
+
+https://github.com/user-attachments/assets/df9a30d1-8d52-4b86-9f18-790474fdbda2
+
+[Inventory & Crafting 상세](https://github.com/chungheonLee0325/Sonheim/wiki/07_Inventory_Crafting)
+
+---
+
+### Combat / Skill / Animation Timing
+
+Skill의 정적 정의, replicated state, runtime logic을 분리하고 Animation Timeline을 실제 gameplay timing의 authoring point로 사용했습니다.
+
+- `FSkillData / FSonheimSkillSpecItem / UBaseSkill` 역할 분리
+- Grant Source + RefCount로 Skill ownership 관리
+- Cost phase / Cast lifecycle
+- AnimNotify 기반 Skill Fire / Melee Window / Action / Cancel timing
+- Line / Sphere / Capsule / Box hit shape
+- fast melee frame interpolation + duplicate hit suppression
+- Damage context를 `FCustomDamageEvent`로 Target까지 전달
+
+**Equipment → Skill switch**
+
+https://github.com/user-attachments/assets/2079af91-4ad9-4f93-99e1-3e21efbca57f
+
+[Combat / Skill / Animation 상세](https://github.com/chungheonLee0325/Sonheim/wiki/05_Combat_Skill_Animation)
+
+---
+
+### Pal Capture → Ownership → Partner AI
+
+Wild Monster를 별도 Partner class로 교체하는 대신 같은 Actor의 ownership / active state를 전환해 Capture부터 Summon까지 lifecycle을 연결했습니다.
+
+- eligibility / probability / reveal / ownership mutation 분리
+- Server에서 Capture 결과와 reveal parameter 결정
+- Pal Inventory / Selected Slot
+- same Monster Actor deactivate / activate
+- Ownership 기반 Partner AI / IFF
+- Boss Exhaust 상태에서도 같은 Capture pipeline 재사용
+
 https://github.com/user-attachments/assets/57246d79-bd3b-473f-85fc-762670023729
 
-
-
-### 아이템 및 상호작용 시스템 (Items & Interaction)
-> 클라이언트 예측을 적용한 반응형 인벤토리, 데이터 기반 제작 시스템, 그리고 네트워크 최적화가 적용된 공유 보관함을 구현했습니다.
->
-> 🔗 **관련 위키:** [6.1 Unified Interaction System](https://github.com/chungheonLee0325/Sonheim/wiki/6.1-Unified-Interaction-System), [8.4 Case Study: Inventory Interaction](https://github.com/chungheonLee0325/Sonheim/wiki/8.4_Case_Study_Inventory_Interaction), [8.2 Case Study: Server-Authority Crafting](https://github.com/chungheonLee0325/Sonheim/wiki/8.2_Case_Study_Server_Authority_Crafting)
-
-► **주요 기술:**
-*   **인벤토리 (반응성):** `PerformClientPrediction_...` 함수로 UI를 먼저 업데이트(낙관적 업데이트)하고, 서버 RPC로 실제 처리를 요청합니다. 서버의 최종 데이터가 도착하면 `OnRep` 함수가 UI 상태를 보정하여 데이터 정합성을 100% 보장합니다. 또한, `UInventoryComponent`와 `UContainerComponent` 모두 `FFastArraySerializer`를 사용하여 변경된 슬롯만 전송하는 **델타 복제**로 네트워크 부하를 극단적으로 줄였습니다.
-*   **제작 (동시성 제어):** `ACraftingStation`의 `UIOwner` 변수를 일종의 Mutex로 사용하여, 여러 플레이어가 동시에 제작 UI를 열려고 할 때 발생하는 경쟁 상태(Race Condition)를 방지합니다.
-*   **보관함 (네트워크 최적화):** `UContainerComponent`의 `PreReplication` 함수에서 구독자(`Subscribers`) 유무를 확인하여, `DOREPLIFETIME_ACTIVE_OVERRIDE` 매크로로 아이템 목록의 복제를 동적으로 활성화/비활성화하는 **구독 기반 복제**를 구현했습니다.
-
-#### 시연 영상 - 인벤토리, 상자 기능
-https://github.com/user-attachments/assets/c594e8a3-2840-456c-ae04-cabaaeb4d8ca
-
-![GIF](Doc/Gifs/Feature_Crafting.gif)
-
-
-### ️전투 및 피드백 시스템 (Combat & Feedback)
-> 9가지 원소 속성 간의 상성 관계를 적용한 전략적인 전투 시스템을 구현했습니다. 공격은 `ApplyDamage`라는 단일 함수로 시작되지만, `TakeDamage` 가상 함수를 오버라이드한 대상(몬스터, 자원 등)에 따라 전혀 다른 결과(피해, 자원 생성)가 발생하는 다형적 구조입니다. 타격 시 히트스톱, 넉백과 함께, 속성, 약점 여부에 따라 색상과 스타일이 변하는 플로팅 데미지 UI가 표시됩니다.
->
-> 🔗 **관련 위키:** [3.5 Combat and Feedback System](https://github.com/chungheonLee0325/Sonheim/wiki/3.5-Combat-and-Feedback-System), [8.3 Case Study: Melee Attack](https://github.com/chungheonLee0325/Sonheim/wiki/8.3_Case_Study_Melee_Attack)
-
-► **주요 기술:**
-*   **템플릿 메서드 패턴:** `AAreaObject::TakeDamage`를 템플릿 메서드로 사용하여, `ABaseMonster`(HP 감소), `ABaseResourceObject`(자원 생성) 등 각 클래스가 피격 반응을 자신만의 로직으로 재정의(Override)합니다.
-*   **데이터 기반 상성:** `USonheimUtility` 클래스에 `static const` 2D 배열로 9x9 상성 데미지 배율표를 정의하여, 컴파일 타임에 규칙을 확정하고 빠른 조회를 보장합니다.
-*   **오브젝트 풀링:** `AFloatingDamagePool` 싱글톤 매니저가 `AFloatingDamageActor`를 재활용하여, 다수의 데미지 숫자가 표시될 때의 UI 생성 오버헤드를 제거하고 성능을 안정화했습니다.
-
-![GIF](Doc/Gifs/Feature_Combat.gif)
-
-### 플레이어 액션 및 스킬 시스템 (Player Actions & Skills)
-> `Enhanced Input`을 기반으로 캐릭터의 모든 행동을 `UBaseSkill`이라는 객체로 캡슐화했습니다. 구르기, 달리기, 공격 등 모든 행동은 독립된 스킬 객체이며, 데이터 테이블에 애니메이션, 이펙트, 비용 등을 정의하여 관리합니다. 특히 무기 교체 시, `OnWeaponChanged` 델리게이트가 `StatBonusComponent`와 `SkillComponent`에 변경사항을 전파하여 플레이어의 스탯과 사용 가능한 공격 스킬이 실시간으로 업데이트됩니다.
->
-> 🔗 **관련 위키:** [3.3 Skill Architecture](https://github.com/chungheonLee0325/Sonheim/wiki/3.3-Skill-Architecture), [4.1 Player Character Control](https://github.com/chungheonLee0325/Sonheim/wiki/4.1-Player-Character-Control)
-
-► **주요 기술:**
-*   **커맨드 패턴:** 모든 행동을 `UBaseSkill`(`Command`)로 객체화하고, `USkillComponent`(`Invoker`)를 통해 실행하여 행동의 재사용성과 확장성을 확보했습니다.
-*   **데이터 기반 스킬:** `FSkillData` 구조체와 데이터 테이블을 통해 스킬의 속성(애니메이션, 비용, 쿨다운)을 정의하므로, C++ 코드 변경 없이 새로운 스킬을 쉽게 추가할 수 있습니다.
-*   **글라이더:** `ReplicatedUsing` 변수로 상태를 동기화하고, `OnRep` 함수 내에서 `CharacterMovementComponent`의 물리 값(중력, 마찰력)을 동적으로 제어하여 활강을 구현했습니다.
-
-![GIF](Doc/Gifs/Feature_PlayerAction.gif)
-
-### 멀티플레이 아키텍처 및 세션 (Multiplayer & Session)
-> 모든 기능은 서버 권위(Server-Authoritative) 모델을 기반으로 설계되었으며, Steam API를 연동하여 멀티플레이 세션 생성, 검색, 참여 기능을 구현했습니다. 복잡한 Online Subsystem(OSS) 로직은 `FSessionUtil` 유틸리티 클래스에 캡슐화하여 다른 시스템과의 결합도를 낮췄습니다.
->
-> 🔗 **관련 위키:** [2.1 Server Authority Architecture](https://github.com/chungheonLee0325/Sonheim/wiki/2.1-Server-Authority-Architecture)
-
-► **주요 기술:**
-*   **서버 권위 모델:** 모든 핵심 게임플레이 판정(데미지, 아이템 이동 등)은 서버에서만 이루어져 데이터 정합성과 보안을 100% 보장합니다.
-*   **RPC 중계 패턴:** 클라이언트가 소유권이 없는 액터(보관함 등)와 상호작용할 때, 자신의 `PlayerController`를 통해 서버 RPC를 중계하여 모든 요청의 진입점을 중앙화하고 안전하게 검증합니다.
-*   **비동기 처리:** 세션 생성, 검색 등 모든 네트워크 작업은 비동기적으로 처리되고, 작업 완료 시 `GameInstance`에 등록된 델리게이트를 콜백으로 호출하여 UI 반응성을 유지합니다.
-
-![GIF](Doc/Gifs/Feature_Lobby.gif)
+[Pal Capture & Partner Lifecycle 상세](https://github.com/chungheonLee0325/Sonheim/wiki/08_Pal_Capture_Partner_Lifecycle)
 
 ---
-## 시스템 개요 (아키텍처)
-```mermaid
-classDiagram
-    direction TB
 
-    class ACharacter
-    class AActor
-    class UActorComponent
+### UI Architecture / Content Presentation
 
-    class AAreaObject {
-        +TakeDamage()
-        +OnDie()
-    }
-    class ASonheimPlayer
-    class ABaseMonster
-    class AResourceObject
-    class ABaseItem
-    class ABaseContainer
-    class ACraftingStation
+단순 HUD는 gameplay owner의 Delegate를 구독하고, 여러 state가 동시에 필요한 Dungeon UI는 별도 presentation layer를 사용합니다.
 
-    class UHealthComponent
-    class USkillComponent
-    class UInteractionComponent
-    class UInventoryComponent
-    class UContainerComponent
+- Persistent HUD / Inventory / Container / Crafting screen
+- `UNoticeSubsystem`의 Slot / Queue / Channel / Style
+- Dungeon Snapshot → Presenter → ViewData → UI Router
+- Minimap / Marker / Party / Boss / Result
+- Widget 재생성 시 현재 Snapshot에서 state reconstruction
+- server-time 기반 countdown / elapsed time
 
-    class IInteractableInterface {
-        +Interact()
-    }
-    class UDataTable{
-        +Recipes
-        +DropTables
-    }
+[UI Architecture & Client Presentation](https://github.com/chungheonLee0325/Sonheim/wiki/11_Client_State_Presentation_Pipeline)
 
-%% Inheritance
-    ACharacter <|-- AAreaObject
-    AAreaObject <|-- ASonheimPlayer
-    AAreaObject <|-- ABaseMonster
+---
 
-    AActor <|-- AResourceObject
-    AActor <|-- ABaseItem
-    AActor <|-- ABaseContainer
-    AActor <|-- ACraftingStation
+### Content Authoring / Validation
 
-    UActorComponent <|-- UHealthComponent
-    UActorComponent <|-- USkillComponent
-    UActorComponent <|-- UInteractionComponent
-    UActorComponent <|-- UInventoryComponent
-    UActorComponent <|-- UContainerComponent
+DataAsset을 단순 설정 저장소로 두지 않고, 콘텐츠 구조 자체를 검증하는 authoring workflow를 추가했습니다.
 
-%% Composition / Aggregation
-AAreaObject o-- "1" UHealthComponent : has
-AAreaObject o-- "1" USkillComponent  : has
-AResourceObject o-- "1" UHealthComponent : has
-ASonheimPlayer o-- "1" UInventoryComponent : has
-ASonheimPlayer o-- "1" UInteractionComponent : has
-ABaseContainer o-- "1" UContainerComponent : has
+- Editor metadata constraint / GameplayTag namespace
+- Stage identity / transition order
+- cycle / reachability
+- producer-before-consumer
+- TimeLimit / Timeout / Grade fallback
+- Boss Telegraph timing / Area geometry / Montage section contract
+- Definition → Mermaid Stage Graph generation
 
-%% Interface Implementation
-ABaseItem ..|> IInteractableInterface
-ABaseContainer ..|> IInteractableInterface
-ACraftingStation ..|> IInteractableInterface
+[Content Authoring & Validation](https://github.com/chungheonLee0325/Sonheim/wiki/13_Content_Authoring_Validation)
 
-%% Item & Loop Relations
-ABaseMonster ..> ABaseItem : SpawnsLoot
-UInventoryComponent o-- "*" ABaseItem : Contains
-ABaseContainer   o-- "*" ABaseItem : Contains
-ACraftingStation ..> ABaseItem : UsesOrCreates
+---
 
-%% Key Dependencies
-UInteractionComponent ..> IInteractableInterface : TriggersInteraction
-USkillComponent ..> AAreaObject     : DealsDamage
-USkillComponent ..> AResourceObject : DealsDamage
-UInventoryComponent .. UContainerComponent : ManagesItems
+## Technical Wiki
 
-%% Data Lookups
-ABaseMonster    ..> UDataTable : Reads
-AResourceObject ..> UDataTable : Reads
-ACraftingStation..> UDataTable : Reads
+README는 프로젝트의 **결과와 대표 구현**만 요약합니다. 세부 설계와 실제 code/data flow는 Wiki에서 확인할 수 있습니다.
+
+| 문서 | 주요 내용 |
+|---|---|
+| [Project Overview](https://github.com/chungheonLee0325/Sonheim/wiki/01_Project_Overview) | Gameplay loop와 전체 구현 범위 |
+| [Gameplay Architecture](https://github.com/chungheonLee0325/Sonheim/wiki/02_Gameplay_Architecture) | Lifetime / ownership / component / presentation boundary |
+| [Data & Content Architecture](https://github.com/chungheonLee0325/Sonheim/wiki/03_Data_Content_Architecture) | DataTable / DataAsset / GameplayTag / Soft Reference |
+| [Combat, Skill & Animation](https://github.com/chungheonLee0325/Sonheim/wiki/05_Combat_Skill_Animation) | Skill lifecycle, AnimNotify timing, Hit / Damage |
+| [Inventory & Crafting](https://github.com/chungheonLee0325/Sonheim/wiki/07_Inventory_Crafting) | FastArray, Equipment, Container, collaborative crafting |
+| [Branching Dungeon Runtime](https://github.com/chungheonLee0325/Sonheim/wiki/09_Branching_Dungeon_Runtime) | Event-driven Stage runtime / branch / objective / result |
+| [Boss Encounter Runtime](https://github.com/chungheonLee0325/Sonheim/wiki/10_Boss_Encounter_Runtime) | FSM / Pattern / Telegraph / Phase / Capture |
+| [UI Architecture](https://github.com/chungheonLee0325/Sonheim/wiki/11_Client_State_Presentation_Pipeline) | HUD / Notice / Presenter / UI Router |
+| [Multiplayer Synchronization](https://github.com/chungheonLee0325/Sonheim/wiki/12_Multiplayer_Synchronization) | RPC / replication / scope / prediction / relevancy |
+| [Content Authoring & Validation](https://github.com/chungheonLee0325/Sonheim/wiki/13_Content_Authoring_Validation) | Structural / graph / Boss validation |
+| [Unreal Editor Automation](https://github.com/chungheonLee0325/Sonheim/wiki/14_Unreal_Editor_Automation_Verification) | AgentMcp 기반 Editor authoring / verification |
+
+---
+
+## Repository Layout
+
+```text
+Sonheim/Source/Sonheim/
+├─ Animation/        # AnimInstance / AnimNotify
+├─ AreaObject/       # Player / Monster / Skill / Attribute / AI
+├─ GameManager/      # GameInstance / GameMode / GameState / Dungeon runtime
+├─ GameObject/       # Item / Resource / Container / Crafting / Dungeon world actors
+├─ ResourceManager/  # Gameplay data types / DataTable row structs
+├─ UI/               # HUD / Inventory / Notice / Dungeon presentation
+└─ Utilities/        # Shared gameplay / editor-side helpers
 ```
 
----
-
-## 📖 상세 기술 위키 (Technical Wiki)
-
-> 본 프로젝트의 상세한 아키텍처, 전체 시스템 설계, 각 클래스의 역할, 핵심 코드 분석, 그리고 프로젝트 회고에 대한 내용은 아래 기술 위키에서 확인하실 수 있습니다.
-> 
-> ### **➡️ [프로젝트 기술 위키 바로가기 (Click here for the Project's Technical Wiki)](https://github.com/chungheonLee0325/Sonheim/wiki)**
+코드 중심 검토가 필요한 경우 [Sonheim.Source](https://github.com/chungheonLee0325/Sonheim.Source)를 사용할 수 있습니다.
 
 ---
 
-## **개발 과정 요약 (Development Overview)**
-> 6개월간의 개발 과정을 월별로 요약했습니다. 각 항목에 대한 자세한 내용은 전체 개발 일지에서 확인하실 수 있습니다.\
-> ➡️ **[전체 개발 일지 보러가기](https://github.com/chungheonLee0325/Sonheim/wiki/10.1_Development_History)**
-*   **(25.09) 프로젝트 안정화 및 문서화** : Wiki 시스템을 개편하고 인벤토리 시스템 안정화 및 주요 버그를 수정했습니다.
-*   **(25.08) 게임플레이 시스템 확장** : 상자(Chest) 컨테이너와 제작(Crafting) 시스템을 완성하고 전투 시스템을 고도화했습니다.
-*   **(25.07) 전투 경험 다양화** : 신규 무기 'Shotgun'을 추가하고 아이템 희귀도 시스템을 도입했으며, 피드백을 강화했습니다.
-*   **(25.06) 아키텍처 리팩토링 및 성능 최적화** : 'Pal' 시스템을 컴포넌트로 분리하고 Object Pooling을 적용해 성능을 최적화했습니다.
-*   **(25.04) 월드 탐험 및 콘텐츠 확장** : 'Glider' 이동 시스템을 도입하고 보스 몬스터 등 월드 콘텐츠를 추가했습니다.
-*   **(25.03) 핵심 시스템 기반 구축** : Player, Inventory, Skill System 등 핵심 시스템의 기반과 네트워크 아키텍처를 확립했습니다.
+## Build
+
+- **Engine**: Unreal Engine 5.5
+- **IDE**: Visual Studio 2022 / Rider
+- `Sonheim.uproject`에서 Visual Studio project files 생성
+- `Development Editor` configuration으로 build 후 Editor 실행
+- Multiplayer test는 Listen Server + Client PIE 또는 Steam/Null OSS 환경에서 진행
 
 ---
 
-## 프로젝트 구조
-```
-Sonheim/
-├─ Animation/           # AnimInstance, Notifies
-├─ AreaObject/          # AI(FSM), Attribute, Base, Monster, Player, Skill, Utility
-├─ Element/             # 발사체/효과 액터
-├─ GameManager/         # GameInstance, GameMode, GameState
-├─ GameObject/          # Items, Buildings/Storage(Container), ResourceObject
-├─ ResourceManager/     # SonheimGameType(Enums/Structs)
-├─ UI/                  # Widgets, FloatingDamageActor
-└─ Utilities/           # LogMacro, SessionUtil, SonheimUtility
-```
+## Related Repository
 
---- 
-
-## 설치 & 실행
-
-1) **요구사항**: Unreal Engine 5.5, Visual Studio 2022 (C++), (멀티 테스트 시) Steam 클라이언트 실행
-2) **빌드**: `Sonheim.uproject` 우클릭 → *Generate Visual Studio project files* → `Sonheim.sln` 열어 `Development Editor` 구성으로 `Sonheim` 빌드
-3) **실행**: 에디터에서 `Lobby` 또는 `Game` 맵 열기 → **Play**
-   - Net Mode: *Listen Server / Client* 또는 Standalone 다중 인스턴스
-
----
-
-## 주요 조작키
-
-* **이동:** W, A, S, D
-* **시점 조작:** 마우스 이동
-* **공격/상호작용:** 마우스 좌클릭
-* **조준/보조 액션:** 마우스 우클릭
-* **점프/글라이더:** 스페이스 바 (공중에서 Space 홀드하면 글라이더 유지, V 로 글라이더 토글 가능)
-* **질주:** Shift
-* **회피:** Ctrl
-* **재장전:** R
-* **무기 전환:** 마우스 휠
-* **상호작용 / 파트너 스킬:** F
-* **팰 소환/회수:** E
-* **팰 전환:** 1, 3
-* **팰 스피어 던지기:** Q (누르고 떼기)
-* **상호작용:** F
-* **메뉴:** Tab
-
----
+- [**Sonheim.Source**](https://github.com/chungheonLee0325/Sonheim.Source) — Source / Config / Docs 중심 코드 검토용 mirror
+- [**AgentMcp**](https://github.com/chungheonLee0325/AgentMcp) — UE 5.5 Editor MCP / agent workflow plugin
