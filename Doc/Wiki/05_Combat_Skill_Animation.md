@@ -220,7 +220,7 @@ enum class ESkillCostPhase : uint8
 
 `CheckCosts()`는 상태를 바꾸지 않고 사용 가능 여부만 판단하고, `ApplyCosts()`가 실제 상태를 변경합니다.
 
-### 현재 rollback 범위
+### Cost rollback semantics
 
 Item Cost를 여러 개 차감하다 중간에 실패하면 이미 차감된 **Item은 복원**합니다.
 
