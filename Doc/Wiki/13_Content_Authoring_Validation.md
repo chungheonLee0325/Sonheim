@@ -152,8 +152,6 @@ Unreal Data Validation은 같은 값에 대해 실제 `Missing NextStageId` 오�
 
 해당 reference를 실제 Result Stage로 수정한 뒤 같은 Data Validation 경로를 다시 실행하면 정상 데이터로 통과합니다.
 
-![Dungeon Validation Valid](../Media/Wiki/13_Content_Authoring_Validation/13_dungeon_validation_valid.png)
-
 ### 4.2 Event / Action 조합
 
 Event 종류에 따라 SourceId가 필요한지 검사합니다.
