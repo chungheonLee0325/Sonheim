@@ -340,7 +340,7 @@ https://github.com/user-attachments/assets/af8228c3-f403-41e1-947b-ba3f3d3f5da6
 
 현재 Runtime이 해석하는 주요 요소:
 
-### Event
+#### Event
 
 - `StageEntered`
 - `WaveCompleted`
@@ -350,13 +350,13 @@ https://github.com/user-attachments/assets/af8228c3-f403-41e1-947b-ba3f3d3f5da6
 - `AreaEntered`
 - `MonsterCaptured`
 
-### Condition
+#### Condition
 
 - `Always`
 - `HasRunTag`
 - `SpawnGroupCompleted`
 
-### Action
+#### Action
 
 - `SpawnGroup`
 - `SetRunTag`
@@ -400,11 +400,11 @@ void UDungeonStageRuntimeSubsystem::QueueEvent(
 
 을 수행합니다.
 
-### stale event 차단
+#### Stale Event Guard
 
 Queue entry가 생성된 뒤 Run이 바뀌어도 이전 Run의 Event가 새 Run에 적용되지 않도록 `RunId`를 함께 저장합니다.
 
-### event cascade 제한
+#### Event Cascade Budget
 
 Action이 다시 Event를 발생시킬 수 있기 때문에 무한 event chain을 막기 위해 한 처리 사이클에 budget을 둡니다.
 
