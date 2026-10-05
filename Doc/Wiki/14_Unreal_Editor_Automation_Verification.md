@@ -69,7 +69,7 @@ Runtime Read-back / Log
 Viewport Capture
 ~~~
 
-대표 workflow에서는 disposable Blueprint copy를 사용해:
+대표 workflow에서는 Blueprint class default를 대상으로:
 
 1. Class Default를 inspect
 2. property를 수정
@@ -81,8 +81,6 @@ Viewport Capture
 
 하는 순서를 한 agent session에서 수행했습니다.
 
-촬영용 검증은 production asset을 수정하지 않고 disposable copy에서 실행했습니다.
-
 ### Editor Automation Demo
 
 https://github.com/user-attachments/assets/e61d53e3-c94b-4062-99dc-be11dd261ea5
@@ -93,37 +91,20 @@ AgentMcp로 **Inspect → Edit → Read-back → Compile / Save → PIE → Runt
 
 ## 3. Scenario Verification
 
-Editor authoring 검증과 실제 gameplay scenario 검증은 분리합니다.
+Editor authoring 검증과 gameplay scenario 검증을 분리합니다.
 
 - **Authoring Validation** — Stage graph, dependency, Boss timing/section contract  
   → [[13. Content Authoring & Validation|13_Content_Authoring_Validation]]
 - **Runtime Scenario** — Branch, failure path, Boss state, Remote Client, HUD/Result
 - **Visual Review** — Telegraph, Montage timing, Minimap/Marker, Result layout
 
-2026-10-05 main Editor에서 실행한 Boss scenario helper는 **7/8 PASS, 1 FAIL**을 기록했습니다.
-
-| 결과 | Scenario |
-|---|---|
-| FAIL | summon/approach 직후 Remote Client Wake montage |
-| PASS | Pattern 실행 / 길이 / mark |
-| PASS | Client별 Telegraph 색상 |
-| PASS | 근거리 Hop / Target facing |
-| PASS | Claw re-aim |
-| PASS | Break → Down |
-| PASS | Phase 2 / Tempo |
-| PASS | Exhaust / Capture eligibility |
-
-이 기록은 all-pass 결과가 아니라 **현재 regression을 실제로 검출한 scenario 실행 결과**로 사용합니다. 촬영을 위해 production code나 asset을 변경하지 않았고, Wake montage FAIL의 이번 실행 원인은 별도 진단으로 확정하지 않았습니다.
-
-![Boss scenario verification 결과 — 7/8 PASS, Remote Client Wake montage FAIL](../Media/Wiki/14_Unreal_Editor_Automation_Verification/14_scenario_verification.png)
-
-*Boss scenario helper 실행 결과. Remote Client Wake montage 항목의 실패가 그대로 기록되어 있습니다.*
+Boss scenario helper는 Wake, Pattern/Telegraph, Hop/Facing, Re-aim, Down, Phase 2, Exhaust/Capture 같은 encounter 흐름을 반복 실행해 regression을 확인합니다.
 
 ---
 
 ## 4. 적용 범위
 
-AgentMcp는 Sonheim Runtime의 gameplay dependency가 아니라 **Editor authoring / verification 도구**입니다.
+AgentMcp는 **Editor authoring / verification plugin**으로 Sonheim의 runtime module과 분리되어 있습니다.
 
 | 적용 | 역할 |
 |---|---|
@@ -132,7 +113,7 @@ AgentMcp는 Sonheim Runtime의 gameplay dependency가 아니라 **Editor authori
 | **Log / Viewport capture** | Runtime / visual 결과 확인 |
 | **Scenario helper** | 반복 gameplay path 검증 |
 
-Agent가 사용할 수 있는 범위는 Editor API와 제공한 tool contract에 의해 결정됩니다. Gameplay correctness 자체는 Data Validation, scenario verification, 실제 visual review를 함께 사용해 확인합니다.
+Gameplay 결과는 Data Validation, scenario verification, visual review를 함께 사용해 확인합니다.
 
 ---
 
