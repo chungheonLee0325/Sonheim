@@ -308,10 +308,10 @@ HasRunTag(State.ShortcutUnlocked)
 
 ### Runtime 분기 시연
 
-- [▶ Shortcut Route 시연 (MP4)](../Media/Wiki/09_Branching_Dungeon_Runtime/09_dungeon_shortcut.mp4)  
+https://github.com/user-attachments/assets/29858da6-7d13-4297-9d71-41f53272a952
   전투 중 레버를 사용해 `ShortcutUnlocked`를 기록한 뒤 마지막 Wave A 적을 처치하면 Shortcut Branch가 선택되고 북쪽 경로가 열립니다.
 
-- [▶ ExtraWave Route 시연 (MP4)](../Media/Wiki/09_Branching_Dungeon_Runtime/09_dungeon_extrawave.mp4)  
+https://github.com/user-attachments/assets/af8228c3-f403-41e1-947b-ba3f3d3f5da6
   레버를 사용하지 않은 상태에서 같은 Wave A를 완료하면 fallback Transition이 선택되고 추가 Wave가 새로운 Objective로 생성됩니다.
 
 **진행 규칙은 Definition, 상호작용 구현은 World Actor**가 담당합니다.
