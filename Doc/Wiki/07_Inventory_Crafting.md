@@ -10,8 +10,23 @@ Item은 Player Inventory를 중심으로 **Equipment, Shared Container, Crafting
 - **Crafting**은 Recipe Definition과 `FActiveCraftWork`를 분리하고, Server가 재료 소비·공동 작업·완료 결과를 관리합니다.
 - **UI**는 runtime state와 Item/Recipe definition을 조합하고 `USlotWidget`을 Inventory·Equipment·Container·Crafting에서 재사용합니다.
 
+## Runtime Demo
+
+### Inventory / Container
+
+Drag & Drop과 Container 간 Item 이동이 같은 Slot 기반 UI 흐름에서 동작합니다.
+
+https://github.com/user-attachments/assets/c594e8a3-2840-456c-ae04-cabaaeb4d8ca
+
+### Collaborative Crafting
+
+https://github.com/user-attachments/assets/df9a30d1-8d52-4b86-9f18-790474fdbda2
+
+*Recipe 선택과 재료 확인부터 Shared Work 진행, 완료 결과 수령, Inventory 반영까지 이어지는 제작 흐름.*
+
 ## 목차
 
+- [Runtime Demo](#runtime-demo)
 - [System Overview](#system-overview)
 - [Inventory State Model](#inventory-state-model)
 - [Equipment Pipeline](#equipment-pipeline)
@@ -207,12 +222,6 @@ Unsubscribe Viewer
 
 같은 Item/Slot 모델을 재사용하면서 Player-owned state와 World shared state의 lifecycle을 분리합니다.
 
-### Inventory / Container Runtime
-
-Drag & Drop과 Container 간 Item 이동이 같은 Slot 기반 UI 흐름에서 동작합니다.
-
-https://github.com/user-attachments/assets/c594e8a3-2840-456c-ae04-cabaaeb4d8ca
-
 ---
 
 ## Crafting Runtime
@@ -254,12 +263,6 @@ struct FActiveCraftWork
 ~~~
 
 Recipe는 결과 Item·필요 Material·Unit당 Work를 정의하고, ActiveWork는 Units와 현재 누적 Work를 저장합니다.
-
-### Collaborative Crafting Runtime
-
-https://github.com/user-attachments/assets/df9a30d1-8d52-4b86-9f18-790474fdbda2
-
-*Recipe 선택과 재료 확인부터 Shared Work 진행, 완료 결과 수령, Inventory 반영까지 이어지는 제작 흐름.*
 
 ### Interaction State
 
