@@ -115,7 +115,7 @@ Equip Item
    ↓
 Equipped Slot
    ├─ Stat Modifier 적용
-   ├─ Weapon Mesh / Animation 갱신
+   ├─ Weapon Mesh / HUD 갱신
    ├─ Weapon HUD 갱신
    └─ Skill Grant 교체
 ~~~
@@ -141,8 +141,8 @@ struct FEquipmentData
 
 예를 들면:
 
-- **곡괭이** — 장착한 도구에 맞는 근접/채굴 공격 Skill과 Mesh/Animation을 사용해 Resource를 공격
-- **샷건** — Shotgun 계열 Skill로 전환되고, WeaponType에 맞는 Animation/Crosshair와 탄약 정보가 함께 연결
+- **곡괭이** — 장착한 도구에 맞는 근접/채굴 공격 Skill과 Mesh로 Resource를 공격
+- **샷건** — Shotgun 계열 Skill로 전환되고, WeaponType에 맞는 Crosshair와 탄약 정보가 함께 연결
 
 ~~~text
 Weapon Item
