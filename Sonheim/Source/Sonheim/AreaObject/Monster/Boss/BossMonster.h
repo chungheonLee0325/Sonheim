@@ -49,6 +49,18 @@ struct FBossStatus
 	bool operator==(const FBossStatus& Other) const = default;
 };
 
+/** The montage the boss plays: the section it last started, at what rate and when. */
+USTRUCT()
+struct FBossMontage
+{
+	GENERATED_BODY()
+	UPROPERTY() TObjectPtr<UAnimMontage> Montage;
+	/** None for the montage's start. */
+	UPROPERTY() FName Section;
+	UPROPERTY() float PlayRate = 1.f;
+	UPROPERTY() double StartServerTime = 0;
+};
+
 /** A boss: it fights in patterns whose strikes mark the ground before they land, wakes when approached, turns fiercer below a share of
  * its health, and can be captured only while it rests worn out. UBossFSM runs it on the server; every machine shows its charges and
  * its rage from the replicated status. */
@@ -103,8 +115,13 @@ protected:
 	UFUNCTION(NetMulticast, Reliable) void MulticastStopMontage();
 	UFUNCTION(NetMulticast, Unreliable) void MulticastStrikeEffect(UNiagaraSystem* Effect, FVector Location, float Scale);
 	void PlayLocal(UAnimMontage* Montage, FName Section, float PlayRate);
+	/** Starts Playing where it has got to by now, following its section links; a montage already over plays nothing. */
+	void CatchUpMontage();
 	UBossFSM* Brain() const;
 	UPROPERTY(ReplicatedUsing=OnRep_Status) FBossStatus Status;
+	/** Sent only as the boss reaches a machine. One it reaches late, after a montage multicast went out, missed that multicast and starts
+	 * the montage from this instead. */
+	UPROPERTY(Replicated) FBossMontage Playing;
 
 	/** The charge of the pattern under way and the rage aura, which follow the status on every machine. */
 	void RefreshLook();

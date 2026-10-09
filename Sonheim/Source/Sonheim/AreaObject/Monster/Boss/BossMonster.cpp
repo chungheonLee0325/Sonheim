@@ -50,19 +50,22 @@ void ABossMonster::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ABossMonster, Status);
+	DOREPLIFETIME_CONDITION(ABossMonster, Playing, COND_InitialOnly);
 }
 
 void ABossMonster::BeginPlay()
 {
 	Super::BeginPlay();
-	// Every machine puts the boss to sleep itself: a multicast sent as it spawns can reach a client before the boss does.
-	if (Patterns && Status.Stage == EBossStage::Sleeping) PlayLocal(Patterns->WakeMontage, UBossPatternDataAsset::SleepSection, 1.f);
 	if (HasAuthority())
 	{
+		if (Patterns) Playing = {Patterns->WakeMontage, UBossPatternDataAsset::SleepSection, 1.f, ServerNow()};
 		FBossStatus Sleeping = Status;
 		Sleeping.ActionId = TAG_BossSleeping;
 		SetStatus(Sleeping);
 	}
+	// A multicast reaches only the machines the boss is relevant to; one it reaches later, such as the machine of a player who comes into
+	// the hall after the boss woke, missed the wake. Every machine starts the montage under way itself as the boss reaches it.
+	CatchUpMontage();
 }
 
 UBossFSM* ABossMonster::Brain() const
@@ -225,8 +228,33 @@ void ABossMonster::PlayLocal(UAnimMontage* Montage, const FName Section, const f
 	if (!Section.IsNone()) Anim->Montage_JumpToSection(Section, Montage);
 }
 
+void ABossMonster::CatchUpMontage()
+{
+	UAnimInstance* Anim = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
+	const UAnimMontage* Montage = Playing.Montage;
+	if (!Anim || !Montage) return;
+	// Through the section it started and the ones it leads on to, a looping one only once around, until the time since then runs out.
+	float Left = float(ServerNow() - Playing.StartServerTime) * Playing.PlayRate;
+	int32 Index = Playing.Section.IsNone() ? 0 : Montage->GetSectionIndex(Playing.Section);
+	for (int32 Step = 0; Index != INDEX_NONE && Step < Montage->CompositeSections.Num(); ++Step)
+	{
+		float Start = 0.f, End = 0.f;
+		Montage->GetSectionStartAndEndTime(Index, Start, End);
+		const FCompositeSection& Section = Montage->CompositeSections[Index];
+		if (Section.NextSectionName == Section.SectionName && End > Start) Left = FMath::Fmod(Left, End - Start);
+		if (Left < End - Start)
+		{
+			Anim->Montage_Play(Playing.Montage, Playing.PlayRate, EMontagePlayReturnType::MontageLength, Start + FMath::Max(Left, 0.f));
+			return;
+		}
+		Left -= End - Start;
+		Index = Montage->GetSectionIndex(Section.NextSectionName);
+	}
+}
+
 void ABossMonster::PlayMontage(UAnimMontage* Montage, const FName Section, const float PlayRate)
 {
+	Playing = {Montage, Section, PlayRate, ServerNow()};
 	MulticastPlayMontage(Montage, Section, PlayRate);
 }
 
@@ -237,6 +265,8 @@ void ABossMonster::MulticastPlayMontage_Implementation(UAnimMontage* Montage, co
 
 void ABossMonster::JumpToSection(const FName Section)
 {
+	Playing.Section = Section;
+	Playing.StartServerTime = ServerNow();
 	MulticastJumpToSection(Section);
 }
 
@@ -252,6 +282,7 @@ void ABossMonster::MulticastJumpToSection_Implementation(const FName Section)
 
 void ABossMonster::StopMontage()
 {
+	Playing = {};
 	MulticastStopMontage();
 }
 
