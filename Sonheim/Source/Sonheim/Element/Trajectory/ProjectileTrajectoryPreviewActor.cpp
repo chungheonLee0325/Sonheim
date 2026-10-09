@@ -127,12 +127,10 @@ void AProjectileTrajectoryPreviewActor::ApplyDashMaterial()
 		return;
 	}
 
+	// M_ProjectileTrajectoryPreview: Emissive = PreviewColor * EmissiveStrength * 2
 	DynamicDashMaterial->SetVectorParameterValue(TEXT("PreviewColor"), Config.DashColor);
-	DynamicDashMaterial->SetVectorParameterValue(TEXT("Color"), Config.DashColor);
-	DynamicDashMaterial->SetVectorParameterValue(TEXT("BaseColor"), Config.DashColor);
-	DynamicDashMaterial->SetVectorParameterValue(TEXT("EmissiveColor"), Config.DashColor * 2.0f);
 	DynamicDashMaterial->SetScalarParameterValue(TEXT("Opacity"), Config.DashColor.A);
-	DynamicDashMaterial->SetScalarParameterValue(TEXT("EmissiveStrength"), 1.15f);
+	DynamicDashMaterial->SetScalarParameterValue(TEXT("EmissiveStrength"), Config.EmissiveStrength);
 	DashInstances->SetMaterial(0, DynamicDashMaterial);
 }
 

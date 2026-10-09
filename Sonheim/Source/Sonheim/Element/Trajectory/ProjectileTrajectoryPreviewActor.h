@@ -51,7 +51,11 @@ struct FProjectileTrajectoryPreviewConfig
 	float StartGapDistance = 40.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FLinearColor DashColor = FLinearColor(0.48f, 0.9f, 1.0f, 0.92f);
+	FLinearColor DashColor = FLinearColor(0.04f, 0.47f, 1.0f, 0.92f);
+
+	// 머티리얼이 2배를 곱하므로 0.5면 DashColor 그대로. 1을 넘는 성분은 화면에서 흰색으로 날아간다.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(ClampMin="0.0"))
+	float EmissiveStrength = 0.5f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftObjectPtr<UMaterialInterface> DashMaterial = TSoftObjectPtr<UMaterialInterface>(FSoftObjectPath(
