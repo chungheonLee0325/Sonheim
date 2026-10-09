@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Sonheim/Element/Trajectory/ProjectileTrajectoryPreviewActor.h"
 #include "Sonheim/UI/Notice/NoticeWidget.h"
 #include "PalCaptureComponent.generated.h"
 
@@ -9,6 +10,7 @@ class APalSphere;
 class ASonheimPlayerState;
 class ABaseMonster;
 class ASonheimPlayer;
+class AProjectileTrajectoryPreviewActor;
 class UPalInventoryComponent;
 
 // 포획 UI 정보 전달을 위한 구조체
@@ -113,8 +115,18 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pal Capture|Notice")
     FNoticeData PartyFullNotice;
 
+    // 조준 중 로컬 플레이어에게만 보이는 투척 궤적 점선
+    UPROPERTY(EditDefaultsOnly, Category = "Pal Capture|Trajectory Preview")
+    bool bShowTrajectoryPreview = true;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Pal Capture|Trajectory Preview")
+    FProjectileTrajectoryPreviewConfig TrajectoryPreviewConfig;
+
 protected:
     virtual void BeginPlay() override;
+    virtual void TickComponent(float DeltaTime, ELevelTick TickType,
+                               FActorComponentTickFunction* ThisTickFunction) override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
     UFUNCTION()
     void OnRep_IsThrowingPalSphere();
@@ -172,6 +184,12 @@ private:
     void Server_CancelThrowPalSphere();
     
     void ApplyThrowingState(bool bThrowing);
+
+    UPROPERTY(Transient)
+    TObjectPtr<AProjectileTrajectoryPreviewActor> LocalTrajectoryPreview = nullptr;
+
+    void UpdateLocalTrajectoryPreview();
+    void EndLocalTrajectoryPreview();
 
     UFUNCTION(Server, Reliable)
     void Server_AttemptCapture(ABaseMonster* TargetPal, APalSphere* SourceSphere);

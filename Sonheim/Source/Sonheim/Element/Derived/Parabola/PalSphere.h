@@ -68,6 +68,16 @@ public:
 
 	virtual FVector Fire(AAreaObject* Caster, AAreaObject* Target, FVector TargetLocation, float ArcValue) override;
 
+	// 실제 투척과 조준 궤적 프리뷰가 같은 계산을 쓰도록 모아둔다.
+	// 카메라 정면으로 손 소켓에서 트레이스한 지점. 아무것도 안 맞으면 1200 앞.
+	static FVector TraceThrowTarget(const AAreaObject* Caster, const AActor* IgnoredActor);
+	// 구체는 시전자 위치·방향으로 스폰되고, 거리만 TargetLocation에서 가져온다.
+	static FVector SuggestThrowVelocity(const AAreaObject* Caster, const FVector& SpawnLocation,
+	                                    const FVector& SpawnForward, const FVector& TargetLocation, float ArcValue);
+
+	// 실제 투척은 0.8~0.9 사이 무작위. 착지점은 같고 높이만 조금 다르다.
+	static constexpr float PreviewArcValue = 0.85f;
+
 	virtual void OnRep_Owner() override;
 
 private:

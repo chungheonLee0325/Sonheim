@@ -6,13 +6,16 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Skill/Base/BaseSkill.h"
 #include "Sonheim/Animation/Player/PlayerAniminstance.h"
+#include "Sonheim/Element/Derived/Parabola/PalSphere.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Sonheim/Utilities/StringTableIds.h"
 #include "PalInventoryComponent.h"
 
 UPalCaptureComponent::UPalCaptureComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	// 궤적 프리뷰를 그리는 동안만 켠다
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bStartWithTickEnabled = false;
 	SetIsReplicatedByDefault(true);
 
 	PartyFullNotice.Category = LOCTABLE(SONHEIM_ST_NOTICE, "PartyFull.Category");
@@ -65,6 +68,19 @@ void UPalCaptureComponent::BeginPlay()
 	}
 }
 
+void UPalCaptureComponent::TickComponent(float DeltaTime, ELevelTick TickType,
+                                         FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	UpdateLocalTrajectoryPreview();
+}
+
+void UPalCaptureComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	EndLocalTrajectoryPreview();
+	Super::EndPlay(EndPlayReason);
+}
+
 void UPalCaptureComponent::StartThrowPalSphere()
 {
 	if (!OwnerPlayer)
@@ -84,6 +100,8 @@ void UPalCaptureComponent::ThrowPalSphere()
 	if (!OwnerPlayer || !bIsThrowingPalSphere)
 		return;
 
+	// 서버 응답(OnRep)을 기다리지 않고 바로 지운다
+	EndLocalTrajectoryPreview();
 	Server_ThrowPalSphere();
 
 	OnMonsterDetected(nullptr);
@@ -114,6 +132,7 @@ void UPalCaptureComponent::CancelThrowPalSphere()
 	if (!bIsThrowingPalSphere)
 		return;
 
+	EndLocalTrajectoryPreview();
 	OnMonsterDetected(nullptr);
 
 	Server_CancelThrowPalSphere();
@@ -168,7 +187,55 @@ void UPalCaptureComponent::ApplyThrowingState(bool bThrowing)
 				Widget->SetEnableCrossHair(bThrowing);
 			}
 		}
+
+		if (bThrowing && bShowTrajectoryPreview && OwnerPlayer->HasPalSphere())
+		{
+			SetComponentTickEnabled(true);
+			UpdateLocalTrajectoryPreview();
+		}
+		else
+		{
+			EndLocalTrajectoryPreview();
+		}
 	}
+}
+
+void UPalCaptureComponent::UpdateLocalTrajectoryPreview()
+{
+	if (!OwnerPlayer || !OwnerPlayer->GetController() || !GetWorld())
+	{
+		return;
+	}
+
+	// APalSphere가 실제로 던질 때와 같은 값: 시전자 위치·방향에서 스폰, 카메라 트레이스로 거리 결정
+	const FVector SpawnLocation = OwnerPlayer->GetActorLocation();
+	const FVector SpawnForward = OwnerPlayer->GetActorForwardVector();
+	const FVector TargetLocation = APalSphere::TraceThrowTarget(OwnerPlayer, nullptr);
+	const FVector Velocity = APalSphere::SuggestThrowVelocity(
+		OwnerPlayer, SpawnLocation, SpawnForward, TargetLocation, APalSphere::PreviewArcValue);
+
+	if (!IsValid(LocalTrajectoryPreview))
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = OwnerPlayer;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		LocalTrajectoryPreview = GetWorld()->SpawnActor<AProjectileTrajectoryPreviewActor>(
+			AProjectileTrajectoryPreviewActor::StaticClass(), FTransform::Identity, SpawnParams);
+	}
+	if (LocalTrajectoryPreview)
+	{
+		LocalTrajectoryPreview->UpdatePreview(SpawnLocation, Velocity, OwnerPlayer, TrajectoryPreviewConfig);
+	}
+}
+
+void UPalCaptureComponent::EndLocalTrajectoryPreview()
+{
+	SetComponentTickEnabled(false);
+	if (IsValid(LocalTrajectoryPreview))
+	{
+		LocalTrajectoryPreview->Destroy();
+	}
+	LocalTrajectoryPreview = nullptr;
 }
 
 void UPalCaptureComponent::AttemptCapture(ABaseMonster* TargetPal, APalSphere* SourceSphere)

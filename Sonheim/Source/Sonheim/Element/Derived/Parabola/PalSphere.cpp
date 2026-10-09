@@ -97,40 +97,9 @@ void APalSphere::Tick(float DeltaTime)
 void APalSphere::InitElement(AAreaObject* Caster, AAreaObject* Target, const FVector& TargetLocation,
                              FAttackData* AttackData)
 {
-	FVector CameraLocation;
-	FRotator CameraRotation;
-	Cast<ASonheimPlayer>(Caster)->GetController()->GetPlayerViewPoint(CameraLocation, CameraRotation);
-	FVector CameraForward = CameraRotation.Vector();
-
-	FVector firePos = Caster->GetMesh()->GetSocketLocation("Weapon_R");
-	FVector targetPos = firePos + CameraForward * 1200.f;
-
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(this);
-	QueryParams.AddIgnoredActor(Caster);
-	FHitResult OutHitResult;
-
-	bool bHit = GetWorld()->LineTraceSingleByChannel(
-		OutHitResult,
-		firePos,
-		targetPos,
-		ECC_Visibility,
-		QueryParams
-	);
-	if (bHit && Caster->bShowDebug)
-	{
-		TArray<struct FHitResult> OutHitResults;
-		DrawLineTraces(GetWorld(), firePos, targetPos, OutHitResults, 3.0f);
-		DrawDebugSphere(GetWorld(), OutHitResult.Location, 20.f, 20, FColor::Red, false, 2.0f);
-		DrawDebugSphere(GetWorld(), OutHitResult.GetActor()->GetActorLocation(), 20.f, 20, FColor::Blue, false, 2.0f);
-	}
-
 	m_Caster = Caster;
 	m_Target = Target;
-	//LOG_SCREEN("Target Location : %f %f %f",targetPos.X, targetPos.Y, targetPos.Z);
-	m_TargetLocation = bHit ? OutHitResult.Location : targetPos;
-	//LOG_SCREEN("OutHitResult Location : %f %f %f",OutHitResult.Location.X, OutHitResult.Location.Y, OutHitResult.Location.Z);
-	//LOG_SCREEN("Hit Location : %f %f %f",m_TargetLocation.X, m_TargetLocation.Y, m_TargetLocation.Z);
+	m_TargetLocation = TraceThrowTarget(Caster, this);
 	m_AttackData = AttackData;
 
 	TryBindToCaptureComp();
@@ -144,21 +113,53 @@ void APalSphere::InitElement(AAreaObject* Caster, AAreaObject* Target, const FVe
 
 FVector APalSphere::Fire(AAreaObject* Caster, AAreaObject* Target, FVector TargetLocation, float ArcValue)
 {
-	// Todo : 가까우면 너무 느림, 속도 최소값 정하긴 해야할듯
-	FVector StartLoc{Caster->GetMesh()->GetSocketLocation("Weapon_R")};
-	FVector TargetLoc{StartLoc + GetActorForwardVector() * (GetActorLocation() - TargetLocation).Length()};
-	FVector OutVelocity{FVector::ZeroVector};
-	if (UGameplayStatics::SuggestProjectileVelocity_CustomArc(this, OutVelocity, StartLoc, TargetLoc,
-	                                                          GetWorld()->GetGravityZ(), ArcValue))
+	return SuggestThrowVelocity(Caster, GetActorLocation(), GetActorForwardVector(), TargetLocation, ArcValue);
+}
+
+FVector APalSphere::TraceThrowTarget(const AAreaObject* Caster, const AActor* IgnoredActor)
+{
+	FVector CameraLocation;
+	FRotator CameraRotation;
+	Caster->GetController()->GetPlayerViewPoint(CameraLocation, CameraRotation);
+
+	const FVector FirePos = Caster->GetMesh()->GetSocketLocation("Weapon_R");
+	const FVector TargetPos = FirePos + CameraRotation.Vector() * 1200.f;
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(IgnoredActor);
+	QueryParams.AddIgnoredActor(Caster);
+	FHitResult OutHitResult;
+	const bool bHit = Caster->GetWorld()->LineTraceSingleByChannel(
+		OutHitResult, FirePos, TargetPos, ECC_Visibility, QueryParams);
+	if (bHit && Caster->bShowDebug)
 	{
-		if (m_Caster->bShowDebug)
+		TArray<FHitResult> OutHitResults;
+		DrawLineTraces(Caster->GetWorld(), FirePos, TargetPos, OutHitResults, 3.0f);
+		DrawDebugSphere(Caster->GetWorld(), OutHitResult.Location, 20.f, 20, FColor::Red, false, 2.0f);
+	}
+
+	return bHit ? OutHitResult.Location : TargetPos;
+}
+
+FVector APalSphere::SuggestThrowVelocity(const AAreaObject* Caster, const FVector& SpawnLocation,
+                                         const FVector& SpawnForward, const FVector& TargetLocation, float ArcValue)
+{
+	// Todo : 가까우면 너무 느림, 속도 최소값 정하긴 해야할듯
+	UWorld* World = Caster->GetWorld();
+	const FVector StartLoc{Caster->GetMesh()->GetSocketLocation("Weapon_R")};
+	const FVector TargetLoc{StartLoc + SpawnForward * (SpawnLocation - TargetLocation).Length()};
+	FVector OutVelocity{FVector::ZeroVector};
+	if (UGameplayStatics::SuggestProjectileVelocity_CustomArc(World, OutVelocity, StartLoc, TargetLoc,
+	                                                          World->GetGravityZ(), ArcValue))
+	{
+		if (Caster->bShowDebug)
 		{
 			FPredictProjectilePathParams PredictParams(5.f, StartLoc, OutVelocity, 15.f);
 			PredictParams.DrawDebugTime = 2.f;
 			PredictParams.DrawDebugType = EDrawDebugTrace::Type::ForDuration;
-			PredictParams.OverrideGravityZ = GetWorld()->GetGravityZ();
+			PredictParams.OverrideGravityZ = World->GetGravityZ();
 			FPredictProjectilePathResult Result;
-			UGameplayStatics::PredictProjectilePath(this, PredictParams, Result);
+			UGameplayStatics::PredictProjectilePath(World, PredictParams, Result);
 		}
 	}
 
