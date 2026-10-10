@@ -54,6 +54,8 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	void InitPlayerState();
+	// 고유 ID가 정해지면 서버가 이 플레이어의 저장된 도감을 읽는다.
+	virtual void OnSetUniqueId() override;
 
 	UPROPERTY(BlueprintReadWrite, Category="Pal")
 	class UPalInventoryComponent* m_PalInventoryComponent;
@@ -83,6 +85,9 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, Category="Stats")
 	UStatBonusComponent* m_StatBonusComponent;
+
+	UPROPERTY(BlueprintReadOnly, Category="MonsterDex")
+	class UMonsterDexComponent* m_MonsterDexComponent;
 
 	// 스탯 업데이트 함수 - 서버 권한
 	UFUNCTION(BlueprintCallable, Category="Stats")

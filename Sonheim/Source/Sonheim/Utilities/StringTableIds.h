@@ -6,3 +6,4 @@
 // a table lacks shows as a missing entry.
 #define SONHEIM_ST_DUNGEON "/Game/StringTables/ST_Dungeon.ST_Dungeon"
 #define SONHEIM_ST_NOTICE "/Game/StringTables/ST_Notice.ST_Notice"
+#define SONHEIM_ST_DEX "/Game/StringTables/ST_Dex.ST_Dex"

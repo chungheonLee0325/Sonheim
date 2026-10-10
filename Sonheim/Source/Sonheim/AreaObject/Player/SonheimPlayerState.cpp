@@ -8,12 +8,14 @@
 #include "Utility/InventoryComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Utility/PalInventoryComponent.h"
+#include "Utility/MonsterDexComponent.h"
 
 ASonheimPlayerState::ASonheimPlayerState()
 {
 	m_InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
 	m_StatBonusComponent = CreateDefaultSubobject<UStatBonusComponent>(TEXT("StatBonus"));
 	m_PalInventoryComponent = CreateDefaultSubobject<UPalInventoryComponent>(TEXT("PalInventory"));
+	m_MonsterDexComponent = CreateDefaultSubobject<UMonsterDexComponent>(TEXT("MonsterDex"));
 	
 	// 컴포넌트 복제 설정
 	m_InventoryComponent->SetIsReplicated(true);
@@ -91,6 +93,12 @@ void ASonheimPlayerState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	m_GameInstance = nullptr;
 	
 	Super::EndPlay(EndPlayReason);
+}
+
+void ASonheimPlayerState::OnSetUniqueId()
+{
+	Super::OnSetUniqueId();
+	if (HasAuthority()) m_MonsterDexComponent->LoadSaved();
 }
 
 void ASonheimPlayerState::InitPlayerState()

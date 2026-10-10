@@ -14,6 +14,9 @@
 #include "Sonheim/Utilities/LogMacro.h"
 #include "Sonheim/AreaObject/Attribute/StaminaComponent.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
+#include "Sonheim/AreaObject/Player/Utility/MonsterDexComponent.h"
+#include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Utility/MoveUtilComponent.h"
 #include "Sonheim/AreaObject/Utility/RotateUtilComponent.h"
 #include "Sonheim/GameManager/SonheimGameMode.h"
@@ -465,6 +468,12 @@ void AAreaObject::OnKill(AAreaObject* Killer)
 	{
 		Killer->m_LevelComponent->AddExp(this->m_LevelComponent->RewardHuntExp());
 	}
+
+	// 도감: 플레이어가 잡았거나, 플레이어의 팰이 잡았으면 그 주인에게 기록한다.
+	ASonheimPlayer* Hunter = Cast<ASonheimPlayer>(Killer);
+	if (const ABaseMonster* Pal = Cast<ABaseMonster>(Killer)) Hunter = Pal->PartnerOwner;
+	const ASonheimPlayerState* HunterState = Hunter ? Hunter->GetPlayerState<ASonheimPlayerState>() : nullptr;
+	if (HunterState && HunterState->m_MonsterDexComponent) HunterState->m_MonsterDexComponent->NotifyKilled(m_AreaObjectID);
 }
 
 void AAreaObject::OnRevival()
