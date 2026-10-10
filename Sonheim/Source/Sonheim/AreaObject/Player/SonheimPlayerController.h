@@ -37,8 +37,8 @@ public:
 
 	class UPlayerStatusWidget* GetPlayerStatusWidget() const;
 
-	// 상태 조회
-	bool GetIsMenuActivate() { return IsMenuActivate; }
+	// 열린 화면이 이동·공격 같은 게임 입력을 막는지
+	bool IsUIBlockingInput() const;
 
 	UFUNCTION(Client, Unreliable)
 	void Client_DisplayItemPopup(int32 ItemID, int32 Delta);
@@ -127,10 +127,6 @@ private:
 	// UI 관련
 	UPROPERTY()
 	class UPlayerStatusWidget* StatusWidget;
-	UPROPERTY()
-	class UInventoryWidget* InventoryWidget;
-	UPROPERTY()
-	class UPlayerStatWidget* PlayerStatWidget;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UPlayerStatusWidget> StatusWidgetClass;
@@ -221,8 +217,7 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* CKeyAction;
 
-	bool IsMenuActivate = false;
-	bool IsContainerActivate = false;
+	class UUIStackSubsystem* GetUIStack() const;
 
 	// 점프 횟수 추적을 위한 변수
 	float LastJumpTime = 0.0f;
@@ -278,15 +273,11 @@ public:
 	void Server_Crafting_CancelUnfinished(class ACraftingStation* Station);
 
 private:
-	// 상자 UI 위젯
-	UPROPERTY()
-	class UContainerInteractionWidget* ContainerInteractionWidget;
+	// 상자 UI 위젯 (열린 위젯은 UI 스택이 갖는다)
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UContainerInteractionWidget> ContainerInteractionWidgetClass;
 
 	// Crafting UI
-	UPROPERTY()
-	class UCraftingWidget* CraftingWidget;
 	UPROPERTY(EditDefaultsOnly, Category="UI")
 	TSubclassOf<class UCraftingWidget> CraftingWidgetClass;
 

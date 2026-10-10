@@ -20,6 +20,7 @@
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/InventoryWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/PlayerStatWidget.h"
+#include "Sonheim/UI/System/UIStackSubsystem.h"
 #include "Utility/InventoryComponent.h"
 #include "Utility/DungeonClientBridgeComponent.h"
 
@@ -459,37 +460,37 @@ void ASonheimPlayerController::SetupInputComponent()
 
 void ASonheimPlayerController::OnMove(const FInputActionValue& Value)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->Move(Value.Get<FVector2D>());
 }
 
 void ASonheimPlayerController::OnLook(const FInputActionValue& Value)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->Look(Value.Get<FVector2D>());
 }
 
 void ASonheimPlayerController::On_Mouse_Left_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->LeftMouse_Pressed();
 }
 
 void ASonheimPlayerController::On_Mouse_Left_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->LeftMouse_Released();
 }
 
 void ASonheimPlayerController::On_Mouse_Left_Triggered(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->LeftMouse_Triggered();
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 
 	auto PSW = GetPlayerStatusWidget();
 	
@@ -513,44 +514,44 @@ void ASonheimPlayerController::On_Mouse_Right_Pressed(const FInputActionValue& I
 
 void ASonheimPlayerController::On_Mouse_Right_Triggered(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->RightMouse_Triggered();
 }
 
 void ASonheimPlayerController::On_Sprint_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->Sprint_Pressed();
 }
 
 void ASonheimPlayerController::On_Sprint_Triggered(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->Sprint_Triggered();
 }
 
 void ASonheimPlayerController::On_Sprint_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->Sprint_Released();
 }
 
 void ASonheimPlayerController::On_Mouse_Right_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->RightMouse_Released();
 	if (GetPlayerStatusWidget()) GetPlayerStatusWidget()->SetEnableCrossHair(false);
 }
 
 void ASonheimPlayerController::On_Dodge_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->Dodge_Pressed();
 }
 
 void ASonheimPlayerController::On_Jump_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 
 	float CurrentTime = GetWorld()->GetTimeSeconds();
 
@@ -586,13 +587,13 @@ void ASonheimPlayerController::On_Jump_Pressed(const FInputActionValue& InputAct
 
 void ASonheimPlayerController::On_Jump_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->Jump_Released();
 }
 
 void ASonheimPlayerController::On_Reload_Pressed(const FInputActionValue& Value)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->Reload_Pressed();
 }
 
@@ -639,7 +640,7 @@ void ASonheimPlayerController::On_SwitchPalSlot_Triggered(const FInputActionValu
 
 void ASonheimPlayerController::On_ThrowPalSphere_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->RightMouse_Pressed();
 	GetPlayerStatusWidget()->SetEnableCrossHair(true);
 	GetPlayerStatusWidget()->SetEnableKeyGuide(true, EUIKeyGuide::RButton, "취소");
@@ -653,7 +654,7 @@ void ASonheimPlayerController::On_ThrowPalSphere_Triggered(const FInputActionVal
 
 void ASonheimPlayerController::On_ThrowPalSphere_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	GetPlayerStatusWidget()->SetEnableCrossHair(false);
 	GetPlayerStatusWidget()->SetEnableKeyGuide(false, EUIKeyGuide::None);
 	m_Player->RightMouse_Released();
@@ -662,39 +663,31 @@ void ASonheimPlayerController::On_ThrowPalSphere_Released(const FInputActionValu
 
 void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 {
-	if (IsContainerActivate) return;
-	if (!IsMenuActivate)
-	{
-		IsMenuActivate = true;
+	UUIStackSubsystem* UIStack = GetUIStack();
+	// Tab은 맨 위 화면(메뉴·상자·제작대)을 닫고, 열린 화면이 없을 때만 메뉴를 연다.
+	if (!UIStack || UIStack->CloseTop() || !m_PlayerState) return;
 
-		m_Player->Menu_Pressed();
-		InventoryWidget = CreateWidget<UInventoryWidget>(this, InventoryWidgetClass);
-		InventoryWidget->AddToViewport(0);
-		InventoryWidget->SetInventoryComponent(m_PlayerState->m_InventoryComponent);
-		m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(InventoryWidget,
-		                                                                   &UInventoryWidget::UpdateInventoryFromData);
-		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(InventoryWidget,
-		                                                                   &UInventoryWidget::UpdateEquipmentFromData);
-		PlayerStatWidget = CreateWidget<UPlayerStatWidget>(this, PlayerStatWidgetClass);
-		PlayerStatWidget->AddToViewport(0);
-		PlayerStatWidget->InitializePlayerStatWidget(m_PlayerState);
-		SetShowMouseCursor(true);
-	}
-	else
-	{
-		IsMenuActivate = false;
-		SetShowMouseCursor(false);
+	m_Player->Menu_Pressed();
+	const TArray<UUserWidget*> Widgets = UIStack->Open(UIScreen::Menu, {InventoryWidgetClass, PlayerStatWidgetClass});
+	if (Widgets.Num() != 2) return;
+	UInventoryWidget* InventoryWidget = Cast<UInventoryWidget>(Widgets[0]);
+	InventoryWidget->SetInventoryComponent(m_PlayerState->m_InventoryComponent);
+	m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(InventoryWidget,
+	                                                                   &UInventoryWidget::UpdateInventoryFromData);
+	m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(InventoryWidget,
+	                                                                   &UInventoryWidget::UpdateEquipmentFromData);
+	Cast<UPlayerStatWidget>(Widgets[1])->InitializePlayerStatWidget(m_PlayerState);
+}
 
-		m_PlayerState->m_InventoryComponent->OnInventoryChanged.RemoveDynamic(
-			InventoryWidget, &UInventoryWidget::UpdateInventoryFromData);
-		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(InventoryWidget,
-		                                                                      &UInventoryWidget::
-		                                                                      UpdateEquipmentFromData);
-		InventoryWidget->RemoveFromParent();
-		PlayerStatWidget->RemoveFromParent();
-		InventoryWidget = nullptr;
-		PlayerStatWidget = nullptr;
-	}
+bool ASonheimPlayerController::IsUIBlockingInput() const
+{
+	const UUIStackSubsystem* UIStack = GetUIStack();
+	return UIStack && UIStack->IsGameplayBlocked();
+}
+
+UUIStackSubsystem* ASonheimPlayerController::GetUIStack() const
+{
+	return GetLocalPlayer() ? GetLocalPlayer()->GetSubsystem<UUIStackSubsystem>() : nullptr;
 }
 
 void ASonheimPlayerController::On_Menu_Released(const FInputActionValue& Value)
@@ -704,7 +697,7 @@ void ASonheimPlayerController::On_Menu_Released(const FInputActionValue& Value)
 
 void ASonheimPlayerController::On_Glider_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	if (m_Player && !m_Player->GetCharacterMovement()->IsMovingOnGround())
 	{
 		if (m_PlayerState && m_PlayerState->m_InventoryComponent)
@@ -720,7 +713,7 @@ void ASonheimPlayerController::On_Glider_Pressed(const FInputActionValue& InputA
 
 void ASonheimPlayerController::On_Glider_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	if (m_Player)
 	{
 		m_Player->DeactivateGlider();
@@ -729,7 +722,7 @@ void ASonheimPlayerController::On_Glider_Released(const FInputActionValue& Input
 
 void ASonheimPlayerController::On_FKey_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	if (m_Player)
 	{
 		m_Player->Interaction_Pressed(EHoldPurpose::Interact);
@@ -738,7 +731,7 @@ void ASonheimPlayerController::On_FKey_Pressed(const FInputActionValue& InputAct
 
 void ASonheimPlayerController::On_FKey_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	if (m_Player)
 	{
 		m_Player->Interaction_Released(EHoldPurpose::Interact);
@@ -747,7 +740,7 @@ void ASonheimPlayerController::On_FKey_Released(const FInputActionValue& InputAc
 
 void ASonheimPlayerController::On_CKey_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	if (m_Player)
 	{
 		m_Player->Interaction_Pressed(EHoldPurpose::Cancel);
@@ -756,7 +749,7 @@ void ASonheimPlayerController::On_CKey_Pressed(const FInputActionValue& InputAct
 
 void ASonheimPlayerController::On_CKey_Released(const FInputActionValue& InputActionValue)
 {
-	if (IsMenuActivate || IsContainerActivate) return;
+	if (IsUIBlockingInput()) return;
 	if (m_Player)
 	{
 		m_Player->Interaction_Released(EHoldPurpose::Cancel);
@@ -771,47 +764,39 @@ void ASonheimPlayerController::OnRep_PlayerState()
 
 void ASonheimPlayerController::Client_OpenContainerUI_Implementation(ABaseContainer* Container)
 {
-	if (!Container || !ContainerInteractionWidgetClass)
+	UUIStackSubsystem* UIStack = GetUIStack();
+	if (!Container || !ContainerInteractionWidgetClass || !UIStack || !m_PlayerState)
 		return;
 
-	// 기존 상자 UI가 열려있으면 닫기
-	if (ContainerInteractionWidget)
-	{
-		ContainerInteractionWidget->CloseContainer();
-		ContainerInteractionWidget = nullptr;
-	}
+	// 기존 상자 UI가 열려있으면 닫기 (위젯이 서버에 그 상자를 놓아준다)
+	UIStack->Close(UIScreen::Container);
 
-	// 새 상자 UI 생성
-	ContainerInteractionWidget = CreateWidget<UContainerInteractionWidget>(this, ContainerInteractionWidgetClass);
-	if (ContainerInteractionWidget)
-	{
-		ContainerInteractionWidget->AddToViewport(1); // 다른 UI보다 위에 표시
-		m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(
-			ContainerInteractionWidget->GetPlayerInventoryWidget(),
-			&UInventoryWidget::UpdateInventoryFromData);
-		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(
-			ContainerInteractionWidget->GetPlayerInventoryWidget(),
-			&UInventoryWidget::UpdateEquipmentFromData);
-		ContainerInteractionWidget->OpenContainer(Container);
-		IsContainerActivate = true;
-	}
+	UContainerInteractionWidget* Widget = UIStack->Open<UContainerInteractionWidget>(UIScreen::Container, ContainerInteractionWidgetClass);
+	if (!Widget) return;
+	m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(
+		Widget->GetPlayerInventoryWidget(),
+		&UInventoryWidget::UpdateInventoryFromData);
+	m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(
+		Widget->GetPlayerInventoryWidget(),
+		&UInventoryWidget::UpdateEquipmentFromData);
+	Widget->OpenContainer(Container);
 }
 
 void ASonheimPlayerController::Client_CloseContainerUI_Implementation()
 {
-	if (ContainerInteractionWidget)
+	UUIStackSubsystem* UIStack = GetUIStack();
+	UContainerInteractionWidget* Widget = UIStack ? Cast<UContainerInteractionWidget>(UIStack->GetWidget(UIScreen::Container)) : nullptr;
+	if (Widget && m_PlayerState)
 	{
-		ContainerInteractionWidget->CloseContainer();
 		m_PlayerState->m_InventoryComponent->OnInventoryChanged.RemoveDynamic(
-			ContainerInteractionWidget->GetPlayerInventoryWidget(),
+			Widget->GetPlayerInventoryWidget(),
 			&UInventoryWidget::UpdateInventoryFromData);
 		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(
-			ContainerInteractionWidget->GetPlayerInventoryWidget(),
-			&UInventoryWidget::
-			UpdateEquipmentFromData);
-		ContainerInteractionWidget = nullptr;
-		IsContainerActivate = false;
+			Widget->GetPlayerInventoryWidget(),
+			&UInventoryWidget::UpdateEquipmentFromData);
 	}
+	// 위젯이 먼저 닫혔어도 스택에서 거두어 입력 모드를 되돌린다.
+	if (UIStack) UIStack->Close(UIScreen::Container);
 }
 
 void ASonheimPlayerController::Server_ContainerOperation_Implementation(
@@ -1170,33 +1155,18 @@ bool ASonheimPlayerController::ValidateDistance(AActor* Target, float MaxDistanc
 
 void ASonheimPlayerController::Client_OpenCraftingUI_Implementation(ACraftingStation* Station)
 {
-	if (!IsLocalController() || !Station) return;
-	if (!CraftingWidget)
+	UUIStackSubsystem* UIStack = GetUIStack();
+	if (!IsLocalController() || !Station || !UIStack || UIStack->IsOpen(UIScreen::Crafting)) return;
+	if (UCraftingWidget* Widget = UIStack->Open<UCraftingWidget>(UIScreen::Crafting, CraftingWidgetClass))
 	{
-		if (CraftingWidgetClass)
-		{
-			CraftingWidget = CreateWidget<UCraftingWidget>(this, CraftingWidgetClass);
-		}
-	}
-	if (CraftingWidget && !CraftingWidget->IsInViewport())
-	{
-		CraftingWidget->AddToViewport();
-		CraftingWidget->Initialise(Station);
-		bShowMouseCursor = true;
-		SetInputMode(FInputModeUIOnly());
+		Widget->Initialise(Station);
 	}
 }
 
 void ASonheimPlayerController::Client_CloseCraftingUI_Implementation()
 {
 	if (!IsLocalController()) return;
-	if (CraftingWidget)
-	{
-		CraftingWidget->RemoveFromParent();
-		CraftingWidget = nullptr;
-	}
-	bShowMouseCursor = false;
-	SetInputMode(FInputModeGameOnly());
+	if (UUIStackSubsystem* UIStack = GetUIStack()) UIStack->Close(UIScreen::Crafting);
 }
 
 void ASonheimPlayerController::ServerStartWork_Implementation(

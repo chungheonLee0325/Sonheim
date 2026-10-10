@@ -6,6 +6,7 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/GameObject/Buildings/Storage/BaseContainer.h"
+#include "Sonheim/UI/System/UIStackSubsystem.h"
 
 void UContainerInteractionWidget::NativeConstruct()
 {
@@ -20,13 +21,9 @@ void UContainerInteractionWidget::NativeConstruct()
 
 void UContainerInteractionWidget::NativeDestruct()
 {
-	// 상자 닫기 처리
-	if (CurrentContainer)
-	{
-		CurrentContainer->CloseContainer();
-		CurrentContainer = nullptr;
-	}
-	
+	// Tab 등으로 스택이 먼저 닫아도 서버의 상자를 놓아준다.
+	ReleaseContainer();
+
 	Super::NativeDestruct();
 }
 
@@ -58,17 +55,17 @@ void UContainerInteractionWidget::OpenContainer(ABaseContainer* Container)
 		// ContainerWidget에 Container 참조 전달
 		ContainerInventoryWidget->SetOwningContainer(Container);
 	}
-    
-	// 마우스 커서 표시
-	if (APlayerController* PC = GetOwningPlayer())
-	{
-		PC->SetShowMouseCursor(true);
-	}
 }
 
 void UContainerInteractionWidget::CloseContainer()
 {
-    // 상자 닫기
+	ReleaseContainer();
+	// 입력 모드와 커서는 UI 스택이 남은 화면에 맞춘다.
+	UUIStackSubsystem::CloseWidget(this);
+}
+
+void UContainerInteractionWidget::ReleaseContainer()
+{
     if (CurrentContainer)
     {
         // 서버에 닫기 요청
@@ -78,15 +75,6 @@ void UContainerInteractionWidget::CloseContainer()
             PlayerInventoryWidget->SetContainerMode(false);
 		}
 		CurrentContainer = nullptr;
-	}
-    
-	// UI 제거
-	RemoveFromParent();
-    
-	// 마우스 커서 숨기기
-	if (APlayerController* PC = GetOwningPlayer())
-	{
-		PC->SetShowMouseCursor(false);
 	}
 }
 
