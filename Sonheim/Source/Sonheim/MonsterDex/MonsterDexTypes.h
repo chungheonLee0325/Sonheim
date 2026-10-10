@@ -36,6 +36,8 @@ struct FMonsterDexData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FText DisplayName;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FText Description;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) TArray<FMonsterDexRewardTier> RewardTiers;
+	/** The species' character class, whose mesh the book's stage shows. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) TSoftClassPtr<class ACharacter> DisplayClass;
 };
 
 /** What one player has done to one species. Replicated to its owner and kept in the save as it is. */

@@ -12,6 +12,7 @@ namespace UIScreen
 	inline const FName Menu(TEXT("Menu"));
 	inline const FName Container(TEXT("Container"));
 	inline const FName Crafting(TEXT("Crafting"));
+	inline const FName MonsterDex(TEXT("MonsterDex"));
 }
 
 UENUM()
@@ -29,6 +30,8 @@ struct FUIScreenRule
 {
 	GENERATED_BODY()
 	UPROPERTY() FName Id;
+	/** The widget Open(Id) makes; screens whose caller passes its own classes leave it empty. */
+	UPROPERTY() TSoftClassPtr<UUserWidget> WidgetClass;
 	UPROPERTY() int32 ZOrder = 0;
 	UPROPERTY() EUIStackInputMode InputMode = EUIStackInputMode::GameAndUI;
 	UPROPERTY() bool bShowMouse = true;
@@ -56,6 +59,10 @@ public:
 	/** Opens a screen made of these widgets, or brings it to the top if it is open, and returns its widgets in the same order. */
 	TArray<UUserWidget*> Open(FName Id, const TArray<TSubclassOf<UUserWidget>>& Classes);
 	UUserWidget* Open(FName Id, TSubclassOf<UUserWidget> Class);
+	/** Opens a screen of the widget its rule names. */
+	UUserWidget* Open(FName Id);
+	/** Closes the screen if it is open, opens it otherwise. */
+	void Toggle(FName Id);
 	template <typename T>
 	T* Open(FName Id, TSubclassOf<T> Class) { return Cast<T>(Open(Id, TSubclassOf<UUserWidget>(Class))); }
 

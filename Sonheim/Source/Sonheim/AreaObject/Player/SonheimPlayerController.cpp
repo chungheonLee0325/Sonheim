@@ -163,6 +163,13 @@ ASonheimPlayerController::ASonheimPlayerController()
 		CKeyAction = tempCAction.Object;
 	}
 
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempDexAction(
+		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Dex.IA_Dex'"));
+	if (tempDexAction.Succeeded())
+	{
+		DexAction = tempDexAction.Object;
+	}
+
 	m_Player = nullptr;
 
 	// UI 클래스 설정
@@ -448,6 +455,13 @@ void ASonheimPlayerController::SetupInputComponent()
 										   &ASonheimPlayerController::On_CKey_Pressed);
 		EnhancedInputComponent->BindAction(CKeyAction, ETriggerEvent::Completed, this,
 										   &ASonheimPlayerController::On_CKey_Released);
+
+		// K (도감)
+		if (DexAction)
+		{
+			EnhancedInputComponent->BindAction(DexAction, ETriggerEvent::Started, this,
+			                                   &ASonheimPlayerController::On_Dex_Pressed);
+		}
 	}
 	else
 	{
@@ -754,6 +768,14 @@ void ASonheimPlayerController::On_CKey_Released(const FInputActionValue& InputAc
 	{
 		m_Player->Interaction_Released(EHoldPurpose::Cancel);
 	}
+}
+
+void ASonheimPlayerController::On_Dex_Pressed(const FInputActionValue& InputActionValue)
+{
+	// 상자·제작대처럼 서버와 맞물린 화면 위에서는 열지 않는다.
+	UUIStackSubsystem* UIStack = GetUIStack();
+	if (!UIStack || UIStack->IsOpen(UIScreen::Container) || UIStack->IsOpen(UIScreen::Crafting)) return;
+	UIStack->Toggle(UIScreen::MonsterDex);
 }
 
 void ASonheimPlayerController::OnRep_PlayerState()

@@ -111,6 +111,7 @@ private:
 	/** Called for CKey input */
 	void On_CKey_Pressed(const FInputActionValue& InputActionValue);
 	void On_CKey_Released(const FInputActionValue& InputActionValue);
+	void On_Dex_Pressed(const FInputActionValue& InputActionValue);
 
 	// Owner
 	UPROPERTY(VisibleAnywhere)
@@ -208,6 +209,10 @@ private:
 	/** Glider Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* GliderAction;
+
+	/** 도감 (K) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* DexAction;
 
 	/** FKey Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))

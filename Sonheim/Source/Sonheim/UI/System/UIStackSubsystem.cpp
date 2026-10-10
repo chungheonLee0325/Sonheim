@@ -56,6 +56,17 @@ UUserWidget* UUIStackSubsystem::Open(const FName Id, const TSubclassOf<UUserWidg
 	return Widgets.Num() ? Widgets[0] : nullptr;
 }
 
+UUserWidget* UUIStackSubsystem::Open(const FName Id)
+{
+	return Open(Id, RuleOf(Id).WidgetClass.LoadSynchronous());
+}
+
+void UUIStackSubsystem::Toggle(const FName Id)
+{
+	if (IsOpen(Id)) Close(Id);
+	else Open(Id);
+}
+
 void UUIStackSubsystem::Close(const FName Id)
 {
 	const int32 Index = Stack.IndexOfByPredicate([Id](const FUIStackEntry& Entry) { return Entry.Id == Id; });
@@ -157,7 +168,14 @@ void UUIStackSubsystem::ApplyInputState()
 	APlayerController* PC = GetController();
 	if (!PC) return;
 	// Callers prune first, so the last screen is the one showing on top.
-	const FUIScreenRule Rule = Stack.Num() ? RuleOf(Stack.Last().Id) : FUIScreenRule{NAME_None, 0, EUIStackInputMode::GameOnly, false, false};
+	FUIScreenRule Rule;
+	if (Stack.Num()) Rule = RuleOf(Stack.Last().Id);
+	else
+	{
+		Rule.InputMode = EUIStackInputMode::GameOnly;
+		Rule.bShowMouse = false;
+		Rule.bBlockGameInput = false;
+	}
 	PC->SetShowMouseCursor(Rule.bShowMouse);
 	switch (Rule.InputMode)
 	{

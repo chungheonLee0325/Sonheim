@@ -120,7 +120,7 @@ bool UMonsterDexComponent::CanClaimReward(const int32 AreaObjectID, const int32 
 void UMonsterDexComponent::ServerClaimReward_Implementation(const int32 AreaObjectID, const int32 Tier)
 {
 	// The claimed bit is set before anything is paid, so a repeated request finds it set and pays nothing.
-	if (!CanClaimReward(AreaObjectID, Tier)) return;
+	if (!GetOwner()->HasAuthority() || !CanClaimReward(AreaObjectID, Tier)) return;
 	const FMonsterDexRewardTier& Reward = GetWorld()->GetGameInstance()->GetSubsystem<UMonsterDexSubsystem>()->FindPage(AreaObjectID)->RewardTiers[Tier];
 	FMonsterDexEntry* Entry = Dex.Items.FindByPredicate([AreaObjectID](const FMonsterDexEntry& E) { return E.AreaObjectID == AreaObjectID; });
 	Entry->ClaimedTiers |= 1 << Tier;
