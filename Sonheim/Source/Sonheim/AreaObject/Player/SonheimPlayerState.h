@@ -116,6 +116,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category="MonsterDex")
 	class UMonsterDexComponent* m_MonsterDexComponent;
 
+	UPROPERTY(BlueprintReadOnly, Category="Quest")
+	class UQuestComponent* m_QuestComponent;
+
 	// 스탯 업데이트 함수 - 서버 권한
 	UFUNCTION(BlueprintCallable, Category="Stats")
 	void UpdateStats();

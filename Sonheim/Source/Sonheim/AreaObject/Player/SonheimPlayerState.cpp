@@ -9,6 +9,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Utility/PalInventoryComponent.h"
 #include "Utility/MonsterDexComponent.h"
+#include "Utility/QuestComponent.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 
@@ -18,6 +19,7 @@ ASonheimPlayerState::ASonheimPlayerState()
 	m_StatBonusComponent = CreateDefaultSubobject<UStatBonusComponent>(TEXT("StatBonus"));
 	m_PalInventoryComponent = CreateDefaultSubobject<UPalInventoryComponent>(TEXT("PalInventory"));
 	m_MonsterDexComponent = CreateDefaultSubobject<UMonsterDexComponent>(TEXT("MonsterDex"));
+	m_QuestComponent = CreateDefaultSubobject<UQuestComponent>(TEXT("Quest"));
 	
 	// 컴포넌트 복제 설정
 	m_InventoryComponent->SetIsReplicated(true);
@@ -100,7 +102,11 @@ void ASonheimPlayerState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ASonheimPlayerState::OnSetUniqueId()
 {
 	Super::OnSetUniqueId();
-	if (HasAuthority()) m_MonsterDexComponent->LoadSaved();
+	if (HasAuthority())
+	{
+		m_MonsterDexComponent->LoadSaved();
+		m_QuestComponent->LoadSaved();
+	}
 }
 
 void ASonheimPlayerState::ReportDeed(const EPlayerDeed Deed, const int32 Id, const int32 Count, const FName Place)

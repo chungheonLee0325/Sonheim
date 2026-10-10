@@ -113,6 +113,11 @@ private:
 	void On_CKey_Released(const FInputActionValue& InputActionValue);
 	void On_Dex_Pressed(const FInputActionValue& InputActionValue);
 
+	/** Development builds: QuestSet <QuestID> <Active|Ready|Done> puts one of this player's quests in that state on the server,
+	 * as if played there, so a later quest can be tried without playing the ones before it. */
+	UFUNCTION(Exec)
+	void QuestSet(int32 QuestID, const FString& State);
+
 	// Owner
 	UPROPERTY(VisibleAnywhere)
 	ASonheimPlayer* m_Player;

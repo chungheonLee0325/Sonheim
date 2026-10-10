@@ -23,6 +23,7 @@
 #include "Sonheim/UI/System/UIStackSubsystem.h"
 #include "Utility/InventoryComponent.h"
 #include "Utility/DungeonClientBridgeComponent.h"
+#include "Utility/QuestComponent.h"
 
 ASonheimPlayerController::ASonheimPlayerController()
 {
@@ -776,6 +777,15 @@ void ASonheimPlayerController::On_Dex_Pressed(const FInputActionValue& InputActi
 	UUIStackSubsystem* UIStack = GetUIStack();
 	if (!UIStack || UIStack->IsOpen(UIScreen::Container) || UIStack->IsOpen(UIScreen::Crafting)) return;
 	UIStack->Toggle(UIScreen::MonsterDex);
+}
+
+void ASonheimPlayerController::QuestSet(const int32 QuestID, const FString& State)
+{
+#if !UE_BUILD_SHIPPING
+	if (!HasAuthority() || !m_PlayerState || !m_PlayerState->m_QuestComponent) return;
+	const EQuestState Wanted = State == TEXT("Done") ? EQuestState::Completed : State == TEXT("Ready") ? EQuestState::ReadyToTurnIn : EQuestState::Active;
+	m_PlayerState->m_QuestComponent->DebugSet(QuestID, Wanted);
+#endif
 }
 
 void ASonheimPlayerController::OnRep_PlayerState()
