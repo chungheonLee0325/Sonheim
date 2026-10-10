@@ -2,6 +2,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Engine/LocalPlayer.h"
 #include "GameFramework/PlayerController.h"
+#include "MenuTabWidget.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
 TArray<UUserWidget*> UUIStackSubsystem::Open(const FName Id, const TArray<TSubclassOf<UUserWidget>>& Classes)
@@ -177,6 +178,7 @@ void UUIStackSubsystem::ApplyInputState()
 		Rule.bBlockGameInput = false;
 	}
 	PC->SetShowMouseCursor(Rule.bShowMouse);
+	RefreshTabBar();
 	switch (Rule.InputMode)
 	{
 	case EUIStackInputMode::UIOnly:
@@ -193,6 +195,52 @@ void UUIStackSubsystem::ApplyInputState()
 		PC->SetInputMode(FInputModeGameOnly());
 		break;
 	}
+}
+
+const UMenuTabBarWidget* UUIStackSubsystem::TabBarDefaults() const
+{
+	const UClass* Class = TabBarClass.LoadSynchronous();
+	return Class ? Cast<UMenuTabBarWidget>(Class->GetDefaultObject()) : nullptr;
+}
+
+FName UUIStackSubsystem::TopTab() const
+{
+	const UMenuTabBarWidget* Bar = TabBarDefaults();
+	const FName Top = Stack.Num() ? Stack.Last().Id : NAME_None;
+	return Bar && !Top.IsNone() && Bar->Tabs.ContainsByPredicate([Top](const FMenuTab& Tab) { return Tab.Screen == Top; }) ? Top : NAME_None;
+}
+
+FName UUIStackSubsystem::StepTab(const int32 Dir) const
+{
+	const FName Top = TopTab();
+	if (Top.IsNone() || Dir == 0) return NAME_None;
+	const TArray<FMenuTab>& Tabs = TabBarDefaults()->Tabs;
+	const int32 Count = Tabs.Num();
+	const int32 From = Tabs.IndexOfByPredicate([Top](const FMenuTab& Tab) { return Tab.Screen == Top; });
+	for (int32 Step = 1; Step < Count; ++Step)
+	{
+		const FMenuTab& Tab = Tabs[((From + Step * FMath::Sign(Dir)) % Count + Count) % Count];
+		if (!Tab.Screen.IsNone()) return Tab.Screen;
+	}
+	return NAME_None;
+}
+
+void UUIStackSubsystem::RefreshTabBar()
+{
+	const FName Top = TopTab();
+	if (Top.IsNone())
+	{
+		if (TabBar) TabBar->RemoveFromParent();
+		TabBar = nullptr;
+		return;
+	}
+	if (!IsValid(TabBar) || !TabBar->IsInViewport())
+	{
+		TabBar = CreateWidget<UMenuTabBarWidget>(GetController(), TabBarClass.LoadSynchronous());
+		if (!TabBar) return;
+		TabBar->AddToViewport(TabBarZOrder);
+	}
+	TabBar->ShowActive(Top);
 }
 
 APlayerController* UUIStackSubsystem::GetController() const

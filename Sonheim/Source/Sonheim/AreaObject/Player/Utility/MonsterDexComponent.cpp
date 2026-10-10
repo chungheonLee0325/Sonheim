@@ -75,15 +75,18 @@ void UMonsterDexComponent::Record(const int32 AreaObjectID, const bool bCaptured
 
 	if (bNew)
 	{
-		Notify(FText::Format(LOCTABLE(SONHEIM_ST_DEX, "Notice.Registered.Title"), Page->DisplayName),
-		       FText::Format(LOCTABLE(SONHEIM_ST_DEX, "Notice.Registered.Detail"), FText::AsNumber(Page->Number)));
+		// A new species is a big moment, said by how it was met.
+		Notify(ENoticeSlot::Headline, ENoticeTone::Information,
+		       bCaptured ? LOCTABLE(SONHEIM_ST_DEX, "Notice.FirstCapture.Title") : LOCTABLE(SONHEIM_ST_DEX, "Notice.FirstMeet.Title"),
+		       Page->DisplayName, FText::Format(LOCTABLE(SONHEIM_ST_DEX, "Notice.Registered.Detail"), FText::AsNumber(Page->Number)),
+		       LOCTABLE(SONHEIM_ST_DEX, "Notice.Registered.Footer"));
 	}
 	for (int32 Tier = 0; Tier < Page->RewardTiers.Num(); ++Tier)
 	{
 		if (!WasReady[Tier] && Entry->Meets(Page->RewardTiers[Tier]) && !Entry->IsClaimed(Tier))
 		{
-			Notify(FText::Format(LOCTABLE(SONHEIM_ST_DEX, "Notice.RewardReady.Title"), Page->DisplayName),
-			       LOCTABLE(SONHEIM_ST_DEX, "Notice.RewardReady.Detail"));
+			Notify(ENoticeSlot::Feed, ENoticeTone::Highlight, LOCTABLE(SONHEIM_ST_DEX, "Notice.RewardReady.Category"),
+			       Page->DisplayName, LOCTABLE(SONHEIM_ST_DEX, "Notice.RewardReady.Detail"));
 		}
 	}
 	Commit(*Entry);
@@ -120,16 +123,19 @@ void UMonsterDexComponent::Commit(FMonsterDexEntry& Entry)
 	}
 }
 
-void UMonsterDexComponent::Notify(const FText& Title, const FText& Detail) const
+void UMonsterDexComponent::Notify(const ENoticeSlot Slot, const ENoticeTone Tone, const FText& Category, const FText& Title, const FText& Detail,
+                                  const FText& Footer) const
 {
 	const APlayerState* PS = Cast<APlayerState>(GetOwner());
 	ASonheimPlayerController* Controller = PS ? Cast<ASonheimPlayerController>(PS->GetPlayerController()) : nullptr;
 	if (!Controller) return;
 	FNoticeData Data;
-	Data.Category = LOCTABLE(SONHEIM_ST_DEX, "Notice.Category");
+	Data.Category = Category;
 	Data.Title = Title;
 	Data.Detail = Detail;
+	Data.Footer = Footer;
 	Data.Symbol = INVTEXT("◆");
-	Data.Tone = ENoticeTone::Highlight;
-	Controller->PushNotice(ENoticeSlot::Banner, TEXT("Dex"), Data);
+	Data.Icon = NoticeIcon(TEXT("T_IconDex"));
+	Data.Tone = Tone;
+	Controller->PushNotice(Slot, TEXT("Dex"), Data);
 }

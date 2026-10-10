@@ -135,18 +135,18 @@ void UDungeonStagePresenter::ShowToasts(const FDungeonStageRuntimeState& Previou
 	if (!Presentation || !bShown) return;
 	// A client can receive several changes in one snapshot; each has its own banner, in the order they happen in a run.
 	for (const auto& Pair : Presentation->TagToasts)
-		if (Latest.RunTags.HasTagExact(Pair.Key) && !Previous.RunTags.HasTagExact(Pair.Key)) Notices->Push(ENoticeSlot::Banner, Channel, Pair.Value);
+		if (Latest.RunTags.HasTagExact(Pair.Key) && !Previous.RunTags.HasTagExact(Pair.Key)) Notices->Push(ENoticeSlot::Feed, Channel, Pair.Value);
 	for (const FDungeonGroupTally& Tally : Latest.Groups)
 		if (IsCleared(&Tally) && !IsCleared(FindTally(Previous, Tally.GroupId)))
-			if (const FNoticeData* Toast = Presentation->GroupClearToasts.Find(Tally.GroupId)) Notices->Push(ENoticeSlot::Banner, Channel, *Toast);
+			if (const FNoticeData* Toast = Presentation->GroupClearToasts.Find(Tally.GroupId)) Notices->Push(ENoticeSlot::Feed, Channel, *Toast);
 	if (Latest.SelectedBranchId.IsValid() && Latest.SelectedBranchId != Previous.SelectedBranchId)
-		if (const FNoticeData* Toast = Presentation->BranchToasts.Find(Latest.SelectedBranchId)) Notices->Push(ENoticeSlot::Banner, Channel, *Toast);
+		if (const FNoticeData* Toast = Presentation->BranchToasts.Find(Latest.SelectedBranchId)) Notices->Push(ENoticeSlot::Feed, Channel, *Toast);
 	if (Latest.RequiredCount > 0 && Latest.ObjectiveGroupId != Previous.ObjectiveGroupId)
 		if (const FNoticeData* Toast = Presentation->GroupToasts.Find(Latest.ObjectiveGroupId))
 		{
 			FNoticeData Data = *Toast;
 			Data.Detail = FText::Format(Toast->Detail, Latest.RequiredCount);
-			Notices->Push(ENoticeSlot::Banner, Channel, Data);
+			Notices->Push(ENoticeSlot::Feed, Channel, Data);
 		}
 }
 void UDungeonStagePresenter::ResolveOptional(const FDungeonStageRuntimeState& Previous)

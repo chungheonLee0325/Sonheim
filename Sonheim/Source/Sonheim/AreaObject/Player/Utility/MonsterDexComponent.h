@@ -4,6 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "Sonheim/MonsterDex/MonsterDexTypes.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
+#include "Sonheim/UI/Notice/NoticeSubsystem.h"
 #include "MonsterDexComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMonsterDexChanged);
@@ -43,7 +44,8 @@ private:
 	void Record(int32 AreaObjectID, bool bCaptured);
 	/** Marks the entry for replication, tells local listeners and writes the save. */
 	void Commit(FMonsterDexEntry& Entry);
-	void Notify(const FText& Title, const FText& Detail) const;
+	/** On a headline the category is the big coloured line, the title the name under it. */
+	void Notify(ENoticeSlot Slot, ENoticeTone Tone, const FText& Category, const FText& Title, const FText& Detail, const FText& Footer = FText()) const;
 	/** Server: defeats and captures, as the PlayerState reports them. */
 	void HandleDeed(EPlayerDeed Deed, int32 Id, int32 Count, FName Place);
 

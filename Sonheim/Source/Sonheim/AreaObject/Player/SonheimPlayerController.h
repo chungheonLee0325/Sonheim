@@ -116,6 +116,14 @@ private:
 	void On_CKey_Pressed(const FInputActionValue& InputActionValue);
 	void On_CKey_Released(const FInputActionValue& InputActionValue);
 	void On_Dex_Pressed(const FInputActionValue& InputActionValue);
+public:
+	/** Opens a menu tab's screen (UIScreen::Menu, MonsterDex, QuestJournal) in place of the tab showing, if one is. */
+	void OpenTab(FName Screen);
+private:
+	void OpenMenu();
+	/** Q and E step the menu's tabs while a tab's screen is on top; returns whether they did. */
+	bool StepTab(int32 Dir);
+private:
 	void On_Journal_Pressed(const FInputActionValue& InputActionValue);
 
 

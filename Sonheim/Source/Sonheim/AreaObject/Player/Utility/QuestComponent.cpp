@@ -146,7 +146,7 @@ void UQuestComponent::ServerAccept_Implementation(const int32 QuestID, AActor* G
 	FQuestRecord& Record = Quests.Items.AddDefaulted_GetRef();
 	Record.QuestID = QuestID;
 	Record.Progress.SetNum(Quest->Steps[0].Objectives.Num());
-	Notify(Quest->Title, LOCTABLE(SONHEIM_ST_QUEST, "Notice.Accepted.Detail"));
+	Notify(ENoticeTone::Information, LOCTABLE(SONHEIM_ST_QUEST, "Notice.Accepted.Category"), Quest->Title, LOCTABLE(SONHEIM_ST_QUEST, "Notice.Accepted.Detail"));
 	// Items the player already holds count at once.
 	Settle(Record, *Quest);
 	Changed(Record);
@@ -292,7 +292,7 @@ void UQuestComponent::Settle(FQuestRecord& Record, const FQuestData& Quest)
 		{
 			++Record.Step;
 			Record.Progress.Init(0, Quest.Steps[Record.Step].Objectives.Num());
-			Notify(Quest.Title, Quest.Steps[Record.Step].Summary);
+			Notify(ENoticeTone::Update, LOCTABLE(SONHEIM_ST_QUEST, "Notice.Updated.Category"), Quest.Title, Quest.Steps[Record.Step].Summary);
 		}
 		else if (Quest.Receiver.IsNone())
 		{
@@ -302,7 +302,7 @@ void UQuestComponent::Settle(FQuestRecord& Record, const FQuestData& Quest)
 		{
 			Record.State = EQuestState::ReadyToTurnIn;
 			Record.Progress.Reset();
-			Notify(Quest.Title, LOCTABLE(SONHEIM_ST_QUEST, "Notice.Ready.Detail"));
+			Notify(ENoticeTone::Highlight, LOCTABLE(SONHEIM_ST_QUEST, "Notice.Ready.Category"), Quest.Title, LOCTABLE(SONHEIM_ST_QUEST, "Notice.Ready.Detail"));
 		}
 	}
 }
@@ -314,7 +314,7 @@ void UQuestComponent::Finish(FQuestRecord& Record, const FQuestData& Quest)
 	Record.Progress.Reset();
 	Record.bTracked = false;
 	SonheimReward::Grant(*Owner(), Quest.Items, Quest.Exp);
-	Notify(FText::Format(LOCTABLE(SONHEIM_ST_QUEST, "Notice.Completed.Title"), Quest.Title), LOCTABLE(SONHEIM_ST_QUEST, "Notice.Completed.Detail"));
+	Notify(ENoticeTone::Success, LOCTABLE(SONHEIM_ST_QUEST, "Notice.Completed.Category"), Quest.Title, LOCTABLE(SONHEIM_ST_QUEST, "Notice.Completed.Detail"));
 }
 
 void UQuestComponent::Changed(FQuestRecord& Record)
@@ -342,15 +342,18 @@ void UQuestComponent::DebugSet(const int32 QuestID, const EQuestState State)
 	Changed(*Record);
 }
 
-void UQuestComponent::Notify(const FText& Title, const FText& Detail) const
+void UQuestComponent::Notify(const ENoticeTone Tone, const FText& Category, const FText& Title, const FText& Detail) const
 {
 	ASonheimPlayerController* Controller = Cast<ASonheimPlayerController>(Owner()->GetPlayerController());
 	if (!Controller) return;
 	FNoticeData Data;
-	Data.Category = LOCTABLE(SONHEIM_ST_QUEST, "Notice.Category");
+	Data.Category = Category;
 	Data.Title = Title;
 	Data.Detail = Detail;
 	Data.Symbol = INVTEXT("!");
-	Data.Tone = ENoticeTone::Information;
-	Controller->PushNotice(ENoticeSlot::Banner, TEXT("Quest"), Data);
+	// The tone says which step of the quest it is, so it picks the icon too.
+	Data.Icon = NoticeIcon(Tone == ENoticeTone::Update ? TEXT("T_IconQuestUpdate") : Tone == ENoticeTone::Highlight ? TEXT("T_IconQuestReady")
+		: Tone == ENoticeTone::Success ? TEXT("T_IconQuestDone") : TEXT("T_IconQuestNew"));
+	Data.Tone = Tone;
+	Controller->PushNotice(ENoticeSlot::Feed, TEXT("Quest"), Data);
 }

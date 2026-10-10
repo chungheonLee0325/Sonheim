@@ -30,8 +30,8 @@ ULevelComponent::ULevelComponent()
     LevelUpNotice.Title = LOCTABLE(SONHEIM_ST_NOTICE, "LevelUp.Title");
     LevelUpNotice.Detail = LOCTABLE(SONHEIM_ST_NOTICE, "LevelUp.Detail");
     LevelUpNotice.Symbol = INVTEXT("★");
-    LevelUpNotice.Icon = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT("/Game/CuratedDungeon/UI/Icons/T_Icon_Star.T_Icon_Star")));
-    LevelUpNotice.Tone = ENoticeTone::Highlight;
+    LevelUpNotice.Icon = NoticeIcon(TEXT("T_IconLevelUp"));
+    LevelUpNotice.Tone = ENoticeTone::Information;
 }
 
 void ULevelComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -243,7 +243,15 @@ void ULevelComponent::HandleLevelUp()
         {
             FNoticeData Data = LevelUpNotice;
             Data.Title = FText::Format(LevelUpNotice.Title, CurrentLevel);
-            Controller->PushNotice(ENoticeSlot::Banner, TEXT("Level"), Data);
+            Data.Detail = FText::Format(LevelUpNotice.Detail, CurrentLevel);
+            const FText Plus = LOCTABLE(SONHEIM_ST_NOTICE, "LevelUp.PlusFormat");
+            Data.Lines = {
+                {NoticeIcon(TEXT("T_IconStatHp")), LOCTABLE(SONHEIM_ST_NOTICE, "Stat.HP"), FText::Format(Plus, LevelUpHP)},
+                {NoticeIcon(TEXT("T_IconStatAttack")), LOCTABLE(SONHEIM_ST_NOTICE, "Stat.Attack"), FText::Format(Plus, LevelUpAttack)},
+                {NoticeIcon(TEXT("T_IconStatDefense")), LOCTABLE(SONHEIM_ST_NOTICE, "Stat.Defense"), FText::Format(Plus, LevelUpDefense)},
+            };
+            Data.Footer = FText::Format(LOCTABLE(SONHEIM_ST_NOTICE, "LevelUp.Footer"), StatPointsPerLevel);
+            Controller->PushNotice(ENoticeSlot::Headline, TEXT("Level"), Data);
         }
     }
 }
@@ -274,9 +282,9 @@ void ULevelComponent::ApplyLevelUpBonuses(int32 OldLevel, int32 NewLevel)
         int32 LevelDiff = NewLevel - OldLevel;
         if (LevelDiff != 0)
         {
-            float HPBonus = 10.0f * LevelDiff;
-            float AttackBonus = 2.0f * LevelDiff;
-            float DefenseBonus = 1.0f * LevelDiff;
+            float HPBonus = LevelUpHP * LevelDiff;
+            float AttackBonus = LevelUpAttack * LevelDiff;
+            float DefenseBonus = LevelUpDefense * LevelDiff;
 
             StatComp->AddStatBonus(EAreaObjectStatType::HP, HPBonus, EStatModifierType::Additive, -1);
             StatComp->AddStatBonus(EAreaObjectStatType::Attack, AttackBonus, EStatModifierType::Additive, -1);

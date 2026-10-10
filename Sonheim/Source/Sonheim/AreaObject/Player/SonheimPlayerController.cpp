@@ -668,6 +668,7 @@ void ASonheimPlayerController::On_PartnerSkill_Released(const FInputActionValue&
 
 void ASonheimPlayerController::On_SummonPal_Pressed(const FInputActionValue& Value)
 {
+	if (StepTab(1) || IsUIBlockingInput()) return;
 	m_Player->SummonPal_Pressed();
 }
 
@@ -682,7 +683,7 @@ void ASonheimPlayerController::On_SwitchPalSlot_Triggered(const FInputActionValu
 
 void ASonheimPlayerController::On_ThrowPalSphere_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (IsUIBlockingInput()) return;
+	if (StepTab(-1) || IsUIBlockingInput()) return;
 	m_Player->RightMouse_Pressed();
 	GetPlayerStatusWidget()->SetEnableCrossHair(true);
 	GetPlayerStatusWidget()->SetEnableKeyGuide(true, EUIKeyGuide::RButton, "취소");
@@ -707,8 +708,14 @@ void ASonheimPlayerController::On_Menu_Pressed(const FInputActionValue& Value)
 {
 	UUIStackSubsystem* UIStack = GetUIStack();
 	// Tab은 맨 위 화면(메뉴·상자·제작대)을 닫고, 열린 화면이 없을 때만 메뉴를 연다.
-	if (!UIStack || UIStack->CloseTop() || !m_PlayerState) return;
+	if (!UIStack || UIStack->CloseTop()) return;
+	OpenMenu();
+}
 
+void ASonheimPlayerController::OpenMenu()
+{
+	UUIStackSubsystem* UIStack = GetUIStack();
+	if (!UIStack || !m_PlayerState) return;
 	m_Player->Menu_Pressed();
 	const TArray<UUserWidget*> Widgets = UIStack->Open(UIScreen::Menu, {InventoryWidgetClass, PlayerStatWidgetClass});
 	if (Widgets.Num() != 2) return;
@@ -811,7 +818,8 @@ void ASonheimPlayerController::On_Journal_Pressed(const FInputActionValue& Input
 {
 	UUIStackSubsystem* UIStack = GetUIStack();
 	if (!UIStack || UIStack->IsOpen(UIScreen::Container) || UIStack->IsOpen(UIScreen::Crafting)) return;
-	UIStack->Toggle(UIScreen::QuestJournal);
+	if (UIStack->IsOpen(UIScreen::QuestJournal)) UIStack->Close(UIScreen::QuestJournal);
+	else OpenTab(UIScreen::QuestJournal);
 }
 
 void ASonheimPlayerController::Client_OpenQuestDialog_Implementation(AActor* Target)
@@ -826,7 +834,29 @@ void ASonheimPlayerController::On_Dex_Pressed(const FInputActionValue& InputActi
 	// 상자·제작대처럼 서버와 맞물린 화면 위에서는 열지 않는다.
 	UUIStackSubsystem* UIStack = GetUIStack();
 	if (!UIStack || UIStack->IsOpen(UIScreen::Container) || UIStack->IsOpen(UIScreen::Crafting)) return;
-	UIStack->Toggle(UIScreen::MonsterDex);
+	if (UIStack->IsOpen(UIScreen::MonsterDex)) UIStack->Close(UIScreen::MonsterDex);
+	else OpenTab(UIScreen::MonsterDex);
+}
+
+void ASonheimPlayerController::OpenTab(const FName Screen)
+{
+	UUIStackSubsystem* UIStack = GetUIStack();
+	if (!UIStack || Screen.IsNone()) return;
+	const FName Showing = UIStack->TopTab();
+	if (Showing == Screen) return;
+	// One tab at a time: the next one takes the place of the one showing.
+	if (!Showing.IsNone()) UIStack->Close(Showing);
+	if (Screen == UIScreen::Menu) OpenMenu();
+	else UIStack->Open(Screen);
+}
+
+bool ASonheimPlayerController::StepTab(const int32 Dir)
+{
+	const UUIStackSubsystem* UIStack = GetUIStack();
+	const FName Next = UIStack ? UIStack->StepTab(Dir) : NAME_None;
+	if (Next.IsNone()) return false;
+	OpenTab(Next);
+	return true;
 }
 
 void ASonheimPlayerController::QuestSet(const int32 QuestID, const FString& State)

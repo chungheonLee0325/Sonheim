@@ -1,0 +1,551 @@
+{
+  "feature": "ui_v2",
+  "description": "Icons of the v2 (Palworld-like) UI: notices (feed and headline), quest states, level-up stats, the nine elements of the monster book, and the tab menu. One set, tinted by the widgets.",
+  "style": "Flat single-color game UI glyph: a pure white (#FFFFFF) silhouette on a fully transparent background. Bold, rounded, friendly shapes that read at 20 pixels, as a cheerful creature-collecting adventure game's HUD: strokes about a tenth of the icon's width, rounded ends and joins, no hairlines, no detail smaller than a stroke. No gradients, outlines, shadows, glow, perspective, text, letters, numbers, logos or watermarks. Centered and optically balanced inside the padding. See Art/Style/ui_style.md.",
+  "references": [
+    "Art/Style/ui_style.md"
+  ],
+  "items": [
+    {
+      "id": "icon_element_neutral",
+      "usage": "icon",
+      "subject": "Neutral element: a simple round spiral swirl",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconElementNeutral",
+      "usedBy": "Monster book element badges (P4 dex redesign, ref 08), white glyph on a disc of the element's colour",
+      "sheet": "a",
+      "cell": [
+        1,
+        1
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_element_fire",
+      "usage": "icon",
+      "subject": "Fire element: a single bold flame",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconElementFire",
+      "usedBy": "Monster book element badges (P4 dex redesign, ref 08), white glyph on a disc of the element's colour",
+      "sheet": "a",
+      "cell": [
+        1,
+        2
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_element_water",
+      "usage": "icon",
+      "subject": "Water element: a single water drop",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconElementWater",
+      "usedBy": "Monster book element badges (P4 dex redesign, ref 08), white glyph on a disc of the element's colour",
+      "sheet": "a",
+      "cell": [
+        1,
+        3
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_element_grass",
+      "usage": "icon",
+      "subject": "Grass element: a single leaf with a center vein",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconElementGrass",
+      "usedBy": "Monster book element badges (P4 dex redesign, ref 08), white glyph on a disc of the element's colour",
+      "sheet": "a",
+      "cell": [
+        2,
+        1
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_element_electric",
+      "usage": "icon",
+      "subject": "Electric element: a jagged lightning bolt",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconElementElectric",
+      "usedBy": "Monster book element badges (P4 dex redesign, ref 08), white glyph on a disc of the element's colour",
+      "sheet": "a",
+      "cell": [
+        2,
+        2
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_element_ice",
+      "usage": "icon",
+      "subject": "Ice element: a six-armed snowflake crystal",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconElementIce",
+      "usedBy": "Monster book element badges (P4 dex redesign, ref 08), white glyph on a disc of the element's colour",
+      "sheet": "a",
+      "cell": [
+        2,
+        3
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_element_ground",
+      "usage": "icon",
+      "subject": "Ground element: a mountain peak of two triangles with a rock at its foot",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconElementGround",
+      "usedBy": "Monster book element badges (P4 dex redesign, ref 08), white glyph on a disc of the element's colour",
+      "sheet": "a",
+      "cell": [
+        3,
+        1
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_element_dark",
+      "usage": "icon",
+      "subject": "Dark element: a crescent moon",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconElementDark",
+      "usedBy": "Monster book element badges (P4 dex redesign, ref 08), white glyph on a disc of the element's colour",
+      "sheet": "a",
+      "cell": [
+        3,
+        2
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_element_dragon",
+      "usage": "icon",
+      "subject": "Dragon element: a dragon's head in profile with one horn",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconElementDragon",
+      "usedBy": "Monster book element badges (P4 dex redesign, ref 08), white glyph on a disc of the element's colour",
+      "sheet": "a",
+      "cell": [
+        3,
+        3
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_quest_new",
+      "usage": "icon",
+      "subject": "A new quest: a bold exclamation mark inside a thick ring",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconQuestNew",
+      "usedBy": "UNoticeSubsystem producers: FNoticeData.Icon, drawn by /Game/UI/Notice/WBP_NoticeFeedRow or WBP_NoticeHeadline SymbolIcon, tinted with the tone's colour; quest accepted (QuestComponent.cpp Notify) and the journal's new state",
+      "sheet": "b",
+      "cell": [
+        1,
+        1
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_quest_update",
+      "usage": "icon",
+      "subject": "A quest updated: two curved arrows chasing each other in a circle (refresh)",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconQuestUpdate",
+      "usedBy": "UNoticeSubsystem producers: FNoticeData.Icon, drawn by /Game/UI/Notice/WBP_NoticeFeedRow or WBP_NoticeHeadline SymbolIcon, tinted with the tone's colour; quest step updated",
+      "sheet": "b",
+      "cell": [
+        1,
+        2
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_quest_ready",
+      "usage": "icon",
+      "subject": "A quest ready to report: a rolled scroll with a small check mark on it",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconQuestReady",
+      "usedBy": "UNoticeSubsystem producers: FNoticeData.Icon, drawn by /Game/UI/Notice/WBP_NoticeFeedRow or WBP_NoticeHeadline SymbolIcon, tinted with the tone's colour; quest ready to report",
+      "sheet": "b",
+      "cell": [
+        1,
+        3
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_quest_done",
+      "usage": "icon",
+      "subject": "A quest completed: a bold check mark inside a thick ring",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconQuestDone",
+      "usedBy": "UNoticeSubsystem producers: FNoticeData.Icon, drawn by /Game/UI/Notice/WBP_NoticeFeedRow or WBP_NoticeHeadline SymbolIcon, tinted with the tone's colour; quest completed",
+      "sheet": "b",
+      "cell": [
+        2,
+        1
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_warning",
+      "usage": "icon",
+      "subject": "Warning: an exclamation mark inside a triangle with rounded corners",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconWarning",
+      "usedBy": "UNoticeSubsystem producers: FNoticeData.Icon, drawn by /Game/UI/Notice/WBP_NoticeFeedRow or WBP_NoticeHeadline SymbolIcon, tinted with the tone's colour; party full (PalCaptureComponent.cpp) and other cautions",
+      "sheet": "b",
+      "cell": [
+        2,
+        2
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_craft",
+      "usage": "icon",
+      "subject": "Crafting done: a hammer crossed over a small anvil",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconCraft",
+      "usedBy": "UNoticeSubsystem producers: FNoticeData.Icon, drawn by /Game/UI/Notice/WBP_NoticeFeedRow or WBP_NoticeHeadline SymbolIcon, tinted with the tone's colour; crafting done (CraftingStation.cpp)",
+      "sheet": "b",
+      "cell": [
+        2,
+        3
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_level_up",
+      "usage": "icon",
+      "subject": "Level up: a bold upward chevron arrow over a short bar",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconLevelUp",
+      "usedBy": "UNoticeSubsystem producers: FNoticeData.Icon, drawn by /Game/UI/Notice/WBP_NoticeFeedRow or WBP_NoticeHeadline SymbolIcon, tinted with the tone's colour; the level-up headline's emblem (LevelComponent.cpp)",
+      "sheet": "b",
+      "cell": [
+        3,
+        1
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_dex",
+      "usage": "icon",
+      "subject": "Monster book: an open book seen from the front",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconDex",
+      "usedBy": "UNoticeSubsystem producers: FNoticeData.Icon, drawn by /Game/UI/Notice/WBP_NoticeFeedRow or WBP_NoticeHeadline SymbolIcon, tinted with the tone's colour; the dex headline's emblem and reward feed (MonsterDexComponent.cpp); tab 도감",
+      "sheet": "b",
+      "cell": [
+        3,
+        2
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_exp",
+      "usage": "icon",
+      "subject": "Experience: a four-pointed sparkle star with a small sparkle beside it",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconExp",
+      "usedBy": "Reward chips (Rewards/RewardTypes FRewardChipView, Exp) in the dex and quest screens",
+      "sheet": "b",
+      "cell": [
+        3,
+        3
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_stat_hp",
+      "usage": "icon",
+      "subject": "Health: a bold heart",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconStatHp",
+      "usedBy": "Headline lines: FNoticeLine.Icon of ULevelComponent's level-up headline, drawn by /Game/UI/Notice/WBP_NoticeLine IconImage",
+      "sheet": "c",
+      "cell": [
+        1,
+        1
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_stat_attack",
+      "usage": "icon",
+      "subject": "Attack: a sword pointing up",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconStatAttack",
+      "usedBy": "Headline lines: FNoticeLine.Icon of ULevelComponent's level-up headline, drawn by /Game/UI/Notice/WBP_NoticeLine IconImage",
+      "sheet": "c",
+      "cell": [
+        1,
+        2
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_stat_defense",
+      "usage": "icon",
+      "subject": "Defense: a heater shield",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconStatDefense",
+      "usedBy": "Headline lines: FNoticeLine.Icon of ULevelComponent's level-up headline, drawn by /Game/UI/Notice/WBP_NoticeLine IconImage",
+      "sheet": "c",
+      "cell": [
+        1,
+        3
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_stat_point",
+      "usage": "icon",
+      "subject": "Stat points: an upward arrow inside a thick ring",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconStatPoint",
+      "usedBy": "The level-up headline's footer line (stat points gained)",
+      "sheet": "c",
+      "cell": [
+        2,
+        1
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_tab_inventory",
+      "usage": "icon",
+      "subject": "Inventory: a backpack with a flap and one front pocket",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconTabInventory",
+      "usedBy": "Tab menu shell (P3): the tab's glyph above its label; 인벤토리",
+      "sheet": "c",
+      "cell": [
+        2,
+        2
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_tab_pals",
+      "usage": "icon",
+      "subject": "Pals: a paw print",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconTabPals",
+      "usedBy": "Tab menu shell (P3): the tab's glyph above its label; 보유 팰",
+      "sheet": "c",
+      "cell": [
+        2,
+        3
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_tab_quest",
+      "usage": "icon",
+      "subject": "Quests: a rolled scroll",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconTabQuest",
+      "usedBy": "Tab menu shell (P3): the tab's glyph above its label; 퀘스트",
+      "sheet": "c",
+      "cell": [
+        3,
+        1
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_tab_map",
+      "usage": "icon",
+      "subject": "Map: a folded paper map with a location pin",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconTabMap",
+      "usedBy": "Tab menu shell (P3): the tab's glyph above its label; 지도",
+      "sheet": "c",
+      "cell": [
+        3,
+        2
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "icon_place",
+      "usage": "icon",
+      "subject": "A place: a location pin",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconPlace",
+      "usedBy": "Quest journal header: where the quest takes place (ref 09)",
+      "sheet": "c",
+      "cell": [
+        3,
+        3
+      ],
+      "status": "approved"
+    }
+  ],
+  "captures": []
+}

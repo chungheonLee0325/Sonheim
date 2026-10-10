@@ -25,7 +25,7 @@ ACraftingStation::ACraftingStation()
 	CompletedNotice.Title = LOCTABLE(SONHEIM_ST_NOTICE, "CraftDone.Title");
 	CompletedNotice.Detail = LOCTABLE(SONHEIM_ST_NOTICE, "CraftDone.Detail");
 	CompletedNotice.Symbol = INVTEXT("✓");
-	CompletedNotice.Icon = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT("/Game/CuratedDungeon/UI/Icons/T_Icon_Check.T_Icon_Check")));
+	CompletedNotice.Icon = NoticeIcon(TEXT("T_IconCraft"));
 	CompletedNotice.Tone = ENoticeTone::Information;
 
 	StationMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StationMesh"));
@@ -353,7 +353,7 @@ void ACraftingStation::NotifyCompleted(const ASonheimPlayer* Worker) const
 	FNoticeData Data = CompletedNotice;
 	Data.Title = FText::Format(CompletedNotice.Title, Item->ItemName);
 	Data.Detail = FText::Format(CompletedNotice.Detail, CompletedToCollect);
-	Controller->PushNotice(ENoticeSlot::Banner, TEXT("Crafting"), Data);
+	Controller->PushNotice(ENoticeSlot::Feed, TEXT("Crafting"), Data);
 }
 
 void ACraftingStation::ServerCollectAll_Implementation(ASonheimPlayer* Player)

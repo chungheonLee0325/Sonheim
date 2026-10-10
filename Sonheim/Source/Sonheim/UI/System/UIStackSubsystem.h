@@ -5,6 +5,7 @@
 #include "UIStackSubsystem.generated.h"
 
 class UUserWidget;
+class UMenuTabBarWidget;
 
 /** Screen Ids, each with a rule in DefaultGame.ini. */
 namespace UIScreen
@@ -77,6 +78,10 @@ public:
 	UFUNCTION(BlueprintPure, Category="UI") bool IsOpen(FName Id) const;
 	UFUNCTION(BlueprintPure, Category="UI") bool HasOpenScreen() const;
 	UUserWidget* GetWidget(FName Id) const;
+	/** The top screen when it is one of the menu's tabs, None otherwise. */
+	FName TopTab() const;
+	/** The tab Dir steps away from the top one (-1 left, 1 right), past the dimmed ones and round the ends; None when no tab is on top. */
+	FName StepTab(int32 Dir) const;
 	/** Whether the top screen holds back moving, looking, attacking and the other gameplay input. */
 	UFUNCTION(BlueprintPure, Category="UI") bool IsGameplayBlocked() const;
 
@@ -88,8 +93,15 @@ private:
 	/** Drops screens that are no longer live. */
 	void Prune();
 	void ApplyInputState();
+	/** Shows the tab bar over a tab's screen, lit on that tab, and takes it away otherwise. */
+	void RefreshTabBar();
+	const UMenuTabBarWidget* TabBarDefaults() const;
 	APlayerController* GetController() const;
 
 	UPROPERTY(Config) TArray<FUIScreenRule> Screens;
 	UPROPERTY(Transient) TArray<FUIStackEntry> Stack;
+	/** The bar across the top of the menu's screens; its tabs name the screens it shows over. */
+	UPROPERTY(Config) TSoftClassPtr<UMenuTabBarWidget> TabBarClass;
+	UPROPERTY(Config) int32 TabBarZOrder = 50;
+	UPROPERTY(Transient) TObjectPtr<UMenuTabBarWidget> TabBar;
 };

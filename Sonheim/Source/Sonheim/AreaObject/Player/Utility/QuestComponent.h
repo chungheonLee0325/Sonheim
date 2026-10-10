@@ -4,6 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "Sonheim/Quest/QuestTypes.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
+#include "Sonheim/UI/Notice/NoticeSubsystem.h"
 #include "QuestComponent.generated.h"
 
 struct FInventoryItem;
@@ -69,7 +70,7 @@ private:
 	void Finish(FQuestRecord& Record, const FQuestData& Quest);
 	bool IsAt(AActor* Target, FName Name) const;
 	void Changed(FQuestRecord& Record);
-	void Notify(const FText& Title, const FText& Detail) const;
+	void Notify(ENoticeTone Tone, const FText& Category, const FText& Title, const FText& Detail) const;
 	const FQuestData* QuestOf(int32 QuestID) const;
 	FQuestRecord* Find(int32 QuestID);
 	class ASonheimPlayerState* Owner() const;

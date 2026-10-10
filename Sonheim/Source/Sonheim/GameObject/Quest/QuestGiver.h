@@ -32,6 +32,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Quest") FText TalkText;
 	/** Looped on the mesh while the person stands there. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Quest") TObjectPtr<UAnimationAsset> IdleAnimation;
+	/** Over the person's head while they have something for the looking player: a quest to give (!) or one to take back (?).
+	 * Its Widget Blueprint names a TextBlock MarkText for the mark. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Quest") TSubclassOf<UUserWidget> MarkerWidgetClass;
 	/** The server refuses a player farther than this, as other interactions do. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Quest") float InteractionDistance = 350.f;
 
@@ -45,10 +48,14 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 
 private:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UCapsuleComponent> Body;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USkeletalMeshComponent> Mesh;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UWidgetComponent> DetectWidgetComponent;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UWidgetComponent> MarkerWidgetComponent;
+	void RefreshMarker();
+	FTimerHandle MarkerTimer;
 	UPROPERTY() TSubclassOf<UUserWidget> DetectWidgetClass;
 };

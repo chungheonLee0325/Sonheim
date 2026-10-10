@@ -22,7 +22,7 @@ UPalCaptureComponent::UPalCaptureComponent()
 	PartyFullNotice.Title = LOCTABLE(SONHEIM_ST_NOTICE, "PartyFull.Title");
 	PartyFullNotice.Detail = LOCTABLE(SONHEIM_ST_NOTICE, "PartyFull.Detail");
 	PartyFullNotice.Symbol = INVTEXT("!");
-	PartyFullNotice.Icon = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT("/Game/CuratedDungeon/UI/Icons/T_Icon_Warning.T_Icon_Warning")));
+	PartyFullNotice.Icon = NoticeIcon(TEXT("T_IconWarning"));
 	PartyFullNotice.Tone = ENoticeTone::Warning;
 }
 
@@ -372,7 +372,7 @@ void UPalCaptureComponent::NotifyPartyFull() const
 	if (!Controller || !PalInventory) return;
 	FNoticeData Data = PartyFullNotice;
 	Data.Detail = FText::Format(PartyFullNotice.Detail, PalInventory->MaxPalCount);
-	Controller->PushNotice(ENoticeSlot::Banner, TEXT("Capture"), Data);
+	Controller->PushNotice(ENoticeSlot::Feed, TEXT("Capture"), Data);
 }
 
 void UPalCaptureComponent::OnRep_IsThrowingPalSphere()
