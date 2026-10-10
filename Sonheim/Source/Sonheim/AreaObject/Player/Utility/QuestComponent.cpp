@@ -21,6 +21,8 @@ void FQuestRecord::PreReplicatedRemove(const FQuestList& List)
 	if (List.Owner) List.Owner->OnQuestsChanged.Broadcast();
 }
 
+FSimpleMulticastDelegate UQuestComponent::OnAnyRecordChanged;
+
 UQuestComponent::UQuestComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
@@ -87,6 +89,7 @@ void UQuestComponent::LoadSaved()
 	// Held items may have changed while the player was away.
 	HandleInventory({});
 	OnQuestsChanged.Broadcast();
+	OnAnyRecordChanged.Broadcast();
 }
 
 bool UQuestComponent::CanAccept(const int32 QuestID) const
@@ -317,6 +320,7 @@ void UQuestComponent::Changed(FQuestRecord& Record)
 {
 	Quests.MarkItemDirty(Record);
 	OnQuestsChanged.Broadcast();
+	OnAnyRecordChanged.Broadcast();
 	if (UQuestSubsystem* Book = GetWorld()->GetGameInstance()->GetSubsystem<UQuestSubsystem>()) Book->StorePlayer(Owner()->GetSaveKey(), Quests.Items);
 }
 

@@ -53,6 +53,9 @@ public:
 	/** Any record changed, on the server and on the owning client. */
 	UPROPERTY(BlueprintAssignable, Category="Quest") FOnQuestsChanged OnQuestsChanged;
 
+	/** Server: some player's records changed or were loaded, for world things that follow quests, such as a building site. */
+	static FSimpleMulticastDelegate OnAnyRecordChanged;
+
 	/** How close a player must stand to a giver or receiver to accept or report. */
 	UPROPERTY(EditAnywhere, Category="Quest") float ReachDistance = 600.f;
 
