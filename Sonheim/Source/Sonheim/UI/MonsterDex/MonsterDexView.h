@@ -2,21 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
+#include "Sonheim/Rewards/RewardTypes.h"
 #include "MonsterDexView.generated.h"
 
 class UMonsterDexComponent;
 class UTexture2D;
-
-/** One thing a reward tier pays, as a chip shows it: an icon and a short label such as ×3 or 경험치 50. */
-USTRUCT(BlueprintType)
-struct FMonsterDexRewardView
-{
-	GENERATED_BODY()
-	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> Icon;
-	UPROPERTY(BlueprintReadOnly) FText Label;
-	/** The item's name, for the chip's tooltip; empty for experience. */
-	UPROPERTY(BlueprintReadOnly) FText Name;
-};
 
 UENUM(BlueprintType)
 enum class EMonsterDexTierState : uint8 { InProgress, Ready, Claimed };
@@ -32,7 +22,7 @@ struct FMonsterDexTierView
 	UPROPERTY(BlueprintReadOnly) int32 Required = 1;
 	UPROPERTY(BlueprintReadOnly) bool bCapture = false;
 	UPROPERTY(BlueprintReadOnly) EMonsterDexTierState State = EMonsterDexTierState::InProgress;
-	UPROPERTY(BlueprintReadOnly) TArray<FMonsterDexRewardView> Rewards;
+	UPROPERTY(BlueprintReadOnly) TArray<FRewardChipView> Rewards;
 };
 
 /** One page as the book shows it. An undiscovered page keeps its number and hides the rest. */

@@ -3,6 +3,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Player/Utility/QuestComponent.h"
 #include "Sonheim/UI/Widget/DetectWidget.h"
 
@@ -42,7 +43,9 @@ void AQuestGiver::Interact_Implementation(ASonheimPlayer* Player)
 	if (!HasAuthority() || !IsValid(Player) || Player->IsDie() || Player->GetDistanceTo(this) > InteractionDistance) return;
 	const ASonheimPlayerState* State = Player->GetPlayerState<ASonheimPlayerState>();
 	if (!State || !State->m_QuestComponent) return;
+	// Talking and handing over count first, so a quest finished by this very visit can be reported in the dialog it opens.
 	State->m_QuestComponent->Interact(this);
+	if (auto* Controller = Player->GetController<ASonheimPlayerController>()) Controller->Client_OpenQuestDialog(this);
 }
 
 void AQuestGiver::OnDetected_Implementation(const bool bDetected)

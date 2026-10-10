@@ -13,6 +13,8 @@ namespace UIScreen
 	inline const FName Container(TEXT("Container"));
 	inline const FName Crafting(TEXT("Crafting"));
 	inline const FName MonsterDex(TEXT("MonsterDex"));
+	inline const FName QuestDialog(TEXT("QuestDialog"));
+	inline const FName QuestJournal(TEXT("QuestJournal"));
 }
 
 UENUM()

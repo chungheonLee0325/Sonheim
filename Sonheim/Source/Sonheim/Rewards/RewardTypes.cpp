@@ -3,6 +3,26 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
+#include "Sonheim/GameManager/SonheimGameInstance.h"
+#include "Sonheim/Utilities/StringTableIds.h"
+#include "Engine/Texture2D.h"
+
+TArray<FRewardChipView> SonheimReward::Describe(UGameInstance* Game, const TArray<FItemReward>& Items, const int32 Exp)
+{
+	TArray<FRewardChipView> Chips;
+	USonheimGameInstance* Sonheim = Cast<USonheimGameInstance>(Game);
+	for (const FItemReward& Item : Items)
+	{
+		const FItemData* Data = Sonheim ? Sonheim->GetDataItem(Item.ItemId) : nullptr;
+		Chips.Add({Data ? Data->ItemIcon : nullptr, FText::Format(INVTEXT("×{0}"), Item.Count), Data ? Data->ItemName : FText::GetEmpty()});
+	}
+	if (Exp > 0)
+	{
+		static const TCHAR* StarIcon = TEXT("/Game/CuratedDungeon/UI/Icons/T_Icon_Star.T_Icon_Star");
+		Chips.Add({LoadObject<UTexture2D>(nullptr, StarIcon), FText::Format(LOCTABLE(SONHEIM_ST_NOTICE, "Reward.ExpFormat"), Exp), FText::GetEmpty()});
+	}
+	return Chips;
+}
 
 void SonheimReward::Grant(const ASonheimPlayerState& Player, const TArray<FItemReward>& Items, const int32 Exp)
 {

@@ -8,8 +8,6 @@
 
 namespace
 {
-	const TCHAR* StarIcon = TEXT("/Game/CuratedDungeon/UI/Icons/T_Icon_Star.T_Icon_Star");
-
 	FMonsterDexTierView TierView(const FMonsterDexRewardTier& Tier, const int32 Index, const FMonsterDexEntry* Entry, USonheimGameInstance* Game)
 	{
 		FMonsterDexTierView View;
@@ -21,15 +19,7 @@ namespace
 		View.Condition = FText::Format(View.bCapture ? LOCTABLE(SONHEIM_ST_DEX, "Tier.CaptureFormat") : LOCTABLE(SONHEIM_ST_DEX, "Tier.KillFormat"), View.Required);
 		View.State = Entry && Entry->IsClaimed(Index) ? EMonsterDexTierState::Claimed
 			: Entry && Entry->Meets(Tier) ? EMonsterDexTierState::Ready : EMonsterDexTierState::InProgress;
-		for (const FItemReward& Item : Tier.Items)
-		{
-			const FItemData* Data = Game ? Game->GetDataItem(Item.ItemId) : nullptr;
-			View.Rewards.Add({Data ? Data->ItemIcon : nullptr, FText::Format(INVTEXT("×{0}"), Item.Count), Data ? Data->ItemName : FText::GetEmpty()});
-		}
-		if (Tier.Exp > 0)
-		{
-			View.Rewards.Add({LoadObject<UTexture2D>(nullptr, StarIcon), FText::Format(LOCTABLE(SONHEIM_ST_DEX, "Reward.ExpFormat"), Tier.Exp), FText::GetEmpty()});
-		}
+		View.Rewards = SonheimReward::Describe(Game, Tier.Items, Tier.Exp);
 		return View;
 	}
 }

@@ -24,6 +24,7 @@
 #include "Utility/InventoryComponent.h"
 #include "Utility/DungeonClientBridgeComponent.h"
 #include "Utility/QuestComponent.h"
+#include "Sonheim/UI/Quest/QuestWidget.h"
 
 ASonheimPlayerController::ASonheimPlayerController()
 {
@@ -171,6 +172,16 @@ ASonheimPlayerController::ASonheimPlayerController()
 		DexAction = tempDexAction.Object;
 	}
 
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempJournalAction(
+		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Journal.IA_Journal'"));
+	if (tempJournalAction.Succeeded())
+	{
+		JournalAction = tempJournalAction.Object;
+	}
+	static ConstructorHelpers::FClassFinder<UUserWidget> QuestTrackerFinder(
+		TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/UI/Quest/WBP_QuestTracker.WBP_QuestTracker_C'"));
+	if (QuestTrackerFinder.Succeeded()) QuestTrackerClass = QuestTrackerFinder.Class;
+
 	m_Player = nullptr;
 
 	// UI 클래스 설정
@@ -230,6 +241,11 @@ void ASonheimPlayerController::BeginPlay()
 	//InitializeHUD();
 
 	OnPossessedPawnChanged.AddDynamic(this, &ASonheimPlayerController::ShowRegionOfPawn);
+	if (QuestTrackerClass)
+	{
+		QuestTracker = CreateWidget<UUserWidget>(this, QuestTrackerClass);
+		QuestTracker->AddToViewport(1);
+	}
 	// 시작할 때 이미 가진 폰은 모든 액터가 시작해 겹침이 정해진 다음 틱에 본다.
 	GetWorldTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this]() { ShowRegionOfPawn(nullptr, GetPawn()); }));
 }
@@ -342,7 +358,12 @@ void ASonheimPlayerController::PushNotice(const ENoticeSlot Slot, const FName Ch
 
 void ASonheimPlayerController::Client_PushNotice_Implementation(const ENoticeSlot Slot, const FName Channel, const FNoticeData& Data)
 {
-	PushNotice(Slot, Channel, Data);
+	// Straight to the local player's notices: going back through PushNotice would call this again forever wherever the RPC runs
+	// in place on a controller that is not local, as it does under editor scripting.
+	if (UNoticeSubsystem* Notices = GetLocalPlayer() ? GetLocalPlayer()->GetSubsystem<UNoticeSubsystem>() : nullptr)
+	{
+		Notices->Push(Slot, Channel, Data);
+	}
 }
 
 void ASonheimPlayerController::ShowRegionOfPawn(APawn* PreviousPawn, APawn* NewPawn)
@@ -462,6 +483,12 @@ void ASonheimPlayerController::SetupInputComponent()
 		{
 			EnhancedInputComponent->BindAction(DexAction, ETriggerEvent::Started, this,
 			                                   &ASonheimPlayerController::On_Dex_Pressed);
+		}
+		// J (퀘스트 일지)
+		if (JournalAction)
+		{
+			EnhancedInputComponent->BindAction(JournalAction, ETriggerEvent::Started, this,
+			                                   &ASonheimPlayerController::On_Journal_Pressed);
 		}
 	}
 	else
@@ -737,6 +764,15 @@ void ASonheimPlayerController::On_Glider_Released(const FInputActionValue& Input
 
 void ASonheimPlayerController::On_FKey_Pressed(const FInputActionValue& InputActionValue)
 {
+	// In the quest dialog F does what its button says, so a quest can be taken without the mouse.
+	if (UUIStackSubsystem* UIStack = GetUIStack())
+	{
+		if (UQuestDialogWidget* Dialog = Cast<UQuestDialogWidget>(UIStack->GetWidget(UIScreen::QuestDialog)))
+		{
+			Dialog->Act();
+			return;
+		}
+	}
 	if (IsUIBlockingInput()) return;
 	if (m_Player)
 	{
@@ -769,6 +805,20 @@ void ASonheimPlayerController::On_CKey_Released(const FInputActionValue& InputAc
 	{
 		m_Player->Interaction_Released(EHoldPurpose::Cancel);
 	}
+}
+
+void ASonheimPlayerController::On_Journal_Pressed(const FInputActionValue& InputActionValue)
+{
+	UUIStackSubsystem* UIStack = GetUIStack();
+	if (!UIStack || UIStack->IsOpen(UIScreen::Container) || UIStack->IsOpen(UIScreen::Crafting)) return;
+	UIStack->Toggle(UIScreen::QuestJournal);
+}
+
+void ASonheimPlayerController::Client_OpenQuestDialog_Implementation(AActor* Target)
+{
+	UUIStackSubsystem* UIStack = GetUIStack();
+	if (!UIStack || !Target) return;
+	if (UQuestDialogWidget* Dialog = Cast<UQuestDialogWidget>(UIStack->Open(UIScreen::QuestDialog))) Dialog->SetTarget(Target);
 }
 
 void ASonheimPlayerController::On_Dex_Pressed(const FInputActionValue& InputActionValue)

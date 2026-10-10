@@ -67,7 +67,7 @@ void UMonsterDexTierWidget::Show(const FMonsterDexTierView& Tier)
 	ProgressBar->SetFillColorAndOpacity(bClaimed ? DoneColor : bReady ? ReadyColor : ProgressColor);
 
 	RewardBox->Reset(true);
-	for (const FMonsterDexRewardView& Reward : Tier.Rewards)
+	for (const FRewardChipView& Reward : Tier.Rewards)
 	{
 		RewardBox->CreateEntry<UMonsterDexChipWidget>()->Show(Reward.Icon, Reward.Label, RewardColor, FLinearColor::White, Reward.Name);
 	}

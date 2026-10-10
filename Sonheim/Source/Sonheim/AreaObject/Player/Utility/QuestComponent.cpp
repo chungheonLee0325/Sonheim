@@ -140,8 +140,9 @@ bool UQuestComponent::IsAt(AActor* Target, const FName Name) const
 
 void UQuestComponent::ServerAccept_Implementation(const int32 QuestID, AActor* Giver)
 {
+	// The server RPCs touch only the server's records; run in place on a client copy, as editor scripting does, they do nothing.
 	const FQuestData* Quest = QuestOf(QuestID);
-	if (!Quest || !CanAccept(QuestID) || !IsAt(Giver, Quest->Giver) || Quest->Steps.IsEmpty()) return;
+	if (!GetOwner()->HasAuthority() || !Quest || !CanAccept(QuestID) || !IsAt(Giver, Quest->Giver) || Quest->Steps.IsEmpty()) return;
 	FQuestRecord& Record = Quests.Items.AddDefaulted_GetRef();
 	Record.QuestID = QuestID;
 	Record.Progress.SetNum(Quest->Steps[0].Objectives.Num());
@@ -155,7 +156,7 @@ void UQuestComponent::ServerTurnIn_Implementation(const int32 QuestID, AActor* R
 {
 	FQuestRecord* Record = Find(QuestID);
 	const FQuestData* Quest = QuestOf(QuestID);
-	if (!Record || !Quest || Record->State != EQuestState::ReadyToTurnIn || !IsAt(Receiver, Quest->Receiver)) return;
+	if (!GetOwner()->HasAuthority() || !Record || !Quest || Record->State != EQuestState::ReadyToTurnIn || !IsAt(Receiver, Quest->Receiver)) return;
 	Finish(*Record, *Quest);
 	Changed(*Record);
 }
@@ -163,7 +164,7 @@ void UQuestComponent::ServerTurnIn_Implementation(const int32 QuestID, AActor* R
 void UQuestComponent::ServerAbandon_Implementation(const int32 QuestID)
 {
 	const int32 Index = Quests.Items.IndexOfByPredicate([QuestID](const FQuestRecord& R) { return R.QuestID == QuestID && R.State != EQuestState::Completed; });
-	if (Index == INDEX_NONE) return;
+	if (!GetOwner()->HasAuthority() || Index == INDEX_NONE) return;
 	Quests.Items.RemoveAt(Index);
 	Quests.MarkArrayDirty();
 	OnQuestsChanged.Broadcast();
@@ -173,7 +174,7 @@ void UQuestComponent::ServerAbandon_Implementation(const int32 QuestID)
 void UQuestComponent::ServerTrack_Implementation(const int32 QuestID, const bool bTracked)
 {
 	FQuestRecord* Record = Find(QuestID);
-	if (!Record || Record->bTracked == bTracked) return;
+	if (!GetOwner()->HasAuthority() || !Record || Record->bTracked == bTracked) return;
 	Record->bTracked = bTracked;
 	Changed(*Record);
 }

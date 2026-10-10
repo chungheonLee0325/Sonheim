@@ -49,6 +49,10 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_PushNotice(ENoticeSlot Slot, FName Channel, const FNoticeData& Data);
 
+	/** Opens the quest dialog of a quest giver the player used, on the player's screen. */
+	UFUNCTION(Client, Reliable)
+	void Client_OpenQuestDialog(AActor* Target);
+
 protected:
 	// 입력 설정
 	virtual void SetupInputComponent() override;
@@ -112,6 +116,8 @@ private:
 	void On_CKey_Pressed(const FInputActionValue& InputActionValue);
 	void On_CKey_Released(const FInputActionValue& InputActionValue);
 	void On_Dex_Pressed(const FInputActionValue& InputActionValue);
+	void On_Journal_Pressed(const FInputActionValue& InputActionValue);
+
 
 	/** Development builds: QuestSet <QuestID> <Active|Ready|Done> puts one of this player's quests in that state on the server,
 	 * as if played there, so a later quest can be tried without playing the ones before it. */
@@ -218,6 +224,16 @@ private:
 	/** 도감 (K) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* DexAction;
+
+	/** 퀘스트 일지 (J) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* JournalAction;
+
+	/** The HUD's quest card, made for the local player as play begins. */
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UUserWidget> QuestTrackerClass;
+	UPROPERTY()
+	class UUserWidget* QuestTracker;
 
 	/** FKey Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
