@@ -277,8 +277,9 @@ float UPalCaptureComponent::CalculateCaptureRate(ABaseMonster* TargetPal) const
 	return FMath::Clamp(rate, 0.f, 1.f);
 }
 
-void UPalCaptureComponent::Server_ApplyCaptureOutcome_Implementation(ABaseMonster* TargetPal, bool bSuccess)
+void UPalCaptureComponent::ApplyCaptureOutcome(ABaseMonster* TargetPal, bool bSuccess)
 {
+	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
 	if (!TargetPal || !OwnerPlayer || !PalInventory) return;
 
 	if (bSuccess)
@@ -358,7 +359,7 @@ void UPalCaptureComponent::Server_AttemptCapture_Implementation(ABaseMonster* Ta
 	FTimerHandle ApplyHandle;
 	GetWorld()->GetTimerManager().SetTimer(
 		ApplyHandle,
-		FTimerDelegate::CreateUObject(this, &UPalCaptureComponent::Server_ApplyCaptureOutcome, TargetPal,
+		FTimerDelegate::CreateUObject(this, &UPalCaptureComponent::ApplyCaptureOutcome, TargetPal,
 		                              bCaptureSuccess),
 		RevealTotal, false);
 }
