@@ -3,15 +3,8 @@
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
 #include "Net/Serialization/FastArraySerializer.h"
+#include "Sonheim/Rewards/RewardTypes.h"
 #include "MonsterDexTypes.generated.h"
-
-USTRUCT(BlueprintType)
-struct FMonsterDexRewardItem
-{
-	GENERATED_BODY()
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 ItemId = 0;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 Count = 1;
-};
 
 /** A reward a species' page pays once, after enough of it were defeated and captured. A count of 0 asks nothing of that kind. */
 USTRUCT(BlueprintType)
@@ -21,7 +14,7 @@ struct FMonsterDexRewardTier
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 RequiredKills = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 RequiredCaptures = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 Exp = 0;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) TArray<FMonsterDexRewardItem> Items;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) TArray<FItemReward> Items;
 };
 
 /** One species' page, a row of DT_MonsterDex. The picture and capturability come from the species' own dt_AreaObject row. */

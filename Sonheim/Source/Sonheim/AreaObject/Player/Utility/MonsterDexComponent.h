@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Sonheim/MonsterDex/MonsterDexTypes.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "MonsterDexComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMonsterDexChanged);
@@ -23,10 +24,6 @@ public:
 
 	/** Server: reads the player's saved pages, once the player's unique net id is known. */
 	void LoadSaved();
-	/** Server: a defeat by this player or by one of the player's pals. */
-	void NotifyKilled(int32 AreaObjectID);
-	/** Server: a capture that put the pal in this player's party. */
-	void NotifyCaptured(int32 AreaObjectID);
 
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="MonsterDex")
 	void ServerClaimReward(int32 AreaObjectID, int32 Tier);
@@ -47,7 +44,8 @@ private:
 	/** Marks the entry for replication, tells local listeners and writes the save. */
 	void Commit(FMonsterDexEntry& Entry);
 	void Notify(const FText& Title, const FText& Detail) const;
-	FString PlayerKey() const;
+	/** Server: defeats and captures, as the PlayerState reports them. */
+	void HandleDeed(EPlayerDeed Deed, int32 Id, int32 Count, FName Place);
 
 	UPROPERTY(Replicated)
 	FMonsterDexList Dex;

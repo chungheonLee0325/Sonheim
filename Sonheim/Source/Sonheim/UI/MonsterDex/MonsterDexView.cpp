@@ -21,7 +21,7 @@ namespace
 		View.Condition = FText::Format(View.bCapture ? LOCTABLE(SONHEIM_ST_DEX, "Tier.CaptureFormat") : LOCTABLE(SONHEIM_ST_DEX, "Tier.KillFormat"), View.Required);
 		View.State = Entry && Entry->IsClaimed(Index) ? EMonsterDexTierState::Claimed
 			: Entry && Entry->Meets(Tier) ? EMonsterDexTierState::Ready : EMonsterDexTierState::InProgress;
-		for (const FMonsterDexRewardItem& Item : Tier.Items)
+		for (const FItemReward& Item : Tier.Items)
 		{
 			const FItemData* Data = Game ? Game->GetDataItem(Item.ItemId) : nullptr;
 			View.Rewards.Add({Data ? Data->ItemIcon : nullptr, FText::Format(INVTEXT("×{0}"), Item.Count), Data ? Data->ItemName : FText::GetEmpty()});

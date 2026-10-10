@@ -10,7 +10,6 @@
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
 #include "Sonheim/Utilities/StringTableIds.h"
 #include "PalInventoryComponent.h"
-#include "MonsterDexComponent.h"
 
 UPalCaptureComponent::UPalCaptureComponent()
 {
@@ -289,9 +288,8 @@ void UPalCaptureComponent::ApplyCaptureOutcome(ABaseMonster* TargetPal, bool bSu
 		{
 			TargetPal->SetPartnerOwner(OwnerPlayer);
 			PalInventory->AddPal(TargetPal);
-			const ASonheimPlayerState* OwnerState = OwnerPlayer->GetPlayerState<ASonheimPlayerState>();
-			if (OwnerState && OwnerState->m_MonsterDexComponent)
-				OwnerState->m_MonsterDexComponent->NotifyCaptured(TargetPal->m_AreaObjectID);
+			if (ASonheimPlayerState* OwnerState = OwnerPlayer->GetPlayerState<ASonheimPlayerState>())
+				OwnerState->ReportDeed(EPlayerDeed::Capture, TargetPal->m_AreaObjectID);
 		}
 		else
 		{

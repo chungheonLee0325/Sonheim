@@ -1,12 +1,7 @@
 #include "MonsterDexComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Engine/GameInstance.h"
-#include "Engine/LocalPlayer.h"
-#include "InventoryComponent.h"
-#include "Sonheim/AreaObject/Attribute/LevelComponent.h"
-#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
-#include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/MonsterDex/MonsterDexSubsystem.h"
 #include "Sonheim/Utilities/StringTableIds.h"
 
@@ -36,23 +31,19 @@ void UMonsterDexComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	Dex.Owner = this;
+	ASonheimPlayerState* PS = Cast<ASonheimPlayerState>(GetOwner());
+	if (PS && PS->HasAuthority()) PS->OnDeed.AddUObject(this, &UMonsterDexComponent::HandleDeed);
 }
 
-FString UMonsterDexComponent::PlayerKey() const
+void UMonsterDexComponent::HandleDeed(const EPlayerDeed Deed, const int32 Id, int32, FName)
 {
-	const APlayerState* PS = Cast<APlayerState>(GetOwner());
-	if (!PS || !PS->GetUniqueId().IsValid()) return FString();
-	// The host's own player keeps one record on the host's machine. A remote player is kept under its net id, the same on every
-	// visit through Steam; the null subsystem of an editor play session gives each session a new id, so there it lasts one session.
-	const ULocalPlayer* Host = GetWorld()->GetGameInstance()->GetFirstGamePlayer();
-	if (Host && Host->GetPreferredUniqueNetId() == PS->GetUniqueId()) return TEXT("Local");
-	return PS->GetUniqueId().ToString();
+	if (Deed == EPlayerDeed::Kill || Deed == EPlayerDeed::Capture) Record(Id, Deed == EPlayerDeed::Capture);
 }
 
 void UMonsterDexComponent::LoadSaved()
 {
 	const UMonsterDexSubsystem* Book = GetWorld()->GetGameInstance()->GetSubsystem<UMonsterDexSubsystem>();
-	const FString Key = PlayerKey();
+	const FString Key = Cast<ASonheimPlayerState>(GetOwner())->GetSaveKey();
 	if (!GetOwner()->HasAuthority() || !Book || Key.IsEmpty()) return;
 	Dex.Items = Book->LoadPlayer(Key);
 	Dex.MarkArrayDirty();
@@ -62,16 +53,6 @@ void UMonsterDexComponent::LoadSaved()
 const FMonsterDexEntry* UMonsterDexComponent::FindEntry(const int32 AreaObjectID) const
 {
 	return Dex.Items.FindByPredicate([AreaObjectID](const FMonsterDexEntry& E) { return E.AreaObjectID == AreaObjectID; });
-}
-
-void UMonsterDexComponent::NotifyKilled(const int32 AreaObjectID)
-{
-	Record(AreaObjectID, false);
-}
-
-void UMonsterDexComponent::NotifyCaptured(const int32 AreaObjectID)
-{
-	Record(AreaObjectID, true);
 }
 
 void UMonsterDexComponent::Record(const int32 AreaObjectID, const bool bCaptured)
@@ -126,14 +107,7 @@ void UMonsterDexComponent::ServerClaimReward_Implementation(const int32 AreaObje
 	Entry->ClaimedTiers |= 1 << Tier;
 	Commit(*Entry);
 
-	const ASonheimPlayerState* PS = Cast<ASonheimPlayerState>(GetOwner());
-	// A full inventory drops what does not fit at the player's feet, so nothing paid is lost.
-	for (const FMonsterDexRewardItem& Item : Reward.Items)
-	{
-		if (PS && PS->m_InventoryComponent) PS->m_InventoryComponent->AddItem(Item.ItemId, Item.Count);
-	}
-	const ASonheimPlayer* Player = PS ? PS->GetPawn<ASonheimPlayer>() : nullptr;
-	if (Reward.Exp > 0 && Player && Player->m_LevelComponent) Player->m_LevelComponent->AddExp(Reward.Exp);
+	SonheimReward::Grant(*Cast<ASonheimPlayerState>(GetOwner()), Reward.Items, Reward.Exp);
 }
 
 void UMonsterDexComponent::Commit(FMonsterDexEntry& Entry)
@@ -142,7 +116,7 @@ void UMonsterDexComponent::Commit(FMonsterDexEntry& Entry)
 	OnDexChanged.Broadcast();
 	if (UMonsterDexSubsystem* Book = GetWorld()->GetGameInstance()->GetSubsystem<UMonsterDexSubsystem>())
 	{
-		Book->StorePlayer(PlayerKey(), Dex.Items);
+		Book->StorePlayer(Cast<ASonheimPlayerState>(GetOwner())->GetSaveKey(), Dex.Items);
 	}
 }
 

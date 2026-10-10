@@ -364,6 +364,10 @@ void ACraftingStation::ServerCollectAll_Implementation(ASonheimPlayer* Player)
 	{
 		if (CompletedToCollect > 0) Inv->AddItem(ActiveWork.ResultItemID, CompletedToCollect);
 	}
+	if (ASonheimPlayerState* Crafter = Player->GetPlayerState<ASonheimPlayerState>())
+	{
+		Crafter->ReportDeed(EPlayerDeed::Craft, ActiveWork.ResultItemID, CompletedToCollect);
+	}
 
 	// 수령한만큼 아이템 차감
 	const int32 PerUnit = FMath::Max(1, ActiveWork.ResultPerUnit);

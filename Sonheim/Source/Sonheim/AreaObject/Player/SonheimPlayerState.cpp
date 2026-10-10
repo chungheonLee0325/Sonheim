@@ -9,6 +9,8 @@
 #include "Net/UnrealNetwork.h"
 #include "Utility/PalInventoryComponent.h"
 #include "Utility/MonsterDexComponent.h"
+#include "Engine/GameInstance.h"
+#include "Engine/LocalPlayer.h"
 
 ASonheimPlayerState::ASonheimPlayerState()
 {
@@ -99,6 +101,19 @@ void ASonheimPlayerState::OnSetUniqueId()
 {
 	Super::OnSetUniqueId();
 	if (HasAuthority()) m_MonsterDexComponent->LoadSaved();
+}
+
+void ASonheimPlayerState::ReportDeed(const EPlayerDeed Deed, const int32 Id, const int32 Count, const FName Place)
+{
+	if (HasAuthority()) OnDeed.Broadcast(Deed, Id, Count, Place);
+}
+
+FString ASonheimPlayerState::GetSaveKey() const
+{
+	if (!GetUniqueId().IsValid()) return FString();
+	const ULocalPlayer* Host = GetWorld()->GetGameInstance()->GetFirstGamePlayer();
+	if (Host && Host->GetPreferredUniqueNetId() == GetUniqueId()) return TEXT("Local");
+	return GetUniqueId().ToString();
 }
 
 void ASonheimPlayerState::InitPlayerState()

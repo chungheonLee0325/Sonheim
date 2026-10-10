@@ -15,6 +15,8 @@ class SONHEIM_API ARegionZone : public AActor
 public:
 	ARegionZone();
 	/** The region's name and a line under it. Empty shows nothing. */
+	/** The region's name for quests that send a player here; zones of one region share it. None counts no walk in. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Region") FName RegionId;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Region") FText DisplayName;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Region") FText Subtitle;
 	/** The channel of the regions' notices. */

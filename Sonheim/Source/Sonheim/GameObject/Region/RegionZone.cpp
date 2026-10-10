@@ -3,6 +3,7 @@
 #include "Engine/LocalPlayer.h"
 #include "GameFramework/PlayerController.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/UI/Notice/NoticeSubsystem.h"
 const FName ARegionZone::NoticeChannel(TEXT("Region"));
 namespace
@@ -29,6 +30,11 @@ void ARegionZone::BeginPlay()
 void ARegionZone::HandleBeginOverlap(UPrimitiveComponent* Component, AActor* Other, UPrimitiveComponent* OtherComponent, int32 BodyIndex, bool bFromSweep, const FHitResult& Sweep)
 {
 	const auto* Player = Cast<ASonheimPlayer>(Other);
+	// The server counts the walk in for the player's quests; the local player's own machine shows the region's name.
+	if (Player && HasAuthority() && !RegionId.IsNone())
+	{
+		if (auto* State = Player->GetPlayerState<ASonheimPlayerState>()) State->ReportDeed(EPlayerDeed::Reach, 0, 1, RegionId);
+	}
 	const auto* Controller = Player && Player->IsLocallyControlled() ? Player->GetController<APlayerController>() : nullptr;
 	ShowTo(Controller ? Controller->GetLocalPlayer() : nullptr);
 }
