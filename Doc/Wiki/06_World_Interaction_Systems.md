@@ -146,12 +146,13 @@ Container의 아이템 복제는 `UContainerComponent`에서 관리하고, 사�
 
 ~~~mermaid
 flowchart TB
-    INTERACT["Crafting Station Interact"] --> CHECK{"현재 상태"}
-    CHECK -->|"수령 가능"| COLLECT["ServerCollectAll<br/>완료 결과 수령"]
-    CHECK -->|"진행 중"| WORK["ServerAddWork<br/>작업량 추가"]
-    CHECK -->|"대기"| OPEN["ServerRequestOpenUI<br/>레시피 UI"]
-    WORK --> AGAIN["다시 상호작용해 다음 작업/수령"]
-    COLLECT --> AGAIN
+    INTERACT["Crafting Station Interact"] --> ACTIVE{"bHasActiveWork?"}
+    ACTIVE -->|"예"| WAIT{"완료 수량 있음 +<br/>수동 수령 지연 경과?"}
+    WAIT -->|"예"| COLLECT["ServerCollectAll<br/>완료 결과 수령"]
+    WAIT -->|"아니오"| WORK["ServerAddWork<br/>작업량 추가"]
+    ACTIVE -->|"아니오"| READY{"CompletedToCollect > 0?"}
+    READY -->|"예"| COLLECT
+    READY -->|"아니오 · 수령 직후 지연 통과"| OPEN["ServerRequestOpenUI<br/>레시피 UI"]
 ~~~
 
 실제 `Interact_Implementation`은 **진행 중인 작업을 먼저 검사**하고, 수령 가능한 결과가 있어도 `ManualCollectDelay`가 지나야 수령하도록 처리합니다. 수령 직후 `ManualOpenUIDelay`도 확인해 한 입력에서 곧바로 다음 UI가 열리지 않도록 합니다.
