@@ -14,7 +14,7 @@
 
 https://github.com/user-attachments/assets/356d1438-7c3c-417d-8bd4-b8dcb7a3efb6
 
-NPC 대화에서 퀘스트를 수락하고, 목표 진행에 따른 HUD 갱신과 완료 보고·보상 수령까지 실제 게임 흐름을 확인할 수 있습니다.
+영상에서는 **NPC 대화 → 퀘스트 수락 → 목표 진행과 HUD 갱신 → 완료 보고 → 보상 수령**의 흐름을 확인할 수 있습니다.
 
 ## 목차
 
@@ -23,6 +23,7 @@ NPC 대화에서 퀘스트를 수락하고, 목표 진행에 따른 HUD 갱신�
 - [NPC 상호작용과 서버 검증](#npc-상호작용과-서버-검증)
 - [월드 오브젝트와 퀘스트 연동](#월드-오브젝트와-퀘스트-연동)
 - [기록 복제·저장과 UI 갱신](#기록-복제저장과-ui-갱신)
+- [실행 검증](#실행-검증)
 - [관련 코드](#관련-코드)
 
 ---
@@ -124,8 +125,10 @@ flowchart TB
     B --> G["FQuestRecord<br/>Step / Progress / State"]
     D --> G
     F --> G
-    G --> H["Changed → FastArray 변경 표시·저장"]
-    H --> I["소유 클라이언트 UI 갱신"]
+    G --> H["UQuestComponent::Changed"]
+    H --> I["MarkItemDirty → OwnerOnly FastArray"]
+    H --> J["StorePlayer → Quests SaveGame"]
+    I --> K["소유 클라이언트 OnQuestsChanged → UI"]
 ~~~
 
 ### 모든 목표 달성 후 단계 전환
@@ -198,9 +201,27 @@ NPC 머리 위 마커는 플레이어의 퀘스트 기록을 기준으로 표시
 
 ## 월드 오브젝트와 퀘스트 연동
 
-`AQuestBuildSite`는 퀘스트의 `Deliver` 목표와 연결된 건설 오브젝트입니다. 플레이어가 자재를 전달하면 퀘스트 진행 기록이 변경되고, 서버는 이 변경을 확인해 건설 완료 여부를 갱신합니다.
+`AQuestBuildSite`는 `Deliver` 목표와 연결된 건설 오브젝트입니다. 플레이어가 상호작용하면 서버에서 건설 여부·플레이어 상태·거리를 확인한 뒤 `UQuestComponent::Interact`로 자재 전달을 처리합니다. 아이템 차감과 목표 진행도 계산은 퀘스트 컴포넌트가 담당합니다.
 
-건설 완료는 `bBuilt`로 복제하며, 완료 전에는 설계 재질과 비활성 충돌, 완료 후에는 원래 재질과 충돌을 사용합니다. 월드 오브젝트가 퀘스트의 목표 달성 규칙을 따로 구현하지 않고, 플레이어 기록의 단계·상태를 확인해 표시를 바꿉니다.
+### 플레이어별 진행 기록에서 공유 월드 상태로
+
+건설 오브젝트는 서버에서 `UQuestComponent::OnAnyRecordChanged`를 구독하고, 시작 시점과 퀘스트 기록 변경 시 `Refresh`를 실행합니다. `GameState::PlayerArray`에 있는 플레이어의 해당 `QuestID` 기록을 검사해 **한 명이라도 `State != Active` 또는 `Step > BuildStep`이면 `bBuilt = true`**로 전환합니다.
+
+~~~mermaid
+flowchart TD
+    A["플레이어가 건설 대상에 자재 전달"] --> B["서버: UQuestComponent::Interact"]
+    B --> C["아이템 차감·FQuestRecord 갱신"]
+    C --> D["OnAnyRecordChanged → AQuestBuildSite::Refresh"]
+    D --> E{"플레이어 기록 중<br/>건설 완료 조건을 만족하는 기록이 있는가?"}
+    E -->|예| F["bBuilt = true"]
+    E -->|아니요| G["설계 상태 유지"]
+    F --> H["전체 클라이언트에 bBuilt 복제"]
+    H --> I["OnRep_Built → ApplyLook"]
+~~~
+
+`bBuilt`는 `COND_OwnerOnly`인 개인 퀘스트 기록과 달리 **월드에 공유되는 복제 상태**입니다. 서버는 변경 즉시 `ApplyLook`을 실행하고, 클라이언트는 `OnRep_Built`에서 동일한 표시 전환을 적용합니다. 설계 상태에서는 계획 재질과 비활성 충돌을, 완성 상태에서는 메시 재질과 충돌을 사용합니다. 한 번 완성되면 해당 실행 중에는 다시 설계 상태로 돌아가지 않습니다.
+
+`bBuilt` 자체를 별도 SaveGame에 저장하는 코드는 없습니다. 건설 오브젝트는 시작 시점과 플레이어 기록 변경 시 퀘스트 진행 상태를 다시 확인합니다.
 
 | 건설 전 | 건설 완료 |
 |---|---|
@@ -218,9 +239,13 @@ NPC 머리 위 마커는 플레이어의 퀘스트 기록을 기준으로 표시
 DOREPLIFETIME_CONDITION(UQuestComponent, Quests, COND_OwnerOnly);
 ~~~
 
-`Changed`는 기록 변경을 `MarkItemDirty`로 알리고, `OnQuestsChanged`와 `OnAnyRecordChanged`를 호출합니다. 변경된 기록은 `UQuestSubsystem::StorePlayer`를 통해 호스트 SaveGame 슬롯 `Quests`에 저장합니다.
+`Changed`가 수행하는 **복제 변경 표시와 저장은 서로 다른 경로**입니다.
 
-클라이언트에서는 FastArray의 `PostReplicatedAdd / PostReplicatedChange / PreReplicatedRemove`가 `OnQuestsChanged`를 전달하므로, 위젯은 변경된 진행도를 다시 표시합니다.
+- **복제**: `Quests.MarkItemDirty(Record)`가 변경 항목을 표시합니다. `COND_OwnerOnly` FastArray를 받은 소유 클라이언트에서는 `PostReplicatedAdd / PostReplicatedChange / PreReplicatedRemove`가 `OnQuestsChanged`를 호출해 UI 갱신을 유도합니다.
+- **저장**: 서버의 `UQuestSubsystem::StorePlayer`가 해당 플레이어의 퀘스트 기록을 호스트 SaveGame `Quests` 슬롯에 기록합니다.
+- **서버 내부 알림**: `Changed`는 `OnQuestsChanged`와 `OnAnyRecordChanged`도 호출합니다. 건설 오브젝트는 후자의 알림으로 완료 상태를 재평가합니다.
+
+기록 단위 갱신에는 `MarkItemDirty`를, 퀘스트 포기나 저장 기록 로드처럼 배열을 제거·교체하는 경로에는 `MarkArrayDirty`를 사용합니다.
 
 저장 기록을 불러올 때는 현재 `DT_Quest`에 없는 퀘스트와 유효하지 않은 진행 단계(진행 중 기록)를 제외하고, `Possess` 목표는 현재 인벤토리 수량으로 다시 계산합니다.
 
@@ -249,6 +274,10 @@ QuestView::Build → FQuestView
 *HUD 추적기에 표시되는 퀘스트 제목·목표 진행 상태를 마킹한 실제 게임 화면입니다.*
 
 퀘스트 수락·단계 갱신·보고 가능·완료 알림은 공용 `UNoticeSubsystem`의 `Feed` 슬롯으로 표시합니다. 보상 아이템은 도감과 공통으로 사용하는 `USlotWidget::AddReadOnly`로 표시합니다.
+
+## 실행 검증
+
+[PR #3](https://github.com/chungheonLee0325/Sonheim/pull/3)에 기록된 `verify_quest` 결과는 **8/8 통과**이며, 실제 던전 플레이 1판을 포함합니다. 상단 플레이 영상에서는 NPC 수락부터 목표 진행·완료 보고·보상 수령까지의 게임 흐름을 확인할 수 있습니다.
 
 ## 관련 코드
 
