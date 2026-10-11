@@ -207,12 +207,26 @@ sequenceDiagram
 // MonsterDexComponent.cpp — Record 내부 발췌
 if (bNew)
 {
-    Notify(ENoticeSlot::Headline, /* 첫 등록 알림 데이터 */);
+    Notify(ENoticeSlot::Headline, ENoticeTone::Information,
+           bCaptured
+               ? LOCTABLE(SONHEIM_ST_DEX, "Notice.FirstCapture.Title")
+               : LOCTABLE(SONHEIM_ST_DEX, "Notice.FirstMeet.Title"),
+           Page->DisplayName,
+           FText::Format(LOCTABLE(SONHEIM_ST_DEX, "Notice.Registered.Detail"),
+                         FText::AsNumber(Page->Number)),
+           LOCTABLE(SONHEIM_ST_DEX, "Notice.Registered.Footer"));
 }
-if (!WasReady[Tier] && Entry->Meets(Page->RewardTiers[Tier])
-    && !Entry->IsClaimed(Tier))
+
+for (int32 Tier = 0; Tier < Page->RewardTiers.Num(); ++Tier)
 {
-    Notify(ENoticeSlot::Feed, /* 보상 수령 가능 알림 데이터 */);
+    if (!WasReady[Tier] && Entry->Meets(Page->RewardTiers[Tier])
+        && !Entry->IsClaimed(Tier))
+    {
+        Notify(ENoticeSlot::Feed, ENoticeTone::Highlight,
+               LOCTABLE(SONHEIM_ST_DEX, "Notice.RewardReady.Category"),
+               Page->DisplayName,
+               LOCTABLE(SONHEIM_ST_DEX, "Notice.RewardReady.Detail"));
+    }
 }
 ~~~
 
