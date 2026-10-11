@@ -8,9 +8,11 @@ Sonheim의 전투는 **스킬 사용 가능 여부와 비용을 서버에서 검
 
 *Montage에서 발동·타격 구간·행동 가능 상태 전환 시점을 지정합니다. 타격은 Notify로 활성화한 판정 구간에서 서버가 수행합니다.*
 
-> **플레이 영상 자리 — 스킬 사용에서 타격 결과까지**  
-> `Doc/Media/Wiki/05_Combat_Skill_Animation/05_skill_cast_to_damage.mp4`  
-> 실제 플레이에서 공격 입력 → Montage/Notify → 근접 타격 → HP 감소·피격 반응을 한 흐름으로 보여주고, 가능하면 같은 공격의 서버 판정 디버그 화면도 포함합니다. 확보 후 이 자리를 실제 영상으로 대체합니다.
+**스킬 사용부터 타격 결과까지 — 플레이 영상**
+
+https://github.com/user-attachments/assets/a40a3f51-0b35-44f5-8bb9-34d2e3af9023
+
+공격 입력 이후 Montage 재생, 타격 판정과 피격 반응으로 이어지는 전투 흐름을 보여줍니다.
 
 | 구분 | 담당 코드 | 구현 내용 |
 |---|---|---|
@@ -319,9 +321,9 @@ GetMesh()->bEnableUpdateRateOptimizations = false;
 
 이는 **서버의 타격 판정 정확도를 높이는 대신 Animation·Bone 갱신과 추가 Sweep 비용을 부담**하는 선택입니다.
 
-> **디버그 캡처 자리 — Socket 보간과 Hit Shape**  
-> `Doc/Media/Wiki/05_Combat_Skill_Animation/05_melee_trace_interpolation.png`  
-> 실제 `bShowDebug` 상태에서 동일 공격의 판정 Sphere/Line 등과 대상 적중 위치가 보이도록 촬영합니다. 보간 적용 여부·`InterpolationSteps`는 사용한 스킬의 실제 DataTable 값과 함께 기록합니다.
+![근접 공격 Socket 보간과 Hit Shape 디버그 화면](https://github.com/user-attachments/assets/1a2776c8-fc0e-4305-bf68-5025cd35cf48)
+
+*무기 Socket의 이동 경로를 따라 수행하는 근접 공격 충돌 판정을 디버그 화면에서 확인할 수 있습니다.*
 
 ---
 
