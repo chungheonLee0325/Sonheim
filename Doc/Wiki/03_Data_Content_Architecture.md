@@ -72,9 +72,9 @@ struct FSkillData : public FTableRowBase
 
 여기서 **`FSkillData`는 행 구조를 정의하고, DataTable에는 스킬별 실제 설정값이 들어갑니다.** DataTable이 가진 행 이름(`RowName`)과 `SkillID`처럼 구조체 내부에 정의한 콘텐츠 ID도 개념적으로 구분합니다.
 
-> **에디터 캡처 예정 — 스킬 DataTable의 실제 행**  
-> `Doc/Media/Wiki/03_Data_Content_Architecture/03_skill_datatable_editor.png`  
-> 서로 다른 스킬 행과 선택한 한 행의 `SkillID`·`StaminaCosts`·`Montage`·`AttackData`를 볼 수 있게 촬영합니다. 실제 에셋을 확인한 뒤 이미지를 연결합니다.
+![스킬 DataTable 편집 화면 — 스킬 정의 데이터](https://github.com/user-attachments/assets/c41639c0-db7e-4a79-9b3c-1735bd9df9e3)
+
+*DataTable에서 스킬별 정의 데이터를 행 단위로 관리하는 에디터 화면입니다.*
 
 같은 방식으로 `FItemData`, `FAreaObjectData`, `FLevelData`를 관리하며, 최근 콘텐츠의 `FQuestData`와 `FMonsterDexData`도 DataTable 행 구조를 사용합니다.
 
@@ -103,9 +103,9 @@ public:
 
 `UPrimaryDataAsset`을 사용한 던전 정의는 `FPrimaryAssetId`로 조회할 수 있습니다. 반면 보스 패턴은 `UBossPatternDataAsset : UDataAsset`에 패턴·타이밍·타격 정보를 정의합니다. **모든 DataAsset을 PrimaryDataAsset으로 만든 것은 아닙니다.**
 
-> **에디터 캡처 예정 — 던전 정의 DataAsset**  
-> `Doc/Media/Wiki/03_Data_Content_Architecture/03_dungeon_definition_editor.png`  
-> `DungeonId`, `StartStageId`, `Stages`와 실제 이벤트·전환 설정을 보여줍니다. DataTable과 관리 방식이 어떻게 다른지 비교할 수 있도록 원본 에디터 화면을 사용합니다.
+![던전 정의 DataAsset 편집 화면 — 콘텐츠 단위 설정](https://github.com/user-attachments/assets/e34540c3-2627-4d42-8912-4f0776413304)
+
+*던전 정의를 하나의 에셋으로 관리하는 에디터 화면입니다. 스킬의 DataTable 행과 달리 던전 단위 설정을 함께 관리합니다.*
 
 데이터 검증과 그래프 생성은 [[13. Content Authoring & Validation|13_Content_Authoring_Validation]]에서 별도로 설명합니다.
 
