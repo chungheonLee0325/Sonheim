@@ -32,6 +32,25 @@ FText MonsterDexView::NumberText(const int32 Number)
 	return FText::Format(INVTEXT("No.{0}"), FText::AsNumber(Number, &Digits));
 }
 
+UTexture2D* MonsterDexView::ElementIcon(const EElementalAttribute Element)
+{
+	const TCHAR* Name = nullptr;
+	switch (Element)
+	{
+	case EElementalAttribute::Grass: Name = TEXT("T_IconElementGrass"); break;
+	case EElementalAttribute::Fire: Name = TEXT("T_IconElementFire"); break;
+	case EElementalAttribute::Water: Name = TEXT("T_IconElementWater"); break;
+	case EElementalAttribute::Electric: Name = TEXT("T_IconElementElectric"); break;
+	case EElementalAttribute::Ground: Name = TEXT("T_IconElementGround"); break;
+	case EElementalAttribute::Ice: Name = TEXT("T_IconElementIce"); break;
+	case EElementalAttribute::Dragon: Name = TEXT("T_IconElementDragon"); break;
+	case EElementalAttribute::Dark: Name = TEXT("T_IconElementDark"); break;
+	case EElementalAttribute::Neutral: Name = TEXT("T_IconElementNeutral"); break;
+	default: return nullptr;
+	}
+	return NoticeIcon(Name).LoadSynchronous();
+}
+
 FText MonsterDexView::ElementName(const EElementalAttribute Element)
 {
 	switch (Element)

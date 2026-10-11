@@ -244,6 +244,8 @@ protected:
 	// The result: tiles of figures, reward slots or reward lines, the record, and the new-best badge.
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UDynamicEntryBox> StatTiles;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UDynamicEntryBox> RewardSlots;
+	/** The square of a reward's item slot on the result card. */
+	UPROPERTY(EditAnywhere, Category="Style") float RewardSlotSize = 64.f;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> RewardText;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> SummaryText;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> NewBestBadge;

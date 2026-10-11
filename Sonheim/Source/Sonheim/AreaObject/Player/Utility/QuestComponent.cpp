@@ -146,7 +146,7 @@ void UQuestComponent::ServerAccept_Implementation(const int32 QuestID, AActor* G
 	FQuestRecord& Record = Quests.Items.AddDefaulted_GetRef();
 	Record.QuestID = QuestID;
 	Record.Progress.SetNum(Quest->Steps[0].Objectives.Num());
-	Notify(ENoticeTone::Information, LOCTABLE(SONHEIM_ST_QUEST, "Notice.Accepted.Category"), Quest->Title, LOCTABLE(SONHEIM_ST_QUEST, "Notice.Accepted.Detail"));
+	Notify(ENoticeTone::Information, LOCTABLE(SONHEIM_ST_QUEST, "Notice.Accepted.Category"), Quest->Title, Quest->Steps[0].Summary);
 	// Items the player already holds count at once.
 	Settle(Record, *Quest);
 	Changed(Record);

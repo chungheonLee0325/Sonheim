@@ -1,4 +1,5 @@
 #include "MonsterDexWidget.h"
+#include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/DynamicEntryBox.h"
@@ -69,6 +70,7 @@ void UMonsterDexTierWidget::Show(const FMonsterDexTierView& Tier)
 	RewardBox->Reset(true);
 	for (const FRewardChipView& Reward : Tier.Rewards)
 	{
+		if (Reward.ItemId && USlotWidget::AddReadOnly(RewardBox, Reward.ItemId, Reward.Count, RewardSlotSize)) continue;
 		RewardBox->CreateEntry<UMonsterDexChipWidget>()->Show(Reward.Icon, Reward.Label, RewardColor, FLinearColor::White, Reward.Name);
 	}
 	ClaimButton->SetIsEnabled(bReady);
@@ -208,9 +210,10 @@ void UMonsterDexWidget::DrawPicked()
 	ElementBox->Reset(true);
 	for (const EElementalAttribute Element : Page->Elements)
 	{
-		// A faint plate of the element's color with the name in that color, so a light color such as Electric stays readable.
+		// A badge of the element's colour with its glyph and name in white, as the reference's element badges read.
 		const FLinearColor Color = ElementColors.FindRef(Element, FLinearColor::White);
-		ElementBox->CreateEntry<UMonsterDexChipWidget>()->Show(nullptr, MonsterDexView::ElementName(Element), Color.CopyWithNewOpacity(0.18f), Color);
+		ElementBox->CreateEntry<UMonsterDexChipWidget>()->Show(MonsterDexView::ElementIcon(Element), MonsterDexView::ElementName(Element),
+		                                                       Color.CopyWithNewOpacity(0.9f), FLinearColor::White);
 	}
 	TierBox->Reset(true);
 	for (const FMonsterDexTierView& Tier : Page->Tiers)

@@ -68,6 +68,9 @@ struct FDungeonRewardViewData
 	UPROPERTY(BlueprintReadOnly) FText Count;
 	/** The item's icon; none on the line that says the run gave nothing. */
 	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> Icon;
+	/** The item and how many, drawn as an item slot; 0 on the line that says the run gave nothing. */
+	UPROPERTY(BlueprintReadOnly) int32 ItemId = 0;
+	UPROPERTY(BlueprintReadOnly) int32 ItemCount = 0;
 };
 /** A place an open objective line leads to, marked on the screen with the line's icon and the distance. */
 USTRUCT(BlueprintType)

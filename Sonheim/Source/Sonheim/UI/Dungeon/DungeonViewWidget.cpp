@@ -1,4 +1,5 @@
 #include "DungeonViewWidget.h"
+#include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/CanvasPanel.h"
@@ -407,7 +408,16 @@ void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
 	if (BossBreakBar) BossBreakBar->SetPercent(Data.BossBreak);
 	RefreshBossAction();
 	Fill(StatTiles, Data.Stats, &UDungeonStatTileWidget::SetStat);
-	Fill(RewardSlots, Data.Rewards, &UDungeonRewardEntryWidget::SetReward);
+	if (RewardSlots)
+	{
+		// An item the run paid is an item slot, as in the inventory; the line that says it paid nothing stays a line.
+		RewardSlots->Reset(true);
+		for (const FDungeonRewardViewData& Reward : Data.Rewards)
+		{
+			if (Reward.ItemId && USlotWidget::AddReadOnly(RewardSlots, Reward.ItemId, Reward.ItemCount, RewardSlotSize)) continue;
+			RewardSlots->CreateEntry<UDungeonRewardEntryWidget>()->SetReward(Reward);
+		}
+	}
 	ShowText(RewardText, nullptr, Data.RewardText);
 	ShowText(SummaryText, nullptr, Data.SummaryText);
 	ShowText(NewBestText, NewBestBadge, Data.NewBestText);

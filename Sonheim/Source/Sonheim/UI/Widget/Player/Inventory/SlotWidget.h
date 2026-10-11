@@ -40,6 +40,11 @@ public:
 	// 슬롯을 업데이트해주기 위한 함수
 	void SetItemData(const FItemData* ItemData, int32 NewQuantity);
 	void ClearSlot();
+	/** Shows an item that is only looked at, such as a reward or a material asked for: icon, count and tooltip, no weight, no
+	 * dragging. Size, when given, sets the slot's square. */
+	void ShowItem(const FItemData* ItemData, int32 Count, float Size = 0.f);
+	/** Adds a slot showing so many of an item to an entry box, whatever the box's own entry class; nullptr for an unknown item. */
+	static USlotWidget* AddReadOnly(class UDynamicEntryBox* Box, int32 ItemId, int32 Count, float Size = 0.f);
 
 	UFUNCTION()
 	void SetCraftingMatMode(bool Enable);

@@ -62,4 +62,6 @@ namespace MonsterDexView
 	SONHEIM_API FMonsterDexBookView Build(const UMonsterDexComponent& Dex);
 	SONHEIM_API FText NumberText(int32 Number);
 	SONHEIM_API FText ElementName(EElementalAttribute Element);
+	/** The element's glyph (Art/Requests/ui_v2.json), drawn white on the element's colour. */
+	SONHEIM_API UTexture2D* ElementIcon(EElementalAttribute Element);
 }

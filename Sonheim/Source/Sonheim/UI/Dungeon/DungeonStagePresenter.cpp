@@ -348,7 +348,7 @@ void UDungeonStagePresenter::Present()
 		{
 			const FItemData* Item = Instance ? Instance->GetDataItem(Reward.ItemId) : nullptr;
 			const FText Name = Item ? Item->ItemName : FText::FromString(FString::Printf(TEXT("#%d"), Reward.ItemId));
-			View.Rewards.Add({Name, FText::Format(Texts.RewardCountFormat, Reward.Count), Item ? Item->ItemIcon : nullptr});
+			View.Rewards.Add({Name, FText::Format(Texts.RewardCountFormat, Reward.Count), Item ? Item->ItemIcon : nullptr, Reward.ItemId, Reward.Count});
 			Lines.Add(FText::Format(Texts.RewardFormat, Name, Reward.Count).ToString());
 		}
 		View.RewardText = Lines.IsEmpty() ? Texts.NoRewardText : FText::FromString(FString::Join(Lines, TEXT("\n")));

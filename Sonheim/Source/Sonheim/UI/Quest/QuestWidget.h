@@ -87,6 +87,8 @@ protected:
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UDynamicEntryBox> ObjectiveBox;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UDynamicEntryBox> RewardBox;
 	UPROPERTY(EditAnywhere, Category="Style") FLinearColor RewardColor = FLinearColor(1.f, 1.f, 1.f, 0.1f);
+	/** The square of a reward's item slot. */
+	UPROPERTY(EditAnywhere, Category="Style") float RewardSlotSize = 56.f;
 
 	TArray<FQuestView> Shown;
 	int32 Picked = 0;

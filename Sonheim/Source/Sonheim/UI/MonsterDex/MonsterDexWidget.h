@@ -82,6 +82,8 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Style") FLinearColor DoneColor = FLinearColor(0.55f, 0.64f, 0.75f, 1.f);
 	UPROPERTY(EditAnywhere, Category="Style") FLinearColor ProgressColor = FLinearColor(0.05f, 0.6f, 1.f, 1.f);
 	UPROPERTY(EditAnywhere, Category="Style") FLinearColor RewardColor = FLinearColor(1.f, 1.f, 1.f, 0.1f);
+	/** The square of a reward's item slot. */
+	UPROPERTY(EditAnywhere, Category="Style") float RewardSlotSize = 52.f;
 private:
 	UFUNCTION() void HandleClaim();
 	int32 TierIndex = 0;

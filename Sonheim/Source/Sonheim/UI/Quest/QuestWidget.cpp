@@ -1,4 +1,5 @@
 #include "QuestWidget.h"
+#include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/DynamicEntryBox.h"
@@ -116,6 +117,7 @@ void UQuestScreenWidget::Redraw()
 		RewardBox->Reset(true);
 		for (const FRewardChipView& Reward : View->Rewards)
 		{
+			if (Reward.ItemId && USlotWidget::AddReadOnly(RewardBox, Reward.ItemId, Reward.Count, RewardSlotSize)) continue;
 			RewardBox->CreateEntry<UMonsterDexChipWidget>()->Show(Reward.Icon, Reward.Label, RewardColor, FLinearColor::White, Reward.Name);
 		}
 	}

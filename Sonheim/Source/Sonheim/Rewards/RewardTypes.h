@@ -25,6 +25,9 @@ struct FRewardChipView
 	UPROPERTY(BlueprintReadOnly) FText Label;
 	/** The item's name, for the chip's tooltip; empty for experience. */
 	UPROPERTY(BlueprintReadOnly) FText Name;
+	/** The item and how many, drawn as an item slot; 0 for experience, which stays a chip. */
+	UPROPERTY(BlueprintReadOnly) int32 ItemId = 0;
+	UPROPERTY(BlueprintReadOnly) int32 Count = 0;
 };
 
 namespace SonheimReward
