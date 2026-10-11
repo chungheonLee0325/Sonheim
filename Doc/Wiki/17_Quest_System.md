@@ -24,7 +24,6 @@ Sonheim 퀘스트는 **DataTable로 단계·목표를 정의하고, 서버가 �
 - [목표 집계와 단계 전환](#목표-집계와-단계-전환)
 - [서버 요청과 NPC 상호작용](#서버-요청과-npc-상호작용)
 - [복제·저장·UI 연결](#복제저장ui-연결)
-- [설계 판단과 검증](#설계-판단과-검증)
 - [관련 코드](#관련-코드)
 
 ---
@@ -53,6 +52,40 @@ PlayerState / FQuestRecord
 - `EQuestState`: `Active`, `ReadyToTurnIn`, `Completed`.
 - 동일 단계의 목표는 각각 진행량을 갖고 **전부 충족되면** 다음 단계로 넘어갑니다.
 - 선행 퀘스트는 `Prerequisites`에 정의하고 `CanAccept`에서 완료 여부를 확인합니다.
+- `FQuestRecord::Progress[i]`는 **현재 Step의 `Objectives[i]`와 같은 인덱스**를 사용합니다. Step이 바뀌면 목표 수에 맞춰 배열을 0으로 초기화합니다.
+
+<details>
+<summary>DataTable 정의와 플레이어별 Runtime Record 필드 보기</summary>
+
+~~~cpp
+// QuestTypes.h — USTRUCT / UPROPERTY 메타데이터 생략
+struct FQuestObjective
+{
+    EQuestGoal Goal = EQuestGoal::Kill;
+    int32 Id = 0;
+    FName Target;
+    int32 Required = 1;
+    FText Label;
+};
+
+struct FQuestStep
+{
+    FText Summary;
+    TArray<FQuestObjective> Objectives;
+};
+
+struct FQuestRecord : FFastArraySerializerItem
+{
+    int32 QuestID = 0;
+    EQuestState State = EQuestState::Active;
+    int32 Step = 0;
+    TArray<int32> Progress;
+    bool bTracked = true;
+};
+~~~
+
+</details>
+
 
 ## 목표 집계와 단계 전환
 
@@ -72,7 +105,7 @@ flowchart TB
 
 `HandleDeed`는 현재 열려 있는 목표와 이벤트의 종류·종 ID·아이템 ID·지역을 비교합니다. `Advance`는 완료 수치가 `Required`를 넘지 않도록 제한하고, 증가가 있을 때만 `Settle`과 `Changed`를 호출합니다.
 
-`Possess`는 누적 획득이 아니라 **현재 인벤토리에 보유한 개수**로 계산하므로, 아이템을 사용하거나 이동하면 남은 목표 진행량도 재평가할 수 있습니다. `Deliver`는 `Interact` 시 서버에서 실제 아이템을 `RemoveItem`한 뒤 진행량에 더합니다. 두 목표를 서로 다르게 취급한 이유입니다.
+`Possess`는 누적 획득이 아니라 **현재 인벤토리에 보유한 개수**로 계산하므로, 아이템을 사용하거나 이동하면 남은 목표 진행량도 재평가할 수 있습니다. `Deliver`는 `Interact` 시 서버에서 실제 아이템을 `RemoveItem`한 뒤 진행량에 더합니다. 이 차이는 데이터 정의의 `EQuestGoal`에 따라 `UQuestComponent::HandleInventory`와 `UQuestComponent::Interact`에서 분기합니다.
 
 ### Settle의 상태 전환
 
@@ -90,7 +123,33 @@ flowchart TD
   H --> G
 ~~~
 
-`Settle`은 조건을 채운 단계에서 다음 단계로 이동하고, 최종 단계라면 `Receiver` 유무에 따라 자동 완료 또는 완료 보고 대기로 분기합니다. `Finish`는 `Completed` 상태를 먼저 기록하고 `SonheimReward::Grant`를 호출해 같은 기록에 대한 반복 완료 보고를 막습니다.
+`Settle`은 모든 `Objectives`를 충족한 경우 Step을 증가시키고 `Progress` 배열을 새 단계 길이에 맞게 초기화합니다. 마지막 Step에서는 `Receiver`가 없으면 즉시 `Finish`, 있으면 `ReadyToTurnIn`으로 전환합니다.
+
+<details>
+<summary>Settle의 단계 전환과 완료 분기 코드 보기</summary>
+
+~~~cpp
+// QuestComponent.cpp — Settle 내부 분기 발췌
+if (!bDone) return;
+if (Quest.Steps.IsValidIndex(Record.Step + 1))
+{
+    ++Record.Step;
+    Record.Progress.Init(0, Quest.Steps[Record.Step].Objectives.Num());
+}
+else if (Quest.Receiver.IsNone())
+{
+    Finish(Record, Quest);
+}
+else
+{
+    Record.State = EQuestState::ReadyToTurnIn;
+    Record.Progress.Reset();
+}
+~~~
+
+</details>
+
+`Finish`는 `Completed`를 먼저 기록하고 `SonheimReward::Grant`를 호출합니다. 동일 진행 기록에 대해 다시 완료 보고하더라도 보상을 중복 지급하지 않도록 한 순서입니다.
 
 ## 서버 요청과 NPC 상호작용
 
@@ -128,21 +187,6 @@ DOREPLIFETIME_CONDITION(UQuestComponent, Quests, COND_OwnerOnly);
 `UQuestSubsystem`은 플레이어별 기록을 호스트 SaveGame 슬롯 `Quests`에 저장합니다. 저장된 QuestID가 데이터 테이블에서 사라졌거나 유효하지 않은 Step을 가리키면 로드시 제외하고, 보유 아이템 조건을 다시 계산합니다. 중앙 서버의 계정 DB를 이용하는 방식은 아닙니다.
 
 UMG는 `QuestView::Build / Journal / AtTarget`이 만든 화면용 데이터를 사용합니다. `UQuestJournalWidget`은 상태별 필터·추적·포기를 제공하고, `UQuestTrackerWidget`은 추적 중인 미완료 목표를 표시합니다. 아이템 보상은 `USlotWidget::AddReadOnly`를 재사용합니다.
-
-## 설계 판단과 검증
-
-| 선택 | 효과 및 고려 사항 |
-|---|---|
-| 단계/목표 DataTable 정의 | 새 목표 조합을 C++ UI 로직 변경 없이 구성 |
-| PlayerDeed 이벤트 + Inventory 구독 | 처치와 보유·납품을 의미에 맞게 분리 |
-| PlayerState + FastArray | 플레이어별 진행의 서버 소유와 소유 클라이언트 갱신 |
-| IQuestTarget 서버 확인 | NPC 이름·거리와 상태를 요청 시 재확인 |
-| 완료 상태 선반영 | 같은 완료 보고의 중복 보상 방지 |
-| QuestBuildSite의 복제 상태 | 진행 결과를 월드 오브젝트 표현에 연결 |
-
-현재 호스트 저장은 변경 때마다 `SaveGameToSlot`을 실행합니다. 목표 갱신이 빈번해지면 배치 저장이나 별도 영속 계층을 고려할 수 있습니다. NPC 마커의 주기적 조회 역시 NPC 수가 늘어날 때 Delegate 기반으로 전환할 검토 대상입니다.
-
-PR #3 기록상 `verify_quest` **8/8**을 통과했으며 실제 던전 1판을 포함합니다. 이번 문서 분리에서 자동 검증과 PIE를 다시 수행하지는 않았습니다.
 
 ## 관련 코드
 
