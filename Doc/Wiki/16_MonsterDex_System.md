@@ -87,7 +87,7 @@ DOREPLIFETIME_CONDITION(UMonsterDexComponent, Dex, COND_OwnerOnly);
 
 ## 3D 미리보기
 
-![도감 3D 프리뷰](../Media/Wiki/16_UMG_Migration_with_Claude/16_dex_after.jpg)
+상단 [Runtime Result](#runtime-result)의 도감 화면 오른쪽 영역에 표시되는 프리뷰는 아래 전용 Stage Actor에서 생성합니다.
 
 `AMonsterDexStage`는 월드 내 몬스터 Actor를 복제·이동하는 대신 **로컬 비복제 Actor**에 표시용 `USkeletalMeshComponent`를 보관합니다.
 
