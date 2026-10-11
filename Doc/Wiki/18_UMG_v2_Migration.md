@@ -86,9 +86,11 @@ default:
 
 또한 인벤토리와 능력치처럼 함께 열리는 위젯은 하나의 스택 항목으로 다룹니다. 이미 Viewport에서 제거된 화면은 `Prune`으로 정리합니다.
 
-> **영상 자리 — 중첩 메뉴 종료 후 입력 복원**  
-> `Doc/Media/Wiki/18_UMG_v2_Migration/18_ui_stack_restore.mp4`  
-> 게임플레이 → 인벤토리/능력치 열기 → 다른 메뉴 열기 → 최상단 메뉴만 닫기 → 기존 화면과 커서 유지 → 모든 메뉴 종료 후 이동·공격 입력 복원까지 한 번에 보여주는 영상으로 교체합니다.
+**중첩 메뉴 종료 후 입력 복원 — 플레이 영상**
+
+https://github.com/user-attachments/assets/f9936033-7251-4304-b1cb-842750c13c59
+
+메뉴를 중첩해서 열고 닫을 때 최상단 화면의 입력 모드와 커서를 적용하고, 모든 메뉴가 닫히면 게임플레이 입력으로 복원하는 동작을 보여줍니다.
 
 던전 HUD·결과 화면은 이 스택이 아니라 `UDungeonUIRouterSubsystem`에서 관리합니다. 기존 일반 메뉴의 입력 정책을 덮어쓰지 않도록 **현재 던전 HUD·Result는 비모달 `GameOnly` 정책**을 사용합니다.
 
@@ -112,9 +114,9 @@ default:
 
 *개편 후 화면에는 **좌측 Feed(퀘스트 수락)**, **중앙 Headline(새로운 팰 발견!)**, **상단 Title(지역명)**이 동시에 표시됩니다. 도감 첫 발견의 Headline과 퀘스트 수락의 Feed는 서로 다른 알림입니다.*
 
-> **영역 마킹 이미지 자리 — 위 v2 화면에 Feed·Headline·Title 표시**  
-> `Doc/Media/Wiki/18_UMG_v2_Migration/18_notice_slots_annotated.png`  
-> 위 실제 v2 스크린샷을 원본으로 사용해 좌측 Feed, 중앙 Headline, 상단 Title에만 ①~③ 테두리를 추가합니다. 원본은 유지하고 작업 완료 후 주석 이미지를 연결합니다.
+![실제 게임 화면의 Feed·Headline·Title 표시 영역](https://github.com/user-attachments/assets/65918dce-7c6b-4792-9b51-833113896b05)
+
+*좌측 Feed, 중앙 Headline, 상단 Title의 배치 영역을 표시했습니다.*
 
 ### 레벨업 Headline
 
@@ -200,11 +202,11 @@ C++ `UUserWidget`은 **데이터 조회·Delegate·입력 처리와 `BindWidget`
 
 **WBP_MonsterDex** — 목록·선택 상세·기록·보상 영역의 Widget Tree를 확인합니다.
 
-![Unreal Editor WBP_MonsterDex의 Widget Tree](../Media/Wiki/18_UMG_v2_Migration/18_wbp_monsterdex_editor.png)
+![Unreal Editor WBP_MonsterDex의 Widget Tree](https://github.com/user-attachments/assets/7349d43c-daa7-4adf-9d85-2df49ba579f1)
 
 **WBP_MonsterDexTier** — 보상 조건·진행도·아이템 슬롯·수령 버튼을 연결한 위젯입니다.
 
-![Unreal Editor WBP_MonsterDexTier Widget Tree](../Media/Wiki/18_UMG_v2_Migration/18_wbp_monsterdex_tier_editor.png)
+![Unreal Editor WBP_MonsterDexTier Widget Tree](https://github.com/user-attachments/assets/28149b30-c0df-4826-8905-e5ac27aaec24)
 
 위와 같은 화면은 단순한 이미지 교체가 아니라, **C++이 참조하는 Widget Tree의 이름·타입을 유지하면서 실제 게임 상태를 표시하는 작업**이었습니다. 도감과 퀘스트의 데이터 갱신 구조 자체는 각 시스템 문서에서 설명합니다.
 
