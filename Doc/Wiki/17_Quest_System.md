@@ -69,8 +69,9 @@ struct FQuestData : public FTableRowBase
 - `Steps / Objectives`: 단계별 설명과 목표 종류·대상·필요 횟수
 - `Exp / Items`: 최종 완료 보상
 
-> **에디터 캡처 자리 — `DT_Quest`의 단계별 목표 설정**  
-> `Doc/Media/Wiki/17_Quest_System/17_dt_quest_editor.png`. 실제 퀘스트 한 행에서 `Prerequisites`, `Steps`, `Objectives`, `Goal`, `Required`를 확인할 수 있도록 펼친 화면을 배치합니다.
+![DT_Quest 편집 화면 — 퀘스트 정의와 단계별 목표](https://github.com/user-attachments/assets/ed187038-120f-441c-a4bd-c733977068ec)
+
+*`DT_Quest`에서 퀘스트 정의를 관리하는 Unreal Editor 화면입니다. 단계별 목표와 조건은 `FQuestStep`·`FQuestObjective` 구조에 대응합니다.*
 
 ### FQuestRecord — 플레이어별 진행 기록
 
