@@ -28,7 +28,7 @@ Sonheim의 기존 gameplay state를 유지하면서 **화면 입력 수명·알�
 - [Notice와 키 안내](#notice와-키-안내)
 - [Widget Blueprint 개편](#widget-blueprint-개편)
 - [AgentMcp 저작·검증](#agentmcp-저작검증)
-- [검증 범위와 트레이드오프](#검증-범위와-트레이드오프)
+- [입력·알림 관리의 경계](#입력알림-관리의-경계)
 - [관련 코드](#관련-코드)
 
 ---
@@ -50,7 +50,31 @@ flowchart TB
 
 `FUIScreenRule`은 Screen ID와 Widget Class, ZOrder, `GameOnly / GameAndUI / UIOnly`, 커서, 게임플레이 입력 차단 여부를 정의합니다. `Open`은 동일 화면을 상단으로 이동할 수 있으며, 여러 Widget으로 구성된 인벤토리/능력치를 하나의 Entry로 여닫습니다.
 
-`Close` 후 남은 **상단 Screen**을 기준으로 `ApplyInputState`를 다시 호출합니다. Stack이 비면 GameOnly/커서 숨김으로 돌아갑니다. `Prune`은 Viewport에서 이탈한 위젯을 정리합니다. Dungeon HUD/Result의 비동기 위젯 수명은 기존 `UDungeonUIRouterSubsystem`이 담당하며 여기서 대체하지 않았습니다.
+`Close` 후 남은 **상단 Screen**을 기준으로 `ApplyInputState`를 다시 호출합니다. Stack이 비면 GameOnly/커서 숨김으로 돌아갑니다. `Prune`은 Viewport에서 이탈한 위젯을 정리합니다.
+
+<details>
+<summary>FUIScreenRule / ApplyInputState의 주요 입력 상태 처리 보기</summary>
+
+~~~cpp
+// UIStackSubsystem.h
+struct FUIScreenRule
+{
+    FName Id;
+    TSoftClassPtr<UUserWidget> WidgetClass;
+    int32 ZOrder = 0;
+    EUIStackInputMode InputMode = EUIStackInputMode::GameAndUI;
+    bool bShowMouse = true;
+    bool bBlockGameInput = true;
+};
+
+// UIStackSubsystem.cpp — ApplyInputState 내부 발췌
+PC->SetShowMouseCursor(Rule.bShowMouse);
+Hints->SetMenuInput(Rule.bBlockGameInput);
+~~~
+
+</details>
+
+Dungeon HUD/Result의 비동기 위젯 수명은 기존 `UDungeonUIRouterSubsystem`이 담당하며 일반 Screen Stack과 분리됩니다.
 
 ## Notice와 키 안내
 
@@ -131,29 +155,19 @@ flowchart LR
 
 - **저작:** 색/서체/프레임·알림 슬롯 기준을 정한 뒤 UI Kit와 저작 스크립트로 화면을 구성했습니다.
 - **계약 확인:** `BindWidget`을 점검하여 C++-Blueprint 연결을 유지했습니다.
-- **실행 검증:** 도감 등록, 퀘스트 진입, 실제 처치와 던전 클리어로 알림 및 HUD를 캡처했습니다.
-- **한계:** PR에서 `Scripts/UI` 저작·캡처 스크립트가 추적되지 않으므로, 현재 저장소만으로 동일 과정을 완전 재실행할 수 있다고 주장하지 않습니다. 최종 Widget Blueprint와 C++ 구현, 캡처 결과는 PR에 포함되어 있습니다.
+- **게임 실행 확인:** 도감 등록·퀘스트 대화·던전 완료 화면에서 Widget 상태와 키 안내를 확인했습니다.
+- **저작 산출물:** C++ 및 Widget Blueprint 변경, 화면 캡처를 PR에 포함했습니다. 저작 과정에 사용한 UI Python 스크립트는 현재 PR 추적 파일에 포함되지 않습니다.
 
-## 검증 범위와 트레이드오프
+## 입력·알림 관리의 경계
 
-| 실행 기록 | 결과 | 대표 확인 |
-|---|---:|---|
-| `verify_ui_stack` | 6/6 | 탭 이동, 키보드/패드 표시, 메뉴 입력 복원 |
-| `verify_dex` | 3/3 | 도감 등록·보상 상태 및 알림 |
-| `verify_quest` | 8/8 | 퀘스트 수락/진행/대화, 실제 던전 1판 |
-| `verify_dungeon_hud` | 98/98 | 2개 해상도에서 서버·클라이언트 HUD/보상 |
-| **합계** | **115/115** | PR 작성 당시 기록 |
-
-테스트용 Editor Python에서 호출한 Client RPC는 실제 네트워크 실행 경로를 제대로 재현하지 못해, 레벨업 알림은 실제 처치로 경험치를 얻는 방식으로 확인했습니다. 초기 글리프 누락은 매핑 재구축 이벤트에 다시 표시하는 처리를 연결했습니다.
-
-| 판단 | 이점 | 제약 |
+| 대상 | 실제 구현 | 관리 경계 |
 |---|---|---|
-| Screen Stack 중앙 관리 | 중첩 화면 입력·커서 복원 통일 | Dungeon Router와 로컬 Confirm은 별도 경계 |
-| Slot/Channel Notice | 이벤트의 중요도와 표현 정책 분리 | UI 모션과 배치는 Widget Blueprint 개별 저작 |
-| `BindWidget` 계약 유지 | 기존 데이터 처리·이벤트 연결 보존 | 애니메이션 위젯은 트리 재생성보다 제자리 변경 필요 |
-| AgentMcp 기반 저작 | Editor 편집 → PIE 확인을 연속 수행 | 재현 스크립트 관리와 UI 검토가 계속 필요 |
+| 일반 Screen | `UUIStackSubsystem::Open / Close / ApplyInputState` | 최상단 Screen의 InputMode·커서·게임 입력 차단 |
+| Dungeon HUD / Result | `UDungeonUIRouterSubsystem` | 던전 전용 ViewData 및 비동기 위젯 수명 |
+| Notice | `UNoticeSubsystem::Push / Clear` | Slot별 표시 정책과 Channel별 제거 |
+| 입력 글리프 | `UInputHintSubsystem::GlyphFor` | Enhanced Input 매핑과 키보드·패드 전환 |
 
-이 문서 분리 작업에서는 UE 빌드나 PIE 테스트를 새로 실행하지 않았습니다. 위 수치는 기존 PR의 검증 기록입니다.
+메뉴 탭 Q/E와 LB/RB 전환은 구현됐으며, **메뉴 내부 버튼·슬롯 간 게임패드 포커스 탐색은 별도 범위**입니다.
 
 ## 관련 코드
 
