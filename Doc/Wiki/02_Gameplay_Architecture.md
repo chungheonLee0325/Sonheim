@@ -273,7 +273,8 @@ UNoticeSubsystem
 
 | 기존 기능 | 던전에서의 사용 |
 |---|---|
-| `IInteractableInterface` | 입구·지름길 레버·보상 상자 상호작용 |
+| `IInteractableInterface` | 던전 입구·지름길 레버 등 월드 상호작용 |
+| `ASonheimGameState`의 던전 스냅샷 | 장벽·보상 상자 등이 현재 단계·완료 상태에 맞춰 월드 표현 갱신 |
 | 전투·포획 결과 | 스폰 그룹과 던전 목표 진행 |
 | `UInventoryComponent` | 던전 보상 아이템 지급 |
 | 기존 몬스터·포획 구조 | 수호자 보스와 포획 가능 상태 |
