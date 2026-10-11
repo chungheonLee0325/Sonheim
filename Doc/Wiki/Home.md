@@ -26,7 +26,7 @@ flowchart TB
     subgraph GAME["Gameplay Runtime"]
         BASE["<b>공통 Character 기반</b><br/>AAreaObject : ACharacter<br/>Health · Condition · Skill Components"]
         BODY["<b>World Body</b><br/>ASonheimPlayer / ABaseMonster"]
-        PSTATE["<b>Player 지속 상태</b><br/>ASonheimPlayerState<br/>Inventory · StatBonus · PalInventory"]
+        PSTATE["<b>Player 지속 상태</b><br/>ASonheimPlayerState<br/>Inventory · StatBonus · PalInventory<br/>MonsterDex · Quest"]
         WORLD["<b>World 상호작용</b><br/>UInteractionComponent<br/>IInteractableInterface"]
         CONTENT["<b>콘텐츠 실행</b><br/>UDungeonStageRuntimeSubsystem<br/>UBossFSM : UBaseAiFSM"]
     end
@@ -99,12 +99,15 @@ flowchart TB
 - [[06. World Interaction Systems|06_World_Interaction_Systems]] — Item·Container·Crafting·Lever·Portal을 하나의 <code>IInteractableInterface</code> 입력/Prompt/Hold 흐름으로 연결
 - [[07. Inventory & Crafting|07_Inventory_Crafting]] — Item/Equipment/Container/Crafting의 데이터와 UI, 협력 제작 lifecycle
 - [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — Wild Monster → Capture → Ownership → Storage → Summon → Partner AI
+- [[16. MonsterDex System|16_MonsterDex_System]] — Kill/Capture 기록, 서버 보상 검증, Owner FastArray와 3D 도감 프리뷰
+- [[17. Quest System|17_Quest_System]] — DataTable 단계·목표, NPC 상호작용, 서버 권위 진행·보상·저장
 
 ---
 
 ## UI Architecture
 
 - [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Delegate HUD, UI Stack/Input, Notice 슬롯, Dungeon Presenter/ViewData와 LocalPlayer UI routing
+- [[18. UMG v2 Migration & Editor Verification|18_UMG_v2_Migration]] — UI 전후 비교, BindWidget 기반 개편, AgentMcp 저작·PIE 검증
 
 - **Player HUD** — Health·Stamina·Level 등 gameplay state의 Delegate를 구독해 갱신
 - **Inventory / Container / Crafting** — <code>UUIStackSubsystem</code>이 화면 입력·수명을, 각 Widget이 데이터 바인딩을 관리
@@ -133,7 +136,6 @@ Forgotten Ruins는 **Combat·Interaction·Inventory·Capture·UI가 하나의 �
 - [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — Stage graph, dependency, Boss timing처럼 데이터 조합에서 생기는 오류를 Editor / graph validation으로 검사
 - [[14. Unreal Editor Automation & Verification|14_Unreal_Editor_Automation_Verification]] — AgentMcp를 이용한 UE Editor authoring과 Compile → PIE → Log/Viewport 검증
 - [[15. Development History & Retrospective|15_Development_History_Retrospective]] — 기능 추가보다 ownership과 시스템 경계가 실제 확장에서 어떻게 바뀌었는지 정리
-- [[16. 도감·퀘스트와 UMG v2 통합|16_UMG_Migration_with_Claude]] — 서버 권위 도감·퀘스트와 UI Stack/Notice/Input의 설계·검증, UMG 화면 전/후
 
 ### AgentMcp
 
