@@ -3,6 +3,7 @@
 #include "Engine/LocalPlayer.h"
 #include "GameFramework/PlayerController.h"
 #include "MenuTabWidget.h"
+#include "Sonheim/UI/Input/InputHintSubsystem.h"
 #include "Sonheim/Utilities/LogMacro.h"
 
 TArray<UUserWidget*> UUIStackSubsystem::Open(const FName Id, const TArray<TSubclassOf<UUserWidget>>& Classes)
@@ -179,6 +180,10 @@ void UUIStackSubsystem::ApplyInputState()
 	}
 	PC->SetShowMouseCursor(Rule.bShowMouse);
 	RefreshTabBar();
+	if (UInputHintSubsystem* Hints = GetLocalPlayer() ? GetLocalPlayer()->GetSubsystem<UInputHintSubsystem>() : nullptr)
+	{
+		Hints->SetMenuInput(Rule.bBlockGameInput);
+	}
 	switch (Rule.InputMode)
 	{
 	case EUIStackInputMode::UIOnly:

@@ -1,4 +1,5 @@
 #include "InteractionComponent.h"
+#include "Sonheim/UI/System/UIStackSubsystem.h"
 
 #include "PalCaptureComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -49,6 +50,13 @@ void UInteractionComponent::PerformDetection()
 {
 	if (!OwnerPlayer || !OwnerPlayer->IsLocallyControlled() || OwnerPlayer->IsDie())
 		return;
+	// While a screen holds back gameplay nothing is the F target, so no prompt stands over the screen in the world.
+	const ULocalPlayer* Local = OwnerPlayer->GetController<APlayerController>() ? OwnerPlayer->GetController<APlayerController>()->GetLocalPlayer() : nullptr;
+	if (const UUIStackSubsystem* UIStack = Local ? Local->GetSubsystem<UUIStackSubsystem>() : nullptr; UIStack && UIStack->IsGameplayBlocked())
+	{
+		UpdateInteractable(nullptr, 0);
+		return;
+	}
 
 	UCameraComponent* Camera = OwnerPlayer->GetFollowCamera();
 	if (!Camera) return;

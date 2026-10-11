@@ -127,7 +127,23 @@ class SONHEIM_API UQuestJournalWidget : public UQuestScreenWidget
 public:
 	UFUNCTION(BlueprintCallable, Category="Quest") void ToggleTracked();
 	UFUNCTION(BlueprintCallable, Category="Quest") void Abandon();
+	/** Which quests the list shows (ref 09's filter tabs): 0 the open ones, 1 the finished ones, 2 all. */
+	UFUNCTION(BlueprintCallable, Category="Quest") void SetFilter(int32 InFilter);
 protected:
+	UFUNCTION() void ShowOpen() { SetFilter(0); }
+	UFUNCTION() void ShowDone() { SetFilter(1); }
+	UFUNCTION() void ShowAll() { SetFilter(2); }
+	void DrawFilters();
+	int32 Filter = 0;
+	/** The filter tabs and their plates, lit on the one showing. */
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UButton> FilterOpenButton;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UButton> FilterDoneButton;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UButton> FilterAllButton;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UBorder> FilterOpenPlate;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UBorder> FilterDonePlate;
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UBorder> FilterAllPlate;
+	UPROPERTY(EditAnywhere, Category="Style") FLinearColor FilterOn = FLinearColor(0.0252f, 0.5776f, 1.f, 1.f);
+	UPROPERTY(EditAnywhere, Category="Style") FLinearColor FilterOff = FLinearColor(1.f, 1.f, 1.f, 0.06f);
 	virtual void NativeOnInitialized() override;
 	virtual TArray<FQuestView> ListQuests(const UQuestComponent& Quests) const override;
 	virtual void DrawActions(const FQuestView* Quest) override;

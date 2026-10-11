@@ -121,7 +121,7 @@ public:
 	void OpenTab(FName Screen);
 private:
 	void OpenMenu();
-	/** Q and E step the menu's tabs while a tab's screen is on top; returns whether they did. */
+	/** The menu's tab actions (IMC_Menu: Q and E, the bumpers) step the tabs while a tab's screen is on top; returns whether they did. */
 	bool StepTab(int32 Dir);
 private:
 	void On_Journal_Pressed(const FInputActionValue& InputActionValue);

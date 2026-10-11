@@ -490,6 +490,25 @@ void ASonheimPlayerController::SetupInputComponent()
 			EnhancedInputComponent->BindAction(JournalAction, ETriggerEvent::Started, this,
 			                                   &ASonheimPlayerController::On_Journal_Pressed);
 		}
+		// The menu's own actions, on IMC_Menu, which UInputHintSubsystem turns on while a screen holds back gameplay.
+		static const TCHAR* MenuActions = TEXT("/Game/_BluePrint/AreaObject/Player/Input/Actions/Menu/");
+		auto FindMenuAction = [](const TCHAR* Name) { return LoadObject<UInputAction>(nullptr, *FString::Printf(TEXT("%s%s.%s"), MenuActions, Name, Name)); };
+		if (UInputAction* Prev = FindMenuAction(TEXT("IA_UI_TabPrev")))
+			EnhancedInputComponent->BindActionValueLambda(Prev, ETriggerEvent::Started, [this](const FInputActionValue&) { StepTab(-1); });
+		if (UInputAction* Next = FindMenuAction(TEXT("IA_UI_TabNext")))
+			EnhancedInputComponent->BindActionValueLambda(Next, ETriggerEvent::Started, [this](const FInputActionValue&) { StepTab(1); });
+		if (UInputAction* Close = FindMenuAction(TEXT("IA_UI_Close")))
+			EnhancedInputComponent->BindActionValueLambda(Close, ETriggerEvent::Started, [this](const FInputActionValue&)
+			{
+				if (UUIStackSubsystem* UIStack = GetUIStack()) UIStack->CloseTop();
+			});
+		if (UInputAction* Confirm = FindMenuAction(TEXT("IA_UI_Confirm")))
+			EnhancedInputComponent->BindActionValueLambda(Confirm, ETriggerEvent::Started, [this](const FInputActionValue&)
+			{
+				// In the quest dialog, confirm does what its button says, so a quest can be taken without the mouse.
+				UUIStackSubsystem* UIStack = GetUIStack();
+				if (auto* Dialog = UIStack ? Cast<UQuestDialogWidget>(UIStack->GetWidget(UIScreen::QuestDialog)) : nullptr) Dialog->Act();
+			});
 	}
 	else
 	{
@@ -668,7 +687,7 @@ void ASonheimPlayerController::On_PartnerSkill_Released(const FInputActionValue&
 
 void ASonheimPlayerController::On_SummonPal_Pressed(const FInputActionValue& Value)
 {
-	if (StepTab(1) || IsUIBlockingInput()) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->SummonPal_Pressed();
 }
 
@@ -683,7 +702,7 @@ void ASonheimPlayerController::On_SwitchPalSlot_Triggered(const FInputActionValu
 
 void ASonheimPlayerController::On_ThrowPalSphere_Pressed(const FInputActionValue& InputActionValue)
 {
-	if (StepTab(-1) || IsUIBlockingInput()) return;
+	if (IsUIBlockingInput()) return;
 	m_Player->RightMouse_Pressed();
 	GetPlayerStatusWidget()->SetEnableCrossHair(true);
 	GetPlayerStatusWidget()->SetEnableKeyGuide(true, EUIKeyGuide::RButton, "취소");
@@ -771,15 +790,7 @@ void ASonheimPlayerController::On_Glider_Released(const FInputActionValue& Input
 
 void ASonheimPlayerController::On_FKey_Pressed(const FInputActionValue& InputActionValue)
 {
-	// In the quest dialog F does what its button says, so a quest can be taken without the mouse.
-	if (UUIStackSubsystem* UIStack = GetUIStack())
-	{
-		if (UQuestDialogWidget* Dialog = Cast<UQuestDialogWidget>(UIStack->GetWidget(UIScreen::QuestDialog)))
-		{
-			Dialog->Act();
-			return;
-		}
-	}
+	// While a screen is up, F is the menu's confirm (IMC_Menu), not an interaction.
 	if (IsUIBlockingInput()) return;
 	if (m_Player)
 	{

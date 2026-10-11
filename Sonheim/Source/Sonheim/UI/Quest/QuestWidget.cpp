@@ -175,11 +175,37 @@ void UQuestJournalWidget::NativeOnInitialized()
 	Super::NativeOnInitialized();
 	TrackButton->OnClicked.AddDynamic(this, &UQuestJournalWidget::ToggleTracked);
 	AbandonButton->OnClicked.AddDynamic(this, &UQuestJournalWidget::Abandon);
+	if (FilterOpenButton) FilterOpenButton->OnClicked.AddDynamic(this, &UQuestJournalWidget::ShowOpen);
+	if (FilterDoneButton) FilterDoneButton->OnClicked.AddDynamic(this, &UQuestJournalWidget::ShowDone);
+	if (FilterAllButton) FilterAllButton->OnClicked.AddDynamic(this, &UQuestJournalWidget::ShowAll);
+	DrawFilters();
+}
+
+void UQuestJournalWidget::SetFilter(const int32 InFilter)
+{
+	Filter = FMath::Clamp(InFilter, 0, 2);
+	DrawFilters();
+	Redraw();
+}
+
+void UQuestJournalWidget::DrawFilters()
+{
+	UBorder* Plates[] = {FilterOpenPlate.Get(), FilterDonePlate.Get(), FilterAllPlate.Get()};
+	for (int32 i = 0; i < 3; ++i)
+	{
+		if (Plates[i]) Plates[i]->SetBrushColor(i == Filter ? FilterOn : FilterOff);
+	}
 }
 
 TArray<FQuestView> UQuestJournalWidget::ListQuests(const UQuestComponent& Component) const
 {
-	return QuestView::Journal(Component);
+	TArray<FQuestView> Listed = QuestView::Journal(Component);
+	if (Filter != 2)
+	{
+		const bool bDone = Filter == 1;
+		Listed.RemoveAll([bDone](const FQuestView& View) { return (View.State == EQuestViewState::Completed) != bDone; });
+	}
+	return Listed;
 }
 
 void UQuestJournalWidget::DrawActions(const FQuestView* Quest)
