@@ -352,9 +352,10 @@ flowchart TB
     HIT["UMeleeAttack / Projectile / Boss Strike"] --> CALC["AAreaObject::CalcDamage<br/>IFF 검사 · 기본 피해 · 동일 속성 보너스"]
     CALC --> EVENT["FCustomDamageEvent<br/>FAttackData + HitInfo + Damage"]
     EVENT --> TARGET["AAreaObject::TakeDamage<br/>서버 권한 · 피아식별 · 생존/상태 검사"]
-    TARGET --> MITIGATE["방어 보정 → 약점 ×1.5<br/>속성 상성 배율"]
+    TARGET --> REACTION["Custom Damage 확인<br/>Hit Stop · 넉백"]
+    REACTION --> MITIGATE["방어 보정 → 약점 ×1.5<br/>속성 상성 배율"]
     MITIGATE --> HP["Health / Stamina 갱신<br/>사망 판정"]
-    HP --> FEEDBACK["MulticastDamageEffect<br/>Hit Stop · 넉백 · 피격 연출"]
+    HP --> FEEDBACK["MulticastDamageEffect<br/>피격 숫자 · VFX/SFX"]
 ~~~
 
 `CalcDamage`의 **동일 속성 보너스는 공격자의 방어 속성 목록에 공격 속성이 있으면 1.2배**를 적용하는 현재 코드 기준입니다. 대상 `TakeDamage`는 별도로 방어 보정·약점(1.5배)·대상의 방어 속성에 대한 상성 배율을 적용합니다.
