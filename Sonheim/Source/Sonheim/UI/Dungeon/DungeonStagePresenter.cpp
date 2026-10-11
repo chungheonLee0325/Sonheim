@@ -70,9 +70,30 @@ namespace
 	}
 	bool IsCleared(const FDungeonGroupTally* Tally) { return Tally && Tally->Spawned > 0 && Tally->Defeated + Tally->Captured >= Tally->Spawned; }
 	/** One line of the objective list, with what the snapshot says about its goal. */
-	FDungeonObjectiveViewData ObjectiveRow(const UDungeonPresentationDataAsset& Texts, const FDungeonObjectiveLine& Line, const FDungeonStageRuntimeState& State)
+	/** The items a capture line pays: the GrantReward actions of the rules that answer a capture from the line's group. The definition
+	 * is the one place the bonus is written, so the screen never repeats it in words. */
+	TArray<FItemReward> CaptureBonus(const UDungeonDefinitionDataAsset* Definition, const FDungeonObjectiveLine& Line)
+	{
+		TArray<FItemReward> Bonus;
+		if (!Definition || Line.Goal != EDungeonObjectiveGoal::Captured) return Bonus;
+		for (const FDungeonStageDefinition& Stage : Definition->Stages)
+		{
+			for (const FDungeonStageEventRule& Rule : Stage.EventRules)
+			{
+				if (Rule.Event != EDungeonStageEvent::MonsterCaptured || Rule.SourceId != Line.GroupId) continue;
+				for (const FDungeonStageAction& Action : Rule.Actions)
+				{
+					if (Action.Type == EDungeonStageAction::GrantReward) Bonus.Add({Action.RewardItemId, Action.RewardCount});
+				}
+			}
+		}
+		return Bonus;
+	}
+	FDungeonObjectiveViewData ObjectiveRow(const UDungeonPresentationDataAsset& Texts, const FDungeonObjectiveLine& Line, const FDungeonStageRuntimeState& State,
+	                                       const UDungeonDefinitionDataAsset* Definition = nullptr)
 	{
 		FDungeonObjectiveViewData Row;
+		Row.Bonus = CaptureBonus(Definition, Line);
 		Row.Label = Line.Label;
 		Row.Kind = Line.Kind;
 		Row.Window = Line.Window;
@@ -162,7 +183,7 @@ void UDungeonStagePresenter::ResolveOptional(const FDungeonStageRuntimeState& Pr
 	for (const FDungeonObjectiveLine& Line : Left->Objectives)
 	{
 		if (Line.Kind != EDungeonObjectiveKind::Optional) continue;
-		FDungeonObjectiveViewData Row = ObjectiveRow(*Presentation, Line, Latest);
+		FDungeonObjectiveViewData Row = ObjectiveRow(*Presentation, Line, Latest, Definition);
 		Row.State = Row.State == EDungeonObjectiveState::Done ? EDungeonObjectiveState::Done : EDungeonObjectiveState::Missed;
 		Row.Count = Row.State == EDungeonObjectiveState::Done ? Presentation->OptionalDoneText : Presentation->OptionalMissedText;
 		Row.Window = FText::GetEmpty();
@@ -246,7 +267,7 @@ void UDungeonStagePresenter::Present()
 		{
 			for (const FDungeonObjectiveLine& Line : Stage->Objectives)
 			{
-				const FDungeonObjectiveViewData Row = ObjectiveRow(Texts, Line, Latest);
+				const FDungeonObjectiveViewData Row = ObjectiveRow(Texts, Line, Latest, Definition);
 				(Line.Kind == EDungeonObjectiveKind::Optional ? View.OptionalObjectives : View.Objectives).Add(Row);
 				// An open line that leads somewhere marks the place: a room until the player is inside, a switch until the player is near.
 				AActor* Target = Row.State == EDungeonObjectiveState::Open && Line.MarkerTarget.IsValid() ? FindMarkerTarget(Line.MarkerTarget) : nullptr;

@@ -72,6 +72,12 @@ void UDungeonObjectiveRowWidget::SetObjective(const FDungeonObjectiveViewData& O
 	if (KindText) KindText->SetColorAndOpacity(KindColor);
 	ShowText(WindowText, nullptr, Objective.Window);
 	ShowText(NoteText, nullptr, Objective.Note);
+	if (BonusBox)
+	{
+		BonusBox->Reset(true);
+		for (const FItemReward& Item : Objective.Bonus) USlotWidget::AddReadOnly(BonusBox, Item.ItemId, Item.Count, BonusSlotSize);
+		BonusBox->SetVisibility(Objective.Bonus.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
 }
 void UDungeonStepNodeWidget::SetStep(const FDungeonStepViewData& Step)
 {

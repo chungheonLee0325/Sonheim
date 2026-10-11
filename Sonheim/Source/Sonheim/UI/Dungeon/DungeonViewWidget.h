@@ -39,6 +39,9 @@ protected:
 	// An optional line's window and note; each hides while empty.
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> WindowText;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> NoteText;
+	/** The line's bonus as small inventory slots (USlotWidget::AddReadOnly). */
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UDynamicEntryBox> BonusBox;
+	UPROPERTY(EditAnywhere, Category="Dungeon") float BonusSlotSize = 32.f;
 };
 /** One step of the way through the dungeon, with an arrow in front of every step but the first. */
 UCLASS(Abstract)

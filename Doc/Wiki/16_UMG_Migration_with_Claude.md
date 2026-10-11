@@ -11,7 +11,7 @@ Claude Code가 **Agent MCP로 Unreal Editor를 직접 조작해** Sonheim의 UMG
   - 그래프나 애니메이션이 걸린 위젯은 트리를 다시 만들지 않고 속성만 바꿨습니다.
   - 아이템은 텍스트 대신 인벤토리 슬롯으로 보여줍니다.
   - 키는 하드코딩하지 않고 Enhanced Input 매핑에서 읽습니다.
-- **검증:** 단계마다 PIE에서 실제 게임 경로(입력 주입, 실제 처치, 던전 1판)로 화면을 띄워 캡처했고, 기존 검증 스크립트 4개(체크 111개)를 매번 다시 돌렸습니다.
+- **검증:** 단계마다 PIE에서 실제 게임 경로(입력 주입, 실제 처치, 던전 1판)로 화면을 띄워 캡처했고, 기존 검증 스크립트 4개(체크 115개)를 매번 다시 돌렸습니다.
 
 ## 목차
 
@@ -79,11 +79,14 @@ flowchart LR
 | **트리 재생성 vs 제자리 재스타일** | 그래프가 비어 있는 위젯(인벤토리·도감·퀘스트·던전)은 트리를 다시 만들었습니다. 애니메이션·BP 이벤트가 위젯 이름을 쓰는 필드 HUD와 인벤토리 슬롯은 `umg_set_widget_properties`로 속성·배치만 바꿨습니다. |
 | **아이템 = 인벤토리 슬롯** (`USlotWidget::AddReadOnly`) | 기존 `BP_Slot`에 보기 전용 모드를 붙였습니다. 도감·퀘스트·던전 보상이 아이콘·개수·희귀도·툴팁까지 인벤토리와 같습니다. 경험치만 칩으로 남깁니다. |
 | **키 표시 = 매핑 조회** (`UInputHintSubsystem`, `WBP_KeyHint`) | 액션에 매핑된 키를 Enhanced Input에 묻고, 마지막 입력 장치(키보드/패드)의 키를 글리프 데이터로 그립니다. 메뉴 전용 입력(`IMC_Menu`)은 화면이 게임 입력을 막는 동안만 켭니다. |
+| **보상은 정의에서 읽어 슬롯으로** | 던전 추가 목표의 보너스("보너스 팰지움 파편 ×1")를 문구로 쓰지 않고, 던전 정의의 포획 규칙(`MonsterCaptured` → `GrantReward`)에서 아이템을 읽어 HUD 행에 작은 슬롯으로 그립니다. 보상이 바뀌어도 화면을 고칠 필요가 없습니다. |
 | **문구는 String Table에서** | 모든 문구가 테이블에 있어서, 저작 스크립트의 원문과 테이블을 함께 고치는 일괄 패스 한 번으로 51개를 정리했습니다. |
 | **아이콘은 SVG** | 이미지 생성 경로가 Cloudflare 확인에 막혀 직접 그렸습니다. 단색 글리프라 선 굵기·크기를 27개 모두 맞추기 쉬웠습니다. |
 | **검증은 실제 게임 경로로** | 에디터 Python 안에서 부른 RPC는 제자리에서 실행됩니다. 그래서 화면 확인은 입력 주입과 실제 처치·던전 진행으로 했습니다. |
 
 ## 화면별 전/후
+
+**전**은 개편 전 v1 상태(필드 HUD 포함)에서, **후**는 모든 단계가 반영된 최종 빌드의 한 플레이 세션에서 `Scripts/UI/capture_gallery.py`로 차례대로 찍었습니다. 던전 화면은 `verify_dungeon_hud.py`가 실제 던전 1판을 돌면서 찍은 캡처입니다. 대화창은 개편 전 캡처가 없어 후만 싣습니다.
 
 ### 알림
 
@@ -92,6 +95,10 @@ flowchart LR
 | ![알림 전: 퀘스트](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_before_feed.jpg) | ![알림 후: 피드 3줄](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_feed.jpg) |
 | ![알림 전: 도감 등록](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_before_dex.jpg) | ![알림 후: 도감 헤드라인과 지역명](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg) |
 | ![알림 전: 지역명](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_before_title.jpg) | ![알림 후: 배경 블러 지역명](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_title_blur.jpg) |
+
+![피드 스택](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_feed_stack.jpg)
+
+*피드는 왼쪽에 쌓이고 종류별 색과 아이콘을 씁니다(제작 완료 시안, 경고 빨강).*
 
 ![레벨업 헤드라인](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_levelup.jpg)
 
@@ -116,6 +123,8 @@ flowchart LR
 | ![던전 HUD 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_hud_before.jpg) | ![던전 HUD 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_hud_after.jpg) |
 | ![던전 결과 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_result_before.jpg) | ![던전 결과 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_result_after.jpg) |
 | ![필드 HUD 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_hud_before.jpg) | ![필드 HUD 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_hud_after.jpg) |
+
+*던전 추가 목표: "보너스 팰지움 파편 ×1" 문구 대신 정의에서 읽은 보상이 슬롯으로 나오고, 레버 줄은 "수호자의 방으로 직행 · 창고 생략"으로 바꿨습니다. 결과 카드의 기록 배지는 BEST RECORD.*
 
 ### 키 표시 · 아이콘 · NPC
 
@@ -142,7 +151,7 @@ flowchart LR
 | `verify_ui_stack.py` | 6 | Q/E가 흐린 탭을 건너뛰고 끝에서 돌아감. 키 표시가 장치를 따라가고(Q → LB), 화면이 없으면 메뉴 입력이 꺼짐 |
 | `verify_dex.py` | 3 | 도감 등록 알림을 헤드라인 푸터에서 읽도록 갱신 |
 | `verify_quest.py` | 8 | 대화창 확인이 메뉴 확인 입력으로 바뀜. 추적기 카드를 위젯 종류와 상관없이 찾음 |
-| `verify_dungeon_hud.py` | 94 | 섬 HUD를 퀘스트 추적기로, 바뀐 문구로 기대값 갱신 |
+| `verify_dungeon_hud.py` | 98 | 섬 HUD를 퀘스트 추적기로, 바뀐 문구로 기대값 갱신. 포획 목표 행에 정의의 보너스가 슬롯으로 나옴(창 크기 2 × 서버·클라이언트) |
 
 검증이 실패했을 때는 먼저 게임 버그인지 오래된 기대값인지 가렸습니다. 이번에 나온 실패는 모두 기대값 쪽이었습니다(문구 변경, 위젯 종류 변경, 느린 PIE 대기).
 
@@ -164,7 +173,7 @@ flowchart LR
 - 위젯: 새로 만든 Widget Blueprint 9개(알림 5, 탭 2, 키 표시 1, 퀘스트 마커 1), 트리를 다시 짠 위젯 21개(인벤토리 2, 도감 4, 퀘스트 6, 던전 9), 제자리 재스타일 2개(`BP_Slot`, `WB_PlayerStatusWidget`)
 - 저작 스크립트: `Scripts/UI` 10개(키트, 알림, 탭, 입력, 인벤토리, 슬롯·HUD 재스타일, 아이콘, 폰트) + 도감·퀘스트·던전 스크립트 갱신
 - 아이콘 27종(SVG), 폰트 2종(OFL), 문구 51개 정리
-- 검증 체크 111개 전부 통과
+- 검증 체크 115개 전부 통과
 
 ## 남은 것
 
