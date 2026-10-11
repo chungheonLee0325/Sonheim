@@ -87,8 +87,8 @@ def main() -> None:
     # Validate that every copied Markdown reference to Wiki media exists.
     for page in pages:
         rendered = (DEST / page.name).read_text(encoding="utf-8")
-        for asset in re.findall(r"Media/Wiki/[a-zA-Z0-9_./-]+", rendered):
-            filename = asset.rstrip(".,")
+        for asset in re.findall(r"\]\((Media/Wiki/[^)#\s]+)(?:#[^)]*)?\)", rendered):
+            filename = asset
             if not (DEST / filename).is_file():
                 raise FileNotFoundError(f"{page.name}: missing {filename}")
 
