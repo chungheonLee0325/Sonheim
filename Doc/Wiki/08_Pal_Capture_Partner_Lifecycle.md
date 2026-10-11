@@ -38,9 +38,9 @@ PalSphere를 던지고 포획 확률·단계별 Reveal·성공/실패 결과가 
 ~~~mermaid
 flowchart TB
     WILD["야생 ABaseMonster"] --> SPHERE["PalSphere 충돌<br/>CanCapture"]
-    SPHERE --> ROLL["서버 포획률·성공 판정"]
-    ROLL --> DEACT["DeactivateMonster<br/>포획 중 격리"]
-    DEACT --> REVEAL["Multicast Reveal<br/>단계별 연출"]
+    SPHERE --> DEACT["DeactivateMonster<br/>포획 중 격리"]
+    DEACT --> ROLL["서버 포획률·성공 판정"]
+    ROLL --> REVEAL["Multicast Reveal<br/>단계별 연출"]
     REVEAL --> OUTCOME{"서버 최종 적용"}
     OUTCOME -->|"성공"| OWNER["SetPartnerOwner<br/>OwnedPals.AddPal"]
     OUTCOME -->|"실패"| RESTORE["ActivateMonster<br/>Aggro 복구"]
