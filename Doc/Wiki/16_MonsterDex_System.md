@@ -4,16 +4,29 @@
 
 ## 실행 화면
 
-![MonsterDex 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_dex_after.jpg)
+![도감 UI 영역별 구성 — 원본 화면에 ①~④ 표시](../Media/Wiki/16_MonsterDex_System/16_dex_screen_areas.svg)
 
-*No.003 새싹콩을 발견한 상태. 전체 5종 중 1종 등록, 처치 2회·포획 0회이며 보상 조건(포획 1 / 처치 10 / 포획 5)은 모두 진행 중입니다.*
+*No.003 새싹콩 발견(전체 5종 중 1종), 처치 2회·포획 0회. 세 보상 단계는 모두 진행 중인 실제 화면입니다.*
 
-| 화면 영역 | 표시 내용 | 데이터·구현 |
+**① 목록 (빨강)** — 전체 도감 번호를 유지하면서 미발견 종의 이름·초상을 마스킹합니다. 발견·포획 여부와 수령 가능 표시도 여기에서 반영합니다.
+
+**② 상세 (초록)** — 선택한 종의 이름·설명·속성 및 회전 가능한 3D 모델을 보여줍니다.
+
+**③ 기록 (파랑)** — 해당 종의 서버 기록인 처치·포획 횟수를 표시합니다.
+
+**④ 보상 (주황)** — 단계별 목표 수치·진행률·아이템/경험치·수령 상태를 표시합니다.
+
+<details>
+<summary>화면 영역과 C++ 구현 연결 보기</summary>
+
+| 영역 | 조회 데이터 | UI |
 |---|---|---|
-| 왼쪽 목록 | 번호, 이름 또는 `???`, 초상 실루엣, 포획·수령 가능 표시 | `UMonsterDexSubsystem::GetPages` + `FMonsterDexEntry` → `UMonsterDexCellWidget` |
-| 중앙 상세 | 종 이름·설명·속성, 회전 가능한 3D 프리뷰 | `FMonsterDexPageView` → `UMonsterDexWidget::DrawPicked`, `AMonsterDexStage` |
-| 오른쪽 기록 | 해당 종 처치·포획 횟수 | `FMonsterDexEntry::KillCount / CaptureCount` |
-| 오른쪽 보상 | 목표 수치·진행바·아이템/경험치·수령 상태 | `FMonsterDexRewardTier` + `FMonsterDexTierView` → `UMonsterDexTierWidget` |
+| ① | `UMonsterDexSubsystem::GetPages`, `FMonsterDexEntry` | `UMonsterDexCellWidget` |
+| ② | `FMonsterDexPageView`, `AMonsterDexStage` | `UMonsterDexWidget::DrawPicked` |
+| ③ | `FMonsterDexEntry::KillCount / CaptureCount` | `UMonsterDexWidget::DrawPicked` |
+| ④ | `FMonsterDexRewardTier`, `FMonsterDexTierView` | `UMonsterDexTierWidget` |
+
+</details>
 
 ## 목차
 
