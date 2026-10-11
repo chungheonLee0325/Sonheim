@@ -32,6 +32,10 @@
 
 `DT_MonsterDex`는 도감에 표시할 몬스터의 이름·설명·정렬 순서와 단계별 보상 조건을 정의합니다. `UMonsterDexSubsystem`이 테이블을 읽어 `Number` 순으로 정렬하며, 각 행의 `AreaObjectID`로 게임 내 몬스터 정보와 연결합니다.
 
+![Unreal Editor의 DT_MonsterDex — 몬스터 정의 및 RewardTiers](../Media/Wiki/16_MonsterDex_System/16_dt_monsterdex_editor.png)
+
+*실제 DataTable의 몬스터 5개 행과 도로롱의 첫 번째 보상 설정. 오른쪽에 `RequiredKills`, `RequiredCaptures`, `Exp`, `Items`, `DisplayClass`를 펼쳐 표시했습니다.*
+
 ~~~cpp
 // MonsterDexTypes.h — 선언 매크로 생략
 struct FMonsterDexRewardTier

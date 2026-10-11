@@ -121,6 +121,19 @@ C++ Widget은 `BindWidget`의 이름·타입 계약과 데이터/입력 처리�
 - Pretendard / Black Han Sans, SVG 기반 UI 아이콘 27종, StringTable 문구 51개를 적용·정리했습니다.
 
 <details>
+<summary>도감·보상 Widget Blueprint 구성(실제 Unreal Editor 캡처)</summary>
+
+**WBP_MonsterDex** — 목록/상세/기록/보상 영역의 Widget Tree와 C++ `BindWidget` 연결 상태입니다.
+
+![WBP_MonsterDex의 Widget Tree 및 BindWidget](../Media/Wiki/18_UMG_v2_Migration/18_wbp_monsterdex_editor.png)
+
+**WBP_MonsterDexTier** — 보상 목표·진행도·보상 아이템·수령 버튼을 구성한 위젯입니다.
+
+![WBP_MonsterDexTier의 위젯 트리와 필드](../Media/Wiki/18_UMG_v2_Migration/18_wbp_monsterdex_tier_editor.png)
+
+</details>
+
+<details>
 <summary>Inventory · Quest Journal · Dungeon Result · Field HUD 전후 비교 보기</summary>
 
 | Inventory v1 | Inventory v2 |
