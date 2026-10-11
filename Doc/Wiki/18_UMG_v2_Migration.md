@@ -1,8 +1,8 @@
 # 18. UMG v2 Migration & Editor Verification
 
-기존 UMG 화면의 스타일을 개편하면서 **화면마다 나뉘어 있던 입력·커서 제어를 통합하고, 알림의 표시 위치와 순서를 용도별로 분리**했습니다. C++ Widget의 `BindWidget` 연결과 기존 게임플레이 처리는 유지하면서 Widget Blueprint를 수정하고, AgentMcp를 이용해 에디터에서 결과를 확인했습니다.
+UMG v2에서는 인벤토리·도감·퀘스트·던전·HUD의 화면을 개편하면서 **중첩 메뉴의 입력·커서 정책을 공통화하고, 알림을 용도별 슬롯으로 분리**했습니다. 기존 C++ Widget의 데이터·이벤트 연결을 유지한 채 Widget Blueprint를 수정하고, AgentMcp로 에디터 작업과 실행 화면 확인을 연결했습니다.
 
-이 문서는 **v1 → v2에서 달라진 화면과 실제 변경·검증 과정**을 다룹니다. 상태 복제와 ViewData 구조는 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]], 도감·퀘스트 규칙은 [[16. MonsterDex System|16_MonsterDex_System]]과 [[17. Quest System|17_Quest_System]]에서 설명합니다.
+이 문서는 **실제 변경 결과와 이를 구현한 UI 공통 구조, 에디터 검증 과정**을 다룹니다. 게임플레이 상태·ViewData 구조는 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]], 도감·퀘스트 규칙은 [[16. MonsterDex System|16_MonsterDex_System]]과 [[17. Quest System|17_Quest_System]]에서 설명합니다.
 
 ## 대표 변경 결과
 
@@ -22,12 +22,12 @@
 
 | 항목 | 적용 내용 |
 |---|---|
-| **일반 메뉴 입력** | `UUIStackSubsystem`에서 화면 열기·닫기, 최상단 입력 모드, 커서, 게임플레이 입력 차단을 관리 |
-| **알림** | `UNoticeSubsystem`에서 `Feed / Headline / Title`과 서로 다른 표시 정책 적용 |
-| **키 안내** | `UInputHintSubsystem`에서 Enhanced Input 매핑과 마지막 입력 장치로 글리프 선택 |
-| **화면 구성** | 인벤토리·도감·퀘스트·던전 및 HUD의 Widget Blueprint 레이아웃·스타일 수정 |
-| **아이템 보상 표시** | `USlotWidget::AddReadOnly`로 아이콘·수량 등 기존 슬롯 표현 재사용 |
-| **에디터 작업·확인** | AgentMcp를 사용해 Widget Tree·`BindWidget` 확인, 수정 결과 재조회, Compile/Save, PIE 화면 점검 |
+| **중첩 메뉴 관리** | `UUIStackSubsystem`에서 Screen Stack과 입력 모드·커서·게임플레이 입력 정책 통합 |
+| **알림 표시** | `UNoticeSubsystem`에 `Feed / Headline / Title` 슬롯과 대기·교체·누적 정책 구성 |
+| **입력 안내** | `UInputHintSubsystem`이 Enhanced Input 매핑과 최근 사용 장치에 따라 키 안내 변경 |
+| **Widget Blueprint** | C++ `BindWidget` 계약을 유지하며 인벤토리·도감·퀘스트·던전·HUD 화면 개편 |
+| **공통 보상 슬롯** | `USlotWidget::AddReadOnly`로 도감·퀘스트 보상에 기존 아이템 표현 재사용 |
+| **에디터 저작·확인** | AgentMcp에서 Widget Tree 점검 → 수정 → Read-back → Compile/Save → PIE 확인 |
 
 ## 목차
 
@@ -44,9 +44,7 @@
 
 ### 화면을 닫는 순서와 무관하게 입력 복원
 
-이전에는 인벤토리·제작·보관함 같은 화면이 각각 입력 모드나 마우스 표시를 바꿀 경우, 화면이 겹친 상태에서 하나를 닫으면 **아직 열린 화면의 입력 정책이 유지되지 않을 수 있었습니다.**
-
-이를 위해 `UUIStackSubsystem : ULocalPlayerSubsystem`에서 일반 메뉴를 `FUIStackEntry`로 관리하고, 화면을 열거나 닫을 때마다 **남아 있는 최상단 화면의 규칙**을 다시 적용하도록 구성했습니다.
+인벤토리·보관함·제작 등 일반 메뉴의 입력·커서 설정을 `UUIStackSubsystem : ULocalPlayerSubsystem`으로 모았습니다. 각 화면은 `FUIStackEntry`로 관리하고, `Open / Close / CloseTop` 이후 **스택의 최상단 화면에 설정된 규칙**을 다시 적용합니다. 중첩 메뉴를 어느 순서로 닫더라도 남아 있는 화면의 입력 상태를 기준으로 복원하는 구조입니다.
 
 ~~~mermaid
 flowchart TB
@@ -63,9 +61,12 @@ flowchart TB
 `FUIScreenRule`은 화면 ID·ZOrder·입력 모드·커서·게임플레이 입력 차단 여부를 설정합니다. 현재 `DefaultGame.ini`에서는 Menu, Container, Crafting, MonsterDex, QuestDialog, QuestJournal에 `GameAndUI`와 `bBlockGameInput=True`를 사용합니다.
 
 ~~~cpp
-// UIStackSubsystem.cpp — ApplyInputState 내부 핵심 처리
+// UIStackSubsystem.cpp — ApplyInputState 핵심 처리 발췌
 PC->SetShowMouseCursor(Rule.bShowMouse);
-Hints->SetMenuInput(Rule.bBlockGameInput);
+if (UInputHintSubsystem* Hints = GetLocalPlayer()->GetSubsystem<UInputHintSubsystem>())
+{
+    Hints->SetMenuInput(Rule.bBlockGameInput);
+}
 
 switch (Rule.InputMode)
 {
@@ -78,13 +79,18 @@ case EUIStackInputMode::GameAndUI:
 default:
     PC->SetInputMode(FInputModeGameOnly());
 }
+
+// SonheimPlayerController.cpp — 게임플레이 입력 측 정책 조회
+bool ASonheimPlayerController::IsUIBlockingInput() const
+{
+    const UUIStackSubsystem* UIStack = GetUIStack();
+    return UIStack && UIStack->IsGameplayBlocked();
+}
 ~~~
 
-*실제 `GameAndUI` 분기에는 커서 캡처 중 숨김 방지를 위한 설정도 적용됩니다. 위 코드는 정책 변경 지점만 발췌한 것입니다.*
+`GameAndUI`는 UI와 게임 입력을 함께 다룰 수 있는 입력 모드이고, `bBlockGameInput`은 이동·공격·상호작용 등 게임플레이 입력에서 조회하는 **별도의 차단 정책**입니다. 일반 메뉴가 모두 닫히면 `GameOnly`와 커서 숨김으로 복원합니다. 실제 `GameAndUI` 분기에는 커서 캡처 시 표시를 유지하는 설정도 적용합니다.
 
-여기서 **`GameAndUI`는 UI·게임 입력을 모두 받을 수 있는 모드이고, `bBlockGameInput`은 실제 이동·공격·상호작용 등을 제한할지 결정하는 별도 정책**입니다. 일반 메뉴를 닫아 스택이 비면 `GameOnly`·커서 숨김으로 복원합니다.
-
-또한 인벤토리와 능력치처럼 함께 열리는 위젯은 하나의 스택 항목으로 다룹니다. 이미 Viewport에서 제거된 화면은 `Prune`으로 정리합니다.
+화면 하나가 여러 위젯으로 구성될 수도 있습니다. 예를 들어 메뉴를 열 때 인벤토리와 능력치 위젯을 함께 생성하지만 **하나의 `FUIStackEntry`**로 등록해 함께 열고 닫습니다. 이미 열린 화면을 다시 요청하면 최상단으로 올리고, Viewport에서 제거된 위젯의 기록은 `Prune`으로 정리합니다.
 
 **중첩 메뉴 종료 후 입력 복원 — 플레이 영상**
 
@@ -92,7 +98,7 @@ https://github.com/user-attachments/assets/f9936033-7251-4304-b1cb-842750c13c59
 
 메뉴를 중첩해서 열고 닫을 때 최상단 화면의 입력 모드와 커서를 적용하고, 모든 메뉴가 닫히면 게임플레이 입력으로 복원하는 동작을 보여줍니다.
 
-던전 HUD·결과 화면은 이 스택이 아니라 `UDungeonUIRouterSubsystem`에서 관리합니다. 기존 일반 메뉴의 입력 정책을 덮어쓰지 않도록 **현재 던전 HUD·Result는 비모달 `GameOnly` 정책**을 사용합니다.
+던전 HUD·결과 화면은 일반 메뉴 스택과 별도로 `UDungeonUIRouterSubsystem`에서 관리합니다. `HUD / Result`를 비모달 `GameOnly`로 표시해 메뉴 스택의 입력·커서 정책과 분리하고, 던전 상태에 따라 화면을 교체합니다.
 
 ---
 
@@ -102,9 +108,11 @@ https://github.com/user-attachments/assets/f9936033-7251-4304-b1cb-842750c13c59
 
 | 슬롯 | 화면 위치·대표 상황 | 표시 정책 |
 |---|---|---|
-| **Feed** | 좌측 — 퀘스트 수락·진행, 제작 완료, 경고 | `Stack` — 새 카드를 즉시 추가 |
+| **Feed** | 좌측 — 퀘스트 수락·진행, 제작 완료, 경고 | `Stack` — 새 카드를 즉시 추가, 표시 수는 Feed 위젯에서 관리 |
 | **Headline** | 중앙 — 레벨업, 몬스터 첫 발견 등 주요 달성 | `TakeTurns` — 하나씩 표시, 대기 최대 3건 |
 | **Title** | 화면 상단 — 지역 진입·장소 이름 | `ReplaceShowing` — 최신 제목으로 교체 |
+
+`UNoticeSubsystem::Push(Slot, Channel, Data)`는 메시지의 슬롯을 선택하고 해당 슬롯의 순서 정책을 적용합니다. `Feed`는 `UNoticeFeedWidget`의 행 목록에 카드를 추가하고, `Headline`은 표시 중인 카드가 끝난 뒤 대기 중인 카드를 꺼내며, `Title`은 새 지역 이름으로 표시를 교체합니다. 각 슬롯의 Widget Blueprint·스타일·ZOrder·출력 정책은 `FNoticeSlotSettings`로 설정합니다.
 
 ### 도감 첫 발견 장면으로 확인하는 세 알림 영역
 
@@ -131,11 +139,20 @@ https://github.com/user-attachments/assets/f9936033-7251-4304-b1cb-842750c13c59
 |---|---|
 | ![이전 지역명 표시](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_before_title.jpg) | ![v2 지역명 Title](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_title_blur.jpg) |
 
-알림을 만든 기능은 `FNoticeData`와 `ENoticeSlot`, `Channel`을 `UNoticeSubsystem::Push`로 전달합니다. 슬롯별 Widget Blueprint·`UNoticeStyle`·출력 순서·ZOrder는 `FNoticeSlotSettings`에서 설정합니다.
+### 기능별 알림 수명 관리 — Channel
 
-`Channel`은 던전과 같은 기능이 종료됐을 때 자신이 보낸 알림만 정리하는 데 사용합니다. `Clear("Dungeon")`은 다른 기능의 Feed·Headline·Title 알림을 함께 지우지 않습니다.
+슬롯이 **어디에·어떤 순서로 표시할지** 결정한다면, `Channel`은 **어느 기능이 만든 알림인지** 구분합니다. 던전 UI는 지역 제목 등을 `Dungeon` 채널로 게시하고, 던전 종료 시 같은 채널의 표시 중인 카드와 대기 항목을 정리합니다.
 
-표시 데이터와 알림의 UI 연결 구조는 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]에 정리했습니다.
+~~~cpp
+// DungeonUIRouterSubsystem.cpp — 채널 관리 코드 발췌
+const FName UDungeonUIRouterSubsystem::NoticeChannel(TEXT("Dungeon"));
+
+Notices->Push(ENoticeSlot::Title, NoticeChannel, Data);
+// 던전 UI Detach 시
+Notices->Clear(NoticeChannel);
+~~~
+
+`Clear`는 각 슬롯의 카드와 대기열 중 해당 채널에 속하는 항목만 제거합니다. 퀘스트 수락·레벨업처럼 다른 기능이 게시한 알림은 유지됩니다. 표시 데이터와 UI 연결 구조는 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]에서 다룹니다.
 
 ---
 
@@ -159,20 +176,41 @@ WBP_KeyHint
 
 `UInputHintSubsystem`은 Slate 입력으로 장치 변경을 감지하고, `ControlMappingsRebuiltDelegate`를 통해 Enhanced Input 매핑 변경을 반영합니다. 해당 장치의 키가 아이콘 세트에 있으면 아이콘을, 없으면 키 이름을 표시합니다.
 
-`UUIStackSubsystem::SetMenuInput` 연결을 통해 메뉴 전용 `IMC_Menu`를 켜고 끕니다. 메뉴 탭은 키보드 Q/E 또는 게임패드 LB/RB로 전환할 수 있도록 구성했습니다.
+`UUIStackSubsystem::ApplyInputState`가 `UInputHintSubsystem::SetMenuInput`을 호출해 메뉴 전용 `IMC_Menu`를 켜고 끕니다. 메뉴 탭은 키보드 Q/E 또는 게임패드 LB/RB로 전환할 수 있도록 구성했습니다.
 
 ---
 
 ## Widget Blueprint 화면 개편
 
-C++ `UUserWidget`은 **데이터 조회·Delegate·입력 처리와 `BindWidget` 멤버**를 유지하고, 실제 Widget Blueprint에서 화면 배치와 스타일을 변경했습니다.
+기존 C++ `UUserWidget`에서 데이터 조회·Delegate·입력 처리를 담당하고, Widget Blueprint는 **배치·스타일·애니메이션**을 구성하는 방식으로 개편했습니다. 기존 화면은 속성과 레이아웃을 수정해 이벤트 연결을 유지하고, 새 화면이나 구성이 달라진 화면은 C++ `BindWidget` 계약에 맞춰 Widget Tree를 구성했습니다.
 
-작업 방식도 기존 위젯의 구조에 따라 달리 적용했습니다.
+### C++ BindWidget과 Widget Tree 연결
 
-- **기존 BP와 이벤트가 연결된 화면:** 전체 Widget Tree를 교체하기보다 기존 위젯의 속성과 배치를 수정해 연결을 유지했습니다.
-- **새 화면·구성 변경이 큰 화면:** C++의 `BindWidget` 이름·타입을 확인하면서 목록·상세·보상 영역 등을 구성했습니다.
-- **아이템 보상:** 도감·퀘스트 등의 보상에 `USlotWidget::AddReadOnly`를 사용해 기존 아이템 슬롯의 아이콘·수량 표시를 재사용했습니다.
-- **공통 시각 요소:** 서체·아이콘·알림 스타일을 화면별 용도에 맞게 정리했습니다.
+도감은 **종 목록 → 선택 상세 → 달성 기록·보상**으로 화면을 나누고, C++에서 필요한 하위 위젯을 이름과 타입으로 연결했습니다. 실제 `MonsterDexWidget.h`에는 다음 멤버가 선언되어 있습니다.
+
+~~~cpp
+// MonsterDexWidget.h — 실제 BindWidget 선언 발췌
+// UMonsterDexWidget
+UPROPERTY(meta=(BindWidget)) TObjectPtr<UDynamicEntryBox> PageGrid;
+UPROPERTY(meta=(BindWidget)) TObjectPtr<UDynamicEntryBox> TierBox;
+
+// UMonsterDexTierWidget
+UPROPERTY(meta=(BindWidget)) TObjectPtr<UProgressBar> ProgressBar;
+UPROPERTY(meta=(BindWidget)) TObjectPtr<UDynamicEntryBox> RewardBox;
+UPROPERTY(meta=(BindWidget)) TObjectPtr<UButton> ClaimButton;
+~~~
+
+`PageGrid / TierBox`는 종 목록과 보상 단계 목록을 구성하며, `ProgressBar / RewardBox / ClaimButton`은 보상 단계의 진행도·아이템·수령 입력에 대응합니다. 에디터에서는 Widget Tree의 해당 이름·타입을 확인하고, Compile/Save 후 실제 게임 화면에서 데이터 표시와 버튼 연결을 확인했습니다.
+
+**WBP_MonsterDex — 종 목록·상세·기록·보상 영역**
+
+![Unreal Editor WBP_MonsterDex의 Widget Tree](https://github.com/user-attachments/assets/7349d43c-daa7-4adf-9d85-2df49ba579f1)
+
+**WBP_MonsterDexTier — 달성 진행도·보상 아이템·수령 버튼**
+
+![Unreal Editor WBP_MonsterDexTier Widget Tree](https://github.com/user-attachments/assets/28149b30-c0df-4826-8905-e5ac27aaec24)
+
+보상 아이템은 `USlotWidget::AddReadOnly`를 호출해 기존 인벤토리 슬롯의 아이콘·수량 표시를 사용합니다. 읽기 전용 슬롯에는 아이템 이동과 드래그 동작을 적용하지 않습니다. 같은 슬롯 표현을 도감과 퀘스트 UI에서 함께 사용합니다.
 
 ### 인벤토리·퀘스트 화면
 
@@ -180,9 +218,13 @@ C++ `UUserWidget`은 **데이터 조회·Delegate·입력 처리와 `BindWidget`
 |---|---|
 | ![기존 인벤토리](../Media/Wiki/16_UMG_Migration_with_Claude/16_inventory_before.jpg) | ![개편한 인벤토리](../Media/Wiki/16_UMG_Migration_with_Claude/16_inventory_after.jpg) |
 
+인벤토리는 기존 슬롯의 아이템 표시·드래그 앤 드롭과 데이터 갱신 연결을 유지하면서 메뉴 배치와 스타일을 개편했습니다.
+
 | Quest Journal — 이전 | Quest Journal — v2 |
 |---|---|
 | ![기존 퀘스트 일지](../Media/Wiki/16_UMG_Migration_with_Claude/16_journal_before.jpg) | ![개편한 퀘스트 일지](../Media/Wiki/16_UMG_Migration_with_Claude/16_journal_after.jpg) |
+
+퀘스트 일지는 목록·상세·현재 목표·보상 영역을 재배치했습니다. 퀘스트 진행 데이터는 `QuestView`에서 구성하고, `UQuestScreenWidget` 계열이 화면에 반영합니다.
 
 ### 던전 결과·필드 HUD
 
@@ -190,31 +232,21 @@ C++ `UUserWidget`은 **데이터 조회·Delegate·입력 처리와 `BindWidget`
 |---|---|
 | ![기존 던전 결과](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_result_before.jpg) | ![개편한 던전 결과](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_result_after.jpg) |
 
+던전 화면은 `UDungeonStagePresenter`의 ViewData를 `UDungeonUIRouterSubsystem`이 HUD·Result Widget에 전달하는 구성을 유지하며 레이아웃을 변경했습니다.
+
 | Field HUD — 이전 | Field HUD — v2 |
 |---|---|
 | ![기존 필드 HUD](../Media/Wiki/16_UMG_Migration_with_Claude/16_hud_before.jpg) | ![개편한 필드 HUD](../Media/Wiki/16_UMG_Migration_with_Claude/16_hud_after.jpg) |
 
 ![공통 UI 아이콘](../Media/Wiki/16_UMG_Migration_with_Claude/16_icons.png)
 
-*화면 개편에 함께 사용한 UI 아이콘 세트입니다.*
-
-### Widget Tree와 C++ BindWidget 연결
-
-**WBP_MonsterDex** — 목록·선택 상세·기록·보상 영역의 Widget Tree를 확인합니다.
-
-![Unreal Editor WBP_MonsterDex의 Widget Tree](https://github.com/user-attachments/assets/7349d43c-daa7-4adf-9d85-2df49ba579f1)
-
-**WBP_MonsterDexTier** — 보상 조건·진행도·아이템 슬롯·수령 버튼을 연결한 위젯입니다.
-
-![Unreal Editor WBP_MonsterDexTier Widget Tree](https://github.com/user-attachments/assets/28149b30-c0df-4826-8905-e5ac27aaec24)
-
-위와 같은 화면은 단순한 이미지 교체가 아니라, **C++이 참조하는 Widget Tree의 이름·타입을 유지하면서 실제 게임 상태를 표시하는 작업**이었습니다. 도감과 퀘스트의 데이터 갱신 구조 자체는 각 시스템 문서에서 설명합니다.
+*화면 개편에 사용한 공통 UI 아이콘 세트입니다.*
 
 ---
 
 ## AgentMcp로 저작·검증
 
-UMG 개편에는 Unreal Editor에 연결한 [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)를 활용했습니다. 화면 레퍼런스·기능 요구사항을 정하고, 에디터의 Widget Blueprint를 읽고 수정한 다음 **변경한 결과를 다시 조회하고 PIE에서 화면을 확인**하는 순서로 진행했습니다.
+UMG 개편에서는 Unreal Editor에 연결한 [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)로 Widget Blueprint를 조회·수정했습니다. C++의 `BindWidget` 선언과 에디터 Widget Tree를 대조하고, **수정 후 Read-back → Compile/Save → PIE 확인**으로 실제 변경 결과를 확인했습니다.
 
 ~~~mermaid
 flowchart LR
@@ -227,14 +259,14 @@ flowchart LR
     F -->|"확인"| G["캡처 · 문서 반영"]
 ~~~
 
-| 확인 대상 | 확인 방법 |
-|---|---|
-| **C++ 연결** | `BindWidget / BindWidgetOptional` 멤버와 실제 Widget Tree 이름·타입 비교 |
-| **에디터 변경 반영** | 수정 후 Read-back, Blueprint Compile/Save |
-| **게임 동작** | PIE에서 인벤토리·도감·퀘스트·던전 화면 열기 및 값 갱신 확인 |
-| **시각적 결과** | 실제 게임 화면 캡처와 전후 비교 |
+| 적용 사례 | 확인한 결과 | 문서 내 근거 |
+|---|---|---|
+| **도감 화면** | `WBP_MonsterDex / WBP_MonsterDexTier`의 Widget Tree와 C++ `BindWidget` 이름·타입 대조 | 에디터 캡처·선언 코드 |
+| **메뉴 전환** | 중첩 메뉴를 열고 닫은 후 입력 모드와 커서 상태 복원 | UI Stack 플레이 영상 |
+| **알림 분리** | Feed·Headline·Title의 동시 배치 및 서로 다른 표시 형식 | 표시 영역 마킹 화면·전후 비교 |
+| **화면 레이아웃** | 인벤토리·퀘스트·던전 HUD/Result의 게임 내 표시 확인 | 실제 게임 화면 전후 비교 |
 
-UI 작업에서 중요한 검증 대상은 **에디터에서 위젯을 만들었다는 사실보다, 기존 데이터·버튼·보상 슬롯이 새 위젯에서도 정상 연결되는지**입니다. 에디터 자동화 도구의 구현과 더 넓은 검증 흐름은 [[14. Unreal Editor Automation & Verification|14_Unreal_Editor_Automation_Verification]]에서 다룹니다.
+에디터 구조를 읽는 단계부터 실제 플레이 화면을 확인하는 단계까지 이어서 작업하고, 그 결과를 각각 **C++ 계약·에디터 캡처·플레이 영상·전후 비교**로 남겼습니다. AgentMcp 도구 자체의 구현과 일반 검증 워크플로는 [[14. Unreal Editor Automation & Verification|14_Unreal_Editor_Automation_Verification]]에서 설명합니다.
 
 ---
 
