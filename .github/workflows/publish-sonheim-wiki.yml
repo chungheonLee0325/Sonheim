@@ -1,0 +1,45 @@
+name: Publish Sonheim Wiki (October 2026)
+
+on:
+  push:
+    branches:
+      - docs/wiki-publish-2026-10-12
+    paths:
+      - ".github/workflows/publish-sonheim-wiki.yml"
+      - "Tools/Export-Wiki.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out published main content
+        uses: actions/checkout@v4
+
+      - name: Prepare pages and media
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 Tools/Export-Wiki.py
+
+      - name: Push to GitHub Wiki
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" .wiki-repo
+          cp -R .wiki-publish/. .wiki-repo/
+          cd .wiki-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "GitHub Wiki already up to date"
+            exit 0
+          fi
+          git commit -m "Publish Sonheim engineering Wiki 01-18 and Home"
+          git push origin HEAD
