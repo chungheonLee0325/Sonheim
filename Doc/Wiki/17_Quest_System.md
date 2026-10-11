@@ -10,8 +10,11 @@
 
 일지에서는 진행 중인 퀘스트의 목표·보상·추적 여부를 확인하고, NPC 대화에서 퀘스트를 수락하거나 완료 보고합니다. 화면의 시각적 개편은 [[18. UMG v2 Migration|18_UMG_v2_Migration]]에서 다룹니다.
 
-> **플레이 영상 자리 — 퀘스트 수락부터 완료 보고까지**  
-> 촬영 후 `Doc/Media/Wiki/17_Quest_System/17_quest_accept_to_complete.mp4`를 연결합니다. NPC 수락 → 목표 진행도/HUD 갱신 → 목표 완료 → NPC 보고·보상 수령 순서로 보여줍니다.
+**퀘스트 수락부터 완료까지 — 플레이 영상**
+
+https://github.com/user-attachments/assets/356d1438-7c3c-417d-8bd4-b8dcb7a3efb6
+
+NPC 대화에서 퀘스트를 수락하고, 목표 진행에 따른 HUD 갱신과 완료 보고·보상 수령까지 실제 게임 흐름을 확인할 수 있습니다.
 
 ## 목차
 
@@ -200,10 +203,8 @@ NPC 머리 위 마커는 플레이어의 퀘스트 기록을 기준으로 표시
 
 | 건설 전 | 건설 완료 |
 |---|---|
-| **캡처 자리** — `17_build_site_before.png` | **캡처 자리** — `17_build_site_after.png` |
+| ![자재 전달 전 건설 현장](https://github.com/user-attachments/assets/b0a42c3e-8ec8-4216-bfd1-ba431b73de0b) | ![자재 전달 후 건설 완료 상태](https://github.com/user-attachments/assets/41566e26-6b56-438c-918c-bb6a838eb639) |
 | 설계 재질, 자재 전달 대상 | 완성된 메시와 충돌 활성화 |
-
-> 이미지 저장 경로: `Doc/Media/Wiki/17_Quest_System/`. **동일한 카메라 위치**에서 상태 변화 전후를 촬영한 뒤 위 표를 실제 이미지로 교체합니다.
 
 ## 기록 복제·저장과 UI 갱신
 
@@ -242,8 +243,9 @@ QuestView::Build → FQuestView
 - **NPC 대화 (`UQuestDialogWidget`)**: `QuestView::AtTarget`으로 해당 NPC에서 수락하거나 보고할 퀘스트를 구성합니다.
 - **HUD 추적기 (`UQuestTrackerWidget`)**: `bTracked`가 켜진 미완료 퀘스트의 현재 목표를 표시합니다.
 
-> **HUD 캡처 자리 — 추적 목표와 진행도**  
-> `Doc/Media/Wiki/17_Quest_System/17_quest_tracker_annotated.png`. HUD에서 퀘스트 제목·목표 수치·완료 상태를 마킹하고, 일지에서 추적 설정한 퀘스트가 표시되는 모습으로 교체합니다.
+![HUD에 표시된 퀘스트 추적 영역과 진행도](https://github.com/user-attachments/assets/9f56d3db-825c-49ee-a96f-e12266c4b387)
+
+*HUD 추적기에 표시되는 퀘스트 제목·목표 진행 상태를 마킹한 실제 게임 화면입니다.*
 
 퀘스트 수락·단계 갱신·보고 가능·완료 알림은 공용 `UNoticeSubsystem`의 `Feed` 슬롯으로 표시합니다. 보상 아이템은 도감과 공통으로 사용하는 `USlotWidget::AddReadOnly`로 표시합니다.
 
