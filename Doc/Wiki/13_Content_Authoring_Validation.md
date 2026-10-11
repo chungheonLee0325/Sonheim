@@ -290,18 +290,15 @@ Dungeon Definition
 ### 1. Strike 경고 시간과 형상
 
 ~~~cpp
-// BossPatternDataAsset.cpp — 주요 검사 발췌
-if (Strike.MarkSeconds < 0.f ||
-    Strike.MarkSeconds > Strike.StrikeSeconds ||
-    Strike.StrikeSeconds > PatternSeconds)
-    Problems.Add(At + TEXT(": invalid strike timing"));
-
-if (Strike.Shape != EBossAreaShape::None &&
-    Strike.StrikeSeconds - Strike.MarkSeconds < MinWarningSeconds)
-    Problems.Add(At + TEXT(": warning too short"));
+// BossPatternDataAsset.cpp — 영역 Telegraph 경고 시간 검사
+if (Strike.StrikeSeconds - Strike.MarkSeconds <
+    UBossPatternDataAsset::MinWarningSeconds)
+    Problems.Add(FString::Printf(
+        TEXT("%s: the mark shows for less than %.1f s, too short to step out"),
+        *At, UBossPatternDataAsset::MinWarningSeconds));
 ~~~
 
-*실제 `ValidateStrike` 조건을 발췌해 메시지만 축약한 예시입니다.*
+`ValidateStrike`는 이 코드에 도달하기 전에 `Shape == EBossAreaShape::None`인 순수 투사체를 별도로 검사하고 반환합니다.
 
 | 검사 대상 | 조건 |
 |---|---|
