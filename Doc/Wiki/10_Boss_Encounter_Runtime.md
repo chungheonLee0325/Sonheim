@@ -157,17 +157,28 @@ stateDiagram-v2
 `Begin`은 `PatternClock`, Cue 실행 여부, Strike별 Runtime 상태를 초기화하고 Montage와 상태를 갱신합니다.
 
 ~~~cpp
-// BossFSM.cpp — 실행부 발췌
+// BossFSM.cpp — RunPattern의 실행 구간
 PatternClock += DeltaSeconds * Tempo();
 
-if (!Run.bMarked && PatternClock >= Strike.MarkSeconds)
-    Mark(Strike, Run, Victim);
-
-if (Run.bMarked && PatternClock >= Strike.StrikeSeconds)
+for (int32 Index = 0; Index < Pattern.Strikes.Num(); ++Index)
 {
-    Run.bLanded = true;
-    Owner->LandStrike(Strike, Where, Run.Spots, Victim,
-                      StrikeCount(Strike));
+    const FBossStrike& Strike = Pattern.Strikes[Index];
+    FStrikeRun& Run = Strikes[Index];
+    if (Strike.MinPhase > Phase || Run.bLanded) continue;
+
+    if (!Run.bMarked && PatternClock >= Strike.MarkSeconds)
+        Mark(Strike, Run, Victim);
+
+    if (Run.bMarked && PatternClock >= Strike.StrikeSeconds)
+    {
+        Run.bLanded = true;
+        const FTransform Where =
+            Strike.Anchor == EBossAreaAnchor::Boss
+            ? ABossTelegraph::FeetTransform(Owner, Strike.ForwardOffset)
+            : Run.Where;
+        Owner->LandStrike(Strike, Where, Run.Spots,
+                          Victim, StrikeCount(Strike));
+    }
 }
 ~~~
 
