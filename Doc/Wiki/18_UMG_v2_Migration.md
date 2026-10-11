@@ -63,7 +63,8 @@ flowchart TB
 ~~~cpp
 // UIStackSubsystem.cpp — ApplyInputState 핵심 처리 발췌
 PC->SetShowMouseCursor(Rule.bShowMouse);
-if (UInputHintSubsystem* Hints = GetLocalPlayer()->GetSubsystem<UInputHintSubsystem>())
+if (UInputHintSubsystem* Hints = GetLocalPlayer()
+        ? GetLocalPlayer()->GetSubsystem<UInputHintSubsystem>() : nullptr)
 {
     Hints->SetMenuInput(Rule.bBlockGameInput);
 }
