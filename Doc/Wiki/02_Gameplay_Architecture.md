@@ -230,7 +230,7 @@ Level Up, Capture Failure, Crafting Complete처럼 저장할 “현재 상태”
 ```text
 Gameplay Event
  → NoticeSubsystem
- → Banner / Title
+ → Feed / Headline / Title
 ```
 
 Health/Inventory처럼 owner가 명확한 상태는 Delegate로 전달하고, Dungeon처럼 여러 상태를 조합하는 화면은 Snapshot/ViewData를 사용하며, 일회성 피드백은 Notice/Event 경로로 전달합니다.
