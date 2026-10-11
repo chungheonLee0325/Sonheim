@@ -13,45 +13,7 @@ Sonheim UI는 **Persistent HUD, Interaction Screen, Transient Notice, Complex Co
 
 ## Runtime Demo
 
-#
-## Screen Stack & Input
-
-여러 Screen이 각자 <code>SetInputMode</code>와 마우스 상태를 변경하면 종료 순서에 따라 입력 복원 상태가 달라질 수 있습니다. 현재 Inventory/Stat, Container, Crafting, MonsterDex, QuestDialog, QuestJournal은 <code>UUIStackSubsystem : ULocalPlayerSubsystem</code>을 사용합니다.
-
-- <code>FUIScreenRule</code>은 화면 ID, Widget Class, ZOrder, InputMode, cursor 표시, 게임 입력 차단 정책을 정의합니다. 규칙은 <code>DefaultGame.ini</code>에서 설정합니다.
-- <code>Open</code>은 화면을 생성하거나 기존 화면을 스택 맨 위로 올리고, <code>Close</code> / <code>CloseTop</code>은 제거 후 남은 최상위 화면의 입력 규칙을 다시 적용합니다.
-- <code>FUIStackEntry::Widgets</code>로 인벤토리와 능력치처럼 함께 여닫는 여러 Widget을 하나의 Screen으로 다룹니다. 이미 Viewport에서 사라진 화면은 <code>Prune</code>으로 정리합니다.
-- <code>ApplyInputState</code>는 <code>SetShowMouseCursor</code>, <code>SetInputMode</code>, 메뉴 전용 Enhanced Input Mapping Context 설정을 한곳에서 수행합니다. <code>IsGameplayBlocked</code>는 게임플레이 입력 분기에서 사용합니다.
-
-메뉴 상단 탭은 <code>TopTab</code> / <code>StepTab</code>으로 유효한 화면을 순환합니다. 키보드 Q/E 및 패드 LB/RB 표시는 <code>UInputHintSubsystem</code>에서 액션 매핑을 읽습니다. Slate 입력을 통해 마지막 입력 장치를 추적하고, <code>ControlMappingsRebuiltDelegate</code>에서 글리프를 갱신합니다.
-
-**경계:** 위젯 안의 방향키·스틱 기반 포커스 탐색은 이 PR의 구현 범위에 포함되지 않았습니다. Dungeon HUD/Result는 별도의 <code>UDungeonUIRouterSubsystem</code>을 유지합니다.
-
-## MonsterDex & Quest Presentation
-
-<code>ASonheimPlayerState::ReportDeed</code>는 Kill, Capture, Craft, Reach, ClearDungeon 이벤트를 서버에서 알립니다. <code>UMonsterDexComponent</code>와 <code>UQuestComponent</code>는 필요한 행동을 각각 집계합니다.
-
-~~~mermaid
-flowchart LR
-    E["PlayerDeed<br/>Kill · Capture · Craft · Reach · ClearDungeon"]
-    PS["PlayerState<br/>ReportDeed / OnDeed"]
-    D["MonsterDexComponent<br/>FMonsterDexList"]
-    Q["QuestComponent<br/>FQuestList"]
-    C["Owner Client<br/>FastArray Delta"]
-    V["Dex / Quest View<br/>Journal · Tracker · Notice"]
-    E --> PS --> D --> C --> V
-    PS --> Q --> C
-~~~
-
-- 도감은 종별 처치·포획 횟수와 수령한 보상 단계를 <code>FMonsterDexEntry</code>에 보관합니다. 첫 등록 시 Headline, 보상 조건 달성 시 Feed 알림을 보냅니다.
-- 퀘스트는 <code>DT_Quest</code>의 단계·목표 정의를 기준으로 <code>FQuestRecord</code>의 현재 단계와 진행 수치를 갱신합니다. 수락·완료 보고는 서버에서 선행 조건과 NPC 이름/거리 등을 확인합니다.
-- 두 기록은 <code>FFastArraySerializer</code>와 <code>COND_OwnerOnly</code>로 복제하며, 변경 이벤트를 구독하는 UI가 화면을 갱신합니다. 정의 데이터는 <code>UMonsterDexSubsystem</code> / <code>UQuestSubsystem</code>에서 읽고 호스트 저장소에 기록합니다.
-
-도감의 3D 미리보기와 퀘스트 대화창·추적기, 보상 슬롯 표현 및 실제 캡처는 [16. 도감·퀘스트와 UMG v2 통합](16_UMG_Migration_with_Claude.md)에 정리했습니다.
-
----
-
-## Notice / Toast
+### Notice / Toast
 
 *아래 영상은 v2 개편 이전의 Banner queue 시연입니다. 현재 슬롯 구성은 [16. 도감·퀘스트와 UMG v2 통합](16_UMG_Migration_with_Claude.md)에서 확인할 수 있습니다.*
 
@@ -236,6 +198,43 @@ ServerDrop / ServerDiscard
 Confirm Widget은 gameplay mutation을 직접 수행하지 않고 결과를 부모 화면으로 전달합니다.
 
 Inventory/Container/Crafting 화면은 <code>UUIStackSubsystem</code>을 통해 열고 닫으며, 최상위 화면의 규칙이 cursor / input mode / gameplay 차단을 결정합니다. Confirm Popup은 Inventory 안의 로컬 확인 흐름으로 남습니다.
+
+---
+
+## Screen Stack & Input
+
+여러 Screen이 각자 <code>SetInputMode</code>와 마우스 상태를 변경하면 종료 순서에 따라 입력 복원 상태가 달라질 수 있습니다. 현재 Inventory/Stat, Container, Crafting, MonsterDex, QuestDialog, QuestJournal은 <code>UUIStackSubsystem : ULocalPlayerSubsystem</code>을 사용합니다.
+
+- <code>FUIScreenRule</code>은 화면 ID, Widget Class, ZOrder, InputMode, cursor 표시, 게임 입력 차단 정책을 정의합니다. 규칙은 <code>DefaultGame.ini</code>에서 설정합니다.
+- <code>Open</code>은 화면을 생성하거나 기존 화면을 스택 맨 위로 올리고, <code>Close</code> / <code>CloseTop</code>은 제거 후 남은 최상위 화면의 입력 규칙을 다시 적용합니다.
+- <code>FUIStackEntry::Widgets</code>로 인벤토리와 능력치처럼 함께 여닫는 여러 Widget을 하나의 Screen으로 다룹니다. 이미 Viewport에서 사라진 화면은 <code>Prune</code>으로 정리합니다.
+- <code>ApplyInputState</code>는 <code>SetShowMouseCursor</code>, <code>SetInputMode</code>, 메뉴 전용 Enhanced Input Mapping Context 설정을 한곳에서 수행합니다. <code>IsGameplayBlocked</code>는 게임플레이 입력 분기에서 사용합니다.
+
+메뉴 상단 탭은 <code>TopTab</code> / <code>StepTab</code>으로 유효한 화면을 순환합니다. 키보드 Q/E 및 패드 LB/RB 표시는 <code>UInputHintSubsystem</code>에서 액션 매핑을 읽습니다. Slate 입력을 통해 마지막 입력 장치를 추적하고, <code>ControlMappingsRebuiltDelegate</code>에서 글리프를 갱신합니다.
+
+**경계:** 위젯 안의 방향키·스틱 기반 포커스 탐색은 이 PR의 구현 범위에 포함되지 않았습니다. Dungeon HUD/Result는 별도의 <code>UDungeonUIRouterSubsystem</code>을 유지합니다.
+
+## MonsterDex & Quest Presentation
+
+<code>ASonheimPlayerState::ReportDeed</code>는 Kill, Capture, Craft, Reach, ClearDungeon 이벤트를 서버에서 알립니다. <code>UMonsterDexComponent</code>와 <code>UQuestComponent</code>는 필요한 행동을 각각 집계합니다.
+
+~~~mermaid
+flowchart LR
+    E["PlayerDeed<br/>Kill · Capture · Craft · Reach · ClearDungeon"]
+    PS["PlayerState<br/>ReportDeed / OnDeed"]
+    D["MonsterDexComponent<br/>FMonsterDexList"]
+    Q["QuestComponent<br/>FQuestList"]
+    C["Owner Client<br/>FastArray Delta"]
+    V["Dex / Quest View<br/>Journal · Tracker · Notice"]
+    E --> PS --> D --> C --> V
+    PS --> Q --> C
+~~~
+
+- 도감은 종별 처치·포획 횟수와 수령한 보상 단계를 <code>FMonsterDexEntry</code>에 보관합니다. 첫 등록 시 Headline, 보상 조건 달성 시 Feed 알림을 보냅니다.
+- 퀘스트는 <code>DT_Quest</code>의 단계·목표 정의를 기준으로 <code>FQuestRecord</code>의 현재 단계와 진행 수치를 갱신합니다. 수락·완료 보고는 서버에서 선행 조건과 NPC 이름/거리 등을 확인합니다.
+- 두 기록은 <code>FFastArraySerializer</code>와 <code>COND_OwnerOnly</code>로 복제하며, 변경 이벤트를 구독하는 UI가 화면을 갱신합니다. 정의 데이터는 <code>UMonsterDexSubsystem</code> / <code>UQuestSubsystem</code>에서 읽고 호스트 저장소에 기록합니다.
+
+도감의 3D 미리보기와 퀘스트 대화창·추적기, 보상 슬롯 표현 및 실제 캡처는 [16. 도감·퀘스트와 UMG v2 통합](16_UMG_Migration_with_Claude.md)에 정리했습니다.
 
 ---
 
