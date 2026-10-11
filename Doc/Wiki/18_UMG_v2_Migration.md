@@ -32,7 +32,7 @@
 ## 목차
 
 - [일반 메뉴의 입력·커서 정책 통합](#일반-메뉴의-입력커서-정책-통합)
-- [Feed·Headline·Title 알림 분리](#feedheadline-title-알림-분리)
+- [알림 영역 분리](#알림-영역-분리)
 - [Enhanced Input 기반 키 안내](#enhanced-input-기반-키-안내)
 - [Widget Blueprint 화면 개편](#widget-blueprint-화면-개편)
 - [AgentMcp로 저작·검증](#agentmcp로-저작검증)
@@ -94,7 +94,7 @@ default:
 
 ---
 
-## Feed·Headline·Title 알림 분리
+## 알림 영역 분리
 
 기존 알림 화면에서 **짧게 쌓이는 진행 알림, 중요한 달성 알림, 지역 이름**을 서로 다른 화면 영역으로 분리했습니다. 현재 `DefaultGame.ini`의 슬롯별 정책은 다음과 같습니다.
 
@@ -104,27 +104,24 @@ default:
 | **Headline** | 중앙 — 레벨업, 몬스터 첫 발견 등 주요 달성 | `TakeTurns` — 하나씩 표시, 대기 최대 3건 |
 | **Title** | 화면 상단 — 지역 진입·장소 이름 | `ReplaceShowing` — 최신 제목으로 교체 |
 
-### 세 영역이 동시에 표시되는 실제 화면
+### 도감 첫 발견 장면으로 확인하는 세 알림 영역
 
-![Feed·Headline·Title이 동시에 표시된 게임 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg)
-
-*같은 프레임에서 **좌측의 '퀘스트 수락'은 Feed**, **중앙의 '새로운 팰 발견!'은 Headline**, **상단의 지역명은 Title**입니다. 이 알림들은 하나의 위젯이 아니라 각기 다른 슬롯에서 관리합니다.*
-
-> **영역 마킹 이미지 자리 — 현재 이미지에 Feed·Headline·Title 표시**  
-> `Doc/Media/Wiki/18_UMG_v2_Migration/18_notice_slots_annotated.png`  
-> 위 실제 화면을 원본으로 사용해 좌측 Feed, 중앙 Headline, 상단 Title에만 ①~③ 테두리를 추가합니다. 원본 스크린샷은 유지하고, 작업 완료 후 이 자리에 주석 이미지를 연결합니다.
-
-### 도감 알림과 레벨업 알림
-
-| 도감 등록 알림 — 이전 | 도감 첫 발견 — v2 |
+| 도감 알림 — 이전 | 도감 첫 발견 — v2 |
 |---|---|
-| ![이전 도감 등록 알림](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_before_dex.jpg) | ![새로운 팰 발견 Headline과 Feed가 함께 있는 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg) |
+| ![기존 도감 등록 알림](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_before_dex.jpg) | ![Feed·Headline·Title이 함께 표시되는 도감 첫 발견 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg) |
 
-*도감 등록 시 중앙 Headline을 보여주며, 같은 화면에 있는 **좌측 퀘스트 수락 Feed는 별도 알림**입니다.*
+*개편 후 화면에는 **좌측 Feed(퀘스트 수락)**, **중앙 Headline(새로운 팰 발견!)**, **상단 Title(지역명)**이 동시에 표시됩니다. 도감 첫 발견의 Headline과 퀘스트 수락의 Feed는 서로 다른 알림입니다.*
+
+> **영역 마킹 이미지 자리 — 위 v2 화면에 Feed·Headline·Title 표시**  
+> `Doc/Media/Wiki/18_UMG_v2_Migration/18_notice_slots_annotated.png`  
+> 위 실제 v2 스크린샷을 원본으로 사용해 좌측 Feed, 중앙 Headline, 상단 Title에만 ①~③ 테두리를 추가합니다. 원본은 유지하고 작업 완료 후 주석 이미지를 연결합니다.
+
+### 레벨업 Headline
 
 ![레벨업 Headline 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_levelup.jpg)
 
 *레벨업은 중앙 Headline에서 능력치 변화와 스탯 포인트를 함께 표시합니다.*
+
 
 ### 지역명 Title
 
