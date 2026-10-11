@@ -111,7 +111,9 @@ flowchart TD
 
 `AQuestBuildSite`는 설계 상태의 건설 오브젝트입니다. 상호작용을 통해 Deliver 목표를 처리하고, 서버에서 관련 퀘스트 진행 변경을 관찰하여 `bBuilt`를 갱신·복제합니다. 완성 시 시각 표현과 충돌 설정이 바뀝니다. 퀘스트 데이터를 수정할 때 월드 Actor에 별도의 완료 규칙을 중복 작성하지 않도록 한 경계입니다.
 
-![퀘스트 NPC]( ../Media/Wiki/16_UMG_Migration_with_Claude/16_islander_after.jpg )
+![퀘스트 NPC](../Media/Wiki/16_UMG_Migration_with_Claude/16_islander_after.jpg)
+
+*퀘스트 제공 NPC는 월드 상호작용과 수락·완료 보고 상태에 따라 안내를 갱신합니다.*
 
 ## 복제·저장·UI 연결
 
