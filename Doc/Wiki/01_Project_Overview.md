@@ -135,6 +135,6 @@ https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
 | **UI·멀티플레이** | [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] · [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] |
 | **검증·개발 이력** | [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] · [[14. Unreal Editor Automation & Verification|14_Unreal_Editor_Automation_Verification]] · [[15. Development History & Retrospective|15_Development_History_Retrospective]] |
 
-[[**01–18 전체 기술 문서 목록 →**|Home]]
+**[[01–18 전체 기술 문서 목록 →|Home]]**
 
 **저장소:** [Sonheim](https://github.com/chungheonLee0325/Sonheim) · [Source-only Mirror](https://github.com/chungheonLee0325/Sonheim.Source) · [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)
