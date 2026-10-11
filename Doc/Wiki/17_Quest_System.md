@@ -215,7 +215,7 @@ flowchart TD
     D --> E{"플레이어 기록 중<br/>건설 완료 조건을 만족하는 기록이 있는가?"}
     E -->|예| F["bBuilt = true"]
     E -->|아니요| G["설계 상태 유지"]
-    F --> H["전체 클라이언트에 bBuilt 복제"]
+    F --> H["bBuilt 월드 상태 복제"]
     H --> I["OnRep_Built → ApplyLook"]
 ~~~
 
