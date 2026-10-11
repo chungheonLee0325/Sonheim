@@ -2,178 +2,83 @@
 
 ![Sonheim](Sonheim.png)
 
-**Unreal Engine 5.5 / C++ 기반 서버 권위 멀티플레이 액션 어드벤처**입니다.  
-전투·수집·장비·제작·Pal 포획/파트너 시스템을 구현하고, 이후 **Forgotten Ruins 분기형 Dungeon Vertical Slice**를 통해 Boss Encounter, Minimap, Result, Validation까지 확장했습니다.
+**Unreal Engine 5.5 / C++ 기반 서버 권위 멀티플레이 액션 어드벤처.**
 
-[**Technical Wiki**](https://github.com/chungheonLee0325/Sonheim/wiki) ·
-[**Source-only Mirror**](https://github.com/chungheonLee0325/Sonheim.Source) ·
-[**AgentMcp**](https://github.com/chungheonLee0325/AgentMcp) ·
-[**YouTube Demo**](https://www.youtube.com/watch?v=TDRRWp6M_9E)
+전투·탐험·아이템 수집·장비·협동 제작·몬스터 포획/Partner를 구현하고, **MonsterDex·Quest·UMG v2**를 추가했습니다. 분기형 던전 *Forgotten Ruins*에서는 기존 시스템을 함께 사용해 웨이브·지름길·보스·보상·기록까지 하나의 Run으로 진행합니다.
+
+초기 2인 팀 개발 이후 게임플레이와 콘텐츠를 확장하며 서버 상태, 데이터 정의, UI 표현의 역할을 분리했습니다.
+
+[**전체 게임플레이 데모**](https://www.youtube.com/watch?v=TDRRWp6M_9E) · [**Project Overview**](Doc/Wiki/01_Project_Overview.md) · [**기술 문서 전체 목록**](Doc/Wiki/Home.md) · [**Source-only Mirror**](https://github.com/chungheonLee0325/Sonheim.Source)
+
+## Gameplay Demo
+
+[![Sonheim 플레이 영상](Doc/Gifs/Project_Overview.gif)](https://www.youtube.com/watch?v=TDRRWp6M_9E)
+
+*이미지를 클릭하면 전체 프로젝트 플레이 영상으로 이동합니다.*
+
+## Latest Features — MonsterDex · Quest · UI v2
+
+| **MonsterDex — 발견·기록·보상** | **Quest — NPC·단계·월드 변화** |
+|:---|:---|
+| ![도감 목록·3D 몬스터·처치/포획 기록·보상](Doc/Media/Wiki/16_MonsterDex_System/16_dex_screen_areas.svg) | ![NPC 퀘스트 대화 및 자재 전달](Doc/Media/Wiki/16_UMG_Migration_with_Claude/16_dialog_after.jpg) |
+| 처음 처치하거나 포획한 몬스터를 도감에 등록하고, 발견 여부·3D 프리뷰·보상 진행도를 표시합니다. | NPC에서 수락한 목표를 전투·포획·제작·탐험으로 진행하며, 자재 전달로 실제 월드 오브젝트의 상태도 변경합니다. |
+| [구현 상세](Doc/Wiki/16_MonsterDex_System.md) · [도감 등록 시연](https://github.com/user-attachments/assets/d1d96b5f-1076-4e29-872d-3399a540acac) | [구현 상세](Doc/Wiki/17_Quest_System.md) · [수락부터 완료까지 시연](https://github.com/user-attachments/assets/356d1438-7c3c-417d-8bd4-b8dcb7a3efb6) |
+
+### UMG v2 — 메뉴·알림·화면 개편
+
+![Feed·Headline·Title을 사용한 게임플레이 알림](Doc/Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg)
+
+- **UI Stack:** 인벤토리·제작·도감·퀘스트 화면의 중첩·입력·커서 정책 통합
+- **Notice:** 도감 등록, 퀘스트 갱신, 레벨업, 제작 알림, 지역명을 `Feed / Headline / Title` 슬롯으로 표시
+- **Input Hint:** 키보드·게임패드 입력 장치에 맞는 안내 갱신
+- **Dungeon UI:** 서버 GameState Snapshot → Presenter → ViewData → HUD·미니맵·결과
+
+[UI 개편 전후 및 에디터 검증](Doc/Wiki/18_UMG_v2_Migration.md) · [UI 데이터·입력 구조](Doc/Wiki/11_Client_State_Presentation_Pipeline.md)
 
 ---
 
-## Project Demo
+## Selected Gameplay
 
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=TDRRWp6M_9E">
-    <img src="Doc/Gifs/Project_Overview.gif" alt="Sonheim gameplay overview" width="100%">
-  </a>
-</p>
+### Forgotten Ruins — Branching Dungeon & Boss
 
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=TDRRWp6M_9E"><b>▶ 전체 프로젝트 데모 보기</b></a>
-</p>
+**레버 입력 → 서버 RunTag 기록 → Wave 완료 → 조건에 따른 지름길/추가 웨이브 전환**으로 진행하는 분기형 던전입니다. 스테이지별 장벽·목표·보스 전투와 최종 보상·클리어 기록을 하나의 실행 상태로 관리합니다.
+
+![던전 진행 목표·미니맵·스테이지 HUD](Doc/Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_hud_after.jpg)
+
+[지름길 분기 플레이](https://github.com/user-attachments/assets/29858da6-7d13-4297-9d71-41f53272a952) · [추가 웨이브 분기](https://github.com/user-attachments/assets/af8228c3-f403-41e1-947b-ba3f3d3f5da6) · [던전 Runtime 구현](Doc/Wiki/09_Branching_Dungeon_Runtime.md)
+
+보스는 **패턴별 타이밍·텔레그래프·타격 범위**를 DataAsset에서 정의하고, 전용 FSM이 Phase·Break/Down·Resting을 처리합니다. Resting에서는 기존 Pal 포획 시스템을 재사용합니다.
+
+[보스 텔레그래프·타격 시연](https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd) · [보스 구현](Doc/Wiki/10_Boss_Encounter_Runtime.md)
+
+### Inventory · Collaborative Crafting · Partner
+
+- **Inventory & Crafting:** FastArray 기반 슬롯·장비와 월드 보관함. 여러 플레이어가 하나의 제작 작업에 참여하며 부분 완료·수령·미완료 수량 환불을 처리합니다. [제작 시연](https://github.com/user-attachments/assets/df9a30d1-8d52-4b86-9f18-790474fdbda2) · [구현](Doc/Wiki/07_Inventory_Crafting.md)
+- **Pal Capture & Partner:** 서버가 포획을 판정하고 소유 목록을 갱신합니다. 포획된 몬스터 Actor를 비활성화·소환하며 같은 Actor의 Partner AI를 활용합니다. [포획 시연](https://github.com/user-attachments/assets/57246d79-bd3b-473f-85fc-762670023729) · [구현](Doc/Wiki/08_Pal_Capture_Partner_Lifecycle.md)
+- **Combat & Skills:** 장비에 따른 스탯/Skill Grant 전환, Animation Notify 기반 공격 시점, 근접 Sweep과 서버 피해 처리를 구현했습니다. [구현](Doc/Wiki/05_Combat_Skill_Animation.md)
 
 ---
 
-## Project Overview
+## Engineering Highlights
 
-| 항목 | 내용 |
+| 기술 | 실제 적용 |
 |---|---|
-| **Engine / Language** | Unreal Engine 5.5 / C++ |
-| **Networking** | Listen Server, Server RPC, Property Replication, FastArray, limited client prediction |
-| **Gameplay** | Combat / Skill / Equipment / Interaction / Inventory / Crafting / Pal Capture & Partner |
-| **Integrated Content** | Branching Dungeon / Boss Encounter / Reward / Record & Grade |
-| **UI** | UMG, UI Stack/Input, Feed·Headline·Title, Presenter → ViewData → UI Router |
-| **Progression** | MonsterDex / Quest, PlayerDeed event, Owner FastArray replication, host save |
-| **Data / Authoring** | DataTable, DataAsset, GameplayTag, StringTable, Data Validation |
+| **Server Authority / Replication** | Listen Server, Server RPC, Actor·UObject 복제, OwnerOnly FastArray, 던전 GameState Snapshot |
+| **State Ownership** | PlayerState의 Inventory·Pal·Dex·Quest 기록과 Pawn의 캐릭터 동작 분리 |
+| **Data-driven Content** | DataTable의 반복 데이터, Dungeon PrimaryDataAsset의 Stage/Branch, Boss DataAsset의 Pattern/Strike |
+| **Event-driven Progression** | `PlayerState::ReportDeed`로 처치·포획·제작·지역·던전 결과를 퀘스트와 도감 기록에 연결 |
+| **Authoring & Validation** | 던전 Stage Graph·분기 조건·Group 생산 경로와 보스 타격 시간·Montage Section 검증 |
+| **Unreal Editor Tooling** | [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)로 Widget/Blueprint/Data 조회·편집, Compile·PIE·Viewport 확인 |
 
-초기 2인 팀 개발 이후 개인적으로 시스템을 확장하면서 기존 gameplay 기능을 재사용 가능한 runtime boundary로 정리하고, Dungeon/Boss/UI/Validation까지 통합했습니다.
-
----
-
-## MonsterDex · Quest · UMG v2
-
-기존 전투·포획·제작·던전 이벤트를 `PlayerState::ReportDeed`로 연결해 종별 도감 기록과 퀘스트 단계 진행을 구현했습니다. 서버가 상태·보상을 관리하고, 소유 클라이언트에는 FastArray로 동기화합니다. 화면은 UI Stack/Input과 Notice 슬롯을 공통화해 개편했습니다.
-
-![v2 MonsterDex](Doc/Media/Wiki/16_UMG_Migration_with_Claude/16_dex_after.jpg)
-
-[**MonsterDex 설계 →**](Doc/Wiki/16_MonsterDex_System.md) · [**Quest 설계 →**](Doc/Wiki/17_Quest_System.md) · [**UMG v2 개편·검증 →**](Doc/Wiki/18_UMG_v2_Migration.md)
+**기술 문서:** [전체 목차 (01–18)](Doc/Wiki/Home.md) · [프로젝트 아키텍처](Doc/Wiki/02_Gameplay_Architecture.md) · [멀티플레이 동기화](Doc/Wiki/12_Multiplayer_Synchronization.md) · [콘텐츠 검증](Doc/Wiki/13_Content_Authoring_Validation.md) · [개발 변경 이력](Doc/Wiki/15_Development_History_Retrospective.md)
 
 ---
 
-## Architecture at a Glance
+## Source & Build
 
-```mermaid
-flowchart LR
-    DATA["<b>Content / Data</b><br/>DataTable · DataAsset · GameplayTag"]
-    GAME["<b>Gameplay Runtime</b><br/>Combat · Interaction · Inventory · Capture"]
-    CONTENT["<b>Integrated Content</b><br/>Dungeon Runtime · Boss FSM"]
-    STATE["<b>Authoritative State</b><br/>Replication · FastArray · Snapshot"]
-    VIEW["<b>Client Presentation</b><br/>Delegate · Presenter · ViewData · UMG"]
-
-    DATA --> GAME
-    DATA --> CONTENT
-    GAME --> STATE
-    CONTENT --> STATE
-    STATE --> VIEW
-```
-
-[Gameplay Architecture 자세히 보기 →](https://github.com/chungheonLee0325/Sonheim/wiki/02_Gameplay_Architecture)
-
----
-
-## Selected Work
-
-### Forgotten Ruins — Branching Dungeon
-
-Stage Graph 기반의 분기형 멀티플레이 Dungeon입니다.  
-Shortcut / ExtraWave 선택에 따라 Stage, Objective, Barrier, Reward가 달라지고 Boss Encounter와 Result까지 하나의 Run으로 이어집니다.
-
-https://github.com/user-attachments/assets/29858da6-7d13-4297-9d71-41f53272a952
-
-[Branching Dungeon Runtime 자세히 보기 →](https://github.com/chungheonLee0325/Sonheim/wiki/09_Branching_Dungeon_Runtime)
-
----
-
-### Boss Encounter
-
-기존 Monster / Combat 시스템 위에 Boss 전용 FSM과 Pattern Data를 추가해 Telegraph, Tracking, Phase, Down, Exhaust, Capture Window를 구성했습니다.
-
-https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
-
-[Boss Encounter Runtime 자세히 보기 →](https://github.com/chungheonLee0325/Sonheim/wiki/10_Boss_Encounter_Runtime)
-
----
-
-### Inventory & Collaborative Crafting
-
-Player Inventory를 중심으로 Equipment, Shared Container, Crafting이 같은 Item state를 사용합니다.  
-여러 Player가 하나의 ActiveWork에 참여하고 완료 결과를 Inventory로 수령하는 제작 흐름을 구현했습니다.
-
-https://github.com/user-attachments/assets/df9a30d1-8d52-4b86-9f18-790474fdbda2
-
-[Inventory & Crafting 자세히 보기 →](https://github.com/chungheonLee0325/Sonheim/wiki/07_Inventory_Crafting)
-
----
-
-### Pal Capture & Partner
-
-Wild Monster의 Capture 결과를 Ownership / Storage / Selection / Summon으로 연결하고, 같은 Monster Actor가 소유 상태에 따라 Partner AI로 동작하도록 구성했습니다.
-
-https://github.com/user-attachments/assets/57246d79-bd3b-473f-85fc-762670023729
-
-[Pal Capture & Partner Lifecycle 자세히 보기 →](https://github.com/chungheonLee0325/Sonheim/wiki/08_Pal_Capture_Partner_Lifecycle)
-
----
-
-## Engineering Index
-
-| Area | Highlight | Detail |
-|---|---|---|
-| **Player / Character** | PlayerState / Pawn lifecycle, Stat source, Equipment → Skill | [Wiki 04](https://github.com/chungheonLee0325/Sonheim/wiki/04_Player_Character_Systems) |
-| **Combat / Skill** | Skill Data/State/Logic, AnimNotify timing, melee interpolation, Damage Context | [Wiki 05](https://github.com/chungheonLee0325/Sonheim/wiki/05_Combat_Skill_Animation) |
-| **Interaction** | Interface 기반 Detection / Prompt / Hold / Server execution | [Wiki 06](https://github.com/chungheonLee0325/Sonheim/wiki/06_World_Interaction_Systems) |
-| **Inventory / Crafting** | FastArray, limited prediction, Equipment, Container, shared Crafting | [Wiki 07](https://github.com/chungheonLee0325/Sonheim/wiki/07_Inventory_Crafting) |
-| **Multiplayer** | Request / State / Scope / Prediction / Relevancy | [Wiki 12](https://github.com/chungheonLee0325/Sonheim/wiki/12_Multiplayer_Synchronization) |
-| **UI** | Delegate HUD, Notice Queue, Snapshot → Presenter → ViewData → Router | [Wiki 11](https://github.com/chungheonLee0325/Sonheim/wiki/11_Client_State_Presentation_Pipeline) |
-| **Validation** | Transition order, cycle/reachability, producer precedence, Boss contract | [Wiki 13](https://github.com/chungheonLee0325/Sonheim/wiki/13_Content_Authoring_Validation) |
-| **Editor Tooling** | AgentMcp 기반 Blueprint/UMG/Data/Animation authoring + PIE verification | [Wiki 14](https://github.com/chungheonLee0325/Sonheim/wiki/14_Unreal_Editor_Automation_Verification) |
-
----
-
-## Technical Wiki
-
-README는 **결과와 대표 구현**만 보여주고, 세부 설계·trade-off·code/data flow는 Wiki에서 다룹니다.
-
-- [Project Overview](https://github.com/chungheonLee0325/Sonheim/wiki/01_Project_Overview)
-- [Gameplay Architecture](https://github.com/chungheonLee0325/Sonheim/wiki/02_Gameplay_Architecture)
-- [Data & Content Architecture](https://github.com/chungheonLee0325/Sonheim/wiki/03_Data_Content_Architecture)
-- [Branching Dungeon Runtime](https://github.com/chungheonLee0325/Sonheim/wiki/09_Branching_Dungeon_Runtime)
-- [Boss Encounter Runtime](https://github.com/chungheonLee0325/Sonheim/wiki/10_Boss_Encounter_Runtime)
-- [Development History & Retrospective](https://github.com/chungheonLee0325/Sonheim/wiki/15_Development_History_Retrospective)
-- [MonsterDex System (Wiki 16)](Doc/Wiki/16_MonsterDex_System.md) · [Quest System (Wiki 17)](Doc/Wiki/17_Quest_System.md) · [UMG v2 (Wiki 18)](Doc/Wiki/18_UMG_v2_Migration.md)
-
----
-
-## Repository Layout
-
-```text
-Sonheim/Source/Sonheim/
-├─ Animation/        # AnimInstance / AnimNotify
-├─ AreaObject/       # Player / Monster / Skill / Attribute / AI
-├─ GameManager/      # GameInstance / GameMode / GameState / Dungeon runtime
-├─ GameObject/       # Item / Resource / Container / Crafting / Dungeon actors
-├─ ResourceManager/  # Gameplay data types / DataTable row structs
-├─ UI/               # HUD / Inventory / Notice / Dungeon presentation
-└─ Utilities/        # Shared helpers
-```
-
-코드 중심 검토는 [Sonheim.Source](https://github.com/chungheonLee0325/Sonheim.Source)에서 확인할 수 있습니다.
-
----
-
-## Build
-
-- **Engine**: Unreal Engine 5.5
-- **IDE**: Visual Studio 2022 / Rider
-- `Sonheim.uproject`에서 Visual Studio project files 생성
-- `Development Editor` configuration으로 build 후 Editor 실행
-- Multiplayer test는 Listen Server + Client PIE 또는 Steam/Null OSS 환경에서 진행
-
----
-
-## Related Repositories
-
-- [**Sonheim.Source**](https://github.com/chungheonLee0325/Sonheim.Source) — Source / Config / Docs 중심 코드 검토용 mirror
-- [**AgentMcp**](https://github.com/chungheonLee0325/AgentMcp) — UE 5.5 Editor MCP / agent workflow plugin
+- **Engine:** Unreal Engine 5.5
+- **IDE:** Visual Studio 2022 / Rider
+- **프로젝트 파일:** `Sonheim/Sonheim.uproject` — 프로젝트 파일에서 Visual Studio 솔루션 생성 후 `Development Editor`로 빌드
+- **멀티플레이 환경:** Listen Server + Client PIE, Steam/Null OSS
+- **코드 검토:** [Sonheim.Source](https://github.com/chungheonLee0325/Sonheim.Source)
+- **Editor MCP:** [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)
