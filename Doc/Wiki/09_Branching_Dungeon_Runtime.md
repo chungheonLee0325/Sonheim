@@ -47,7 +47,7 @@ https://github.com/user-attachments/assets/af8228c3-f403-41e1-947b-ba3f3d3f5da6
 
 ## 실제 스테이지 그래프
 
-아래 그래프는 **Forgotten Ruins의 Dungeon Definition에서 `BuildStageGraph()`로 생성한 Stage 전환**입니다.
+아래는 **Forgotten Ruins의 Dungeon Definition에서 `BuildStageGraph()`가 생성한 그래프 중 주요 스테이지 전환만 발췌한 도식**입니다. Action·제한 시간 등 전체 주석까지 포함한 원본은 아래 링크에서 확인할 수 있습니다.
 
 ~~~mermaid
 flowchart TD
