@@ -125,6 +125,8 @@ flowchart TB
 
 ### 첫 처치·포획에 따른 등록과 화면 표시
 
+[**발견·도감 등록 플레이 영상 보기**](../Media/Wiki/16_MonsterDex_System/16_dex_discovery.mp4)
+
 서버의 `UMonsterDexComponent::Record`는 도감에 등록된 몬스터의 처치 또는 포획 이벤트를 처음 받으면 `FMonsterDexEntry`를 생성합니다. 이후 `MonsterDexView::Build`는 **기록의 존재 여부**로 발견 상태를 판단합니다. 접근하거나 화면에서 선택하는 것만으로는 발견 처리되지 않습니다.
 
 ~~~cpp
@@ -233,6 +235,8 @@ for (int32 Tier = 0; Tier < Page->RewardTiers.Num(); ++Tier)
 
 
 ## 보상 진행과 수령
+
+[**도감 보상 진행·수령 플레이 영상 보기**](../Media/Wiki/16_MonsterDex_System/16_dex_reward_flow.mp4)
 
 `DT_MonsterDex`의 `RewardTiers`에는 단계마다 필요한 처치·포획 횟수와 경험치·아이템 보상이 설정됩니다. `FMonsterDexEntry::Meets`는 두 조건을 모두 비교합니다.
 
