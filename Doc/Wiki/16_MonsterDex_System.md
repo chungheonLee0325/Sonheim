@@ -199,11 +199,11 @@ sequenceDiagram
 
 ### 도감 등록·보상 알림
 
-![첫 몬스터 등록 시 표시되는 Headline 실제 게임 캡처](https://github.com/user-attachments/assets/5f2b00a6-ffcf-46b3-ac6f-627e0a03ea73)
+![실제 게임 화면의 알림 위치 — ① 중앙 Headline, ② 왼쪽 Feed](../Media/Wiki/16_MonsterDex_System/16_notice_slots_annotated.svg)
 
-**Headline — 첫 도감 등록:** 처음 처치하거나 포획한 몬스터를 도감에 기록하면 화면 중앙에 ‘새로운 팰 발견!’ 알림을 표시합니다. 위 이미지는 [PR #3 댓글에 첨부한 실제 플레이 캡처](https://github.com/chungheonLee0325/Sonheim/pull/3#issuecomment-6107730878)입니다.
+**① Headline — 첫 도감 등록:** 처음 처치하거나 포획한 몬스터가 도감에 등록되면 화면 중앙에 ‘새로운 팰 발견!’ 알림을 표시합니다.
 
-**Feed — 도감 보상 달성:** `RewardTiers`의 요구 횟수를 처음 충족하면 화면 왼쪽의 Feed 슬롯으로 수령 가능 알림을 표시합니다. 도감 보상 Feed가 실제로 표시된 캡처는 아직 이 문서에 추가하지 않았습니다.
+**② Feed — 이벤트 알림:** 화면 왼쪽에 간결한 알림을 표시합니다. 위 화면에서는 ‘퀘스트 수락’이 나타나 있으며, **도감 보상 조건을 새로 충족했을 때의 수령 가능 알림도 같은 Feed 슬롯**을 사용합니다.
 
 ~~~cpp
 // MonsterDexComponent.cpp — Record 내부 발췌
