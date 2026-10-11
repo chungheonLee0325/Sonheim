@@ -132,6 +132,7 @@ Forgotten Ruins는 **Combat·Interaction·Inventory·Capture·UI가 하나의 �
 - [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — Stage graph, dependency, Boss timing처럼 데이터 조합에서 생기는 오류를 Editor / graph validation으로 검사
 - [[14. Unreal Editor Automation & Verification|14_Unreal_Editor_Automation_Verification]] — AgentMcp를 이용한 UE Editor authoring과 Compile → PIE → Log/Viewport 검증
 - [[15. Development History & Retrospective|15_Development_History_Retrospective]] — 기능 추가보다 ownership과 시스템 경계가 실제 확장에서 어떻게 바뀌었는지 정리
+- [[16. UMG Migration with Claude|16_UMG_Migration_with_Claude]] — Claude Code가 Agent MCP로 UMG 전체를 Palworld 스타일 v2로 옮긴 과정과 전/후
 
 ### AgentMcp
 
