@@ -51,12 +51,7 @@ function Convert-WikiPage {
         return ('[{0}]({1}/{2})' -f $label, $wikiBase,
             [Uri]::EscapeDataString($page))
     })
-    $Content = [regex]::Replace($Content, '\[\[([^\]]+)\]\]', {
-        param($m)
-        $page = $m.Groups[1].Value -replace '\.md$', ''
-        return ('[{0}]({1}/{2})' -f $page, $wikiBase,
-            [Uri]::EscapeDataString($page))
-    })
+    # Leave bare [[...]] untouched: Mermaid also uses this syntax for nodes.
 
     # Convert Doc/Wiki relative Markdown links to Wiki page URLs.
     $Content = [regex]::Replace($Content,
