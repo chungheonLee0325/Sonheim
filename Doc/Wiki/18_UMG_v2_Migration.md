@@ -120,6 +120,9 @@ C++ Widget은 `BindWidget`의 이름·타입 계약과 데이터/입력 처리�
 - 던전 선택 목표의 보상은 UI 문구가 아닌 Dungeon Definition의 보상 정보를 조회합니다.
 - Pretendard / Black Han Sans, SVG 기반 UI 아이콘 27종, StringTable 문구 51개를 적용·정리했습니다.
 
+<details>
+<summary>Inventory · Quest Journal · Dungeon Result · Field HUD 전후 비교 보기</summary>
+
 | Inventory v1 | Inventory v2 |
 |---|---|
 | ![인벤토리 이전](../Media/Wiki/16_UMG_Migration_with_Claude/16_inventory_before.jpg) | ![인벤토리 개편](../Media/Wiki/16_UMG_Migration_with_Claude/16_inventory_after.jpg) |
@@ -137,6 +140,8 @@ C++ Widget은 `BindWidget`의 이름·타입 계약과 데이터/입력 처리�
 | ![필드 HUD 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_hud_before.jpg) | ![필드 HUD 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_hud_after.jpg) |
 
 ![UI Icon Set 27종](../Media/Wiki/16_UMG_Migration_with_Claude/16_icons.png)
+
+</details>
 
 ## AgentMcp 저작·검증
 
