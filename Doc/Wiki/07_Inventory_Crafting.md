@@ -1,79 +1,54 @@
 # 07. Inventory & Crafting
 
-Item은 Player Inventory를 중심으로 **Equipment, Shared Container, Crafting, Reward**에 연결됩니다.
+**플레이어 인벤토리를 아이템 상태의 중심으로 두고, 장비·공유 보관함·협동 제작이 같은 아이템 처리 API를 사용**합니다. 인벤토리는 슬롯 단위 FastArray로 동기화하고, 제작대는 레시피 정의와 실제 작업 진행·완료 수량을 분리해 여러 플레이어의 작업을 누적합니다.
 
-## 요약
+## 실제 게임 화면
 
-- **Player Inventory**는 Slot 기반 Item state를 소유하고 변경된 entry를 FastArray로 동기화합니다.
-- **Equipment**는 Item의 `SkillID`와 Stat source를 통해 현재 공격 Skill, 능력치, Weapon Mesh/HUD를 갱신합니다.
-- **Container**는 같은 Item/Slot 모델을 사용하면서 World에 존재하는 shared ownership과 viewer lifecycle을 가집니다.
-- **Crafting**은 Recipe Definition과 `FActiveCraftWork`를 분리하고, Server가 재료 소비·공동 작업·완료 결과를 관리합니다.
-- **UI**는 runtime state와 Item/Recipe definition을 조합하고 `USlotWidget`을 Inventory·Equipment·Container·Crafting에서 재사용합니다.
-
-## Runtime Demo
-
-### Inventory / Container
-
-Drag & Drop과 Container 간 Item 이동이 같은 Slot 기반 UI 흐름에서 동작합니다.
+### 인벤토리·보관함
 
 https://github.com/user-attachments/assets/c594e8a3-2840-456c-ae04-cabaaeb4d8ca
 
-### Collaborative Crafting
+드래그 앤 드롭으로 슬롯을 교환하고, 플레이어 인벤토리와 월드 보관함 사이에서 아이템을 이동하는 동작입니다.
+
+### 협동 제작
 
 https://github.com/user-attachments/assets/df9a30d1-8d52-4b86-9f18-790474fdbda2
 
-*Recipe 선택과 재료 확인부터 Shared Work 진행, 완료 결과 수령, Inventory 반영까지 이어지는 제작 흐름.*
+레시피·제작 수량 선택, 재료 소비, 공동 작업 진행, 완성품 수령과 인벤토리 반영까지 확인할 수 있습니다.
+
+## 핵심 구현
+
+| 기능 | 상태·실행 책임 | 구현 |
+|---|---|---|
+| **인벤토리** | `UInventoryComponent` | 스택·슬롯·장비·Drop/Discard 및 OwnerOnly FastArray |
+| **아이템 이벤트** | `OnInventoryChanged / OnItemAdded` | 슬롯 변경과 실제 아이템 획득을 분리 |
+| **장비** | `UInventoryComponent` → Stat/Skill/Player | 활성 무기 슬롯에 맞는 Modifier·Skill Grant·Mesh 전환 |
+| **공유 보관함** | `UContainerComponent` | 월드 아이템 목록·구독자 유무에 따른 복제 활성화 |
+| **제작 정의** | `FCraftingRecipe` DataTable | 결과 아이템·재료·단위당 작업량 |
+| **제작 진행** | `ACraftingStation::ActiveWork` | 서버 재료 소비·작업 누적·부분 완료·수령·미완료 취소 |
+| **화면 구성** | `UInventoryWidget / UCraftingWidget` | 실제 아이템 상태 + DataTable 표시 정보·재료 행 재사용 |
 
 ## 목차
 
-- [Runtime Demo](#runtime-demo)
-- [System Overview](#system-overview)
-- [Inventory State Model](#inventory-state-model)
-- [Equipment Pipeline](#equipment-pipeline)
-- [Shared Container](#shared-container)
-- [Crafting Runtime](#crafting-runtime)
-- [UI & Presentation](#ui--presentation)
-- [Integration](#integration)
-- [Trade-offs](#trade-offs)
+- [인벤토리 상태와 FastArray](#인벤토리-상태와-fastarray)
+- [슬롯 변경과 아이템 획득 이벤트](#슬롯-변경과-아이템-획득-이벤트)
+- [장비 전환과 다른 시스템 연결](#장비-전환과-다른-시스템-연결)
+- [월드 공유 보관함](#월드-공유-보관함)
+- [협동 제작의 정의·실행 상태](#협동-제작의-정의실행-상태)
+- [제작 시작·진행·부분 완료](#제작-시작진행부분-완료)
+- [수령과 미완료 제작 취소](#수령과-미완료-제작-취소)
+- [인벤토리·제작 UI 갱신](#인벤토리제작-ui-갱신)
+- [설계 선택과 비용](#설계-선택과-비용)
+- [관련 코드 및 문서](#관련-코드-및-문서)
 
 ---
 
-## System Overview
+## 인벤토리 상태와 FastArray
 
-~~~mermaid
-flowchart LR
-    ITEM["<b>Item Definition</b><br/>FItemData"]
-    INV["<b>Player Inventory</b><br/>UInventoryComponent"]
-    EQUIP["<b>Equipment State</b><br/>EquippedSlots"]
-    STAT["<b>Stat 적용</b><br/>UStatBonusComponent"]
-    SKILL["<b>Skill 교체</b><br/>ReplaceGrant"]
-
-    BOX["<b>Shared Container</b><br/>UContainerComponent"]
-    CRAFT["<b>Collaborative Crafting</b><br/>ACraftingStation"]
-    RESULT["<b>완료 Item</b><br/>CompletedToCollect"]
-
-    ITEM --> INV
-    BOX <--> INV
-    INV --> EQUIP
-    EQUIP --> STAT
-    EQUIP --> SKILL
-
-    INV -->|"Material"| CRAFT
-    CRAFT -->|"Completed"| RESULT
-    RESULT --> INV
-~~~
-
-Player Inventory는 Loot, Equipment, Container, Crafting, Dungeon Reward가 공유하는 Item state의 중심 경계입니다.
-
----
-
-## Inventory State Model
-
-### Slot / Replication State
-
-`UInventoryComponent`는 gameplay에서 사용하는 local array와 replication용 FastArray를 구분합니다.
+`UInventoryComponent`는 서버 게임플레이에서 사용하는 `InventoryItems`와 복제용 `RepItems`를 분리합니다. 복제 엔트리에는 **슬롯 위치·아이템 ID·수량**만 담습니다.
 
 ~~~cpp
+// InventoryComponent.h — 실제 구조
 struct FRepInventoryEntry : public FFastArraySerializerItem
 {
     int32 SlotIndex = 0;
@@ -87,444 +62,331 @@ struct FRepInventoryList : public FFastArraySerializer
 };
 ~~~
 
-실제 gameplay API는 `InventoryItems`를 사용하고, 변경된 slot만 `RepItems`에 반영합니다.
-
-~~~text
-Gameplay Inventory
-      ↓
-Changed Slot
-      ↓
-Replicated Entry
-      ↓
-Client Mirror
-      ↓
-UI Delegate
+~~~mermaid
+flowchart TB
+    GAME["서버 UInventoryComponent<br/>InventoryItems"] --> DIRTY["RepItems<br/>MarkItemDirty / MarkArrayDirty"]
+    DIRTY --> CLIENT["OwnerOnly FastArray"]
+    CLIENT --> ONREP["OnRep_RepItems"]
+    ONREP --> MIRROR["RebuildInventoryArrayFromRep<br/>InventoryItems 로컬 미러"]
+    MIRROR --> EVENT["OnInventoryChanged"]
+    EVENT --> WIDGET["UInventoryWidget · USlotWidget"]
+    DATA["FItemData<br/>이름·아이콘·장비 정의"] --> WIDGET
 ~~~
 
-네트워크 동기화 방식은 [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]에서 다룹니다.
-
-### Inventory Change vs Item Acquisition
-
-Inventory state가 바뀌는 경우와 Player가 새 Item을 획득한 경우를 서로 다른 event로 구분합니다.
-
-| 상황 | Inventory Changed | Item Acquired |
-|---|---:|---:|
-| Field Item 획득 | O | O |
-| 장비 해제 후 Inventory 복귀 | O | X |
-| Slot Swap | O | X |
-| Container에서 이동 | O | 상황에 따라 구분 |
-
-- `OnInventoryChanged` — 구조적 상태 변화
-- `OnItemAdded` — Player가 새 Item을 직접 획득한 의미
-
-`AddItem(..., bool IsDirectAcquisition)`이 이 의미 차이를 전달합니다.
-
-이를 통해 Slot Swap이나 장비 해제가 획득 Popup으로 표시되는 것을 막습니다.
-
-### Prediction / Reconciliation
-
-Slot Swap은 입력 직후 local mirror를 먼저 갱신하고 Server 결과로 보정합니다.
-
-~~~text
-Drag A → B
-   ↓
-Local Swap
-   ↓
-Server Request
-   ↓
-Authoritative Swap
-   ↓
-Replication
-   ↓
-Client Reconciliation
-~~~
-
-Prediction은 round-trip 동안의 UI 반응을 앞당기고, 최종 Item state는 Server replication으로 확정합니다.
-
-Owner-only FastArray와 Prediction의 세부 동기화는 [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]에서 설명합니다.
-
----
-
-## Equipment Pipeline
-
-Equipment change는 Inventory Slot에서 끝나지 않고 Stat / Skill / Weapon presentation으로 이어집니다.
-
-~~~text
-Equip Item
-   ↓
-Equipped Slot
-   ├─ Stat Modifier 적용
-   ├─ Weapon Mesh / HUD 갱신
-   └─ Skill Grant 교체
-~~~
-
-무기 데이터에는 `WeaponType`과 `SkillID`가 함께 들어 있습니다.
+| 변경 | 복제 갱신 방식 |
+|---|---|
+| 기존 스택의 수량 변경 | 해당 `FRepInventoryEntry`에 `MarkItemDirty` |
+| 슬롯 추가·삭제 | `MarkArrayDirty` 또는 변경한 엔트리 Dirty 처리 |
+| 전체 복제 배열 재구성 | `SyncRepFromInventoryArray`에서 재생성 후 Dirty 처리 |
+| 클라이언트 수신 | 슬롯 인덱스로 정렬해 `InventoryItems` 재구성, UI 이벤트 전달 |
 
 ~~~cpp
-struct FEquipmentData
-{
-    EEquipmentKindType EquipKind;
-    EWeaponType WeaponType;
-    int SkillID = 0;
-
-    bool bUseBullet = false;
-    TSet<int> BulletItemID;
-
-    USkeletalMesh* EquipmentMesh;
-    TSoftObjectPtr<UAnimBlueprint> EquipmentAnim;
-};
+// InventoryComponent.cpp — 복제 조건
+DOREPLIFETIME_CONDITION(UInventoryComponent, RepItems, COND_OwnerOnly);
+DOREPLIFETIME_CONDITION(UInventoryComponent, EquippedSlots, COND_OwnerOnly);
+DOREPLIFETIME(UInventoryComponent, CurrentWeaponSlot);
 ~~~
 
-현재 Weapon Slot이 바뀌면 Inventory Component가 Item의 `SkillID`를 읽고 Skill Component의 `ReplaceGrant()`로 해당 장비가 제공하는 공격 Skill을 교체합니다.
+`RepItems`와 `EquippedSlots`는 소유자 전용이고, 현재 무기 슬롯은 일반 복제입니다. **아이템 슬롯의 복제 범위와 다른 플레이어에게 보일 무기 상태는 구분**합니다.
 
-예를 들면:
-
-- **곡괭이** — 근접/채굴 공격 Skill과 Weapon Mesh로 Resource를 공격
-- **샷건** — Shotgun 계열 Skill로 전환되고 WeaponType에 맞는 Crosshair와 탄약 정보를 사용
-
-~~~text
-Weapon Item
-   ↓ FEquipmentData.SkillID
-Active Weapon Slot
-   ↓
-ReplaceGrant(ActiveWeaponGrantId, SkillID)
-   ↓
-Player Skill Set 변경
-   ↓
-Input은 같은 Cast 경로 사용
-~~~
-
-`ActiveWeaponGrantId`는 현재 Weapon이 부여한 Skill source를 추적하므로 다른 source가 제공한 Skill과 분리해 교체할 수 있습니다.
-
-실제 Weapon/Skill 전환은 [[04. Player & Character Systems|04_Player_Character_Systems]]의 Runtime 영상에서 확인할 수 있습니다.
+FastArray의 Delta 전송과 예측·보정 경로는 [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]에서 다룹니다.
 
 ---
 
-## Shared Container
+## 슬롯 변경과 아이템 획득 이벤트
 
-Player Inventory는 한 Player의 상태이고 Container는 World에 놓인 공유 보관 상태입니다.
+슬롯을 교환하거나 장비를 해제하는 것과 **새 아이템을 획득하는 것**은 UI에서 다른 의미입니다.
 
-Container도 Slot 기반 FastArray를 사용하며, viewer가 열려 있는 동안 내부 Item property replication을 활성화합니다.
+| 상황 | `OnInventoryChanged` | `OnItemAdded` |
+|---|---|---|
+| 월드 아이템 획득 | 슬롯·수량 변경 | 직접 획득 수량 알림 |
+| 아이템 스택 병합·슬롯 교환 | 변경 알림 | 별도 획득 알림 없음 |
+| 장비 해제 후 가방에 복귀 | 변경 알림 | `IsDirectAcquisition=false`로 획득 알림 제외 |
+| 제작 완료품 수령 | 인벤토리 변경 | `AddItem`의 직접 획득 경로 사용 |
+
+`UInventoryComponent::AddItem(ItemID, ItemCount, IsDirectAcquisition)`은 서버에서 스택을 채우거나 새 슬롯에 추가하고, `IsDirectAcquisition`일 때만 `OnItemAdded`를 발생시킵니다. 획득 가능한 수량이 슬롯 한도를 넘으면 잔여 아이템을 월드에 드롭합니다.
+
+**Slot 변경 알림과 획득 알림을 별도로 제공**하므로 단순 드래그·장비 해제가 획득 토스트를 발생시키지 않습니다.
+
+### 클라이언트 조작 피드백
+
+드래그 앤 드롭의 슬롯 교환은 `SwapItems`에서 서버 RPC를 통해 확정합니다. 선택적으로 `PerformClientPrediction_SwapItems`가 복사한 `PredictedInventory`를 먼저 UI에 전달할 수 있습니다.
 
 ~~~text
-Open Container
-   ↓
-Subscribe Viewer
-   ↓
-Container Item State 활성
-   ↓
-Inventory / Container UI
-
-Close
-   ↓
-Unsubscribe Viewer
+슬롯 드래그
+  → 선택적 PredictedInventory 변경·UI 표시
+  → ServerSwapItems
+  → 서버 InventoryItems 확정
+  → OwnerOnly RepItems
+  → OnRep_RepItems → 로컬 배열·UI 갱신
 ~~~
 
-같은 Item/Slot 모델을 재사용하면서 Player-owned state와 World shared state의 lifecycle을 분리합니다.
+`bEnableClientPrediction`은 `EditDefaultsOnly`이며 **C++ 기본값은 `false`**입니다. 구현된 예측 경로가 실제 게임에서 활성화되는지는 해당 컴포넌트의 Blueprint 기본값에 따릅니다. 최종 아이템 수량·슬롯은 서버 복제 결과를 사용합니다.
 
 ---
 
-## Crafting Runtime
+## 장비 전환과 다른 시스템 연결
 
-### Recipe Definition & Shared Work State
+`UInventoryComponent`는 장비를 장착할 때 슬롯 종류를 검사하고 `EquippedSlots`를 갱신합니다. `ApplyEquipState`와 `NotifyWeaponSlot`을 통해 선택 무기의 변경을 각 시스템에 전달합니다.
 
-Crafting Station은 **무엇을 만드는지**와 **현재 제작이 어디까지 진행됐는지**를 분리합니다.
+~~~text
+장비 장착 / 활성 무기 슬롯 변경
+    ↓ UInventoryComponent
+    ├─ EquippedSlots · CurrentWeaponSlot
+    ├─ UStatBonusComponent
+    │    └─ 활성 무기 슬롯의 Modifier 적용
+    ├─ USonheimSkillComponent
+    │    └─ ReplaceGrant(ActiveWeaponGrantId, Skills)
+    └─ OnWeaponChanged
+         └─ ASonheimPlayer 무기 Mesh · Animation · HUD
+~~~
 
-Recipe는 DataTable row로 정의합니다.
+무기별 `FItemData::EquipmentData.SkillID`를 조회해 `ReplaceGrant`로 스킬을 교체합니다. 다른 장비나 기본 보유 스킬이 제공하는 Grant는 분리해 관리합니다.
+
+**곡괭이 ↔ Shotgun 전환 시 외형과 공격 방식이 함께 바뀌는 실제 영상**, Modifier 적용과 PlayerState/Pawn의 연결은 [[04. Player & Character Systems|04_Player_Character_Systems]]에서 볼 수 있습니다. 이 문서에서는 **인벤토리의 슬롯/아이템 API가 장비 전환을 시작한다는 경계**만 다룹니다.
+
+---
+
+## 월드 공유 보관함
+
+`UContainerComponent`도 아이템 ID·수량·슬롯 위치를 가진 `FRepContainerList`를 사용합니다. 다만 `PlayerState`의 개인 인벤토리가 아니라 **월드 Actor의 공유 상태**입니다.
+
+~~~text
+보관함 열기
+    ↓ ServerSubscribeViewer
+Subscribers.Add(Viewer)
+    ↓ ForceNetUpdate
+ContainerItems → RepContainerItems
+    ↓
+Container UI에서 인벤토리와 보관함을 함께 표시
+
+보관함 닫기
+    ↓ ServerUnsubscribeViewer
+Subscribers.Remove(Viewer)
+~~~
+
+서버의 `PreReplication`은 구독자 수를 기준으로 내부 슬롯 복제를 켜고 끕니다.
 
 ~~~cpp
+// ContainerComponent.cpp
+const bool bActive = Subscribers.Num() > 0;
+DOREPLIFETIME_ACTIVE_OVERRIDE(
+    UContainerComponent, RepContainerItems, bActive);
+~~~
+
+구독자가 없다면 보관함 내부 슬롯의 프로퍼티 복제를 비활성화합니다. 구독 중에는 Actor 관련성 및 복제 조건에 따라 상태를 전달합니다. **현재 구현은 구독자 유무에 따라 프로퍼티 전체를 활성화하며, 연결별 별도 수신자 필터를 구성하지 않습니다.**
+
+인벤토리와 보관함의 **드래그·이동 UI는 같은 `USlotWidget`와 슬롯 이벤트**를 재사용합니다.
+
+---
+
+## 협동 제작의 정의·실행 상태
+
+제작대는 **레시피의 정적 정의**와 **현재 진행 중인 서버 상태**를 분리합니다.
+
+### FCraftingRecipe — DataTable의 제작 정의
+
+~~~cpp
+// CraftingStation.h — 주요 필드
 struct FCraftingRecipe : public FTableRowBase
 {
     FText DisplayName;
-
     int32 ResultItemID = 0;
     int32 ResultCount = 1;
-
     int32 WorkRequired = 100;
     TMap<int32, int32> RequiredMaterials;
 };
 ~~~
 
-실행 중인 제작은 별도의 `FActiveCraftWork`가 소유합니다.
+### FActiveCraftWork — 현재 제작 작업
 
 ~~~cpp
+// CraftingStation.h — 주요 필드
 struct FActiveCraftWork
 {
     FName RecipeRow;
-
     int32 ResultItemID = 0;
     int32 UnitsTotal = 0;
     int32 UnitsDone = 0;
-
     int32 ResultPerUnit = 1;
     int32 WorkPerUnit = 100;
     float WorkAccumulated = 0.f;
 };
 ~~~
 
-Recipe는 결과 Item·필요 Material·Unit당 Work를 정의하고, ActiveWork는 Units와 현재 누적 Work를 저장합니다.
+| 정의/상태 | 의미 |
+|---|---|
+| `FCraftingRecipe` | 결과 아이템·개수, 필요 재료, 1개당 작업량 |
+| `FActiveCraftWork` | 서버가 승인한 제작 수량, 완료 수량, 현재 단위의 누적 작업량 |
+| `bHasActiveWork` | 아직 진행할 제작 단위가 있는지 |
+| `CompletedToCollect` | 완성됐으나 플레이어가 수령하지 않은 아이템 총수량 |
+| `UIOwner` | 레시피 선택 UI를 사용 중인 플레이어 |
 
-### Interaction State
+제작대는 **하나의 `ActiveWork`에 같은 레시피의 여러 제작 단위를 순차적으로 누적**합니다. 서로 다른 레시피를 동시에 실행하는 독립 큐가 아닙니다.
 
-Crafting Station은 `IInteractableInterface`를 구현하고 현재 Work state에 따라 같은 Interaction 입력을 다른 동작으로 연결합니다.
+---
 
-~~~text
-Interact
-   ↓
-작업 진행 중?
-   ├─ Yes → Work 추가 / 완료분 수령
-   └─ No
-        ↓
-수령 대기 결과 있음?
-   ├─ Yes → Collect
-   └─ No → Recipe UI Open
-~~~
+## 제작 시작·진행·부분 완료
 
-World interaction contract 자체는 [[06. World Interaction Systems|06_World_Interaction_Systems]]에서 설명합니다.
+### 1. 레시피 선택과 재료 소비
 
-### UI Ownership & Collaborative Work
-
-Recipe 선택과 Work 시작 전에는 `UIOwner`가 Station의 recipe selection을 소유합니다.
-
-~~~cpp
-if (UIOwner && UIOwner != Player)
-    return;
-
-UIOwner = Player;
-~~~
-
-ActiveWork가 시작된 뒤에는 다른 Player도:
-
-- Work 추가
-- Assist
-- 완료 결과 Collect
-
-에 참여할 수 있습니다.
-
-즉 exclusive ownership은 **Recipe 선택 / Work 시작 경계**에 적용되고, 실제 Work state는 여러 Player가 공유합니다.
-
-### Server Crafting Lifecycle
+`UIOwner`는 **레시피 선택 UI의 사용권**을 나타냅니다. `ServerRequestOpenUI`는 다른 사용자가 이미 열었다면 진입시키지 않습니다. 실제 `ActiveWork`가 시작된 뒤에는 다른 플레이어도 제작 작업에 참여할 수 있습니다.
 
 ~~~mermaid
-flowchart LR
-    SELECT["<b>Recipe 선택</b><br/>Crafting UI"]
-    VALIDATE["<b>Server 검증</b><br/>Material · Units"]
-    CONSUME["<b>재료 소비</b><br/>InventoryResourceProvider"]
-    WORK["<b>공유 작업 상태</b><br/>FActiveCraftWork"]
-    ADD["<b>협력 작업</b><br/>Player Work 누적"]
-    DONE["<b>Unit 완료</b><br/>CompletedToCollect"]
-    COLLECT["<b>결과 수령</b><br/>ServerCollectAll"]
-    INV["<b>Inventory 반영</b><br/>AddItem"]
-
-    SELECT --> VALIDATE
-    VALIDATE --> CONSUME
-    CONSUME --> WORK
-    WORK --> ADD
-    ADD --> DONE
-    DONE -->|"남은 Unit"| WORK
-    DONE --> COLLECT
-    COLLECT --> INV
+flowchart TB
+    SELECT["레시피 · 제작 수량 선택"] --> START["ServerStartWork"]
+    START --> VALIDATE["Recipe · Units 검사<br/>ComputeMaxCraftable"]
+    VALIDATE --> CONSUME["InventoryResourceProvider<br/>ConsumeItems"]
+    CONSUME --> ACTIVE["FActiveCraftWork<br/>UnitsTotal · WorkPerUnit"]
+    ACTIVE --> INPUT["플레이어 상호작용<br/>ServerAddWork"]
+    INPUT --> ACCUM["WorkAccumulated += WorkDelta"]
+    ACCUM --> CHECK{"WorkAccumulated ≥ WorkPerUnit?"}
+    CHECK -->|"예"| FINISH["UnitsDone += 1<br/>CompletedToCollect += ResultPerUnit"]
+    FINISH --> MORE{"남은 제작 단위?"}
+    MORE -->|"예"| INPUT
+    MORE -->|"아니오"| READY["bHasActiveWork = false<br/>완성품 수령 대기"]
+    CHECK -->|"아니오"| INPUT
 ~~~
 
-실행 순서는 다음과 같습니다.
-
-1. Client가 Recipe와 제작 Unit 수를 선택
-2. `ServerStartWork()`가 현재 Inventory 기준으로 Material / Units 재검증
-3. `UInventoryResourceProvider`가 필요한 Material 소비
-4. `FActiveCraftWork` 생성
-5. Player들의 Work를 누적
-6. Unit 완료 시 `UnitsDone / CompletedToCollect` 갱신
-7. `ServerCollectAll()`에서 결과 Item을 Inventory에 지급
-
-Client UI의 “제작 가능 수량”은 예상값으로 사용하고, 실제 제작 시작 시 Server가 현재 상태에서 다시 계산합니다.
-
-### Resource Consumption
-
-Crafting UI와 Server는 `UInventoryResourceProvider`를 통해 같은 material 계산 규칙을 사용합니다.
+`ServerStartWork`는 레시피와 제작 수량을 확인하고, `UInventoryResourceProvider::ComputeMaxCraftable`로 **현재 서버 인벤토리의 재료 기준 최대 수량**을 계산합니다. 실제 소비 성공 횟수만 `ActiveWork.UnitsTotal`로 설정합니다.
 
 ~~~cpp
-static int32 ComputeMaxCraftable(
-    UInventoryComponent* Inv,
-    const TMap<int32, int32>& Required);
-
-static bool ConsumeItems(
-    UInventoryComponent* Inv,
-    const TMap<int32, int32>& Required);
+// InventoryResourceProvider.cpp — 실제 처리
+if (!HasItems(Inv, Required)) return false;
+for (const auto& P : Required)
+{
+    Inv->RemoveItem(P.Key, P.Value);
+}
+return true;
 ~~~
 
-UI는 현재 Inventory로 예상 제작 수량을 표시하고 Server는 같은 provider를 사용해 실제 소비를 수행합니다.
+`HasItems`·`ComputeMaxCraftable`·`ConsumeItems`를 UI와 서버 제작 경로에서 공통으로 활용합니다.
 
-### Complete / Cancel / Collect
+### 2. 서로 다른 플레이어의 작업량을 하나로 누적
 
-한 Unit이 완료될 때마다:
+제작대의 `Interact`는 작업 중일 때 `ResolvePlayerWorkSpeed_Internal(Player)`를 호출해 **해당 플레이어의 WorkSpeed 스탯**을 구하고 `ServerAddWork`에 전달합니다.
 
-- `UnitsDone` 증가
-- `CompletedToCollect` 증가
+`ServerAddWork`가 공유 `ActiveWork.WorkAccumulated`에 작업량을 더하고, `WorkPerUnit` 이상일 때마다 단위 하나를 완료합니다. 한 번의 작업량이 여러 단위의 작업량을 넘을 수 있으므로 **`while` 루프로 단위 완료를 처리**합니다.
 
-합니다.
+`ActiveWork`·`bHasActiveWork`·`CompletedToCollect`는 `ACraftingStation`의 복제 상태이며, 변경 시 `OnWorkChanged`·`OnCompletedChanged`가 진행 UI를 갱신합니다.
 
-완료된 결과는 Work가 계속 진행 중이어도 수령할 수 있습니다.
+### 3. 완료된 결과는 작업 중에도 별도 보관
+
+예를 들어 한 번에 5개 제작을 시작한 뒤 2개를 완료했다면 다음과 같습니다.
 
 ~~~text
-UnitsTotal = 5
-UnitsDone  = 2
-
-Cancel
-  ↓
-완료 2개 → 유지 / 수령 가능
-미완료 3개 → 재료 환불
+UnitsTotal         5
+UnitsDone          2
+CompletedToCollect 2 × ResultPerUnit
+WorkAccumulated    현재 3번째 단위의 작업량
 ~~~
 
-Cancel은 미완료 Unit의 남은 Work와 Material을 정리하고 이미 완료된 결과는 유지합니다.
+**완료 수량은 다음 단위의 작업 진행과 분리**됩니다. 진행 중에도 `ManualCollectDelay`가 지난 뒤 다시 상호작용하면 완성품을 수령할 수 있습니다. 수령 직후 `Client_StopInteractionHold`로 연속 입력을 정리합니다.
+
+상호작용 Hold 자체의 다형성과 입력 처리 방식은 [[06. World Interaction Systems|06_World_Interaction_Systems]]에서 설명합니다.
 
 ---
 
-## UI & Presentation
+## 수령과 미완료 제작 취소
 
-### Inventory / Container UI
+### 완료 아이템 수령
 
-Inventory/Crafting UI의 원본 Item state는 Widget이 아니라 `UInventoryComponent`가 소유합니다.
+`ServerCollectAll`은 `CompletedToCollect`만큼의 결과 아이템을 플레이어 인벤토리에 `AddItem`하고, `EPlayerDeed::Craft` 이벤트를 기록합니다.
 
-~~~mermaid
-flowchart LR
-    SERVER["<b>Authoritative Inventory</b><br/>UInventoryComponent"]
-    REP["<b>Client Mirror</b><br/>InventoryItems"]
-    EVENT["<b>변경 알림</b><br/>OnInventoryChanged<br/>OnEquipmentChanged"]
-    SCREEN["<b>Screen Controller</b><br/>ASonheimPlayerController"]
-    INVUI["<b>Inventory View</b><br/>UInventoryWidget"]
-    SLOT["<b>Reusable Item View</b><br/>USlotWidget"]
-    DATA["<b>Static Item Data</b><br/>FItemData / GameInstance"]
+이후 **수령한 결과 수량을 완료 단위 수로 환산**해 `ActiveWork.UnitsDone / UnitsTotal`을 정리합니다. 진행 중인 나머지 작업은 유지하고, 더 이상 진행 중인 작업이 없다면 완료 작업 상태를 초기화합니다.
 
-    SERVER --> REP
-    REP --> EVENT
-    EVENT --> INVUI
-    SCREEN --> INVUI
-    DATA --> INVUI
-    INVUI --> SLOT
+### 취소 — 미완료 단위만 환불
+
+`ServerCancelUnfinished`는 이미 완료된 결과를 유지하면서 제작을 종료합니다.
+
+~~~cpp
+// CraftingStation.cpp — 환불 대상 계산
+const int32 RemainUnits =
+    ActiveWork.UnitsTotal - ActiveWork.UnitsDone;
+
+for (const auto& P : R->RequiredMaterials)
+{
+    const int32 RefundCount = P.Value * RemainUnits;
+    if (RefundCount > 0)
+    {
+        Inv->AddItem(P.Key, RefundCount);
+    }
+}
 ~~~
 
-PlayerController가 Inventory Screen을 열 때 `UInventoryWidget`에 `UInventoryComponent`를 연결합니다.
+예를 들어 **5개를 시작해 2개를 완성한 경우**, 취소하면 남은 3개에 해당하는 재료가 반환되고 완성된 2개는 `CompletedToCollect`에 유지됩니다.
 
-Widget은:
-
-1. `InventoryItems`에서 ItemID / Count를 받음
-2. `FItemData`에서 이름·아이콘·rarity 같은 정적 정보를 조회
-3. `USlotWidget`에 화면용 값을 전달
-4. `OnInventoryChanged / OnEquipmentChanged`를 받아 변경 상태를 반영
-
-합니다.
-
-`USlotWidget`은 다음 화면에서 공통 Item interaction/view로 재사용됩니다.
-
-- Player Inventory grid
-- Equipment slot
-- Container item
-- Crafting recipe/material
-
-Container 화면은 `UContainerInteractionWidget` 안에 Player Inventory와 Container Inventory를 함께 배치합니다.
-
-~~~text
-ContainerInteractionWidget
- ├─ PlayerInventoryWidget
- └─ ContainerInventoryWidget
-~~~
-
-### Crafting UI
-
-Crafting UI는 세 종류의 데이터를 결합합니다.
-
-~~~text
-Recipe DataTable
-   ├─ 결과 Item
-   ├─ 필요 Material
-   └─ WorkRequired
-        +
-Player Inventory
-   └─ 현재 보유 수량
-        +
-Crafting Station
-   └─ ActiveWork / CompletedToCollect
-        ↓
-UCraftingWidget / Queue Widget
-~~~
-
-Recipe가 바뀔 때는 결과 Item·Icon·Material Row 같은 정적 구조를 갱신하고, Inventory 수량이나 Work progress 변화에는 필요한 값만 갱신합니다.
-
-Required Material Row는 부모 Widget이 local pool을 소유해 필요한 수만 활성화하고 나머지는 `Collapsed`로 재사용합니다.
-
-Crafting Queue는 `OnWorkChanged`, `OnCompletedChanged`로 이산 상태를 반영하고 연속적인 progress만 현재 Work progress를 사용합니다.
-
-### Confirm Popup
-
-Drop / Discard처럼 추가 확인이 필요한 동작은 `UInventoryWidget`이 `UConfirmWidget`을 생성해 처리합니다.
-
-~~~text
-ItemID
-MaxCount
-Drop / Discard Mode
-   ↓
-Confirm Widget
-   ↓ OnConfirm
-InventoryWidget
-   ↓
-ServerDrop / ServerDiscard
-~~~
-
-Confirm Widget은 확인 결과를 부모 Inventory 화면으로 반환하고, 실제 Item mutation은 Server request 경로에서 처리됩니다.
-
-프로젝트 전체 Screen/Input 구조는 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]에서 설명합니다.
+재료는 실제 제작 시작 시 한 번 소비하되, 취소할 때는 **남은 제작 단위 수에 맞춰 환불**합니다. 완료한 단위의 진행률과 미완료 작업의 누적 Work를 구분한 구조입니다.
 
 ---
 
-## Integration
+## 인벤토리·제작 UI 갱신
 
-### Dungeon Reward
+### 슬롯 표현 재사용
 
-Dungeon의 `GrantReward`는 기존 `Inventory.AddItem()` 경로를 사용합니다.
+`UInventoryWidget`는 `OnInventoryChanged`를 받아 슬롯을 갱신하고, `OnEquipmentChanged`에 따라 장비 슬롯을 갱신합니다. 아이템 ID·수량은 컴포넌트에서, **이름·아이콘·장비 분류**는 `FItemData`에서 조회합니다.
+
+`USlotWidget`는 인벤토리·장비·보관함·제작 레시피 슬롯에 사용되며, 드래그와 Drop/Discard 확인은 `UInventoryWidget`의 입력 처리로 연결됩니다.
 
 ~~~text
-Dungeon Runtime
-   ↓ GrantReward
-Inventory.AddItem
-   ↓
-Stacking / Event / Replication
+InventoryComponent (ItemID · Count)
+       + FItemData (이름 · 아이콘)
+              ↓
+       UInventoryWidget
+              ↓
+          USlotWidget
+
+Drop / Discard → UConfirmWidget
+                     ↓ OnConfirm
+                InventoryWidget
+                     ↓
+             ServerDrop / ServerDiscard
 ~~~
 
-Dungeon 보상도 Field Loot와 같은 Inventory stacking / event / replication 경계를 재사용합니다.
+### 제작 레시피 변경과 수량 변경의 갱신 구분
+
+`UCraftingWidget::RefreshDetail`은 레시피 변경 시에만 `RebuildStaticForRecipe`를 호출합니다.
+
+| 갱신 시점 | 갱신 대상 |
+|---|---|
+| **레시피 변경** | 결과 아이템 이름·아이콘, 재료 목록/아이콘 |
+| **수량·인벤토리 변경** | 필요·보유 수량, 제작 가능 최대 수량, 버튼 활성화 |
+| **작업 진행·완료** | `OnWorkChanged` · `OnCompletedChanged`로 진행·수령 가능 상태 |
+
+재료 행은 `RequiredRowPool`이 소유하며, **필요한 재료 종류 수보다 부족할 때만 위젯을 추가 생성**합니다. 사용하지 않는 행은 `Collapsed`로 보관하고 이후 다른 레시피에서 재사용합니다.
+
+~~~text
+레시피 A : 재료 4종 → Row 4개 생성
+레시피 B : 재료 2종 → Row 2개만 Visible
+레시피 C : 재료 3종 → 기존 Row 3개 재사용
+~~~
+
+변하지 않는 아이콘·배치와 자주 바뀌는 수량·진행도를 분리해, **작업 진행 중마다 Material Row를 다시 만들지 않도록 구성**했습니다.
 
 ---
 
-## Trade-offs
+## 설계 선택과 비용
 
-| 선택 | 얻은 것 | 비용 / 제약 |
+| 선택 | 구현 효과 | 관리 비용 |
 |---|---|---|
-| **Inventory를 Item 중심 경계로 사용** | Loot / Equipment / Crafting / Reward가 같은 Item API 재사용 | Inventory가 여러 시스템의 orchestration point가 됨 |
-| **획득 Event 분리** | Slot 변경과 실제 획득 UX를 구분 | Add 경로에서 semantic flag 관리 필요 |
-| **Limited Prediction** | Slot 조작의 즉각적인 반응 | Server 결과와 local mirror 보정 필요 |
-| **Container viewer lifecycle** | 사용 중인 shared state에 replication 집중 | connection별 payload filtering은 별도 문제 |
-| **UIOwner 범위 제한** | Recipe 시작 충돌은 막고 이후 협력 작업 허용 | 여러 독립 queue를 동시에 지원하는 Station에는 부적합 |
-| **ActiveWork / Completed 분리** | 작업 중간 수령·부분 취소 처리 | Work state가 단순 progress보다 복잡 |
-| **공통 Resource Provider** | UI와 Server 계산 규칙 중복 감소 | Inventory API와 Crafting 사이 공통 계층 유지 필요 |
+| **인벤토리 슬롯 FastArray** | 슬롯별 변경을 소유 클라이언트에 전달 | Dirty 표시·클라이언트 미러 갱신 |
+| **획득 이벤트 분리** | 슬롯 조작과 획득 알림을 구분 | 직접 획득 여부를 호출부에서 지정 |
+| **장비 경로 연결** | 동일 아이템이 스탯·스킬·외형 변경에 사용 | 장비 이벤트의 적용 순서·동기화 |
+| **Container 구독 상태** | Viewer가 없을 때 슬롯 복제 비활성화 | 구독자별 개별 페이로드 필터는 사용하지 않음 |
+| **레시피와 ActiveWork 분리** | 데이터 정의 변경 없이 공유 작업·부분 완료 관리 | 작업·완료·수령 대기 상태 구분 |
+| **재료 선소비와 미완료 환불** | 여러 작업자가 하나의 진행 상태 공유 | 제작 단위·완료 단위·환불 수량 일관성 |
+| **제작 UI 정적/동적 갱신·Row Pool** | 레시피 변경 외에는 위젯 재생성 감소 | 캐시된 재료 ID·행 가시성 관리 |
 
-네트워크 전송/동기화 선택은 [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]에서 더 자세히 설명합니다.
+## 관련 코드 및 문서
 
----
-
-## 연관 문서
-
-- [[04. Player & Character Systems|04_Player_Character_Systems]] — Equipment → Stat / Skill 적용과 Runtime 영상
-- [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Equipment → Skill Grant
-- [[06. World Interaction Systems|06_World_Interaction_Systems]] — Container / Crafting Station의 Interaction contract
-- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Reward → Inventory 재사용
-- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Screen / Notice / Content UI lifecycle
-- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — FastArray / Prediction / shared state 동기화
-
----
-
-## 관련 코드
-
-- [InventoryComponent.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/Utility/InventoryComponent.h)
-- [ContainerComponent.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Buildings/Utility/ContainerComponent.h)
-- [CraftingStation.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Buildings/Crafting/CraftingStation.h)
-- [InventoryResourceProvider.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/Utilities/InventoryResourceProvider.h)
-- [CraftingWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Widget/GameObject/Crafting/CraftingWidget.cpp)
+- [InventoryComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/InventoryComponent.cpp) · [InventoryComponent.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/InventoryComponent.h) — 인벤토리·장비·FastArray·이벤트
+- [ContainerComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Buildings/Utility/ContainerComponent.cpp) — 공유 보관함·Viewer
+- [CraftingStation.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Buildings/Crafting/CraftingStation.cpp) · [CraftingStation.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Buildings/Crafting/CraftingStation.h) — 제작 서버 상태·레시피·부분 수령·취소
+- [InventoryResourceProvider.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/Utilities/InventoryResourceProvider.cpp) — 제작 수량 계산·재료 소비
+- [CraftingWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Widget/GameObject/Crafting/CraftingWidget.cpp) — 정적/동적 UI 갱신·RequiredRowPool
+- [InventoryWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/InventoryWidget.cpp) — 슬롯 표시·Drop/Discard
+- [[04. Player & Character Systems|04_Player_Character_Systems]] — 장비·스탯·스킬 전환 영상과 구현
+- [[06. World Interaction Systems|06_World_Interaction_Systems]] — 제작대·보관함 입력
+- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — 던전 보상에서 기존 인벤토리 사용
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — 입력·화면 수명 및 Delegate
+- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — FastArray·OwnerOnly·예측
