@@ -99,7 +99,7 @@ try {
             }
         }
         [IO.File]::WriteAllText((Join-Path $checkout $file.Name),
-            $converted, (New-Object System.Text.UTF8Encoding($false)))
+            $converted, [System.Text.UTF8Encoding]::new($false))
     }
     if ($invalid.Count -gt 0) {
         throw ("Missing linked Wiki pages: " + (($invalid | Sort-Object -Unique) -join "; "))
