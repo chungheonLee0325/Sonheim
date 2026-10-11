@@ -9,6 +9,10 @@ on:
       - "Tools/Export-Wiki.py"
   workflow_dispatch:
 
+concurrency:
+  group: sonheim-wiki-publish
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -16,8 +20,13 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out published main content
+      - name: Check out documentation only
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            Doc/Wiki
+            Doc/Media/Wiki
+            Tools/Export-Wiki.py
 
       - name: Prepare pages and media
         shell: bash
