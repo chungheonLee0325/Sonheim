@@ -34,10 +34,21 @@
 | **Networking** | Listen Server, Server RPC, Property Replication, FastArray, limited client prediction |
 | **Gameplay** | Combat / Skill / Equipment / Interaction / Inventory / Crafting / Pal Capture & Partner |
 | **Integrated Content** | Branching Dungeon / Boss Encounter / Reward / Record & Grade |
-| **UI** | UMG, Delegate HUD, Notice Queue, Presenter → ViewData → UI Router |
+| **UI** | UMG, UI Stack/Input, Feed·Headline·Title, Presenter → ViewData → UI Router |
+| **Progression** | MonsterDex / Quest, PlayerDeed event, Owner FastArray replication, host save |
 | **Data / Authoring** | DataTable, DataAsset, GameplayTag, StringTable, Data Validation |
 
 초기 2인 팀 개발 이후 개인적으로 시스템을 확장하면서 기존 gameplay 기능을 재사용 가능한 runtime boundary로 정리하고, Dungeon/Boss/UI/Validation까지 통합했습니다.
+
+---
+
+## MonsterDex · Quest · UMG v2
+
+기존 전투·포획·제작·던전 이벤트를 `PlayerState::ReportDeed`로 연결해 종별 도감 기록과 퀘스트 단계 진행을 구현했습니다. 서버가 상태·보상을 관리하고, 소유 클라이언트에는 FastArray로 동기화합니다. 화면은 UI Stack/Input과 Notice 슬롯을 공통화해 개편했습니다.
+
+![v2 MonsterDex](Doc/Media/Wiki/16_UMG_Migration_with_Claude/16_dex_after.jpg)
+
+[**설계·구현·검증과 화면 전/후 보기 →**](Doc/Wiki/16_UMG_Migration_with_Claude.md)
 
 ---
 

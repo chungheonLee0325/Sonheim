@@ -1,182 +1,244 @@
-# 16. UMG Migration with Claude
+# 16. 도감·퀘스트와 UMG v2 통합
 
-Claude Code가 **Agent MCP로 Unreal Editor를 직접 조작해** Sonheim의 UMG 전체(알림·메뉴·도감·퀘스트·인벤토리·던전 HUD·필드 HUD)를 Palworld 스타일의 v2 UI로 옮긴 사례입니다. 사람은 레퍼런스와 방향을 정하고 결과를 승인했고, Claude는 스타일 문서·위젯 키트·저작 스크립트·C++·검증을 맡았습니다.
+기존 멀티플레이 시스템에 **서버 권위 도감·퀘스트 런타임**을 이식하고, 화면 스택·알림·키 안내를 공통화하면서 UMG를 v2로 개편했습니다. 게임 규칙은 C++/DataTable에서 유지하고, UI는 복제된 상태와 화면용 데이터를 소비합니다. Widget Blueprint 저작에는 Claude Code와 [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)를 사용했습니다.
 
 ## 요약
 
-- **범위:** 알림 3종(Feed·Headline·Title), 상단 탭 메뉴, 인벤토리·능력치, 몬스터 도감, 퀘스트 일지·대화창·추적기, 던전 HUD·결과 카드, 필드 HUD, 키 표시(키보드·패드), 아이콘 27종.
-- **방식:** 화면을 손으로 그리지 않고 **Python 저작 스크립트 → Agent MCP → Widget Blueprint**로 만들었습니다. 같은 스크립트를 다시 돌리면 같은 위젯이 나옵니다.
-- **원칙:**
-  - C++ 쪽 `BindWidget` 계약은 그대로 두고 트리만 바꿨습니다.
-  - 그래프나 애니메이션이 걸린 위젯은 트리를 다시 만들지 않고 속성만 바꿨습니다.
-  - 아이템은 텍스트 대신 인벤토리 슬롯으로 보여줍니다.
-  - 키는 하드코딩하지 않고 Enhanced Input 매핑에서 읽습니다.
-- **검증:** 단계마다 PIE에서 실제 게임 경로(입력 주입, 실제 처치, 던전 1판)로 화면을 띄워 캡처했고, 기존 검증 스크립트 4개(체크 115개)를 매번 다시 돌렸습니다.
+| 영역 | 구현 결과 | 핵심 코드 |
+|---|---|---|
+| 도감 | 종별 처치·포획 기록, 단계별 1회 보상, 저장·Owner 복제, 3D 미리보기 | `UMonsterDexComponent`, `AMonsterDexStage` |
+| 퀘스트 | 단계·목표 집계, NPC 수락/완료 보고, 일지·추적기·대화, 저장·Owner 복제 | `UQuestComponent`, `UQuestSubsystem` |
+| UI 수명·입력 | Screen Stack, cursor / InputMode 복원, 탭 이동, 입력 장치별 키 안내 | `UUIStackSubsystem`, `UInputHintSubsystem` |
+| 알림·표현 | Feed / Headline / Title 3개 슬롯, 보상 슬롯 재사용, 전반적인 UMG v2 | `UNoticeSubsystem`, `USlotWidget` |
+| 검증 | UI Stack 6, 도감 3, 퀘스트 8, 던전 HUD 98 항목 | 총 115개 통과(작업 기록 기준) |
+
+## 구현 결과
+
+| 기존 도감 | v2 도감 |
+|---|---|
+| ![도감 개편 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_dex_before.jpg) | ![도감 개편 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_dex_after.jpg) |
+
+| 기존 퀘스트 일지 | v2 퀘스트 일지 |
+|---|---|
+| ![퀘스트 일지 개편 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_journal_before.jpg) | ![퀘스트 일지 개편 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_journal_after.jpg) |
+
+| 기존 던전 HUD | v2 던전 HUD |
+|---|---|
+| ![던전 HUD 개편 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_hud_before.jpg) | ![던전 HUD 개편 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_hud_after.jpg) |
+
+위 비교는 기존 화면과 v2 화면을 같은 기능 범위에서 캡처한 결과입니다. 게임 실행 시나리오와 검증 범위는 아래에서 별도로 설명합니다.
 
 ## 목차
 
-- [출발점](#출발점)
-- [Workflow](#workflow)
-- [역할 분담](#역할-분담)
-- [설계 결정](#설계-결정)
-- [화면별 전/후](#화면별-전후)
+- [도감·퀘스트 런타임](#도감퀘스트-런타임)
+- [UI Stack과 입력 상태](#ui-stack과-입력-상태)
+- [알림과 UI 표현](#알림과-ui-표현)
+- [AgentMcp 기반 UMG 저작](#agentmcp-기반-umg-저작)
 - [검증](#검증)
-- [막혔던 점](#막혔던-점)
-- [숫자](#숫자)
-- [남은 것](#남은-것)
+- [트레이드오프와 후속 과제](#트레이드오프와-후속-과제)
+- [관련 코드](#관련-코드)
 
 ---
 
-## 출발점
+## 도감·퀘스트 런타임
 
-개편 전 UI는 기능은 맞았지만 **"AI가 만든 티"** 가 났습니다.
+### PlayerDeed로 gameplay event 연결
 
-| 문제 | 예 |
-|---|---|
-| 모든 알림이 한 카드 | 레벨업·퀘스트 수락·도감 등록·파티 가득이 같은 남색 카드 |
-| 설명문 같은 문구 | "새 퀘스트를 받았습니다.", "K 또는 Tab으로 닫기" |
-| 아이템을 글자로 표시 | 보상 "팰 스피어 ×3" 칩 |
-| 키 글자 하드코딩 | Q/E/F/J 글자가 위젯에 박혀 있음, 패드 표시 불가 |
-| 화면마다 다른 말투 | Roboto 폰트, 둥근 카드, 회색 테두리 |
-
-## Workflow
+이전 도감·퀘스트 구현을 현재 전투·포획·제작·던전 시스템에 붙이기 위해 `ASonheimPlayerState::ReportDeed`를 공통 진입점으로 사용했습니다.
 
 ~~~mermaid
-flowchart LR
-    REF["<b>Reference</b><br/>Palworld 스타일 화면 10장"]
-    STYLE["<b>Style 문서</b><br/>Art/Style/ui_style.md"]
-    KIT["<b>Widget Kit</b><br/>Scripts/UI/ui_kit.py"]
-    AUTHOR["<b>저작 스크립트</b><br/>author_*.py · restyle_*.py"]
-    MCP["<b>Agent MCP</b><br/>umg_add_widgets · compile · save"]
-    PIE["<b>PIE 캡처</b><br/>실제 입력·처치·던전"]
-    VERIFY["<b>검증 스크립트</b><br/>verify_*.py"]
-    USER{"<b>사용자 승인</b>"}
-    REF --> STYLE --> KIT --> AUTHOR --> MCP --> PIE --> USER
-    USER -->|수정 요청| AUTHOR
-    USER -->|승인| VERIFY --> COMMIT["커밋"]
+flowchart TB
+    G["Gameplay Producer<br/>처치 · 포획 · 제작 · 지역 진입 · 던전 완료"]
+    P["ASonheimPlayerState<br/>ReportDeed → OnDeed"]
+    D["UMonsterDexComponent<br/>Kill / Capture Count"]
+    Q["UQuestComponent<br/>Step / Objective Progress"]
+    S["서버 기록<br/>Host Save + FastArray"]
+    V["Owner Client<br/>도감 · 일지 · 추적기 · Notice"]
+    G --> P
+    P --> D
+    P --> Q
+    D --> S
+    Q --> S
+    S --> V
 ~~~
 
-1. **스타일 문서**를 먼저 정했습니다. 색 역할(시안=정보, 금=보상·보스, 초록=완료, 주황=갱신, 빨강=위험, 보라=수호자), 폰트(Pretendard + Black Han Sans), 형태(띠·다이아·프레임 브래킷), 알림 슬롯별 모션.
-2. **위젯 키트**(`ui_kit.py`)가 그 값을 코드로 갖습니다: `frame`, `section`, `band`, `diamond`, `key_hint` 등.
-3. **저작 스크립트**가 키트로 위젯 트리 JSON을 만들고 Agent MCP로 Widget Blueprint를 생성·컴파일·저장합니다. 바인딩이 모두 맞는지 매번 확인합니다.
-4. **PIE 캡처:** 테스트용 우회 대신 게임 자체 경로로 화면을 띄웁니다. 결과를 사용자에게 보여주고 승인받은 뒤 다음으로 넘어갔습니다.
+`EPlayerDeed`는 `Kill`, `Capture`, `Craft`, `Reach`, `ClearDungeon`을 구분합니다. 도감은 Kill/Capture만 기록하고, 퀘스트는 목표 종류에 맞는 이벤트를 누적합니다. `Possess` 목표는 `OnInventoryChanged`로 재계산하며, `Talk` / `Deliver`는 퀘스트 대상과의 상호작용으로 처리합니다.
 
-## 역할 분담
+`ReportDeed`는 게임플레이 결과를 각 콘텐츠 시스템에 전달하는 이벤트 경계이지, UI 알림 자체를 발생시키는 함수는 아닙니다. 알림은 기록·단계 전환을 처리한 시스템이 필요한 때에 생성합니다.
 
-| 사용자 | Claude |
+### 도감: 종별 상태, 보상 중복 방지
+
+`DT_MonsterDex`의 `FMonsterDexData`가 종별 설명·보상 단계·표시용 캐릭터 클래스를 정의합니다. 플레이어별 `FMonsterDexEntry`에는 `AreaObjectID`, `KillCount`, `CaptureCount`, `ClaimedTiers`가 저장됩니다.
+
+- `UMonsterDexComponent::Record`는 서버에서 종별 횟수를 증가시키고, 처음 등록된 종에는 Headline 알림을 보냅니다.
+- 보상 조건을 새로 충족한 경우 Feed 알림을 보냅니다. 보상 지급 자체는 별도의 `ServerClaimReward` 요청입니다.
+- 서버에서 `CanClaimReward`를 재확인하고 `ClaimedTiers` 비트를 먼저 설정한 뒤 보상을 지급해 동일 단계의 반복 수령을 막습니다.
+- `FMonsterDexList : FFastArraySerializer`는 `COND_OwnerOnly`로 복제되며, `PostReplicatedAdd/Change`에서 `OnDexChanged`를 알립니다.
+
+3D 미리보기는 실제 월드 몬스터를 옮기지 않고 **로컬 전용 `AMonsterDexStage`** 에 표시합니다. 별도 SkeletalMesh와 `SceneCaptureComponent2D`로 RenderTarget에 렌더링하여 UI와 결합합니다. 해당 Actor는 복제하지 않습니다.
+
+### 퀘스트: 단계 전환과 상호작용 검증
+
+`DT_Quest`는 `FQuestData → FQuestStep → FQuestObjective` 순서로 목표를 정의합니다. `FQuestRecord`는 플레이어의 수락 상태, 현재 단계, 목표별 진행량, 추적 여부를 유지합니다.
+
+~~~text
+Gameplay Event / Inventory Changed / Quest Target Interact
+             ↓
+      QuestComponent
+   Advance / Settle / Finish
+             ↓
+    FQuestRecord 변경
+             ↓
+  MarkItemDirty + Host Save
+             ↓
+   Owner FastArray Replication
+             ↓
+  QuestView → Journal / Tracker / Dialog
+~~~
+
+서버 RPC `ServerAccept` / `ServerTurnIn`은 선행 퀘스트, 상태 및 NPC 대상 이름·거리(`ReachDistance`)를 확인합니다. `Finish`는 완료 상태를 먼저 표시하고 보상을 지급합니다. 동일 요청으로 보상이 중복 지급되지 않도록 하는 순서입니다.
+
+도감과 퀘스트 기록은 각각 `UMonsterDexSubsystem` / `UQuestSubsystem`이 호스트의 `USaveGame` 기반 저장소에 보관합니다. 현재 저장은 **호스트 기반**이며 별도의 영구 온라인 계정 서버는 아닙니다. 두 컴포넌트는 소유 클라이언트에 FastArray로 동기화됩니다.
+
+![섬지기 대화창](../Media/Wiki/16_UMG_Migration_with_Claude/16_dialog_after.jpg)
+
+*NPC 대화에서 퀘스트를 받고 진행할 수 있습니다. 아이템 보상은 공용 Slot Widget을 사용합니다.*
+
+## UI Stack과 입력 상태
+
+여러 화면이 각자 `SetInputMode`와 마우스 상태를 변경할 경우, 마지막으로 닫힌 화면이 아닌 **현재 남아 있는 최상위 화면**을 기준으로 복원해야 합니다. 이를 `UUIStackSubsystem : ULocalPlayerSubsystem`으로 통합했습니다.
+
+~~~text
+Open(Menu) → Open(MonsterDex) → Close(MonsterDex)
+     ↓              ↓                ↓
+ Menu Rule      Dex Rule          Menu Rule
+     ↓              ↓                ↓
+Cursor / InputMode / Gameplay Block / Menu IMC
+~~~
+
+- `FUIScreenRule`: 화면 ID별 ZOrder, `GameOnly / GameAndUI / UIOnly`, 커서 표시, 게임 입력 차단 정책. 설정은 `DefaultGame.ini`에서 관리합니다.
+- `FUIStackEntry`: 함께 열고 닫는 다중 Widget을 하나의 Screen으로 묶습니다. `Open`은 열린 화면을 최상단으로 올릴 수 있습니다.
+- `ApplyInputState`: 최상단 화면의 규칙을 사용하여 `SetInputMode`, 커서 및 `IMC_Menu` 활성화를 갱신합니다. 화면이 모두 닫히면 GameOnly로 돌아갑니다.
+- `TopTab` / `StepTab`: 메뉴에 정의된 탭 중 선택 가능한 탭을 순환합니다.
+
+**키 표시를 액션 매핑과 분리하지 않음:** `UInputHintSubsystem`은 Enhanced Input의 실제 매핑에서 키를 읽고, 마지막 입력 장치(키보드/패드)에 맞는 글리프를 선택합니다. Slate 입력 프로세서가 장치 전환을 감지하며 `ControlMappingsRebuiltDelegate`를 받아 매핑 변경 후 다시 표시합니다.
+
+| 키보드 | 게임패드 |
 |---|---|
-| 레퍼런스 이미지 10장 제공 | 레퍼런스 분석 → 스타일 문서 v2 |
-| "토스트가 AI 티 난다", "아이템은 슬롯으로", "키는 모듈화" 같은 방향 | C++ 구조 변경(알림 슬롯, 키 표시 서브시스템, 슬롯 재사용) |
-| 폰트·아이콘·탭 범위·패드 범위 결정 | 저작 스크립트, SVG 아이콘, 문구 51개 정리 |
-| 시안 승인, 섬지기 T포즈 같은 지적 | PIE 캡처, 검증 스크립트 갱신, 커밋 |
+| ![키보드 안내](../Media/Wiki/16_UMG_Migration_with_Claude/16_keyhint_keyboard.jpg) | ![게임패드 안내](../Media/Wiki/16_UMG_Migration_with_Claude/16_keyhint_gamepad.jpg) |
 
-## 설계 결정
+상단 탭의 Q/E와 LB/RB 전환은 구현했지만 메뉴 내부 버튼·슬롯 간 **패드 포커스 이동은 후속 작업**입니다. UI Stack은 일반 Screen 입력 수명 관리용이고, Dungeon HUD/Result는 기존 `UDungeonUIRouterSubsystem` 경로를 유지합니다.
 
-| 결정 | 이유 |
+## 알림과 UI 표현
+
+### 역할별 Notice 슬롯
+
+`UNoticeSubsystem`은 `FNoticeData`를 받되 레이아웃을 직접 소유하지 않습니다. Slot별 Widget Class·Style·Order·ZOrder를 설정하고, producer의 `Channel`을 보존해 해당 producer의 알림만 지울 수 있게 했습니다.
+
+| Slot | 대상 | 정책 |
+|---|---|---|
+| `Feed` | 퀘스트·제작·보상 가능·경고·던전 진행 | `Stack` — 좌측에 누적 |
+| `Headline` | 레벨업·첫 도감 등록·보스 처치 | `TakeTurns` — 순차 표시 |
+| `Title` | 지역명 | `ReplaceShowing` — 최신 지역으로 교체 |
+
+| 기존 단일 알림 | Feed v2 |
 |---|---|
-| **알림을 역할별 슬롯 3개로** (`ENoticeSlot::Feed / Headline / Title`) | 메시지 종류가 모양을 정합니다. 큰 순간은 가운데, 진행은 왼쪽 스택, 장소는 상단. 같은 시스템, 다른 UI. |
-| **`BindWidget` 계약 유지** | C++ 로직을 건드리지 않고 트리만 교체합니다. `umg_inspect`의 바인딩 확인이 매 저작의 통과 조건입니다. |
-| **트리 재생성 vs 제자리 재스타일** | 그래프가 비어 있는 위젯(인벤토리·도감·퀘스트·던전)은 트리를 다시 만들었습니다. 애니메이션·BP 이벤트가 위젯 이름을 쓰는 필드 HUD와 인벤토리 슬롯은 `umg_set_widget_properties`로 속성·배치만 바꿨습니다. |
-| **아이템 = 인벤토리 슬롯** (`USlotWidget::AddReadOnly`) | 기존 `BP_Slot`에 보기 전용 모드를 붙였습니다. 도감·퀘스트·던전 보상이 아이콘·개수·희귀도·툴팁까지 인벤토리와 같습니다. 경험치만 칩으로 남깁니다. |
-| **키 표시 = 매핑 조회** (`UInputHintSubsystem`, `WBP_KeyHint`) | 액션에 매핑된 키를 Enhanced Input에 묻고, 마지막 입력 장치(키보드/패드)의 키를 글리프 데이터로 그립니다. 메뉴 전용 입력(`IMC_Menu`)은 화면이 게임 입력을 막는 동안만 켭니다. |
-| **보상은 정의에서 읽어 슬롯으로** | 던전 추가 목표의 보너스("보너스 팰지움 파편 ×1")를 문구로 쓰지 않고, 던전 정의의 포획 규칙(`MonsterCaptured` → `GrantReward`)에서 아이템을 읽어 HUD 행에 작은 슬롯으로 그립니다. 보상이 바뀌어도 화면을 고칠 필요가 없습니다. |
-| **문구는 String Table에서** | 모든 문구가 테이블에 있어서, 저작 스크립트의 원문과 테이블을 함께 고치는 일괄 패스 한 번으로 51개를 정리했습니다. |
-| **아이콘은 SVG** | 이미지 생성 경로가 Cloudflare 확인에 막혀 직접 그렸습니다. 단색 글리프라 선 굵기·크기를 27개 모두 맞추기 쉬웠습니다. |
-| **검증은 실제 게임 경로로** | 에디터 Python 안에서 부른 RPC는 제자리에서 실행됩니다. 그래서 화면 확인은 입력 주입과 실제 처치·던전 진행으로 했습니다. |
+| ![기존 알림](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_before_feed.jpg) | ![Feed v2](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_feed_stack.jpg) |
 
-## 화면별 전/후
-
-**전**은 개편 전 v1 상태(필드 HUD 포함)에서, **후**는 모든 단계가 반영된 최종 빌드의 한 플레이 세션에서 `Scripts/UI/capture_gallery.py`로 차례대로 찍었습니다. 던전 화면은 `verify_dungeon_hud.py`가 실제 던전 1판을 돌면서 찍은 캡처입니다. 대화창은 개편 전 캡처가 없어 후만 싣습니다.
-
-### 알림
-
-| 전 | 후 |
+| 도감 기존 알림 | 도감 Headline + 지역 Title |
 |---|---|
-| ![알림 전: 퀘스트](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_before_feed.jpg) | ![알림 후: 피드 3줄](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_feed.jpg) |
-| ![알림 전: 도감 등록](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_before_dex.jpg) | ![알림 후: 도감 헤드라인과 지역명](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg) |
-| ![알림 전: 지역명](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_before_title.jpg) | ![알림 후: 배경 블러 지역명](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_title_blur.jpg) |
+| ![도감 기존](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_before_dex.jpg) | ![도감 Headline](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg) |
 
-![피드 스택](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_feed_stack.jpg)
+![레벨업 Headline](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_levelup.jpg)
 
-*피드는 왼쪽에 쌓이고 종류별 색과 아이콘을 씁니다(제작 완료 시안, 경고 빨강).*
+*레벨업과 진행 상황은 같은 텍스트 카드가 아니라 별도 슬롯과 스타일로 표시합니다.*
 
-![레벨업 헤드라인](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_levelup.jpg)
-
-*레벨업 헤드라인: 띠, 엠블럼, 스탯 줄, 푸터. 등장할 때 0.92배에서 커지며 빛줄기가 지나갑니다.*
-
-### 몬스터 도감 · 퀘스트 · 인벤토리
-
-| 전 | 후 |
+| 지역명 기존 | Title v2 |
 |---|---|
-| ![도감 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_dex_before.jpg) | ![도감 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_dex_after.jpg) |
-| ![일지 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_journal_before.jpg) | ![일지 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_journal_after.jpg) |
+| ![지역명 이전](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_before_title.jpg) | ![지역명 개편](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_title_blur.jpg) |
+
+### BindWidget 계약 유지와 공용 Slot 재사용
+
+`C++ Widget → BindWidget → Widget Blueprint` 계약은 그대로 유지했습니다. 이벤트 그래프나 애니메이션이 연결된 `BP_Slot`과 필드 HUD는 Widget Tree를 삭제하고 다시 만드는 대신 기존 요소의 속성·레이아웃을 수정했습니다. 상대적으로 제약이 적은 화면은 트리를 재구성했습니다.
+
+보상 아이템은 텍스트 칩 대신 기존 `USlotWidget::AddReadOnly` 경로를 사용합니다. 도감·퀘스트·던전 HUD/Result에서 ItemID를 텍스트로 따로 그리지 않고, 인벤토리와 같은 아이콘·수량·희귀도·툴팁 표현을 재사용합니다. Dungeon 추가 목표 보상은 설명 문자열이 아니라 Dungeon 정의의 보상 정보를 읽어 표시합니다.
+
+| 인벤토리 개편 전 | 인벤토리 v2 |
+|---|---|
 | ![인벤토리 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_inventory_before.jpg) | ![인벤토리 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_inventory_after.jpg) |
 
-![섬지기 대화](../Media/Wiki/16_UMG_Migration_with_Claude/16_dialog_after.jpg)
-
-*대화창: 하단 대사창과 오른쪽 선택지. 보상은 인벤토리 슬롯으로 나옵니다.*
-
-### 던전 HUD · 결과 · 필드 HUD
-
-| 전 | 후 |
+| 던전 결과 전 | 결과 카드 v2 |
 |---|---|
-| ![던전 HUD 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_hud_before.jpg) | ![던전 HUD 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_hud_after.jpg) |
-| ![던전 결과 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_result_before.jpg) | ![던전 결과 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_result_after.jpg) |
+| ![결과 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_result_before.jpg) | ![결과 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_result_after.jpg) |
+
+| 필드 HUD 전 | 필드 HUD v2 |
+|---|---|
 | ![필드 HUD 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_hud_before.jpg) | ![필드 HUD 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_hud_after.jpg) |
 
-*던전 추가 목표: "보너스 팰지움 파편 ×1" 문구 대신 정의에서 읽은 보상이 슬롯으로 나오고, 레버 줄은 "수호자의 방으로 직행 · 창고 생략"으로 바꿨습니다. 결과 카드의 기록 배지는 BEST RECORD.*
-
-### 키 표시 · 아이콘 · NPC
-
-| 키보드 | 패드 |
-|---|---|
-| ![키보드 키 표시](../Media/Wiki/16_UMG_Migration_with_Claude/16_keyhint_keyboard.jpg) | ![패드 키 표시](../Media/Wiki/16_UMG_Migration_with_Claude/16_keyhint_gamepad.jpg) |
-
-*같은 위젯이 마지막 입력 장치에 따라 Q/E·Esc ↔ LB/RB·B로 바뀝니다.*
+폰트는 Pretendard·Black Han Sans, 아이콘은 SVG 기반 27종을 도입했습니다. UI 문구 51개는 String Table 기준으로 정리했습니다. 이 변경은 Gameplay Runtime을 교체하기보다 동일한 상태를 전달받는 **Presentation 계층을 개편**한 작업입니다.
 
 ![v2 아이콘 27종](../Media/Wiki/16_UMG_Migration_with_Claude/16_icons.png)
 
-| 섬지기 전 | 섬지기 후 |
+| 섬지기 NPC 이전 | 수정 후 |
 |---|---|
-| ![섬지기 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_islander_before.jpg) | ![섬지기 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_islander_after.jpg) |
+| ![NPC 전](../Media/Wiki/16_UMG_Migration_with_Claude/16_islander_before.jpg) | ![NPC 후](../Media/Wiki/16_UMG_Migration_with_Claude/16_islander_after.jpg) |
 
-*메시 스케일이 0.01(플레이어 0.004)이라 3.7m 거인이 공중에 떠 있었습니다. 크기를 맞추고, 초록 옷과 머리 위 퀘스트 마커(!/?)를 더했습니다.*
+## AgentMcp 기반 UMG 저작
+
+코딩 에이전트를 단순 이미지 생성에 쓰지 않고, Editor의 Widget Tree를 직접 inspect·편집하는 **저작·확인 도구**로 사용했습니다.
+
+~~~mermaid
+flowchart LR
+    R["UI Reference<br/>스타일·배치 기준"]
+    S["Style / Widget Kit<br/>저작 스크립트"]
+    M["AgentMcp<br/>UMG inspect / edit"]
+    C["Compile / Save<br/>BindWidget read-back"]
+    P["PIE<br/>실제 게임 경로"]
+    V["Capture / Verification"]
+    R --> S --> M --> C --> P --> V
+    V -. "피드백" .-> S
+~~~
+
+1. 레퍼런스와 스타일 규칙을 정하고, 색·폰트·띠·아이콘·키 안내를 공용 위젯 키트로 구성했습니다.
+2. Python 저작 스크립트로 Widget Tree를 구성하고 AgentMcp를 통해 Editor의 Widget Blueprint에 반영했습니다.
+3. `BindWidget` 이름 및 타입을 read-back으로 확인한 뒤 Compile/Save하고, 실제 게임 화면에서 입력과 표시를 확인했습니다.
+4. 도감·퀘스트·던전 검증을 다시 실행하여 표현 변경이 Runtime 계약을 깨뜨리지 않았는지 확인했습니다.
+
+**재현 범위:** 기존 Widget Blueprint와 코드·캡처는 PR에 포함되어 있습니다. 다만 이 작업에서 사용한 `Scripts/UI` 저작·캡처 스크립트는 현재 PR의 추적 파일 목록에 없어 저장소만으로 전체 제작 과정을 그대로 재실행할 수 있다고 주장하지 않습니다. AgentMcp 자체의 도구 구조는 [14. Unreal Editor Automation & Verification](14_Unreal_Editor_Automation_Verification.md)에서 설명합니다.
 
 ## 검증
 
-모든 단계 뒤에 기존 검증 스크립트를 다시 돌렸습니다. 새 기능마다 계약 체크는 1~2개만 더했습니다.
+PR 작성 시 기록된 PIE/검증 실행 결과입니다. 새로운 테스트를 이 문서 변경 과정에서 재실행한 것은 아닙니다.
 
-| 스크립트 | 체크 | 이번에 더한 것 |
+| 검증 스크립트 | 통과 항목 | 주요 확인 내용 |
+|---|---:|---|
+| `verify_ui_stack` | 6/6 | 탭 순환, 키보드→패드 표시, 화면 종료 시 메뉴 입력 해제 |
+| `verify_dex` | 3/3 | 도감 등록과 보상 알림 |
+| `verify_quest` | 8/8 | 퀘스트 수락·진행·대화 및 실제 던전 1판 |
+| `verify_dungeon_hud` | 98/98 | 1280×720 / 640×482, 서버·클라이언트, 추가 목표 보상 슬롯 |
+| **합계** | **115/115** | 작업 당시 기록 기준 |
+
+검증 과정에서 에디터 Python으로 Client RPC를 호출하면 실제 네트워크 호출 경로를 재현하지 못하는 문제가 있었습니다. 레벨업 표시 확인은 실제 처치와 경험치 획득으로 수행했습니다. 입력 글리프 초기 누락은 Enhanced Input 매핑이 다시 빌드되는 이벤트에 갱신을 연결하여 해결했습니다.
+
+## 트레이드오프와 후속 과제
+
+| 판단 | 얻은 점 | 제약 |
 |---|---|---|
-| `verify_ui_stack.py` | 6 | Q/E가 흐린 탭을 건너뛰고 끝에서 돌아감. 키 표시가 장치를 따라가고(Q → LB), 화면이 없으면 메뉴 입력이 꺼짐 |
-| `verify_dex.py` | 3 | 도감 등록 알림을 헤드라인 푸터에서 읽도록 갱신 |
-| `verify_quest.py` | 8 | 대화창 확인이 메뉴 확인 입력으로 바뀜. 추적기 카드를 위젯 종류와 상관없이 찾음 |
-| `verify_dungeon_hud.py` | 98 | 섬 HUD를 퀘스트 추적기로, 바뀐 문구로 기대값 갱신. 포획 목표 행에 정의의 보너스가 슬롯으로 나옴(창 크기 2 × 서버·클라이언트) |
+| PlayerState 컴포넌트 + Owner FastArray | 개인 기록의 서버 권위와 델타 복제 | 호스트 저장 방식은 온라인 영속 서버가 아님 |
+| UIStackSubsystem 통합 | 중첩 Screen의 cursor·input 복원 정책 일원화 | Dungeon UI Router, Inventory 로컬 Popup은 별도 경계 |
+| BindWidget 계약 유지 | 기존 C++·Blueprint 이벤트 연동을 보존 | 기존 애니메이션 위젯은 트리 재생성보다 제자리 수정 필요 |
+| Notice 슬롯별 정책 | 알림의 중요도별 표현과 Queue 동작 분리 | 위젯 별 위치·모션 저작은 여전히 필요 |
+| AgentMcp 활용 | Editor 편집과 Runtime 확인을 같은 작업 흐름에서 수행 | 저작 스크립트가 저장소에 없으면 완전 재현 불가 |
 
-검증이 실패했을 때는 먼저 게임 버그인지 오래된 기대값인지 가렸습니다. 이번에 나온 실패는 모두 기대값 쪽이었습니다(문구 변경, 위젯 종류 변경, 느린 PIE 대기).
+남은 범위는 **메뉴 내부 게임패드 포커스 탐색**, **보유 팰·지도 탭 본 화면**, **도감 Headline의 팰 초상**입니다.
 
-## 막혔던 점
+## 관련 코드
 
-| 증상 | 원인 | 해결 |
-|---|---|---|
-| 레벨업 알림이 클라이언트 화면에 안 뜸 | 에디터 Python 안에서 부른 Client RPC가 서버에서 제자리 실행 | 실제 처치로 경험치를 얻게 해서 확인 |
-| 키 표시가 전부 숨겨짐 | 위젯이 만들어질 때 Enhanced Input 매핑이 아직 반영 전 | `ControlMappingsRebuiltDelegate`를 받아 다시 그림 |
-| 도감 목록 행 폭이 제각각 | Button 슬롯이 내용을 가운데 정렬 | 안쪽 테두리에 `HAlign_Fill` |
-| 대화창이 하단 HUD에 가려짐 | HUD가 더 위 레이어 | 대사창을 HUD 위로 올림 |
-| 지역명과 헤드라인이 겹침 | 둘 다 화면 위쪽 | 지역명 12%, 헤드라인 42% 위치로 분리 |
-| 아이콘 생성 불가 | 이미지 생성 브라우저 프로필이 Cloudflare 확인에서 멈춤 | SVG로 직접 그리고 헤드리스 Edge로 렌더 |
-| 섬지기 T포즈·거인 | 메시 스케일 0.01, 플레이어와 같은 옷 | 스케일 0.004, 옷 색 변형, 퀘스트 마커 |
-
-## 숫자
-
-- 커밋: UMG v2 작업 5개(`593f7e33`, `6ac7002e`, `7c56527e`, `f3ecf911`, `8c223a20`)
-- 위젯: 새로 만든 Widget Blueprint 9개(알림 5, 탭 2, 키 표시 1, 퀘스트 마커 1), 트리를 다시 짠 위젯 21개(인벤토리 2, 도감 4, 퀘스트 6, 던전 9), 제자리 재스타일 2개(`BP_Slot`, `WB_PlayerStatusWidget`)
-- 저작 스크립트: `Scripts/UI` 10개(키트, 알림, 탭, 입력, 인벤토리, 슬롯·HUD 재스타일, 아이콘, 폰트) + 도감·퀘스트·던전 스크립트 갱신
-- 아이콘 27종(SVG), 폰트 2종(OFL), 문구 51개 정리
-- 검증 체크 115개 전부 통과
-
-## 남은 것
-
-- 메뉴 안 패드 포커스 이동(버튼·슬롯 사이 이동). 키 표시와 패드 매핑은 들어갔고, 포커스 설계는 별도 단계로 남겼습니다.
-- 보유 팰·지도 탭의 화면
-- 도감 헤드라인의 팰 초상(초상 텍스처 미리 굽기)
+- [PlayerState / PlayerDeed](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayerState.h)
+- [MonsterDexComponent](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/MonsterDexComponent.cpp) · [MonsterDexTypes](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/MonsterDex/MonsterDexTypes.h)
+- [QuestComponent](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/QuestComponent.cpp) · [QuestTypes](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/Quest/QuestTypes.h)
+- [UIStackSubsystem](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/System/UIStackSubsystem.cpp) · [InputHintSubsystem](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Input/InputHintSubsystem.cpp)
+- [NoticeSubsystem](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Notice/NoticeSubsystem.cpp) · [DefaultGame.ini](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Config/DefaultGame.ini)
+- [MonsterDexStage](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexStage.cpp)
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]
+- [[14. Unreal Editor Automation & Verification|14_Unreal_Editor_Automation_Verification]]

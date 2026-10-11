@@ -26,7 +26,7 @@
   * [[13. Content Authoring & Validation|13_Content_Authoring_Validation]]
   * [[14. Unreal Editor Automation & Verification|14_Unreal_Editor_Automation_Verification]]
   * [[15. Development History & Retrospective|15_Development_History_Retrospective]]
-  * [[16. UMG Migration with Claude|16_UMG_Migration_with_Claude]]
+  * [[16. 도감·퀘스트와 UMG v2 통합|16_UMG_Migration_with_Claude]]
 
 * **Repositories**
   * [Main Repository](https://github.com/chungheonLee0325/Sonheim)
