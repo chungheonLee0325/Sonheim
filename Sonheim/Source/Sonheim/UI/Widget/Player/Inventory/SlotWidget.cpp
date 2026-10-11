@@ -8,6 +8,7 @@
 #include "ToolTipWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/Border.h"
+#include "Components/DynamicEntryBox.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Components/SizeBox.h"
@@ -82,6 +83,33 @@ void USlotWidget::ClearSlot()
 
 	// ToolTip 초기화
 	SetToolTip(nullptr);
+}
+
+void USlotWidget::ShowItem(const FItemData* ItemData, const int32 Count, const float Size)
+{
+	SetItemData(ItemData, Count);
+	TXT_Weight->SetVisibility(ESlateVisibility::Collapsed);
+	IMG_Border->SetVisibility(ESlateVisibility::HitTestInvisible);
+	bOnlyView = true;
+	bSupportsDragDrop = false;
+	if (Size > 0.f)
+	{
+		SB_Root->SetWidthOverride(Size);
+		SB_Root->SetHeightOverride(Size);
+	}
+}
+
+USlotWidget* USlotWidget::AddReadOnly(UDynamicEntryBox* Box, const int32 ItemId, const int32 Count, const float Size)
+{
+	// ponytail: the inventory's slot Widget Blueprint by path; make it a setting if another slot look is ever wanted.
+	static const TSoftClassPtr<USlotWidget> SlotClass(FSoftObjectPath(TEXT("/Game/_BluePrint/Widget/Player/BP_Slot.BP_Slot_C")));
+	const auto* Game = Box ? Cast<USonheimGameInstance>(Box->GetGameInstance()) : nullptr;
+	const FItemData* Data = Game ? const_cast<USonheimGameInstance*>(Game)->GetDataItem(ItemId) : nullptr;
+	UClass* Class = SlotClass.LoadSynchronous();
+	if (!Data || !Class) return nullptr;
+	USlotWidget* Slot = Box->CreateEntry<USlotWidget>(Class);
+	if (Slot) Slot->ShowItem(Data, Count, Size);
+	return Slot;
 }
 
 void USlotWidget::SetCraftingMatMode(bool Enable)

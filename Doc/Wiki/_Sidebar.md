@@ -11,6 +11,8 @@
   * [[06. World Interaction Systems|06_World_Interaction_Systems]]
   * [[07. Inventory & Crafting|07_Inventory_Crafting]]
   * [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]]
+  * [[16. MonsterDex System|16_MonsterDex_System]]
+  * [[17. Quest System|17_Quest_System]]
 
 * **Integrated Content**
   * [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]]
@@ -18,6 +20,7 @@
 
 * **UI & Presentation**
   * [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]
+  * [[18. UMG v2 Migration & Editor Verification|18_UMG_v2_Migration]]
 
 * **Multiplayer**
   * [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]

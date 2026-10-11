@@ -46,4 +46,6 @@ public:
 private:
 	UFUNCTION()
 	void OnCloseButtonClicked();
+	// 서버에 상자를 닫으라고 알린다. 한 번만 보낸다.
+	void ReleaseContainer();
 };

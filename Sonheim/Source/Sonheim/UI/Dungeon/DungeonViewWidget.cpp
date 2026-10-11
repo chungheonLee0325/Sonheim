@@ -1,4 +1,5 @@
 #include "DungeonViewWidget.h"
+#include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/CanvasPanel.h"
@@ -71,6 +72,12 @@ void UDungeonObjectiveRowWidget::SetObjective(const FDungeonObjectiveViewData& O
 	if (KindText) KindText->SetColorAndOpacity(KindColor);
 	ShowText(WindowText, nullptr, Objective.Window);
 	ShowText(NoteText, nullptr, Objective.Note);
+	if (BonusBox)
+	{
+		BonusBox->Reset(true);
+		for (const FItemReward& Item : Objective.Bonus) USlotWidget::AddReadOnly(BonusBox, Item.ItemId, Item.Count, BonusSlotSize);
+		BonusBox->SetVisibility(Objective.Bonus.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
 }
 void UDungeonStepNodeWidget::SetStep(const FDungeonStepViewData& Step)
 {
@@ -407,7 +414,16 @@ void UDungeonViewWidget::ApplyViewData(const FDungeonStageViewData& Data)
 	if (BossBreakBar) BossBreakBar->SetPercent(Data.BossBreak);
 	RefreshBossAction();
 	Fill(StatTiles, Data.Stats, &UDungeonStatTileWidget::SetStat);
-	Fill(RewardSlots, Data.Rewards, &UDungeonRewardEntryWidget::SetReward);
+	if (RewardSlots)
+	{
+		// An item the run paid is an item slot, as in the inventory; the line that says it paid nothing stays a line.
+		RewardSlots->Reset(true);
+		for (const FDungeonRewardViewData& Reward : Data.Rewards)
+		{
+			if (Reward.ItemId && USlotWidget::AddReadOnly(RewardSlots, Reward.ItemId, Reward.ItemCount, RewardSlotSize)) continue;
+			RewardSlots->CreateEntry<UDungeonRewardEntryWidget>()->SetReward(Reward);
+		}
+	}
 	ShowText(RewardText, nullptr, Data.RewardText);
 	ShowText(SummaryText, nullptr, Data.SummaryText);
 	ShowText(NewBestText, NewBestBadge, Data.NewBestText);

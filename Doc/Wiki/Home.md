@@ -1,154 +1,94 @@
 # Sonheim Engineering Wiki
 
-> **Unreal Engine 5.5 / C++ 기반 멀티플레이 액션 어드벤처**
->
-> 전투·상호작용·인벤토리/제작·Pal 포획/파트너·UI·데이터 기반 콘텐츠를 구현하고, 각 시스템을 서버 권위 gameplay와 client presentation 구조로 연결했습니다.
+**Unreal Engine 5.5 · C++ · Listen Server 기반 멀티플레이 액션 어드벤처**
 
-[[01. Project Overview|01_Project_Overview]]에서는 실제 gameplay loop와 구현 범위를 먼저 볼 수 있습니다.
+전투·제작·포획으로 시작한 게임플레이를 **몬스터 도감·퀘스트·분기 던전·보스 전투**까지 확장했습니다. 이 Wiki에는 실제 게임 화면과 함께 **C++ 구현, 서버 동기화, 데이터 설계, UI 작업 과정**을 정리했습니다.
 
----
+**처음 방문했다면 [01. Project Overview](01_Project_Overview.md)에서 전체 게임플레이와 개발 범위를 확인할 수 있습니다.**
 
-## System Architecture
-
-**현재 코드의 주요 시스템과 책임 구조**입니다.
-
-- **굵은 첫 줄** — 역할
-- **둘째 줄 이하** — 실제 UE / Sonheim class·data
-- **점선** — 동기화·표현 연결
-
-~~~mermaid
-flowchart TB
-    subgraph DATA["Content / Authoring"]
-        ROW["<b>반복 Gameplay Data</b><br/>DataTable · StringTable"]
-        DEF["<b>콘텐츠 정의</b><br/>UDungeonDefinitionDataAsset<br/>UBossPatternDataAsset · GameplayTag"]
-    end
-
-    subgraph GAME["Gameplay Runtime"]
-        BASE["<b>공통 Character 기반</b><br/>AAreaObject : ACharacter<br/>Health · Condition · Skill Components"]
-        BODY["<b>World Body</b><br/>ASonheimPlayer / ABaseMonster"]
-        PSTATE["<b>Player 지속 상태</b><br/>ASonheimPlayerState<br/>Inventory · StatBonus · PalInventory"]
-        WORLD["<b>World 상호작용</b><br/>UInteractionComponent<br/>IInteractableInterface"]
-        CONTENT["<b>콘텐츠 실행</b><br/>UDungeonStageRuntimeSubsystem<br/>UBossFSM : UBaseAiFSM"]
-    end
-
-    subgraph STATE["Authoritative / Replicated State"]
-        ACTORSTATE["<b>Actor 단위 상태</b><br/>Health · SkillSpec · Inventory · BossStatus"]
-        GAMESTATE["<b>공유 콘텐츠 상태</b><br/>ASonheimGameState<br/>FDungeonStageRuntimeState"]
-    end
-
-    subgraph UI["Client Presentation"]
-        HUD["<b>기본 HUD / Screen</b><br/>PlayerController · UMG Widgets"]
-        NOTICE["<b>일시적 알림</b><br/>UNoticeSubsystem : ULocalPlayerSubsystem"]
-        VIEW["<b>복합 콘텐츠 UI</b><br/>Presenter → ViewData<br/>LocalPlayer UI Router"]
-    end
-
-    ROW --> BASE
-    ROW --> PSTATE
-    DEF --> CONTENT
-
-    BASE --> BODY
-    PSTATE --> BODY
-    WORLD --> BODY
-    BODY --> CONTENT
-
-    BODY --> ACTORSTATE
-    CONTENT --> GAMESTATE
-
-    ACTORSTATE -. "Delegate / Replication" .-> HUD
-    ACTORSTATE -. "Replicated State" .-> VIEW
-    GAMESTATE -. "Snapshot" .-> VIEW
-    CONTENT -. "Transient Event" .-> NOTICE
-~~~
-
-### 구현 경계
-
-**C++ Runtime**
-- Server authority와 state ownership
-- Character/Component/Interface 공통 로직
-- Combat·Inventory·Crafting·Capture·Dungeon/Boss 실행
-- RPC / Replication / FastArray와 Presenter/ViewData 변환
-
-**Data / Content**
-- Item·Skill·AreaObject·Level·Resource처럼 반복되는 값은 DataTable
-- Dungeon Stage/Branch/Objective, Boss Pattern/Strike처럼 중첩된 콘텐츠는 DataAsset
-- Stage·Group·Barrier·Pattern처럼 계층 관계가 필요한 runtime ID는 GameplayTag
-- 화면 문구·아이콘·Map 정보는 gameplay rule과 분리된 presentation data / StringTable
-
-**Blueprint / UMG / Animation**
-- C++ parent와 <code>BindWidget</code> contract 위에서 Widget Blueprint 구성
-- Animation Blueprint·Montage·Notify로 locomotion과 action timing 조정
-- DataAsset/Blueprint default로 콘텐츠 asset 연결과 presentation tuning
-- UMG는 gameplay rule을 직접 소유하지 않고 delegate 또는 ViewData를 소비
-
-즉 **C++이 실행 규칙과 상태를 소유하고, Data가 콘텐츠 조합과 tuning을 제공하며, Blueprint/UMG/Animation이 asset과 표현을 구성**하는 형태입니다.
+[전체 플레이 데모](https://www.youtube.com/watch?v=TDRRWp6M_9E) · [Sonheim GitHub](https://github.com/chungheonLee0325/Sonheim) · [코드 중심 저장소](https://github.com/chungheonLee0325/Sonheim.Source)
 
 ---
 
-## Core Architecture
+## 대표 구현
 
-- [[02. Gameplay Architecture|02_Gameplay_Architecture]] — PlayerState/Pawn/Subsystem의 **상태 소유 위치**, ActorComponent·Interface 구성, Data/Runtime/Presentation 경계
-- [[03. Data & Content Architecture|03_Data_Content_Architecture]] — DataTable·DataAsset·GameplayTag·Soft Reference·StringTable의 적용 기준과 실제 사용처
-- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — Request / State / Scope / Prediction / transient event를 UE Listen Server에서 어떻게 동기화했는지 정리합니다.
+| **MonsterDex — 발견·기록·보상** | **Quest — NPC·단계·월드 변화** |
+|---|---|
+| ![몬스터 도감 목록·3D 프리뷰·처치 및 포획 기록·보상 영역](../Media/Wiki/16_MonsterDex_System/16_dex_screen_areas.svg) | ![NPC 퀘스트 수락과 완료 보고 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_dialog_after.jpg) |
+| 처음 처치·포획한 몬스터를 도감에 등록하고, 3D 프리뷰·단계별 보상·플레이어별 기록으로 연결합니다. **[16. MonsterDex System](16_MonsterDex_System.md)** | NPC에서 수락한 목표가 전투·포획·제작·탐험 이벤트로 진행되고, 자재 전달은 월드 오브젝트의 모습도 바꿉니다. **[17. Quest System](17_Quest_System.md)** |
 
----
+| **Forgotten Ruins — 분기 던전** | **UMG v2 — HUD·알림 공통화** |
+|---|---|
+| ![분기 던전의 단계별 목표와 HUD](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_hud_after.jpg) | ![도감 신규 등록과 Feed·Headline·Title 알림이 표시된 게임 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg) |
+| 레버·웨이브·보스·보상을 Stage 규칙으로 연결하고 서버 Snapshot으로 진행을 공유합니다. **[09. Branching Dungeon Runtime](09_Branching_Dungeon_Runtime.md)** · **[10. Boss Encounter Runtime](10_Boss_Encounter_Runtime.md)** | 중첩 메뉴 입력, 공통 알림 슬롯, 키보드·패드 안내와 Widget Blueprint 화면을 개편했습니다. **[18. UMG v2 Migration](18_UMG_v2_Migration.md)** |
 
-## Gameplay Systems
-
-- [[04. Player & Character Systems|04_Player_Character_Systems]] — Pawn/PlayerState 수명 분리, Attribute/Condition/Stat과 장비 변경의 실제 상태 흐름
-- [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Skill Data/State/Logic, AnimNotify 기반 action timing, melee interpolation, Damage context
-- [[06. World Interaction Systems|06_World_Interaction_Systems]] — Item·Container·Crafting·Lever·Portal을 하나의 <code>IInteractableInterface</code> 입력/Prompt/Hold 흐름으로 연결
-- [[07. Inventory & Crafting|07_Inventory_Crafting]] — Item/Equipment/Container/Crafting의 데이터와 UI, 협력 제작 lifecycle
-- [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — Wild Monster → Capture → Ownership → Storage → Summon → Partner AI
+**시연 영상:** [도감 첫 발견](https://github.com/user-attachments/assets/d1d96b5f-1076-4e29-872d-3399a540acac) · [퀘스트 수락부터 완료까지](https://github.com/user-attachments/assets/356d1438-7c3c-417d-8bd4-b8dcb7a3efb6) · [던전 지름길 분기](https://github.com/user-attachments/assets/29858da6-7d13-4297-9d71-41f53272a952) · [보스 패턴](https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd)
 
 ---
 
-## UI Architecture
+## 핵심 기술 빠르게 찾기
 
-- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Delegate HUD, Inventory/Crafting screen, Confirm popup, Notice/Toast queue, Dungeon Presenter/ViewData와 LocalPlayer UI routing
+| 관심 기술 | 확인할 구현 |
+|---|---|
+| **C++ 캐릭터·컴포넌트 설계** | [02. Gameplay Architecture](02_Gameplay_Architecture.md) · [04. Player & Character Systems](04_Player_Character_Systems.md) · [06. World Interaction Systems](06_World_Interaction_Systems.md) |
+| **전투와 데이터 기반 패턴** | [05. Combat, Skill & Animation](05_Combat_Skill_Animation.md) · [10. Boss Encounter Runtime](10_Boss_Encounter_Runtime.md) |
+| **아이템·제작·Partner** | [07. Inventory & Crafting](07_Inventory_Crafting.md) · [08. Pal Capture & Partner Lifecycle](08_Pal_Capture_Partner_Lifecycle.md) |
+| **서버 권위·복제** | [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) — RPC, FastArray, UObject, OwnerOnly, Snapshot |
+| **UI 상태와 화면 수명** | [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) · [18. UMG v2 Migration](18_UMG_v2_Migration.md) |
+| **콘텐츠 데이터·검증** | [03. Data & Content Architecture](03_Data_Content_Architecture.md) · [13. Content Authoring & Validation](13_Content_Authoring_Validation.md) |
+| **에디터 자동화·개발 이력** | [14. Unreal Editor Automation & Verification](14_Unreal_Editor_Automation_Verification.md) · [15. Development History & Retrospective](15_Development_History_Retrospective.md) |
 
-- **Player HUD** — Health·Stamina·Level 등 gameplay state의 Delegate를 구독해 갱신
-- **Inventory / Container / Crafting** — PlayerController와 각 Widget이 화면 lifecycle과 데이터 바인딩을 관리
-- **Notice / Toast** — <code>UNoticeSubsystem</code>이 Banner·Title의 Queue와 Channel을 관리
-- **Dungeon HUD / Result** — Snapshot → Presenter → ViewData → UI Router로 복합 상태를 화면에 전달
-
----
-
-## Integrated Content Case Study — Forgotten Ruins
-
-현재 가장 큰 통합 적용 사례는 **분기형 Dungeon Vertical Slice**입니다.
-
-Dungeon Definition과 Runtime은 Combat·Interaction·Inventory·Capture의 결과를 objective / branch / reward / boss encounter로 연결합니다.
-
-- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Branch, Objective, Barrier, Timer, Reward, Record를 Event/Condition/Action/Transition 데이터로 진행
-- [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — 기존 Monster/Combat 기반 위에 Boss FSM, Pattern/Strike, Telegraph, Phase, Down/Exhaust를 구성
-- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — HUD, 목표 추적, Party 상태, Minimap/Marker, Boss HUD, Result를 current snapshot에서 구성
-
-Forgotten Ruins는 **Combat·Interaction·Inventory·Capture·UI가 하나의 콘텐츠 흐름에서 연결되는 통합 구현 사례**입니다.
+**구현의 공통 기준:** 서버가 게임플레이 결과를 확정하고, PlayerState·Pawn·World Subsystem에 원본 상태를 분리합니다. UI는 변경 Delegate 또는 복제된 상태를 표시 데이터로 변환해 갱신합니다. 시스템 전체 흐름은 [01. Project Overview](01_Project_Overview.md), 객체별 책임은 [02. Gameplay Architecture](02_Gameplay_Architecture.md)에서 설명합니다.
 
 ---
 
-## Content Authoring & Engineering
+## 전체 기술 문서
 
-- [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — Stage graph, dependency, Boss timing처럼 데이터 조합에서 생기는 오류를 Editor / graph validation으로 검사
-- [[14. Unreal Editor Automation & Verification|14_Unreal_Editor_Automation_Verification]] — AgentMcp를 이용한 UE Editor authoring과 Compile → PIE → Log/Viewport 검증
-- [[15. Development History & Retrospective|15_Development_History_Retrospective]] — 기능 추가보다 ownership과 시스템 경계가 실제 확장에서 어떻게 바뀌었는지 정리
+### 01–03 · 프로젝트와 설계
 
-### AgentMcp
+| 문서 | 내용 |
+|---|---|
+| [01. Project Overview](01_Project_Overview.md) | 게임플레이 데모, 새 콘텐츠와 시스템 연결 |
+| [02. Gameplay Architecture](02_Gameplay_Architecture.md) | PlayerState·Pawn·Subsystem의 소유권과 실행 경계 |
+| [03. Data & Content Architecture](03_Data_Content_Architecture.md) | DataTable·DataAsset·GameplayTag·StringTable |
 
-[AgentMcp](https://github.com/chungheonLee0325/AgentMcp)는 **UE 5.8의 실험적 MCP/toolset과 Agent Skill 개념을 참고해 UE 5.5용으로 재구현한 Editor MCP plugin**입니다.
+### 04–08 · 게임플레이 기반
 
-Sonheim에서는 **UMG/BindWidget authoring, Blueprint/Data/Animation 편집, Compile → PIE → Log/Viewport 검증**에 사용했습니다. 자세한 구현과 실제 검증 흐름은 [[14. Unreal Editor Automation & Verification|14_Unreal_Editor_Automation_Verification]]에서 확인할 수 있습니다.
+| 문서 | 내용 |
+|---|---|
+| [04. Player & Character Systems](04_Player_Character_Systems.md) | 장비 변경·스탯·행동 상태·Condition |
+| [05. Combat, Skill & Animation](05_Combat_Skill_Animation.md) | 서버 스킬 실행, Animation Notify·피해 판정 |
+| [06. World Interaction Systems](06_World_Interaction_Systems.md) | `IInteractableInterface` 다형성·감지·Hold |
+| [07. Inventory & Crafting](07_Inventory_Crafting.md) | FastArray·공유 보관함·협동 제작 |
+| [08. Pal Capture & Partner Lifecycle](08_Pal_Capture_Partner_Lifecycle.md) | 포획 서버 판정·보유 목록·Partner FSM |
+
+### 09–12 · 통합 콘텐츠와 멀티플레이
+
+| 문서 | 내용 |
+|---|---|
+| [09. Branching Dungeon Runtime](09_Branching_Dungeon_Runtime.md) | 분기 규칙·이벤트 큐·목표·장벽·기록 |
+| [10. Boss Encounter Runtime](10_Boss_Encounter_Runtime.md) | PatternClock·텔레그래프·Break·포획 |
+| [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) | UI Stack·Notice·던전 Presenter/ViewData |
+| [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) | 요청과 상태의 분리·복제·예측·RPC |
+
+### 13–15 · 제작 도구와 변경 이력
+
+| 문서 | 내용 |
+|---|---|
+| [13. Content Authoring & Validation](13_Content_Authoring_Validation.md) | Stage Graph·전환 순서·Boss Pattern 검증 |
+| [14. Unreal Editor Automation & Verification](14_Unreal_Editor_Automation_Verification.md) | AgentMcp로 Inspect·Edit·Compile·PIE 확인 |
+| [15. Development History & Retrospective](15_Development_History_Retrospective.md) | 실제 커밋으로 확인하는 시스템 구조 개선 |
+
+### 16–18 · 도감·퀘스트·UI 확장
+
+| 문서 | 내용 |
+|---|---|
+| [16. MonsterDex System](16_MonsterDex_System.md) | 종별 처치·포획 기록, 보상·3D 프리뷰 |
+| [17. Quest System](17_Quest_System.md) | 단계별 목표·NPC·월드 오브젝트·보상 |
+| [18. UMG v2 Migration & Editor Verification](18_UMG_v2_Migration.md) | 화면 개편 전후, 입력 정책·알림·에디터 검증 |
 
 ---
 
-## Source
+## 저장소
 
-- [Sonheim](https://github.com/chungheonLee0325/Sonheim) — 전체 Unreal Engine 프로젝트
-- [Sonheim.Source](https://github.com/chungheonLee0325/Sonheim.Source) — Source / Config / Docs 중심 코드 검토용
-- [AgentMcp](https://github.com/chungheonLee0325/AgentMcp) — UE 5.5 Editor MCP / agent workflow plugin
-
----
-
-## 코드 표기
-
-Wiki의 코드 블록은 구현 구조를 설명하는 데 필요한 선언과 함수만 발췌합니다. 생략된 <code>UPROPERTY</code> metadata나 보조 필드는 각 문서 하단의 **관련 코드** 링크에서 확인할 수 있습니다.
+[**Sonheim**](https://github.com/chungheonLee0325/Sonheim) — 전체 Unreal Engine 프로젝트 · [**Sonheim.Source**](https://github.com/chungheonLee0325/Sonheim.Source) — 코드 중심 검토 · [**AgentMcp**](https://github.com/chungheonLee0325/AgentMcp) — UE Editor MCP 플러그인

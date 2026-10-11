@@ -1,156 +1,140 @@
 # 01. Project Overview
 
-Sonheim은 **Unreal Engine 5.5 / C++ 기반 서버 권위 멀티플레이 액션 어드벤처** 프로젝트입니다.
+**Sonheim은 Unreal Engine 5.5 / C++ 기반의 서버 권위 멀티플레이 액션 어드벤처입니다.**
 
-전투에서 획득한 Item은 Inventory·장비·Crafting으로 이어지고, 포획한 Monster는 Pal Inventory를 거쳐 Partner로 전투에 다시 참여합니다. 현재는 이 시스템들을 함께 사용하는 **분기형 Dungeon을 주요 통합 콘텐츠 사례**로 구현했습니다.
+플레이어는 전투와 탐험으로 자원을 얻고 장비를 제작하며, 몬스터를 포획해 동료로 활용합니다. **전투·포획의 결과는 도감 기록과 퀘스트 목표로 이어지고**, 분기형 던전에서는 그동안 구현한 상호작용·전투·보상·동료 시스템이 하나의 콘텐츠 안에서 함께 동작합니다.
+
+초기 2인 팀 프로젝트로 시작해 개별 게임플레이 기능과 멀티플레이 구조를 구축했고, 이후 도감·퀘스트·보스·던전·UI를 추가하며 콘텐츠를 확장했습니다.
+
+[**전체 플레이 데모 — YouTube**](https://www.youtube.com/watch?v=TDRRWp6M_9E) · [**소스 코드**](https://github.com/chungheonLee0325/Sonheim) · [전체 기술 문서](Home.md)
+
+![Sonheim 전체 게임플레이](../Gifs/Project_Overview.gif)
+
+**개발 환경:** UE 5.5 · C++ · Blueprint/UMG · Listen Server · Steam/Null OSS
 
 ---
 
-## Gameplay System Loop
+## 전투와 탐험의 결과가 다음 플레이로 이어집니다
 
-Sonheim의 gameplay는 **전투·수집·성장·제작·포획의 결과가 서로 다음 시스템의 입력으로 이어지는 구조**입니다.
-
-```mermaid
+~~~mermaid
 flowchart LR
-    WORLD["<b>World Exploration</b>"]
-    COMBAT["<b>Combat</b>"]
-    GATHER["<b>Resource Gathering</b>"]
-    INTERACT["<b>Interaction</b>"]
+    ACTION["전투 · 포획 · 제작 · 탐험"] --> BAG["아이템 · 장비 · Partner"]
+    BAG --> PLAY["다음 전투 · 탐험"]
+    PLAY --> ACTION
+    ACTION --> RECORD["PlayerState::ReportDeed<br/>서버 게임플레이 이벤트"]
+    RECORD --> DEX["MonsterDex<br/>발견 · 기록 · 보상"]
+    RECORD --> QUEST["Quest<br/>목표 · 단계 · 완료"]
+    ACTION -. "처치 · 포획 · 상호작용" .-> DUNGEON["Forgotten Ruins<br/>Stage · Branch · Boss"]
+    DUNGEON --> RESULT["보상 · 최고 기록 · 등급"]
+~~~
 
-    LOOT["<b>Items / Resources</b>"]
-    INV["<b>Inventory</b>"]
-    CRAFT["<b>Crafting</b>"]
-    EQUIP["<b>Equipment / Stats / Skills</b>"]
+기존의 전투·포획·제작 이벤트를 **새로운 콘텐츠가 다시 활용하도록 연결**한 것이 확장 과정의 핵심입니다. 도감과 퀘스트는 플레이어별 진행을 관리하고, 던전은 서버가 현재 Stage와 목표를 판정합니다.
 
-    CAPTURE["<b>Pal Capture</b>"]
-    PAL["<b>Owned Pal / Partner</b>"]
+### MonsterDex — 처음 발견한 몬스터가 기록으로 남습니다
 
-    DUNGEON["<b>Integrated Content</b><br/>Dungeon"]
-    RECORD["<b>Result / Record</b><br/>Best Time · Grade"]
+![MonsterDex: 몬스터 목록, 상세 3D 프리뷰, 처치·포획 기록과 단계별 보상](../Media/Wiki/16_MonsterDex_System/16_dex_screen_areas.svg)
 
-    WORLD --> COMBAT
-    WORLD --> GATHER
-    WORLD --> INTERACT
+몬스터를 **처음 처치하거나 포획하면 도감에 등록**되고, 발견하지 못한 종은 이름과 모델을 실루엣으로 표시합니다. 등록 후에는 처치·포획 횟수와 단계별 보상이 갱신됩니다.
 
-    COMBAT -->|"Drop"| LOOT
-    GATHER -->|"Resource"| LOOT
-    INTERACT -->|"Pickup / Container"| LOOT
-    LOOT --> INV
+- `DT_MonsterDex`에 종별 정보·보상 조건을 정의하고, `UMonsterDexComponent`는 플레이어별 기록을 관리합니다.
+- `AMonsterDexStage`가 상세 **회전형 3D 프리뷰**와 목록용 **몬스터 썸네일**을 생성합니다.
+- 서버는 보상 수령 조건과 중복 수령을 검사하고, 기록 변경분은 **OwnerOnly FastArray**로 전달합니다.
 
-    INV -->|"Material"| CRAFT
-    CRAFT -->|"Crafted Item"| INV
+[도감 등록 영상](https://github.com/user-attachments/assets/d1d96b5f-1076-4e29-872d-3399a540acac) · [보상 수령 영상](https://github.com/user-attachments/assets/f498002f-d15e-45ab-ac9b-1380ac0ad82b) · [16. MonsterDex 구현](16_MonsterDex_System.md)
 
-    INV -->|"Equip"| EQUIP
-    EQUIP -->|"Character capability"| COMBAT
+### Quest — NPC에서 시작한 목표가 실제 플레이와 연결됩니다
 
-    COMBAT -->|"Capture instead of defeat"| CAPTURE
-    CAPTURE --> PAL
-    PAL -->|"Partner combat"| COMBAT
+| 퀘스트 일지 | NPC 수락·완료 보고 |
+|---|---|
+| ![진행 단계와 목표·보상이 보이는 퀘스트 일지](../Media/Wiki/16_UMG_Migration_with_Claude/16_journal_after.jpg) | ![퀘스트 NPC의 수락·완료 보고 대화 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_dialog_after.jpg) |
 
-    DUNGEON -. "reuses" .-> COMBAT
-    DUNGEON -. "reuses" .-> INTERACT
-    DUNGEON -. "reuses" .-> CAPTURE
-    DUNGEON -->|"Reward"| INV
-    DUNGEON --> RECORD
-```
+NPC에게 퀘스트를 수락한 뒤 몬스터 처치·포획, 아이템 제작, 지역 도착 등으로 **현재 단계의 목표를 진행**합니다. 목표를 모두 달성하면 다음 단계로 넘어가거나 NPC에게 완료를 보고하고 보상을 받습니다.
 
-- **실선**은 실제 gameplay 결과가 다음 시스템의 입력으로 이어지는 흐름입니다.
-- **점선**은 Dungeon이 Combat·Interaction·Capture의 결과를 콘텐츠 진행에 연결하는 관계입니다.
+`DT_Quest`는 선행 조건·단계·목표·보상을 정의하고, `UQuestComponent`는 플레이어별 진행을 서버에서 관리합니다. 아이템 보유량을 검사하는 `Possess`와 실제 아이템을 차감하는 `Deliver`도 구분합니다. **건설 퀘스트의 자재 전달은 월드의 건설 완료 상태까지 변경**합니다.
 
-### 시스템이 연결되는 방식
+**NPC 수락 → 목표 진행 → HUD 갱신 → 완료 보고·보상**
 
-- **전투 결과 → Inventory**  
-  Monster Drop과 Dungeon Reward는 같은 Item/Inventory 흐름으로 들어갑니다.
+https://github.com/user-attachments/assets/356d1438-7c3c-417d-8bd4-b8dcb7a3efb6
 
-- **Inventory → Stat / Skill**  
-  장비 교체는 슬롯 변경으로 끝나지 않고 Stat modifier와 Skill Grant를 함께 갱신합니다.
-
-- **전투 → Capture → Partner**  
-  Monster를 처치하는 대신 포획하면 Pal Inventory로 이동하고, 이후 같은 Actor를 Partner로 소환해 전투에 다시 참여시킬 수 있습니다.
-
-- **Inventory → Crafting → Inventory**  
-  Crafting은 Inventory의 재료를 서버에서 검증·소모하고 완성된 Item을 다시 Inventory에 지급합니다.
-
-- **Interaction → 다양한 World 기능**  
-  Item 획득, 상자 열기, 제작대 사용, Dungeon Portal, Shortcut Lever가 같은 `IInteractableInterface` 기반 입력/UI 흐름을 사용합니다.
-
-- **Dungeon → 기존 시스템 재사용**  
-  Dungeon은 Interaction, Combat, Capture, Inventory, UI 시스템의 결과를 Stage 진행과 Objective, Reward, Result에 연결합니다.
+[17. Quest 구현](17_Quest_System.md)
 
 ---
 
-## 핵심 구현과 적용 위치
+## 기존 게임플레이를 하나의 콘텐츠로 — Forgotten Ruins
 
-| 기술적 선택 | 실제 적용 | 구현 목적 |
-|---|---|---|
-| **ActorComponent + Interface** | Health, Skill, Capture, Interaction | 기능을 Actor 종류와 분리해 Player·Monster·World Object에서 조합하고 재사용 |
-| **DataTable** | Item, Skill, AreaObject, Level, Resource | 같은 schema의 gameplay 데이터를 ID 기반으로 관리 |
-| **PrimaryDataAsset + GameplayTag** | Dungeon Definition, Boss Pattern | 콘텐츠 구조와 식별자를 코드 분기에서 분리하고 Editor에서 authoring |
-| **Animation-driven Gameplay** | Skill Fire, Melee Window, Cancel Window | 공격 motion과 실제 판정 시점을 같은 Animation timeline에서 조정 |
-| **Delegate / Presenter / ViewData** | 일반 HUD, Dungeon HUD, Minimap, Result | gameplay state와 UMG를 직접 결합하지 않고 화면에 필요한 형태로 전달 |
-| **Server Authority + RPC / Replication** | Combat, Inventory, Crafting, Capture, Dungeon | Client 요청과 authoritative state 변경을 분리 |
-| **FastArray** | Inventory, Skill Spec | 변경된 collection entry를 delta 단위로 동기화 |
-| **Prediction / Reconciliation** | Inventory Slot, Selected Pal Slot | 입력 직후 화면 반응을 제공하고 Server 결과로 보정 |
-| **Editor Validation / Authoring Tool** | Dungeon Definition, Boss Pattern | 잘못된 Transition·필수 데이터·timing을 플레이 이전에 확인 |
-| **AgentMcp** | Blueprint/Animation/UMG/DataAsset, PIE·Viewport 검증 | Coding agent가 C++뿐 아니라 Unreal Editor 작업과 결과 확인까지 수행 |
+Forgotten Ruins는 **분기형 멀티플레이 던전**으로, 입장·레버 상호작용, 몬스터 처치·포획, 보스 패턴, 보상과 기록을 하나의 Run에서 연결합니다.
 
----
+### 지름길과 추가 웨이브
 
-## Dungeon Vertical Slice
+~~~text
+입장 → 경비실 Wave A
+          ├─ 레버 사용 → 지름길 ────┐
+          └─ 레버 미사용 → 추가 Wave ┤
+                                   ↓
+                              수호자의 방
+                                   ↓
+                           결과 · 보상 · 등급
+~~~
 
-Forgotten Ruins Dungeon은 위 시스템들이 실제 콘텐츠 하나에서 함께 동작하는 구현 사례입니다.
+레버를 사용하면 서버가 `RunTag`를 기록합니다. **Wave A 완료 시점**에 `Event / Condition / Transition` 정의를 평가해 지름길 또는 추가 웨이브를 선택합니다. Stage별 장벽과 목표도 현재 Run 상태에 맞춰 변경됩니다.
 
-```mermaid
-flowchart TD
-    ENTRY["<b>Portal / Entrance</b><br/>Interaction"]
-    RUNTIME["<b>Dungeon Runtime</b><br/>Event · Condition · Action · Transition"]
-    WORLD["<b>Stage World</b><br/>Barrier · Lever · Spawn Group"]
-    BATTLE["<b>Combat / Capture</b><br/>Monster · Guardian Boss"]
+**지름길 선택 플레이**
 
-    STATE["<b>Replicated Run State</b>"]
-    UI["<b>HUD · Minimap · Marker · Result</b>"]
+https://github.com/user-attachments/assets/29858da6-7d13-4297-9d71-41f53272a952
 
-    REWARD["<b>Inventory Reward</b>"]
-    RECORD["<b>Best Time · Grade · SaveGame</b>"]
+[09. Branching Dungeon Runtime](09_Branching_Dungeon_Runtime.md)
 
-    ENTRY --> RUNTIME
-    RUNTIME --> WORLD
-    WORLD --> BATTLE
-    BATTLE -->|"Progress / Defeat / Capture"| RUNTIME
+### 수호자 보스 — 데이터 기반 패턴 전투
 
-    RUNTIME --> STATE
-    BATTLE --> STATE
-    STATE --> UI
+수호자 보스는 기존 몬스터·피해·포획 기능을 활용하면서 **별도의 Boss FSM과 Pattern DataAsset**으로 전투를 구성했습니다. 패턴별 추적·경고·타격 타이밍과 영역 형상을 데이터로 지정하고, Break 누적 시 Down, HP 조건 충족 시 Resting으로 진입합니다. **Resting 중에는 기존 Pal 포획 시스템으로 포획을 시도**할 수 있습니다.
 
-    RUNTIME -->|"Terminal Stage"| REWARD
-    RUNTIME -->|"Run Result"| RECORD
-```
+**텔레그래프와 타격 시연**
 
-이 Vertical Slice에서 구현한 범위:
+https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
 
-- **분기 진행** — Shortcut / ExtraWave 선택을 Runtime state와 GameplayTag로 유지
-- **Objective / Failure** — 처치·포획·Area 진입·시간 초과·Owner 이탈을 같은 Stage Runtime에서 처리
-- **World State** — 현재 Stage Definition에 따라 Barrier, Lever, Spawn Group 상태 변경
-- **Boss Encounter** — Telegraph, Pattern, Phase, Down/Exhaust, Capture Window
-- **Client Presentation** — Runtime Snapshot을 HUD, Party, Boss, Minimap, Marker, Result로 변환
-- **Result / Persistence** — Reward 지급, Best Time, Grade, Clear/Fail Record를 SaveGame에 저장
-- **Authoring / Validation** — Definition 검사와 Stage Graph 생성으로 콘텐츠 흐름을 Editor에서 검토
+[10. Boss Encounter Runtime](10_Boss_Encounter_Runtime.md) · [08. Pal Capture & Partner Lifecycle](08_Pal_Capture_Partner_Lifecycle.md)
 
 ---
 
-## 연관 문서
+## UMG v2 — 플레이 상태와 알림을 한 화면에서 보여주기
 
-- [[2. Gameplay Architecture|02_Gameplay_Architecture]] — 서버 권위, 객체 수명, Replication 범위와 시스템 경계를 정한 기준
-- [[3. Data & Content Architecture|03_Data_Content_Architecture]] — DataTable / DataAsset / GameplayTag의 역할 분리
-- [[9. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Dungeon Definition을 실제 Server Runtime으로 실행하는 구조
-- [[5. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Skill Data에서 Damage까지 이어지는 전투 실행 흐름
-- [[7. Inventory & Crafting|07_Inventory_Crafting]] — 개인/공유 Item 상태의 서로 다른 네트워크 처리
-- [[8. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — Capture에서 Partner AI까지 이어지는 lifecycle
-- [[6. World Interaction Systems|06_World_Interaction_Systems]] — 하나의 Interaction contract로 서로 다른 World 기능을 연결한 구조
+
+
+![도감 등록 시 Feed·Headline·Title이 함께 표시되는 UMG v2 게임 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg)
+
+도감 신규 등록, 퀘스트 갱신, 제작 완료, 지역 진입을 **각 기능이 개별 팝업을 만드는 대신 공통 알림 슬롯으로 표시**합니다.
+
+- **Feed / Headline / Title:** `UNoticeSubsystem`에서 알림 종류별 표시 위치·순서·채널을 관리합니다.
+- **일반 메뉴:** `UUIStackSubsystem`에서 인벤토리·제작·도감·퀘스트 화면의 중첩, 입력 모드와 커서를 처리합니다.
+- **입력 안내:** `UInputHintSubsystem`이 키보드·게임패드 입력에 맞는 안내를 표시합니다.
+- **게임플레이 → UI:** 도감·퀘스트 기록은 각각 ViewData로, 던전은 GameState Snapshot을 Presenter가 변환해 HUD·미니맵·결과 화면에 전달합니다.
+
+도감·퀘스트·던전 HUD·인벤토리의 **개편 전후 화면**은 [18. UMG v2 Migration & Editor Verification](18_UMG_v2_Migration.md)에서 비교할 수 있습니다.
 
 ---
 
-## Source
+## 개발 구조와 기술적 선택
 
-- [Main Repository](https://github.com/chungheonLee0325/Sonheim)
-- [Source-only Mirror](https://github.com/chungheonLee0325/Sonheim.Source)
+| 관심 기술 | Sonheim에서 실제로 구현한 방식 |
+|---|---|
+| **게임플레이 책임** | Actor/Component/Interface로 기능 구성, PlayerState에 보유·진행 기록, Pawn에 현재 행동 |
+| **서버 권위·동기화** | Server RPC, OwnerOnly FastArray, Skill UObject 서브오브젝트 복제, 던전 GameState Snapshot |
+| **데이터 기반 콘텐츠** | 반복 데이터는 DataTable, 던전은 `UPrimaryDataAsset`, 보스 패턴은 `UDataAsset`, 식별자는 GameplayTag |
+| **전투·제작** | Animation Notify·근접 Trace 보간, 장비별 Skill Grant, 공유 제작 진행·부분 완료·환불 |
+| **화면·콘텐츠 검증** | Delegate·Presenter/ViewData, Dungeon Stage Graph·Boss Pattern Validation, AgentMcp 에디터 작업 |
+
+게임플레이의 판정과 보상은 서버가 결정합니다. **클라이언트는 복제된 진행 상태와 일회성 알림을 각 화면에 맞게 표현**하며, 플레이어별 도감·퀘스트 기록과 던전의 공유 상태는 서로 다른 경로로 동기화합니다.
+
+설계의 세부 구현은 아래 기술 문서에서 확인할 수 있습니다.
+
+| 더 알아볼 내용 | 문서 |
+|---|---|
+| **전체 구조·데이터 설계** | [02. Gameplay Architecture](02_Gameplay_Architecture.md) · [03. Data & Content Architecture](03_Data_Content_Architecture.md) |
+| **캐릭터·전투·상호작용** | [04. Player & Character Systems](04_Player_Character_Systems.md) · [05. Combat, Skill & Animation](05_Combat_Skill_Animation.md) · [06. World Interaction Systems](06_World_Interaction_Systems.md) |
+| **장비·협동 제작** | [07. Inventory & Crafting](07_Inventory_Crafting.md) |
+| **UI·멀티플레이** | [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) · [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) |
+| **검증·개발 이력** | [13. Content Authoring & Validation](13_Content_Authoring_Validation.md) · [14. Unreal Editor Automation & Verification](14_Unreal_Editor_Automation_Verification.md) · [15. Development History & Retrospective](15_Development_History_Retrospective.md) |
+
+**[01–18 전체 기술 문서 목록 →](Home.md)**
+
+**저장소:** [Sonheim](https://github.com/chungheonLee0325/Sonheim) · [Source-only Mirror](https://github.com/chungheonLee0325/Sonheim.Source) · [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)

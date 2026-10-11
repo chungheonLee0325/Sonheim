@@ -1,382 +1,299 @@
 # 11. UI Architecture & Client Presentation
 
-Sonheim UI는 **Persistent HUD, Interaction Screen, Transient Notice, Complex Content UI**의 네 흐름으로 구성됩니다.
+Sonheim UI는 **상태를 관리하는 게임플레이 코드와 화면을 표시하는 UMG의 역할을 구분**합니다. HP·인벤토리처럼 독립적인 상태는 변경 이벤트로 화면을 갱신하고, 던전처럼 여러 정보를 함께 표시하는 화면은 현재 상태를 조합해 ViewData를 구성합니다. 화면 입력과 알림 표시는 로컬 플레이어별 Subsystem에서 관리합니다.
 
-## 요약
+## 핵심 구성
 
-- Persistent HUD는 Health/Stamina/Level 같은 독립 state를 Component Delegate로 구독합니다.
-- Inventory/Container/Crafting은 PlayerController와 Screen Widget이 state와 static definition을 조합합니다.
-- <code>UNoticeSubsystem</code>이 Banner/Title의 queue, channel, style을 LocalPlayer 단위로 관리합니다.
-- Dungeon UI는 Snapshot → Presenter → ViewData → UI Router로 복합 gameplay state를 화면 모델로 변환합니다.
-- UI Router가 async Widget load, state reconstruction, 기존 HUD visibility 등 content UI lifecycle을 관리합니다.
+| 화면·기능 | 상태와 표시 데이터 | UI 갱신·관리 |
+|---|---|---|
+| **기본 HUD** | `UHealthComponent` · `UStaminaComponent` · `ULevelComponent` | 변경 Delegate → `UPlayerStatusWidget` |
+| **인벤토리·보관함·제작** | 아이템·레시피 정의 + 인벤토리·제작 상태 | 화면별 Widget + `UUIStackSubsystem` |
+| **도감·퀘스트** | 정의 데이터 + 플레이어별 복제 기록 | `MonsterDexView` / `QuestView` → UMG |
+| **던전 HUD·미니맵·결과** | 복제된 던전 Snapshot + 화면 설정·기존 컴포넌트 | `UDungeonStagePresenter` → ViewData → UI Router |
+| **알림** | `FNoticeData` + Slot·Channel | `UNoticeSubsystem` → `UNoticeWidget` |
 
-## Runtime Demo
-
-### Notice / Toast
-
-https://github.com/user-attachments/assets/bc9e4305-62f6-43bb-b1fa-2b109a06eb5b
-
-*Lever 상호작용과 Wave 완료/Branch 변경에서 발생한 Dungeon Banner가 `ShortcutUnlocked → GroupClear → Branch.Shortcut` 순으로 표시되는 `TakeTurns` queue 시연.*
+**정의 데이터**는 콘텐츠 설정, **런타임 상태**는 실행 중 변하는 값, **ViewData**는 위젯에서 사용할 표시용 값입니다. 화면에 따라 단순 Delegate 갱신과 ViewData 조합을 선택해 사용합니다.
 
 ## 목차
 
-- [Runtime Demo](#runtime-demo)
-- [System Overview](#system-overview)
-- [Base HUD & Interaction Screen](#base-hud--interaction-screen)
-- [Notice / Toast](#notice--toast)
-- [Complex Content UI — Dungeon](#complex-content-ui--dungeon)
-- [UI Lifecycle & Reuse](#ui-lifecycle--reuse)
-- [Trade-offs](#trade-offs)
+- [화면별 데이터 흐름](#화면별-데이터-흐름)
+- [기본 HUD와 상호작용 화면](#기본-hud와-상호작용-화면)
+- [화면 스택과 입력 정책](#화면-스택과-입력-정책)
+- [도감·퀘스트의 화면 데이터](#도감퀘스트의-화면-데이터)
+- [알림 슬롯과 표시 정책](#알림-슬롯과-표시-정책)
+- [던전 UI — Snapshot에서 ViewData까지](#던전-ui--snapshot에서-viewdata까지)
+- [던전 UI의 수명 관리](#던전-ui의-수명-관리)
+- [Widget 재사용과 설계 비용](#widget-재사용과-설계-비용)
+- [관련 코드 및 문서](#관련-코드-및-문서)
 
 ---
 
-## System Overview
+## 화면별 데이터 흐름
 
 ~~~mermaid
 flowchart TB
-    subgraph SOURCE["Gameplay / State"]
-        COMP["<b>독립 Gameplay State</b><br/>Health · Stamina · Inventory · Equipment"]
-        WORLD["<b>상호작용 State</b><br/>Container · Crafting Station"]
-        EVENT["<b>Transient Event</b><br/>Level · Capture · Crafting · Region"]
-        SNAP["<b>복합 Content State</b><br/>FDungeonStageRuntimeState"]
-    end
+    COMPONENT["컴포넌트 상태<br/>Health · Inventory · Crafting"] --> CHANGE["상태 변경 Delegate"]
+    CHANGE --> BASIC["기본 HUD · 상호작용 화면"]
 
-    subgraph PRESENT["Client Presentation"]
-        CTRL["<b>Persistent / Screen Lifetime</b><br/>ASonheimPlayerController"]
-        NOTICE["<b>Notice Queue</b><br/>UNoticeSubsystem : ULocalPlayerSubsystem"]
-        PRESENTER["<b>Content Adapter</b><br/>UDungeonStagePresenter"]
-        ROUTER["<b>Content UI Routing</b><br/>UDungeonUIRouterSubsystem"]
-    end
+    RECORD["플레이어별 기록<br/>MonsterDex · Quest"] --> FAST["OwnerOnly FastArray 복제"]
+    FAST --> BUILD["MonsterDexView::Build / QuestView::Build"]
+    DEF["DataTable 정의"] --> BUILD
+    BUILD --> SCREEN["도감 · 퀘스트 UMG"]
 
-    subgraph UMG["UMG"]
-        HUD["<b>Persistent HUD</b><br/>Player Status"]
-        SCREEN["<b>Interaction Screen</b><br/>Inventory · Container · Crafting"]
-        POPUP["<b>Local Popup</b><br/>UConfirmWidget"]
-        TOAST["<b>Notice / Toast</b><br/>Banner · Title"]
-        CONTENT["<b>Complex Content UI</b><br/>Dungeon HUD · Minimap · Result"]
-    end
+    DUNGEON["서버 던전 진행"] --> SNAP["GameState<br/>FDungeonStageRuntimeState"]
+    SNAP --> PRESENTER["UDungeonStagePresenter"]
+    PRESENT["화면 설정 DataAsset<br/>문구 · 아이콘 · 미니맵"] --> PRESENTER
+    PRESENTER --> VIEW["FDungeonStageViewData"]
+    VIEW --> ROUTER["UDungeonUIRouterSubsystem"]
+    ROUTER --> DUNGEONUI["던전 HUD · 미니맵 · 결과"]
 
-    COMP --> CTRL --> HUD
-    COMP --> SCREEN
-    WORLD --> SCREEN
-    SCREEN --> POPUP
-    EVENT --> NOTICE --> TOAST
-    SNAP --> PRESENTER --> ROUTER --> CONTENT
+    EVENT["게임플레이 알림"] --> NOTICE["UNoticeSubsystem"]
+    NOTICE --> TOAST["Feed · Headline · Title"]
 ~~~
 
-| UI 종류 | 상태/수명 관리 | 주요 데이터 source |
-|---|---|---|
-| Player HUD | PlayerController + Widget | Component / PlayerState Delegate |
-| Inventory / Stat | PlayerController | Inventory / PlayerState |
-| Container | ContainerInteractionWidget | Player Inventory + Container |
-| Crafting | CraftingStation + CraftingWidget | Recipe + Inventory + ActiveWork |
-| Confirm Popup | InventoryWidget | ItemID / Count / Action mode |
-| Notice / Toast | UNoticeSubsystem | FNoticeData + Slot / Channel |
-| Dungeon HUD / Result | Presenter + UI Router | Run Snapshot + Presentation Data + 기존 Component/World State |
+위젯은 **게임플레이의 원본 상태를 소유하지 않습니다.** 선택 항목이나 스크롤 위치 같은 UI 자체의 상태는 위젯에 둘 수 있지만, HP·인벤토리·퀘스트 기록은 게임플레이 컴포넌트가 관리합니다. 던전 진행 상태는 서버에서 처리한 뒤 `GameState`로 전달하며, 화면을 다시 열 때 필요한 값을 읽어 표시합니다.
 
 ---
 
-## Base HUD & Interaction Screen
+## 기본 HUD와 상호작용 화면
 
-### C++ Widget Contract와 Widget Blueprint
+### C++ Widget과 Widget Blueprint의 역할
 
-C++ Widget class는 **데이터 연결·입력 처리·BindWidget 계약**을 담당하고, Widget Blueprint는 **layout·style·animation**을 구성합니다.
-
-예를 들어 <code>UInventoryWidget</code>은:
-
-- <code>BindWidget</code>으로 SlotGrid / Equipment Slot / Trash Zone 계약 정의
-- Inventory / Equipment delegate 처리
-- Drag & Drop 요청
-- ItemID → ItemData 변환
-
-을 담당합니다.
+Sonheim의 C++ Widget은 데이터 연결·입력 이벤트·버튼 동작을 구현하고, Widget Blueprint는 배치·스타일·애니메이션을 담당합니다. 필요한 하위 위젯은 `UPROPERTY(meta=(BindWidget))`으로 연결합니다.
 
 ~~~text
-C++ Widget
- ├─ BindWidget Contract
- ├─ Data Binding
- └─ Input / Request
-        ↓
+C++ UUserWidget
+ ├─ BindWidget : 필요한 하위 Widget 명세
+ ├─ Gameplay Component / Delegate 연결
+ └─ 클릭·드래그·서버 요청 처리
+           ↕
 Widget Blueprint
- ├─ Layout
- ├─ Art / Style
+ ├─ Widget Tree · Layout
+ ├─ 이미지·색상·스타일
  └─ Animation
 ~~~
 
-AgentMcp의 UMG toolset도 이 계약을 기준으로 C++ <code>BindWidget</code>과 Widget Tree를 함께 검사하며 Widget Blueprint를 생성·수정합니다.
+`BindWidget`은 C++ 멤버와 Widget Blueprint의 실제 이름·타입이 맞아야 동작합니다. AgentMcp에서 Widget Tree를 수정할 때도 이 연결을 확인합니다. 에디터를 이용한 UI 개편 과정 자체는 [[18. UMG v2 Migration|18_UMG_v2_Migration]]에서 다룹니다.
 
-### Persistent HUD
+### 기본 HUD — 변경 이벤트 구독
 
-Health / Stamina / Level처럼 owner와 lifecycle이 명확한 값은 component delegate를 직접 구독합니다.
+HP·스태미나·레벨은 각 컴포넌트가 상태를 관리하고 변경 Delegate를 전달합니다.
 
 ~~~text
-HealthComponent.OnHealthChanged ─┐
-StaminaComponent.OnChanged      ├─→ UPlayerStatusWidget
-LevelComponent.OnLevelChanged   ┘
+UHealthComponent::OnHealthChanged ──┐
+UStaminaComponent 변경 이벤트       ├─→ UPlayerStatusWidget
+ULevelComponent::OnLevelChanged  ──┘
 ~~~
 
-HUD는 gameplay object를 Tick으로 polling하지 않고 상태 owner가 발생시키는 변경 event를 반영합니다.
+`ASonheimPlayerController`는 상태 HUD와 `UHealthComponent`의 변경 이벤트를 연결하고 초기 HP 값도 적용합니다. 따라서 HP가 변경될 때마다 위젯이 자체적으로 게임플레이 값을 계속 조회하는 구조가 아닙니다.
 
-### Inventory
+### 인벤토리 — 아이템 기록과 정의 결합
 
-PlayerController가 Inventory Screen을 열고 <code>UInventoryWidget</code>에 <code>UInventoryComponent</code>를 연결합니다.
+`UInventoryComponent`는 슬롯·아이템 ID·수량 같은 플레이어 상태를 관리합니다. `UInventoryWidget`은 이 값을 읽고 `USonheimGameInstance::GetDataItem`에서 `FItemData`를 조회해 아이콘·이름 등을 `USlotWidget`에 적용합니다.
 
 ~~~mermaid
 flowchart LR
-    INV["<b>Runtime State</b><br/>UInventoryComponent"]
-    EVENT["<b>Change Event</b><br/>Inventory / Equipment Delegate"]
-    DATA["<b>Static Definition</b><br/>FItemData"]
-    WIDGET["<b>Screen Logic</b><br/>UInventoryWidget"]
-    SLOT["<b>Reusable Item View</b><br/>USlotWidget"]
-
-    INV --> EVENT --> WIDGET
-    DATA --> WIDGET
-    WIDGET --> SLOT
+    INV["UInventoryComponent<br/>ItemID · Count · Slot"] --> UI["UInventoryWidget"]
+    DATA["FItemData<br/>이름 · 아이콘 · 설정"] --> UI
+    UI --> SLOT["USlotWidget<br/>인벤토리·장비 슬롯"]
 ~~~
 
-Widget은:
+아이템 수량과 장착 상태를 위젯에 별도로 원본 상태로 보관하지 않습니다. 슬롯 이동이나 장비 변경은 인벤토리 API로 요청하고, 변경된 결과를 화면에 반영합니다.
 
-1. Inventory의 ItemID / Count를 읽고
-2. GameInstance의 <code>FItemData</code>에서 이름·아이콘·rarity 같은 정적 정보를 조회한 뒤
-3. <code>USlotWidget</code>에 화면용 값을 전달합니다.
+### 보관함·제작 — 기존 슬롯 표시 재사용
 
-원본 Item state는 <code>UInventoryComponent</code>가 유지합니다.
+- **보관함:** `UContainerInteractionWidget`이 플레이어 인벤토리와 보관함 인벤토리를 함께 보여줍니다. 아이템 이동은 각 데이터 관리 주체에 요청하며, 기존 Slot·Drag & Drop 표현을 재사용합니다.
+- **제작:** 레시피 DataTable, 플레이어 인벤토리, 제작대의 진행 상태를 조합합니다. 레시피 선택 시 재료 목록을 만들고, 보유 수량과 작업 진행도가 바뀌면 화면을 갱신합니다. 재료 행은 부모 위젯의 풀에서 재사용합니다.
 
-### Container
+### 확인 팝업 — 게임플레이 요청과 분리
 
-<code>UContainerInteractionWidget</code>은 Player Inventory와 Container Inventory를 한 화면에 배치합니다.
-
-~~~text
-ContainerInteractionWidget
- ├─ PlayerInventoryWidget
- └─ ContainerWidget
-~~~
-
-Player Inventory의 Slot/Drag & Drop 구조를 Container 화면에서도 재사용하고, 양쪽 state 사이의 이동 요청만 추가합니다.
-
-### Crafting
-
-Crafting UI는 세 source를 결합합니다.
+아이템 버리기·폐기에는 `UInventoryWidget`이 `UConfirmWidget`을 열어 아이템과 수량을 확인합니다.
 
 ~~~text
-Recipe DataTable
- + Player Inventory
- + Crafting Station ActiveWork
-        ↓
-UCraftingWidget / CraftingQueueWidget
-~~~
-
-Recipe가 바뀔 때는 결과 Item·Icon·Material Row 같은 구조를 갱신하고, Inventory 수량이나 Work progress가 바뀔 때는 필요한 값만 갱신합니다.
-
-Required Material Row는 부모 Widget이 pool을 소유해 필요한 수만 활성화하고 나머지는 <code>Collapsed</code> 상태로 재사용합니다.
-
-세부 Item/Crafting 흐름은 [[07. Inventory & Crafting|07_Inventory_Crafting]]에서 설명합니다.
-
-### Local Confirm Popup
-
-Item Drop / Discard처럼 추가 확인이 필요한 동작은 <code>UInventoryWidget</code>이 <code>UConfirmWidget</code>을 생성해 처리합니다.
-
-~~~text
-Drop / Discard Request
-      ↓
-UInventoryWidget
-      ↓
+버리기 / 폐기 선택
+       ↓
 UConfirmWidget
-  ItemID · MaxCount · Mode
-      ↓ OnConfirm
+ └─ 수량·동작 확인
+       ↓ OnConfirm
 UInventoryWidget
-      ↓
-ServerDrop / ServerDiscard
+       ↓
+InventoryComponent의 버리기 / 폐기 요청
 ~~~
 
-Confirm Widget은 gameplay mutation을 직접 수행하지 않고 결과를 부모 화면으로 전달합니다.
+확인 팝업 자체는 인벤토리 상태를 변경하지 않습니다. 부모 위젯이 결과를 받아 실제 요청을 처리하므로, 팝업은 화면 안에서 필요한 입력만 관리합니다.
 
-현재 Inventory/Stat menu의 cursor와 gameplay input은 PlayerController가 관리하고, Container/Crafting은 각 interaction screen의 open/close lifecycle에서 cursor와 종료 처리를 관리합니다.
+인벤토리·보관함·제작의 게임플레이 처리와 복제 구조는 [[07. Inventory & Crafting|07_Inventory_Crafting]]에서 설명합니다.
 
 ---
 
-## Notice / Toast
+## 화면 스택과 입력 정책
 
-Level Up, Capture 결과, Crafting 완료, Region Title, Dungeon 진행처럼 **현재 상태를 저장할 필요 없이 짧게 전달하는 정보**는 <code>UNoticeSubsystem</code>이 관리합니다.
-
-<code>UNoticeSubsystem : ULocalPlayerSubsystem</code>은 LocalPlayer 수명에 맞춰 생성되며 gameplay producer는 <code>FNoticeData</code>만 전달합니다.
-
-~~~text
-Gameplay Producer
-  Level / Capture / Crafting / Region / Dungeon
-        ↓
-FNoticeData
-        ↓
-Slot + Channel
-        ↓
-UNoticeSubsystem
-        ↓
-UNoticeWidget
-~~~
-
-### Notice Data와 Style
-
-<code>FNoticeData</code>는 다음 정보를 담습니다.
-
-- Category
-- Title
-- Detail
-- Symbol / Icon
-- Tone
-
-실제 Widget class와 style, queue 크기, ZOrder는 Slot 설정이 결정합니다.
+여러 화면이 각자 `SetInputMode`와 커서 표시를 변경하면, 중첩된 화면을 닫을 때 입력 상태가 잘못 복원될 수 있습니다. 이를 줄이기 위해 일반 Screen의 열림·닫힘과 입력 정책은 `UUIStackSubsystem : ULocalPlayerSubsystem`에서 처리합니다.
 
 ~~~cpp
-struct FNoticeSlotSettings
+// UIStackSubsystem.h — 필드 발췌
+struct FUIScreenRule
 {
-    TSoftClassPtr<UNoticeWidget> WidgetClass;
-    TSoftObjectPtr<UNoticeStyle> Style;
-
-    int32 ZOrder;
-    ENoticeOrder Order;
-    int32 MaxWaiting;
+    FName Id;
+    TSoftClassPtr<UUserWidget> WidgetClass;
+    int32 ZOrder = 0;
+    EUIStackInputMode InputMode = EUIStackInputMode::GameAndUI;
+    bool bShowMouse = true;
+    bool bBlockGameInput = true;
 };
 ~~~
 
-### Slot과 Queue Policy
+`DefaultGame.ini`에 정의한 `FUIScreenRule`을 화면 ID로 조회합니다.
 
-현재 대표 Slot은:
+| 동작 | 실제 처리 |
+|---|---|
+| `Open` | 화면 생성 또는 이미 열린 화면을 최상단으로 이동 |
+| `Close / CloseTop` | 화면 제거 후 남은 최상단 화면의 규칙 적용 |
+| `ApplyInputState` | `SetInputMode`·커서 표시·메뉴용 입력 매핑 갱신 |
+| `IsGameplayBlocked` | 플레이어 이동·공격·상호작용 입력에서 게임플레이 차단 여부 확인 |
+| `Prune` | Viewport에서 사라진 화면의 스택 기록 정리 |
 
-- **Banner** — 진행/완료/경고 카드
-- **Title** — Region / Room title
+인벤토리와 능력치처럼 **함께 열고 닫는 여러 Widget을 하나의 `FUIStackEntry`로 관리**할 수도 있습니다. 열린 화면이 없으면 `GameOnly`와 커서 숨김 상태로 복원합니다.
 
-입니다.
+**입력 모드와 게임플레이 입력 차단은 별개입니다.** 현재 일반 Screen은 `GameAndUI`를 사용하면서 `IsGameplayBlocked`로 이동·공격 등의 입력을 막습니다. `GameAndUI` 설정 자체가 모든 게임플레이 입력을 자동 차단하지는 않습니다.
 
-Queue policy는:
+### 키보드·게임패드 안내
 
-- **TakeTurns** — 현재 Notice 종료 후 waiting queue를 순서대로 표시
-- **ReplaceShowing** — 새 Notice가 들어오면 현재/대기 내용을 최신 값으로 교체
+`UInputHintSubsystem`은 Enhanced Input에 매핑된 키를 조회해 입력 안내를 만듭니다. Slate 입력을 바탕으로 마지막 사용 장치가 키보드·마우스인지 게임패드인지 구분하고, 입력 매핑이 갱신되면 글리프도 갱신합니다.
 
-를 사용합니다.
-
-실제 `TakeTurns` 동작은 상단 Runtime Demo에서 확인할 수 있습니다.
-
-### Channel
-
-같은 Banner Slot에서도 producer별 channel을 유지합니다.
-
-~~~text
-Banner
- ├─ Level
- ├─ Capture
- ├─ Crafting
- └─ Dungeon
-
-Title
- ├─ Region
- └─ Dungeon
-~~~
-
-Dungeon Run 종료 시:
-
-~~~cpp
-Notices->Clear(TEXT("Dungeon"));
-~~~
-
-처럼 Dungeon이 만든 showing/waiting notice만 회수할 수 있습니다.
-
-### Notice Widget
-
-<code>UNoticeWidget</code>은 gameplay component를 직접 참조하지 않고 전달받은 ViewData와 <code>UNoticeStyle</code>로:
-
-- fade in
-- hold
-- fade out
-- accent / icon
-- lifetime progress
-
-를 표현합니다.
-
-Item 직접 획득 feedback은 기존 Player HUD의 별도 popup 경로도 사용합니다.
-
-~~~text
-Inventory.OnItemAdded
-      ↓
-PlayerController Client RPC
-      ↓
-PlayerStatusWidget.DisplayItemPopup
-~~~
-
-<code>OnInventoryChanged</code>와 <code>OnItemAdded</code>가 분리되어 있어 Slot Swap이나 장비 해제가 Item 획득 popup으로 표시되지 않습니다.
+메뉴 탭의 좌우 이동에 사용하는 입력 안내도 이 경로를 활용합니다. `UUIStackSubsystem`은 화면 상태에 따라 메뉴 `Input Mapping Context`의 활성화를 요청합니다.
 
 ---
 
-## Complex Content UI — Dungeon
+## 도감·퀘스트의 화면 데이터
 
-Dungeon UI는 Stage, Objective, Party, Boss, Minimap, Reward 등 여러 gameplay state를 한 화면에서 조합합니다.
-
-- Stage / Main & Optional Objective
-- Branch / Route
-- Party
-- Timer
-- Boss
-- Minimap / Marker
-- Reward / Result
-
-그래서 Runtime Snapshot을 Widget에 직접 넘기지 않고 다음 계층을 사용합니다.
+도감과 퀘스트는 플레이어별 기록을 관리한다는 점이 공통적입니다. `ASonheimPlayerState::ReportDeed`가 서버에서 `Kill / Capture / Craft / Reach / ClearDungeon` 이벤트를 전달하고, 각 컴포넌트가 필요한 이벤트만 집계합니다.
 
 ~~~mermaid
-flowchart LR
-    R["<b>Server Content State</b><br/>UDungeonStageRuntimeSubsystem"]
-    G["<b>Replicated Snapshot</b><br/>ASonheimGameState<br/>FDungeonStageRuntimeState"]
-    P["<b>Client Adapter</b><br/>UDungeonStagePresenter"]
-    D["<b>Presentation Definition</b><br/>UDungeonPresentationDataAsset"]
-    V["<b>View Model</b><br/>FDungeonStageViewData"]
-    U["<b>Widget Lifecycle</b><br/>UDungeonUIRouterSubsystem"]
-    W["<b>UMG</b><br/>HUD · Minimap · Result"]
-
-    R --> G --> P
-    D --> P
-    P --> V --> U --> W
+flowchart TB
+    DEED["ReportDeed → OnDeed"] --> DEX["UMonsterDexComponent<br/>FMonsterDexEntry"]
+    DEED --> QUEST["UQuestComponent<br/>FQuestRecord"]
+    DEX --> REPL["소유 클라이언트<br/>FastArray 변경분"]
+    QUEST --> REPL
+    REPL --> CHANGE["OnDexChanged / OnQuestsChanged"]
+    CHANGE --> BUILD["MonsterDexView::Build / QuestView::Build"]
+    DT["DT_MonsterDex / DT_Quest"] --> BUILD
+    BUILD --> UI["도감 · 일지 · NPC 대화 · HUD 추적기"]
 ~~~
 
-![Dungeon HUD](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_dungeon_hud.png)
+| 구분 | 도감 | 퀘스트 |
+|---|---|---|
+| 정의 데이터 | `FMonsterDexData` — 종·보상 조건 | `FQuestData` — 단계·목표·보상 |
+| 플레이어 기록 | `FMonsterDexEntry` — 처치·포획·수령 | `FQuestRecord` — 현재 단계·진행도 |
+| 화면 데이터 | `FMonsterDexBookView` / `FMonsterDexPageView` | `FQuestView` / `FQuestObjectiveView` |
+| 서버 검증 | 보상 조건·중복 수령 | 수락·보고 조건과 NPC 대상·거리 |
 
-위 화면은 같은 Run의 **Stage / Main·Optional Objective / Timer / Party / World Marker / Minimap**을 한 Client 화면에 조합한 결과입니다. Dungeon progression은 Snapshot에서, Party HP는 기존 replicated `HealthComponent`에서, text·icon·room 영역은 Presentation Asset에서 가져옵니다.
+**도감·퀘스트의 정의 데이터는 각각의 GameInstanceSubsystem에서 로드하고, 플레이어별 진행 기록은 PlayerState의 Component가 관리**합니다. 클라이언트에는 FastArray의 변경분을 `COND_OwnerOnly`로 복제합니다. 저장이 필요한 기록은 서버가 호스트 SaveGame에 별도로 기록합니다.
 
-### Presenter
+도감은 첫 발견 여부를 기록 존재로 판단하고, 퀘스트는 진행 상태를 `QuestView::Build`에서 화면 표시 상태로 바꿉니다. UI는 변경 Delegate를 받은 후 정의 데이터와 현재 기록을 조합해 다시 그립니다.
 
-Presenter는 Runtime ID와 Presentation Data를 결합합니다.
+도감 등록·보상·3D 프리뷰는 [[16. MonsterDex System|16_MonsterDex_System]], 퀘스트 목표 집계·단계 전환·NPC 상호작용은 [[17. Quest System|17_Quest_System]]에서 설명합니다.
+
+---
+
+## 알림 슬롯과 표시 정책
+
+레벨 상승, 첫 포획, 퀘스트 단계 갱신, 제작 완료, 던전 진행 알림은 현재 상태를 대신 저장하지 않는 **일회성 UI 피드백**입니다. `UNoticeSubsystem : ULocalPlayerSubsystem`이 메시지를 받아 종류별 화면 영역에 표시합니다.
 
 ~~~text
-StageId
-= Dungeon.ForgottenRuins.Stage.GuardRoom
-
-Objective Group
-= Dungeon.ForgottenRuins.Group.Guards
-
-Runtime Count
-= 2 / 4
-        ↓
-Presenter
-        ↓
-"경비실"
-"경비병을 처치하세요"
-2 / 4
-Room Icon
-World Marker
+게임플레이 코드 / 클라이언트 이벤트
+             ↓
+FNoticeData + ENoticeSlot + Channel
+             ↓
+UNoticeSubsystem
+             ↓
+UNoticeWidget / Widget Blueprint
 ~~~
 
-Widget은 GameplayTag, ItemID, Stage transition을 해석하지 않고 화면용 ViewData를 소비합니다.
+`FNoticeData`는 제목·분류·설명·아이콘·강조 색상 역할(`Tone`) 등의 정보를 담습니다. 실제 배치와 출력 방식은 슬롯 설정과 Widget Blueprint가 맡습니다.
 
-### Presentation Definition
+### 슬롯별 동작
 
-Runtime Snapshot에는 화면 문구나 Map texture를 직접 넣지 않습니다. `UDungeonPresentationDataAsset`이 Stage title/objective/icon, room 영역, marker와 전체 map bounds 같은 presentation 정의를 소유합니다.
+현재 `DefaultGame.ini`에 설정된 정책입니다.
 
-![Dungeon Presentation DataAsset](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_dungeon_presentation_asset.png)
+| 슬롯 | 배치·용도 | 표시 방식 |
+|---|---|---|
+| **Feed** | 화면 왼쪽의 퀘스트·제작·진행 알림 | `Stack` — 새 알림을 즉시 추가 |
+| **Headline** | 화면 중앙의 레벨업·첫 발견 등 주요 알림 | `TakeTurns` — 순서대로 표시, 최대 대기 3건 |
+| **Title** | 화면 상단의 지역명 | `ReplaceShowing` — 표시 중인 알림 교체 |
 
-Presenter는 Snapshot의 `StageId`와 Objective 상태를 이 정의에 결합해 ViewData를 만듭니다. 같은 gameplay state를 유지하면서도 화면 표현을 asset에서 조정할 수 있도록 분리한 구조입니다.
+`UNoticeSubsystem::Push`는 `Slot`과 `Channel`을 받아 알림을 전달합니다. 슬롯별 Widget 클래스·`UNoticeStyle`·`ZOrder`와 표시 순서는 `FNoticeSlotSettings`에 정의하며, 각 슬롯의 위젯은 해당 설정대로 배치합니다.
 
-### Snapshot Revision
+`Channel`은 특정 기능에서 발생한 알림을 한꺼번에 정리하기 위한 식별자입니다. 예를 들어 던전에서 `UNoticeSubsystem::Clear("Dungeon")`을 호출하면 던전 알림만 정리하고 다른 기능의 알림은 유지합니다.
 
-같은 Run의 오래된 Snapshot이 화면을 되돌리지 않도록 <code>Revision</code>을 비교합니다.
+### 알림 시연 영상
+
+**이전 버전의 던전 알림 큐**
+
+https://github.com/user-attachments/assets/bc9e4305-62f6-43bb-b1fa-2b109a06eb5b
+
+*레버·몬스터 그룹·분기 이벤트의 배너가 차례로 표시되는 개편 전 시연입니다. 현재 `Feed`는 `Stack` 방식이므로, 위 영상은 현행 Feed 배치나 동시 표시 정책의 증거로 사용하지 않습니다.*
+
+현재 Feed·Headline·Title 화면 비교는 [[18. UMG v2 Migration|18_UMG_v2_Migration]]에서 확인할 수 있습니다.
+
+### 일반 알림과 아이템 획득 팝업
+
+아이템 슬롯 갱신과 아이템 획득 알림은 동일한 사건이 아닙니다.
+
+~~~text
+Inventory.OnInventoryChanged → 슬롯 화면 갱신
+
+Inventory.OnItemAdded
+   → PlayerController Client RPC
+   → PlayerStatusWidget.DisplayItemPopup
+~~~
+
+`OnItemAdded`를 별도로 사용하므로 슬롯 교체나 장착 해제가 아이템 획득 팝업을 발생시키지 않습니다. 이 기존 HUD 팝업은 `UNoticeSubsystem`의 Feed와 다른 경로입니다.
+
+---
+
+## 던전 UI — Snapshot에서 ViewData까지
+
+던전 HUD는 스테이지·메인/선택 목표·파티·보스·미니맵을 한 화면에 표시하고, 종료 후에는 같은 진행 결과를 바탕으로 보상·등급·기록 화면을 구성합니다.
+
+![던전 HUD: 목표, 타이머, 파티, 미니맵](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_dungeon_hud.png)
+
+*스테이지·목표·파티·마커·미니맵을 함께 보여주는 기존 HUD 화면입니다. v2 화면 비교는 [[18. UMG v2 Migration|18_UMG_v2_Migration]]에서 다룹니다.*
+
+### 서버 스냅샷과 화면 설정 결합
+
+~~~mermaid
+flowchart TB
+    SERVER["UDungeonStageRuntimeSubsystem<br/>서버 던전 진행"] --> STATE["ASonheimGameState<br/>FDungeonStageRuntimeState"]
+    STATE --> PRES["UDungeonStagePresenter"]
+    DEF["UDungeonPresentationDataAsset<br/>문구·아이콘·맵 영역"] --> PRES
+    HEALTH["각 참가자의 UHealthComponent<br/>현재 HP"] --> PRES
+    PRES --> VIEW["FDungeonStageViewData<br/>화면 표시 데이터"]
+    VIEW --> ROUTER["UDungeonUIRouterSubsystem<br/>위젯 수명 관리"]
+    ROUTER --> WIDGET["HUD · 미니맵 · 결과 UMG"]
+~~~
+
+`UDungeonStageRuntimeSubsystem`은 서버에서 단계를 진행하고, `ASonheimGameState`는 `FDungeonStageRuntimeState`를 복제합니다. `UDungeonStagePresenter`는 이 스냅샷과 `UDungeonPresentationDataAsset`을 읽어 `FDungeonStageViewData`를 만듭니다.
+
+| 데이터 출처 | 화면에 사용하는 값 |
+|---|---|
+| `FDungeonStageRuntimeState` | `StageId`·그룹 진행도·분기·보스 상태·서버 기준 시간 |
+| `UDungeonPresentationDataAsset` | 스테이지·목표 문구, 아이콘, 미니맵 텍스처·방 범위 |
+| `UHealthComponent` | 던전 참가자의 현재 HP |
+| `FDungeonStageViewData` | UI에 직접 전달할 제목·진행도·파티 정보·마커·결과 |
+
+![던전 UI 화면 설정 DataAsset](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_dungeon_presentation_asset.png)
+
+*화면 문구·아이콘·미니맵 설정을 데이터 에셋에서 관리합니다. 스테이지 전환 규칙은 별도의 던전 정의 에셋에 있습니다.*
+
+가령 `StageId`가 `Dungeon.ForgottenRuins.Stage.GuardRoom`이고 진행도가 2/4라면, Presenter가 화면 설정의 스테이지 이름·목표 문구·아이콘을 찾아 진행도와 조합합니다. **Widget은 스테이지 전환 규칙을 판단하지 않고 전달받은 결과를 표시**합니다.
+
+### 오래된 Snapshot 제외
+
+같은 실행에서 이전 상태가 화면을 되돌리지 않도록 `RunId`와 `Revision`을 비교합니다.
 
 ~~~cpp
+// DungeonStagePresenter.cpp — OnSnapshot
 if (Snapshot.RunId == Latest.RunId &&
     Snapshot.Revision <= Latest.Revision)
 {
@@ -384,200 +301,129 @@ if (Snapshot.RunId == Latest.RunId &&
 }
 ~~~
 
-새 Run에서는 새로운 기준으로 시작하고, 같은 Run에서는 더 높은 Revision만 반영합니다.
+다른 `RunId`라면 새로운 실행 상태로 받아들이고, 같은 실행에서는 더 높은 `Revision`만 반영합니다.
 
-### 기존 Component State 병행
+### 파티 HP는 기존 컴포넌트 활용
 
-Party HP처럼 이미 독립적으로 복제되는 값은 Dungeon Snapshot에 중복 저장하지 않습니다.
+던전 진행도는 `GameState` 스냅샷에서 읽지만, 파티 HP는 각 참가자 Pawn의 `UHealthComponent`에서 가져옵니다. `UDungeonStagePresenter::BindMembers`는 `OnHealthChanged`를 구독해 HP 변경 시 ViewData를 다시 만듭니다.
 
-~~~text
-Dungeon Snapshot
- └─ Participants
-        ↓
-Participant Pawn
- └─ HealthComponent
-        ↓
-OnHealthChanged
-        ↓
-Presenter Refresh
-~~~
+따라서 **던전 화면을 위해 파티 HP를 던전 스냅샷에 별도로 복제하지 않습니다.**
 
-Dungeon progression은 Snapshot, Health는 기존 Component/Delegate 경로를 사용합니다.
+### 미니맵·목표 마커
 
-### Minimap / Marker
+`UDungeonPresentationDataAsset`에는 지도 텍스처·월드 범위·방 영역과 표시 아이콘을 정의합니다. Presenter는 현재 스테이지와 진행 중인 목표를 바탕으로 방 강조 및 목표 마커를 구성합니다.
 
-Minimap은 **Presentation 정의와 현재 world state를 함께 사용**합니다.
+![멀티플레이 미니맵: 두 플레이어와 목표 마커](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_minimap_multiplayer.png)
 
-Presentation Data는:
+*선택한 스테이지 방 영역·로컬 플레이어 화살표·원격 플레이어 위치·레버 목표 마커가 표시된 화면입니다.*
 
-- Map Texture
-- World Bounds
-- Stage Room Rect
-- Marker icon / kind
-
-을 정의하고, Presenter는 Current Stage와 열린 Objective의 Marker target을 ViewData로 구성합니다. Local/remote Player 위치와 local camera 방향처럼 매 frame 변하는 값은 Minimap Widget이 실제 Pawn/PlayerState에서 읽어 map 좌표로 투영합니다.
-
-![Multiplayer Minimap](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_minimap_multiplayer.png)
-
-위 화면에서는 Current Stage room highlight, Local Player arrow, Remote Player dot, Lever Objective marker와 room icon이 동시에 표시됩니다. Bounds 밖 Player는 edge로 clamp하지 않고 표시 대상에서 제외합니다.
+**멀티플레이 미니맵 영상**
 
 https://github.com/user-attachments/assets/fa7c4755-16dd-47fb-a558-80b74aa536b2
 
-영상에서는 remote Player의 Dungeon 밖 이동/복귀, 두 Player의 위치 변화와 local camera 회전에 따른 arrow 방향 갱신을 확인할 수 있습니다.
+*원격 플레이어의 던전 밖 이동과 복귀, 카메라 회전에 따른 로컬 화살표 방향 갱신을 확인할 수 있습니다.*
 
-### Server Time 기반 Progress
+현재 플레이어 위치·카메라 방향처럼 계속 바뀌는 값은 미니맵 Widget이 월드의 Pawn·카메라를 읽어 좌표로 변환합니다. **고정 지도·목표 데이터와 실시간 위치 갱신을 구분한 구성**입니다.
 
-Stage countdown과 Boss action progress는 Snapshot의:
+### 서버 시간 기준 타이머
 
-- RunStartedServerTime
-- StageDeadlineServerTime
-- BossActionStartServerTime
-- BossActionEndServerTime
+스냅샷의 `RunStartedServerTime`, `StageDeadlineServerTime`, `BossActionStartServerTime`, `BossActionEndServerTime`은 동기화된 서버 시간과 비교하는 기준입니다.
 
-을 synchronized server clock과 비교해 계산합니다.
+남은 시간이나 보스 행동 진행도를 위젯 생성 시점부터 새로 계산하지 않습니다. HUD가 늦게 열리거나 재생성되더라도 **같은 서버 기준 시각을 사용**합니다.
 
-HUD가 늦게 생성되거나 재생성돼도 같은 현재 progress를 복원합니다.
+### 보스 상태와 결과 화면
 
-### Widget 재생성과 상태 복구
+![보스 상태 HUD](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_status_hud.png)
 
-Widget 자체는 Dungeon Run의 상태 owner가 아닙니다. 진행 중 HUD를 제거해도 Presenter와 Snapshot은 유지되고, 이후 UI 갱신이 발생하면 Router가 **새 Widget instance**를 만들어 Latest ViewData를 적용합니다.
+*보스 HP·행동·페이즈·Break·포획 가능 여부를 스냅샷에서 가져와 표시합니다. 보스 FSM을 Widget이 직접 참조해 판단하지 않습니다.*
+
+성공·실패로 실행이 끝나면 `RunStatus`에 따라 HUD 대신 결과 화면을 선택합니다. 최종 스냅샷의 시간·처치/포획·분기·보상·최고 기록과 정의된 등급 규칙을 조합해 결과 ViewData를 만듭니다.
+
+![던전 결과 화면](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_dungeon_result.png)
+
+*현재 실행의 최종 기록을 바탕으로 결과 화면을 구성합니다. UI를 다시 열 때도 완료된 Snapshot의 값을 사용합니다.*
+
+---
+
+## 던전 UI의 수명 관리
+
+`UDungeonUIRouterSubsystem : ULocalPlayerSubsystem`은 던전 HUD와 결과 위젯을 생성·교체합니다. `UDungeonStagePresenter`가 전달한 **최신 `FDungeonStageViewData`를 Router가 보관**하므로, 위젯이 없어져도 표시할 상태를 다시 구성할 수 있습니다.
+
+### 위젯 제거 후 상태 복구
+
+**던전 HUD 재생성 영상**
 
 https://github.com/user-attachments/assets/6c4f9601-8fbe-4957-87d4-d4ad230f3211
 
-촬영에서는 기존 HUD를 `RemoveFromParent`한 뒤 새 instance가 생성됐고, 같은 RunId / Stage / Objective 2/3 / Optional Objective / Minimap 상태를 다시 구성했습니다. Countdown과 elapsed time도 Widget 생성 시점에서 다시 시작하지 않고 기존 `StageDeadlineServerTime` / `RunStartedServerTime`과 synchronized server clock을 계속 사용했습니다.
+*진행 중인 HUD를 `RemoveFromParent`한 뒤 새 위젯에 같은 실행의 목표·미니맵·타이머 상태를 복원한 시연입니다.*
 
-### Boss Status
+위젯이 다시 생성되면 Router가 보관한 최신 ViewData를 적용합니다. **진행 중인 던전의 실제 상태는 위젯이 아니라 게임플레이 시스템과 스냅샷에 유지**됩니다.
 
-Boss FSM 자체를 Widget이 직접 참조하지 않고, Snapshot에 반영된 **Action / Phase / Break / Capture 가능 상태**를 Presenter가 화면용 정보로 변환합니다.
+### 비동기 로딩과 이전 콜백 방지
 
-![Boss Status HUD](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_status_hud.png)
+UI Registry와 HUD/Result Widget 클래스는 `RequestAsyncLoad`로 로드합니다. 로딩 중 화면 연결이 종료되거나 새로 시작되면 기존 완료 콜백이 뒤늦게 도착할 수 있습니다.
 
-위 화면에서는 Phase 2, Break 상태, Exhaust 상태와 Capture 안내가 하나의 HUD에서 함께 표현됩니다. 같은 Runtime state를 Boss HUD와 Dungeon Objective가 각각 필요한 형태로 소비합니다.
+`Generation`을 증가시키고 콜백에서 요청 시점과 현재 값을 비교해, 이전 연결에서 시작된 비동기 로딩 결과가 현재 화면에 반영되지 않게 합니다.
 
-### Result
+~~~cpp
+// DungeonUIRouterSubsystem.cpp — 핵심 조건
+const int32 Expected = Generation;
 
-Run 종료 시 최종 Snapshot의:
-
-- Reward
-- Elapsed
-- Defeated / Captured
-- Branch
-- Grade
-- Best Record
-- Fail Reason
-
-을 Result ViewData로 변환합니다.
-
-~~~text
-Running Snapshot
-→ Dungeon HUD
-
-Terminal Snapshot
-→ Result
+// 비동기 로드 완료 콜백
+if (Expected != Generation) return;
 ~~~
 
-진행 HUD와 Result는 같은 Run State의 서로 다른 presentation입니다.
+### 기존 HUD의 표시 상태 복원
 
-![Dungeon Result](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_dungeon_result.png)
+던전에 참가해 진행 중인 동안 `HiddenDuringRun`에 지정된 기존 HUD를 숨깁니다. 숨기기 전 각 위젯의 `ESlateVisibility`를 저장하며, 던전 종료·이탈 시 **원래 값으로 복구**합니다. 진행 중 새로 생성된 대상 위젯도 화면 갱신 시 확인합니다.
 
-위 결과 화면은 진행 HUD와 **같은 Run**의 terminal Snapshot을 사용합니다. 실제 최종 state의 elapsed time, defeated/captured count, 선택 branch, reward, grade와 기존 best record를 Result ViewData로 변환해 표시합니다.
+일반 인벤토리·도감·퀘스트 메뉴는 `UUIStackSubsystem`이 관리하지만, 던전 HUD/Result는 `UDungeonUIRouterSubsystem`이 관리합니다. 현재 던전 HUD·결과 화면은 비모달 `GameOnly` 방식이며, 일반 메뉴 입력 정책을 덮어쓰지 않도록 제한합니다.
 
 ---
 
-## UI Lifecycle & Reuse
+## Widget 재사용과 설계 비용
 
-### LocalPlayer UI Router
+### 생성 빈도에 따른 재사용
 
-<code>UDungeonUIRouterSubsystem : ULocalPlayerSubsystem</code>은:
-
-- HUD / Result Widget 선택
-- Widget class async load
-- 최신 ViewData cache
-- 현재 Widget 교체
-- Dungeon 중 기존 HUD hide / restore
-- Dungeon Notice channel cleanup
-
-을 담당합니다.
-
-Async load 완료 시점이 현재 UI lifecycle과 달라질 수 있으므로 <code>Generation</code> 값을 사용합니다.
-
-~~~text
-Attach : Generation N
-   ↓ Async Load
-
-Detach / Reattach : Generation N+1
-   ↓
-
-Old Callback
-Expected N != Current N+1
-→ Ignore
-~~~
-
-### 기존 HUD Visibility 복원
-
-Dungeon Run 동안 숨긴 Widget은 원래 <code>ESlateVisibility</code> 값을 저장합니다.
-
-Run 종료 시 일괄 <code>Visible</code>로 설정하는 대신 저장한 상태를 복원합니다.
-
-Run 도중 새로 생성된 대상 Widget도 update 시 다시 확인해 숨깁니다.
-
-### Widget 재사용
-
-- **USlotWidget** — Inventory / Equipment / Container / Crafting Item 표현
-- **Crafting Material Row** — 부모 Widget의 local pool
-- **Floating Damage** — 전투 중 반복 생성량이 큰 global actor pool
-
-각 UI의 생성 빈도와 수명에 맞춰 재사용 단위를 다르게 적용합니다.
-
-### 현재 Screen / Popup Input 관리
-
-현재 구현에서 input/cursor ownership은 다음 위치에 있습니다.
-
-| 화면 | 관리 위치 |
-|---|---|
-| Inventory / Stat | PlayerController |
-| Container | Container interaction screen |
-| Crafting | Crafting interaction screen / Station state |
-| Confirm Popup | InventoryWidget |
-| Dungeon HUD / Result | Dungeon UI Router / Registry |
-
-Dungeon Registry는 <code>Screen / Modal / HUD</code> layer와 <code>GameOnly / GameAndUI / UIOnly</code> input policy를 표현할 수 있고, 현재 Dungeon HUD/Result는 gameplay input과 함께 동작하도록 GameOnly 경로를 사용합니다.
-
----
-
-## Trade-offs
-
-| 구조 | 적용 위치 | 이유 |
+| 대상 | 적용 방식 | 이유 |
 |---|---|---|
-| **Delegate Binding** | HP / Stamina / Inventory | owner가 명확한 독립 state 변경 |
-| **C++ Widget + WBP** | 기본 Screen / HUD | 데이터 계약과 visual authoring 분리 |
-| **LocalPlayer NoticeSubsystem** | Banner / Title | transient event의 queue / channel / style 관리 |
-| **Presenter → ViewData** | Dungeon | Snapshot·Presentation 정의·기존 Component state를 하나의 화면 모델로 조합 |
-| **LocalPlayer UI Router** | Dungeon HUD / Result | async widget load와 content UI lifecycle 관리 |
-| **Local Popup Ownership** | Inventory Confirm | 부모 screen context 안에서 확인/결과 반환 |
+| `USlotWidget` | 인벤토리·장비·보관함·제작·보상 UI에서 공통 사용 | 아이템의 이름·아이콘·수량 표현 공유 |
+| 제작 재료 행 | 부모 위젯의 로컬 풀 | 레시피 교체 때 반복 생성 감소 |
+| Floating Damage | Actor 풀 | 전투 중 반복되는 데미지 표시 생성 비용 감소 |
+
+아이템 보상의 읽기 전용 표시에는 `USlotWidget::AddReadOnly`도 사용합니다. 모든 위젯을 같은 전역 풀로 관리하지 않고 **생성 빈도와 부모 화면의 수명에 맞춰** 재사용 방식을 선택했습니다.
+
+### 설계 선택과 비용
+
+| 선택 | 효과 | 추가로 관리할 부분 |
+|---|---|---|
+| **Delegate 기반 갱신** | 독립 상태 변경을 즉시 UI에 전달 | 바인딩·해제·초기값 적용 |
+| **C++ Widget + WBP** | 데이터·동작과 화면 배치 분리 | `BindWidget` 이름·타입 일치 |
+| **UIStackSubsystem** | 중첩 화면의 입력·커서 복원 일원화 | 화면 ID·입력 정책과 예외 처리 |
+| **NoticeSubsystem** | 알림 슬롯·표시 순서·채널 분리 | 슬롯별 표시 제한·알림 수명 |
+| **Presenter + ViewData** | 복합 상태를 화면용 데이터로 조합 | 상태·표시 정의 간 매핑 코드 |
+| **DungeonUIRouterSubsystem** | 비동기 로딩·HUD 교체·상태 복구 | 이전 콜백·위젯 생명주기 |
+
+단순 HUD에 별도 Presenter를 만들지 않았고, 던전과 도감·퀘스트도 화면 특성에 맞는 표시 데이터 생성 방식을 사용합니다. 공통 입력·알림은 Subsystem으로 분리하되 **게임플레이 상태의 변경 권한은 원래 시스템에 유지**했습니다.
 
 ---
 
-## 연관 문서
+## 관련 코드 및 문서
 
-- [[02. Gameplay Architecture|02_Gameplay_Architecture]] — Gameplay / Presentation 책임 경계
-- [[06. World Interaction Systems|06_World_Interaction_Systems]] — Context Prompt와 Interaction UI
-- [[07. Inventory & Crafting|07_Inventory_Crafting]] — Inventory/Container/Crafting의 상태와 UI 흐름
-- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Dungeon Snapshot의 원본 Runtime
-- [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — Boss Status의 원본
-- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — Client state 동기화
-
----
-
-## 관련 코드
-
-- [SonheimPlayerController.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayerController.cpp)
-- [InventoryWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/InventoryWidget.cpp)
-- [ConfirmWidget.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/ConfirmWidget.h)
-- [ContainerInteractionWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Widget/GameObject/ContainerInteractionWidget.cpp)
-- [CraftingWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Widget/GameObject/Crafting/CraftingWidget.cpp)
-- [NoticeSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Notice/NoticeSubsystem.cpp)
-- [NoticeWidget.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Notice/NoticeWidget.h)
-- [DungeonStagePresenter.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Dungeon/DungeonStagePresenter.cpp)
-- [DungeonUIRouterSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Dungeon/DungeonUIRouterSubsystem.cpp)
-- [DungeonUIRegistryDataAsset.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Dungeon/DungeonUIRegistryDataAsset.h)
+- [SonheimPlayerController.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayerController.cpp) — 기본 HUD와 입력 연결
+- [InventoryWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/InventoryWidget.cpp) — 슬롯 표시·드래그·확인 팝업
+- [ConfirmWidget.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/ConfirmWidget.h) — 수량 확인·이벤트 반환
+- [UIStackSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/System/UIStackSubsystem.cpp) — 화면 스택·입력 모드
+- [InputHintSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Input/InputHintSubsystem.cpp) — 키보드·패드 안내
+- [NoticeSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Notice/NoticeSubsystem.cpp) — 슬롯별 알림 표시
+- [MonsterDexView.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexView.cpp) · [QuestView.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Quest/QuestView.cpp) — 플레이어 기록을 UI 표시 데이터로 변환
+- [DungeonStagePresenter.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Dungeon/DungeonStagePresenter.cpp) — 던전 ViewData 구성
+- [DungeonUIRouterSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Dungeon/DungeonUIRouterSubsystem.cpp) — HUD·결과 UI 수명
+- [DungeonUIRegistryDataAsset.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Dungeon/DungeonUIRegistryDataAsset.h) — 던전 UI 레지스트리
+- [[02. Gameplay Architecture|02_Gameplay_Architecture]] — 상태 관리와 시스템 수명
+- [[03. Data & Content Architecture|03_Data_Content_Architecture]] — 정의 데이터·식별자·에셋
+- [[07. Inventory & Crafting|07_Inventory_Crafting]] — 인벤토리·제작 데이터 처리
+- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — 던전 스테이지 실행
+- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — 상태 복제·RPC
+- [[16. MonsterDex System|16_MonsterDex_System]] · [[17. Quest System|17_Quest_System]] — 도감·퀘스트
+- [[18. UMG v2 Migration|18_UMG_v2_Migration]] — 현재 화면 개편·에디터 검증

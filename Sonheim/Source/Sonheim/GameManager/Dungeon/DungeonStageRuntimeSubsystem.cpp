@@ -11,6 +11,7 @@
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/GameManager/SonheimGameState.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Monster/BaseMonster.h"
 #include "Sonheim/AreaObject/Monster/Boss/BossMonster.h"
 #include "Sonheim/AreaObject/Attribute/HealthComponent.h"
@@ -290,6 +291,13 @@ void UDungeonStageRuntimeSubsystem::RecordFinishedRun(bool bSuccess)
 	auto* Progress = GetWorld() && GetWorld()->GetGameInstance() ? GetWorld()->GetGameInstance()->GetSubsystem<UDungeonProgressSubsystem>() : nullptr;
 	if (!Progress) return;
 	const FDungeonClearRecord& Record = Progress->RecordRun(DungeonNumber, State, bSuccess);
+	if (bSuccess)
+	{
+		for (APlayerState* Participant : State.Participants)
+		{
+			if (auto* Member = Cast<ASonheimPlayerState>(Participant)) Member->ReportDeed(EPlayerDeed::ClearDungeon, DungeonNumber);
+		}
+	}
 	State.ClearCount = Record.ClearCount;
 	State.BestSeconds = Record.BestSeconds;
 }

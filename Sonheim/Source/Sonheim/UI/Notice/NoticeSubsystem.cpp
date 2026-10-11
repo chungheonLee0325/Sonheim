@@ -8,6 +8,12 @@ void UNoticeSubsystem::Push(const ENoticeSlot Slot, const FName Channel, const F
 	if (Data.Title.IsEmpty()) return;
 	FNoticeSlotState& State = StateOf(Slot);
 	const FNoticeSlotSettings& Settings = SettingsOf(Slot);
+	if (Settings.Order == ENoticeOrder::Stack)
+	{
+		// A stack never waits: its widget takes each notice at once and lets the oldest go when it runs out of room.
+		if (UNoticeWidget* Widget = State.bUnavailable ? nullptr : WidgetFor(Slot)) Widget->ShowFrom(Channel, Data);
+		return;
+	}
 	if (Settings.Order == ENoticeOrder::ReplaceShowing)
 	{
 		State.Waiting.Reset();
@@ -23,9 +29,10 @@ void UNoticeSubsystem::Push(const ENoticeSlot Slot, const FName Channel, const F
 
 void UNoticeSubsystem::Clear(const FName Channel)
 {
-	for (const ENoticeSlot Slot : {ENoticeSlot::Banner, ENoticeSlot::Title})
+	for (const ENoticeSlot Slot : {ENoticeSlot::Feed, ENoticeSlot::Title, ENoticeSlot::Headline})
 	{
 		FNoticeSlotState& State = StateOf(Slot);
+		if (IsValid(State.Widget)) State.Widget->StopChannel(Channel);
 		State.Waiting.RemoveAll([Channel](const FNoticeWaiting& Item) { return Item.Channel == Channel; });
 		if (State.bShowing && State.ShowingChannel == Channel)
 		{
@@ -77,7 +84,7 @@ void UNoticeSubsystem::PresentNext(const ENoticeSlot Slot)
 	State.Waiting.RemoveAt(0);
 	State.bShowing = true;
 	State.ShowingChannel = Next.Channel;
-	Widget->Show(Next.Data);
+	Widget->ShowFrom(Next.Channel, Next.Data);
 	UE_LOG(SONHEIM, Log, TEXT("[Notice] World=%s Slot=%s Channel=%s Title=%s"), *GetPathNameSafe(Widget->GetWorld()), *UEnum::GetValueAsString(Slot),
 		*Next.Channel.ToString(), *Next.Data.Title.ToString());
 }
@@ -90,7 +97,7 @@ void UNoticeSubsystem::Finished(const ENoticeSlot Slot)
 
 void UNoticeSubsystem::Deinitialize()
 {
-	for (FNoticeSlotState* State : {&BannerState, &TitleState})
+	for (FNoticeSlotState* State : {&FeedState, &TitleState, &HeadlineState})
 	{
 		if (IsValid(State->Widget))
 		{

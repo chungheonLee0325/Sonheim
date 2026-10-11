@@ -13,6 +13,24 @@ class UInventoryComponent;
 class ASonheimPlayer;
 class USonheimGameInstance;
 
+/** Something a player did that the server counts: the monster book and the quests listen for these. */
+UENUM(BlueprintType)
+enum class EPlayerDeed : uint8
+{
+	/** Id: the species (dt_AreaObject), defeated by the player or one of the player's pals. */
+	Kill,
+	/** Id: the species, captured into the player's party. */
+	Capture,
+	/** Id: the item, Count: how many collected from a crafting station. */
+	Craft,
+	/** Place: the region the player walked into. */
+	Reach,
+	/** Id: the dungeon's catalog number, finished with a win while the player took part. */
+	ClearDungeon,
+};
+
+DECLARE_MULTICAST_DELEGATE_FourParams(FOnPlayerDeed, EPlayerDeed /*Deed*/, int32 /*Id*/, int32 /*Count*/, FName /*Place*/);
+
 // 스탯 변경 델리게이트 선언
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPlayerStatsChanged, EAreaObjectStatType, StatType, float, StatValue);
 
@@ -54,6 +72,17 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	void InitPlayerState();
+	// 고유 ID가 정해지면 서버가 이 플레이어의 저장된 도감과 퀘스트를 읽는다.
+	virtual void OnSetUniqueId() override;
+
+	/** Server: tells the systems that count deeds (the monster book, the quests) what the player did. */
+	void ReportDeed(EPlayerDeed Deed, int32 Id, int32 Count = 1, FName Place = NAME_None);
+	FOnPlayerDeed OnDeed;
+
+	/** The key the host's saves keep this player under: "Local" for the host's own player, the net id for anyone else (the same on
+	 * every visit through Steam; the null subsystem of an editor play session makes a new one each session). Empty until the
+	 * player's unique id is known. */
+	FString GetSaveKey() const;
 
 	UPROPERTY(BlueprintReadWrite, Category="Pal")
 	class UPalInventoryComponent* m_PalInventoryComponent;
@@ -83,6 +112,12 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, Category="Stats")
 	UStatBonusComponent* m_StatBonusComponent;
+
+	UPROPERTY(BlueprintReadOnly, Category="MonsterDex")
+	class UMonsterDexComponent* m_MonsterDexComponent;
+
+	UPROPERTY(BlueprintReadOnly, Category="Quest")
+	class UQuestComponent* m_QuestComponent;
 
 	// 스탯 업데이트 함수 - 서버 권한
 	UFUNCTION(BlueprintCallable, Category="Stats")

@@ -15,6 +15,7 @@
 #include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
 #include "Engine/DataTable.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
+#include "Sonheim/UI/System/UIStackSubsystem.h"
 
 void UCraftingWidget::Initialise(ACraftingStation* InStation)
 {
@@ -287,7 +288,7 @@ void UCraftingWidget::OnClickCraft()
 			SPC->ServerStartWork(Station, SelectedRow, Qty);
 
 			// 제작 UI 종료
-			RemoveFromParent();
+			UUIStackSubsystem::CloseWidget(this);
 		}
 	}
 }
@@ -322,7 +323,7 @@ void UCraftingWidget::OnClickSub()
 
 void UCraftingWidget::OnClickedClose()
 {
-	RemoveFromParent();
+	UUIStackSubsystem::CloseWidget(this);
 }
 
 const FCraftingRecipe* UCraftingWidget::GetRecipe(FName Row) const

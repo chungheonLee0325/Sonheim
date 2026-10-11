@@ -70,9 +70,30 @@ namespace
 	}
 	bool IsCleared(const FDungeonGroupTally* Tally) { return Tally && Tally->Spawned > 0 && Tally->Defeated + Tally->Captured >= Tally->Spawned; }
 	/** One line of the objective list, with what the snapshot says about its goal. */
-	FDungeonObjectiveViewData ObjectiveRow(const UDungeonPresentationDataAsset& Texts, const FDungeonObjectiveLine& Line, const FDungeonStageRuntimeState& State)
+	/** The items a capture line pays: the GrantReward actions of the rules that answer a capture from the line's group. The definition
+	 * is the one place the bonus is written, so the screen never repeats it in words. */
+	TArray<FItemReward> CaptureBonus(const UDungeonDefinitionDataAsset* Definition, const FDungeonObjectiveLine& Line)
+	{
+		TArray<FItemReward> Bonus;
+		if (!Definition || Line.Goal != EDungeonObjectiveGoal::Captured) return Bonus;
+		for (const FDungeonStageDefinition& Stage : Definition->Stages)
+		{
+			for (const FDungeonStageEventRule& Rule : Stage.EventRules)
+			{
+				if (Rule.Event != EDungeonStageEvent::MonsterCaptured || Rule.SourceId != Line.GroupId) continue;
+				for (const FDungeonStageAction& Action : Rule.Actions)
+				{
+					if (Action.Type == EDungeonStageAction::GrantReward) Bonus.Add({Action.RewardItemId, Action.RewardCount});
+				}
+			}
+		}
+		return Bonus;
+	}
+	FDungeonObjectiveViewData ObjectiveRow(const UDungeonPresentationDataAsset& Texts, const FDungeonObjectiveLine& Line, const FDungeonStageRuntimeState& State,
+	                                       const UDungeonDefinitionDataAsset* Definition = nullptr)
 	{
 		FDungeonObjectiveViewData Row;
+		Row.Bonus = CaptureBonus(Definition, Line);
 		Row.Label = Line.Label;
 		Row.Kind = Line.Kind;
 		Row.Window = Line.Window;
@@ -135,18 +156,18 @@ void UDungeonStagePresenter::ShowToasts(const FDungeonStageRuntimeState& Previou
 	if (!Presentation || !bShown) return;
 	// A client can receive several changes in one snapshot; each has its own banner, in the order they happen in a run.
 	for (const auto& Pair : Presentation->TagToasts)
-		if (Latest.RunTags.HasTagExact(Pair.Key) && !Previous.RunTags.HasTagExact(Pair.Key)) Notices->Push(ENoticeSlot::Banner, Channel, Pair.Value);
+		if (Latest.RunTags.HasTagExact(Pair.Key) && !Previous.RunTags.HasTagExact(Pair.Key)) Notices->Push(ENoticeSlot::Feed, Channel, Pair.Value);
 	for (const FDungeonGroupTally& Tally : Latest.Groups)
 		if (IsCleared(&Tally) && !IsCleared(FindTally(Previous, Tally.GroupId)))
-			if (const FNoticeData* Toast = Presentation->GroupClearToasts.Find(Tally.GroupId)) Notices->Push(ENoticeSlot::Banner, Channel, *Toast);
+			if (const FNoticeData* Toast = Presentation->GroupClearToasts.Find(Tally.GroupId)) Notices->Push(ENoticeSlot::Feed, Channel, *Toast);
 	if (Latest.SelectedBranchId.IsValid() && Latest.SelectedBranchId != Previous.SelectedBranchId)
-		if (const FNoticeData* Toast = Presentation->BranchToasts.Find(Latest.SelectedBranchId)) Notices->Push(ENoticeSlot::Banner, Channel, *Toast);
+		if (const FNoticeData* Toast = Presentation->BranchToasts.Find(Latest.SelectedBranchId)) Notices->Push(ENoticeSlot::Feed, Channel, *Toast);
 	if (Latest.RequiredCount > 0 && Latest.ObjectiveGroupId != Previous.ObjectiveGroupId)
 		if (const FNoticeData* Toast = Presentation->GroupToasts.Find(Latest.ObjectiveGroupId))
 		{
 			FNoticeData Data = *Toast;
 			Data.Detail = FText::Format(Toast->Detail, Latest.RequiredCount);
-			Notices->Push(ENoticeSlot::Banner, Channel, Data);
+			Notices->Push(ENoticeSlot::Feed, Channel, Data);
 		}
 }
 void UDungeonStagePresenter::ResolveOptional(const FDungeonStageRuntimeState& Previous)
@@ -162,7 +183,7 @@ void UDungeonStagePresenter::ResolveOptional(const FDungeonStageRuntimeState& Pr
 	for (const FDungeonObjectiveLine& Line : Left->Objectives)
 	{
 		if (Line.Kind != EDungeonObjectiveKind::Optional) continue;
-		FDungeonObjectiveViewData Row = ObjectiveRow(*Presentation, Line, Latest);
+		FDungeonObjectiveViewData Row = ObjectiveRow(*Presentation, Line, Latest, Definition);
 		Row.State = Row.State == EDungeonObjectiveState::Done ? EDungeonObjectiveState::Done : EDungeonObjectiveState::Missed;
 		Row.Count = Row.State == EDungeonObjectiveState::Done ? Presentation->OptionalDoneText : Presentation->OptionalMissedText;
 		Row.Window = FText::GetEmpty();
@@ -246,7 +267,7 @@ void UDungeonStagePresenter::Present()
 		{
 			for (const FDungeonObjectiveLine& Line : Stage->Objectives)
 			{
-				const FDungeonObjectiveViewData Row = ObjectiveRow(Texts, Line, Latest);
+				const FDungeonObjectiveViewData Row = ObjectiveRow(Texts, Line, Latest, Definition);
 				(Line.Kind == EDungeonObjectiveKind::Optional ? View.OptionalObjectives : View.Objectives).Add(Row);
 				// An open line that leads somewhere marks the place: a room until the player is inside, a switch until the player is near.
 				AActor* Target = Row.State == EDungeonObjectiveState::Open && Line.MarkerTarget.IsValid() ? FindMarkerTarget(Line.MarkerTarget) : nullptr;
@@ -348,7 +369,7 @@ void UDungeonStagePresenter::Present()
 		{
 			const FItemData* Item = Instance ? Instance->GetDataItem(Reward.ItemId) : nullptr;
 			const FText Name = Item ? Item->ItemName : FText::FromString(FString::Printf(TEXT("#%d"), Reward.ItemId));
-			View.Rewards.Add({Name, FText::Format(Texts.RewardCountFormat, Reward.Count), Item ? Item->ItemIcon : nullptr});
+			View.Rewards.Add({Name, FText::Format(Texts.RewardCountFormat, Reward.Count), Item ? Item->ItemIcon : nullptr, Reward.ItemId, Reward.Count});
 			Lines.Add(FText::Format(Texts.RewardFormat, Name, Reward.Count).ToString());
 		}
 		View.RewardText = Lines.IsEmpty() ? Texts.NoRewardText : FText::FromString(FString::Join(Lines, TEXT("\n")));

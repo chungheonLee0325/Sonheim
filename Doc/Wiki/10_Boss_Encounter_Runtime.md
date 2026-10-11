@@ -1,88 +1,59 @@
 # 10. Boss Encounter Runtime
 
-Guardian Boss는 <code>ABaseMonster</code> 기반 위에 **<code>UBossFSM</code>, <code>UBossPatternDataAsset</code>, <code>FBossStatus</code>**를 추가해 Encounter Runtime을 구성합니다.
+**기존 몬스터의 전투·피해·포획 기능 위에 보스 전용 FSM과 데이터 기반 패턴 실행기를 구성**했습니다. `UBossFSM`은 거리·쿨타임·가중치로 패턴을 선택하고, 하나의 `PatternClock`에서 타겟 추적, 텔레그래프, 타격, Montage Section 전환을 제어합니다. HP와 Break는 Phase 전환·Down·Resting을 결정합니다.
 
-## 요약
+## 전투 시연
 
-- Boss Actor / FSM은 기존 Monster 기반을 유지하고 Encounter state만 전용 계층으로 확장합니다.
-- Pattern Data가 Range / Phase / Cooldown / Weight와 Timeline / Strike를 정의합니다.
-- 하나의 Pattern Clock이 Tracking, Telegraph, Strike, Leap, Recovery timing을 조율합니다.
-- Break / Down / Exhaust / Capture Window를 서로 다른 encounter state로 관리합니다.
-- 실제 Hit 이후의 Damage semantics는 기존 <code>FAttackData → FCustomDamageEvent</code> pipeline을 재사용합니다.
+### 패턴 실행 — Discharge
+
+https://github.com/user-attachments/assets/fbee5e3c-767d-4b20-b18a-8dffa4c8cc4c
+
+`Discharge` 패턴의 **타겟 추적 → 텔레그래프 → 타격 → 회복 구간**을 확인할 수 있습니다.
+
+### 경고 범위와 타격
+
+https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
+
+공격 형태에 맞는 경고 영역이 먼저 나타나고, `FBossStrike`의 형상·기준 위치에 따라 타격이 실행됩니다.
+
+## 핵심 구현
+
+| 구현 | 역할 |
+|---|---|
+| **`ABossMonster : ABaseMonster`** | 보스 Actor, 상태 복제, 몽타주·텔레그래프·타격 |
+| **`UBossFSM : UBaseAiFSM`** | Wake·Fighting·Roaring·Down·Resting, 패턴 선택·실행 |
+| **`UBossPatternDataAsset : UDataAsset`** | 선택 조건, 타이밍, 공격 형상, Phase·Break·Exhaust 설정 |
+| **`FBossPattern / FBossStrike`** | 패턴 단위 시간축, 경고와 실제 타격 정보 |
+| **`ABossTelegraph`** | 경고 범위·색상·진행도 표시 및 보스 추종 |
+| **`FBossStatus`** | Stage·Phase·Action 시간·Break의 복제 상태 |
 
 ## 목차
 
-- [Encounter Architecture](#encounter-architecture)
-- [Pattern Model](#pattern-model)
-- [FSM & Pattern Selection](#fsm--pattern-selection)
-- [Pattern Execution & Telegraph](#pattern-execution--telegraph)
-- [Phase / Break / Capture](#phase--break--capture)
-- [Combat & Replication](#combat--replication)
-- [Trade-offs](#trade-offs)
+- [패턴 데이터와 선택 조건](#패턴-데이터와-선택-조건)
+- [Encounter FSM과 전투 진입](#encounter-fsm과-전투-진입)
+- [Pattern Clock 기반 실행](#pattern-clock-기반-실행)
+- [텔레그래프와 실제 타격](#텔레그래프와-실제-타격)
+- [타겟 추적·재조준·이동](#타겟-추적재조준이동)
+- [Phase 2와 연출](#phase-2와-연출)
+- [Break·Down·Resting·포획](#breakdownresting포획)
+- [상태 복제와 클라이언트 표현](#상태-복제와-클라이언트-표현)
+- [구현 선택과 비용](#구현-선택과-비용)
+- [관련 코드 및 문서](#관련-코드-및-문서)
 
 ---
 
-## Encounter Architecture
+## 패턴 데이터와 선택 조건
 
-Boss는 기존 Character/Monster 기반을 유지하고, Encounter에 필요한 상태와 Pattern 실행만 전용 계층으로 확장합니다.
+### FBossPattern — 한 번의 공격 실행 단위
 
-~~~mermaid
-flowchart TB
-    subgraph COMMON["Common Gameplay Foundation"]
-        CHAR["<b>UE Character</b><br/>ACharacter"]
-        AREA["<b>공통 Gameplay Actor</b><br/>AAreaObject"]
-        MON["<b>공통 Monster</b><br/>ABaseMonster"]
-        AICOMP["<b>UE AI Component 기반</b><br/>UActorComponent"]
-        AIFSM["<b>공통 Monster FSM</b><br/>UBaseAiFSM"]
-        ATTACK["<b>공통 Combat Data</b><br/>FAttackData · FCustomDamageEvent"]
+`UBossPatternDataAsset`은 다수의 `FBossPattern`을 보유합니다. 각 패턴은 **선택 조건**과 **실행 구간**을 함께 정의합니다.
 
-        CHAR --> AREA --> MON
-        AICOMP --> AIFSM
-    end
-
-    subgraph BOSS["Guardian Encounter"]
-        ACTOR["<b>Boss Actor</b><br/>ABossMonster : ABaseMonster"]
-        FSM["<b>Boss Encounter FSM</b><br/>UBossFSM : UBaseAiFSM"]
-        DATA["<b>Pattern Definition</b><br/>UBossPatternDataAsset"]
-        RUN["<b>Pattern Runtime</b><br/>Track · Mark · Strike · Recovery"]
-        STATUS["<b>Replicated Boss Status</b><br/>Action · Phase · Break · Vulnerable"]
-    end
-
-    VIEW["<b>Client Presentation</b><br/>Telegraph · VFX · Boss HUD"]
-
-    MON --> ACTOR
-    AIFSM --> FSM
-    DATA --> FSM
-    FSM --> RUN
-    RUN --> ATTACK
-    FSM --> STATUS
-    RUN --> STATUS
-    STATUS --> VIEW
-~~~
-
-역할을 나누면 다음과 같습니다.
-
-- **기존 Monster/Combat 기반** — Health, Damage 처리, Capture ownership, 기본 Actor lifecycle
-- **Boss 전용 FSM** — Wake/Fighting/Roaring/Down/Resting 상태와 Pattern 선택
-- **Pattern Data** — 거리·Phase·Cooldown·Weight, Montage/Cue, Strike/Telegraph timing
-- **Replicated Boss Status** — Client가 현재 Action/Phase/Break/Capture 가능 상태를 표현할 최소 상태
-
-Boss Runtime은 **언제 어떤 공격을 선택하고 어디에 어떤 타격을 발생시킬지**를 담당합니다. 실제 타격이 발생한 뒤의 **Health/Stamina Damage, Element, Knockback, HitStop, Feedback 처리**는 기존 <code>FAttackData → FCustomDamageEvent → AAreaObject::TakeDamage</code> 흐름을 그대로 사용합니다.
-
----
-
-## Pattern Model
-
-### Pattern Definition
-
-<code>FBossPattern</code>은 **선택 조건 + 실행 시간 + Strike 목록 + 이동/추적 규칙**을 하나의 행동 단위로 묶습니다.
-
-```cpp
+~~~cpp
+// BossPatternDataAsset.h — 주요 필드 발췌
 struct FBossPattern
 {
     FGameplayTag PatternId;
     TObjectPtr<UAnimMontage> Montage;
-
     TArray<FBossSectionCue> Cues;
     TArray<FBossStrike> Strikes;
 
@@ -97,132 +68,27 @@ struct FBossPattern
     int32 MinPhase = 1;
 
     float RootMotionScale = 1.f;
-
-    float LeapStartSeconds = 0.f;
-    float LeapEndSeconds = 0.f;
-    float LeapHeight = 300.f;
 };
-```
+~~~
 
-따라서 Pattern 추가/튜닝은 다음 값을 조합하는 문제로 바뀝니다.
+| 선택 조건 | 실행 설정 |
+|---|---|
+| `MinRange / MaxRange` | `Montage`, `Cues`, `Strikes` |
+| `MinPhase` | `Seconds`, `TrackSeconds` |
+| `Weight` | `RootMotionScale`, `LeapStartSeconds / LeapEndSeconds` |
+| `Cooldown` | `ChargeEffect / ChargeEndSeconds` |
 
-- 어떤 거리에서 선택 가능한가
-- Phase 몇부터 사용할 수 있는가
-- 선택 Weight / Cooldown은 얼마인가
-- 얼마 동안 Target을 Tracking할 것인가
-- Montage의 어떤 Section을 언제 전환할 것인가
-- 어떤 Strike를 어떤 시점에 실행할 것인가
+![Grizzbolt Discharge의 실제 Pattern DataAsset 설정](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_pattern_asset.png)
 
-#### Editor Asset Example
+### ChoosePattern — 조건 필터링 후 가중 랜덤
 
-아래는 `Boss.Grizzbolt.Pattern.Discharge`의 실제 설정입니다. Pattern 선택 조건과 전체 실행 시간, Strike의 Mark/Hit timing과 공격 범위를 같은 Definition에서 확인할 수 있습니다.
+`UBossFSM::ChoosePattern`은 현재 Phase와 타겟 거리, 패턴별 재사용 가능 시간을 조회합니다.
 
-![Grizzbolt Discharge Pattern DataAsset](../Media/Wiki/10_Boss_Encounter_Runtime/10_boss_pattern_asset.png)
-
----
-
-### Strike Definition
-
-`FBossStrike`는 공격의 warning과 hit을 같은 데이터로 묶습니다.
-
-```cpp
-struct FBossStrike
-{
-    float MarkSeconds = 0.f;
-    float StrikeSeconds = 1.f;
-
-    int32 MinPhase = 1;
-    bool bReaim = false;
-
-    EBossAreaShape Shape = EBossAreaShape::Circle;
-    EBossAreaAnchor Anchor = EBossAreaAnchor::Boss;
-
-    float Radius = 400.f;
-    float InnerRadius = 0.f;
-    float HalfAngle = 45.f;
-    float HalfWidth = 100.f;
-    float ForwardOffset = 0.f;
-
-    FAttackData Attack;
-
-    TSubclassOf<ABaseElement> Projectile;
-    int32 Count = 1;
-    float Scatter = 0.f;
-    float SpreadDegrees = 0.f;
-};
-```
-
-같은 Strike가:
-
-- Telegraph Shape
-- Warning 시간
-- Anchor 위치
-- 실제 Damage 범위
-- Projectile
-- Damage / Element / Knockback / HitStop
-
-을 함께 결정합니다.
-
-**보여주는 영역과 실제 맞는 영역의 source를 하나로 유지**하기 위한 구조입니다.
-
-https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
-
-영상에서는 Telegraph가 먼저 표시되고, 같은 범위를 기준으로 실제 Strike가 이어집니다.
-
----
-
-## FSM & Pattern Selection
-
-### Encounter FSM
-
-Boss 상태는 다음과 같이 구분합니다.
-
-```cpp
-enum class EBossStage : uint8
-{
-    Sleeping,
-    Waking,
-    Fighting,
-    Roaring,
-    Resting,
-    Down,
-    Defeated,
-};
-```
-
-Encounter FSM은 Wake, Fighting, Phase 전환, Down, Resting, Defeated 상태를 관리합니다.
-
-```mermaid
-stateDiagram-v2
-    [*] --> Sleeping
-    Sleeping --> Waking: Player 접근 / Damage
-    Waking --> Fighting
-    Fighting --> Roaring: Phase 2 진입
-    Roaring --> Fighting
-    Fighting --> Down: Break >= 1
-    Down --> Fighting
-    Fighting --> Resting: Exhaust HP threshold
-    Resting --> Fighting
-    Fighting --> Defeated: HP 0
-```
-
-#### Down / Resting
-
-- **Down** — 누적 Break damage로 발생하는 knockdown. 공격 기회이지만 Capture는 불가합니다.
-- **Resting / Exhaust** — 특정 HP threshold를 통과할 때 발생하며, 이때만 Boss Capture가 가능합니다.
-
-**Down은 공격 기회, Resting은 Capture 가능 상태**로 서로 다른 의미를 가집니다.
-
----
-
-### Pattern Selection
-
-Pattern이 끝나면 Target과 현재 상태를 기준으로 candidate를 만듭니다.
-
-```cpp
-if (Pattern.MinPhase > Phase) continue;
-if (Pattern.Weight <= 0.f) continue;
-if (!Pattern.Montage) continue;
+~~~cpp
+// BossFSM.cpp — 후보 선택 조건 발췌
+if (Pattern.MinPhase > Phase ||
+    Pattern.Weight <= 0.f || !Pattern.Montage)
+    continue;
 
 if (Distance < Pattern.MinRange ||
     Distance > Pattern.MaxRange)
@@ -231,337 +97,382 @@ if (Distance < Pattern.MinRange ||
 if (const double* Ready = ReadyAt.Find(Pattern.PatternId);
     Ready && *Ready > Time)
     continue;
-```
+~~~
 
-후보 중 Weight 기반으로 하나를 선택합니다.
+후보가 있으면 **직전 패턴을 제외한 후보를 먼저 구성**합니다. 선택 가능한 대안이 없다면 직전 패턴도 허용하고, 최종 후보를 `Weight`에 비례한 랜덤 선택으로 결정합니다.
 
-가능한 다른 Pattern이 있을 때는 **직전에 사용한 Pattern을 우선 제외**하고, 대안이 없을 때만 반복을 허용합니다.
+~~~mermaid
+flowchart TB
+    TARGET["PickTarget<br/>Arena 안의 가장 가까운 공격 가능 플레이어"] --> FILTER["Phase · Range · Cooldown · Weight 검사"]
+    FILTER --> ALTERNATE{"직전 패턴을 제외해도<br/>후보가 있는가?"}
+    ALTERNATE -->|"예"| DISTINCT["직전 패턴 제외"]
+    ALTERNATE -->|"아니오"| REPEAT["반복 허용"]
+    DISTINCT --> ROLL["Weighted Random"]
+    REPEAT --> ROLL
+    ROLL --> BEGIN["Begin(Pattern)<br/>Montage · PatternClock 시작"]
+~~~
 
-```text
-Phase / Range / Cooldown
-        ↓
-Candidate Set
-        ↓
-직전 Pattern 제외 시도
-        ↓
-Weighted Random
-        ↓
-Selected Pattern
-```
-
-Pattern Data의 Range / Phase / Cooldown / Weight가 candidate 선택 조건을 제공합니다.
+패턴이 끝나면 `EndPattern`에서 `ReadyAt[PatternId]`를 갱신하고 다음 패턴 선택까지 `GapSecondsMin / GapSecondsMax` 간격을 둡니다. **패턴 후보가 없다면 가까이 이동**합니다.
 
 ---
 
-## Pattern Execution & Telegraph
+## Encounter FSM과 전투 진입
 
-### Pattern Clock
+`ABossMonster`는 `ABaseMonster`를 상속하고 `m_AiFSM`에 `UBossFSM`을 구성합니다. 기존 Health·Damage·포획 소유권 처리를 사용하면서, 보스의 행동 단계만 `EBossStage`로 관리합니다.
 
-Pattern 시작 시:
+~~~mermaid
+stateDiagram-v2
+    [*] --> Sleeping
+    Sleeping --> Waking: WakeRadius 진입 / 피격
+    Waking --> Fighting: Wake 완료
+    Fighting --> Roaring: Phase 2 조건
+    Roaring --> Fighting: Roar 완료
+    Fighting --> Down: Break >= 1
+    Down --> Fighting: GetUp 종료
+    Fighting --> Resting: Exhaust HP 임계값
+    Resting --> Fighting: 휴식 시간 종료
+    Fighting --> Defeated: 사망
+~~~
 
-- Target 고정
-- Pattern Clock 초기화
-- Cue / Strike runtime state 생성
-- Root Motion scale 적용
-- Montage 재생
-- Boss Action status 갱신
+| 상태 | 실제 처리 |
+|---|---|
+| `Sleeping` | 플레이어 접근 또는 피격 대기 |
+| `Waking` | `WakeMontage`의 Wake Section 재생 |
+| `Fighting` | 타겟 선정, 패턴·이동·경고·타격 실행 |
+| `Roaring` | Phase 2 진입을 알리는 몽타주·사운드 |
+| `Down` | Break 충족으로 쓰러지고 `GetUp` Section으로 복귀 |
+| `Resting` | Exhaust 조건 충족·제한 시간 동안 포획 가능 |
+| `Defeated` | 전투 종료·패턴 정리 |
 
-을 수행합니다.
+`UBossFSM::UpdateState`는 **서버에서 실행**합니다. `WakeRadius` 이내의 플레이어를 발견하면 `Wake`를 실행하고, `Fighting`에서는 `Fight`가 현재 패턴 실행 또는 다음 패턴 선택을 담당합니다.
 
-이후 `RunPattern()`이 Pattern Clock을 진행시키며:
-
-1. Tracking
-2. Montage Section Cue
-3. Telegraph Mark
-4. Strike
-5. Leap
-6. Recovery 종료
-
-를 같은 timeline에서 처리합니다.
-
-```text
-0.0s        Track
-0.4s        Telegraph Mark
-0.8s        Montage Section Cue
-1.2s        Strike
-...         Recovery
-3.0s        Pattern End
-```
-
-Animation Cue, Telegraph, 실제 Hit은 하나의 Pattern Clock을 기준으로 실행됩니다.
-
-https://github.com/user-attachments/assets/fbee5e3c-767d-4b20-b18a-8dffa4c8cc4c
-
-위 DataAsset에서 확인한 `Discharge` Pattern이 실제로 **Tracking → Telegraph → Strike → Recovery** 순서로 실행되는 장면입니다.
+패턴 사이에는 타겟과 거리 차이를 보고 추적하거나 Hop으로 거리를 조절합니다. 플레이어가 `ArenaRadius` 밖에 있다면 추적 대상에서 제외하고 보스의 생성 위치로 복귀합니다.
 
 ---
 
-### Telegraph Anchor
+## Pattern Clock 기반 실행
 
-`EBossAreaAnchor`로 mark 기준을 나눕니다.
+### Pattern의 시간축을 게임플레이 기준으로 사용
 
-#### Boss Anchor
+`Begin`은 `PatternClock`, Cue 실행 여부, Strike별 Runtime 상태를 초기화하고 Montage와 상태를 갱신합니다.
 
-Boss 발밑 기준 Telegraph는 Strike 순간까지 Boss Transform을 따라갑니다.
+~~~cpp
+// BossFSM.cpp — RunPattern의 실행 구간
+PatternClock += DeltaSeconds * Tempo();
 
-예:
+for (int32 Index = 0; Index < Pattern.Strikes.Num(); ++Index)
+{
+    const FBossStrike& Strike = Pattern.Strikes[Index];
+    FStrikeRun& Run = Strikes[Index];
+    if (Strike.MinPhase > Phase || Run.bLanded) continue;
 
-- 근거리 원형 공격
-- 전방 Cone / Line
+    if (!Run.bMarked && PatternClock >= Strike.MarkSeconds)
+        Mark(Strike, Run, Victim);
 
-#### Target Anchor
+    if (Run.bMarked && PatternClock >= Strike.StrikeSeconds)
+    {
+        Run.bLanded = true;
+        const FTransform Where =
+            Strike.Anchor == EBossAreaAnchor::Boss
+            ? ABossTelegraph::FeetTransform(Owner, Strike.ForwardOffset)
+            : Run.Where;
+        Owner->LandStrike(Strike, Where, Run.Spots,
+                          Victim, StrikeCount(Strike));
+    }
+}
+~~~
 
-Target 위치를 기준으로 하는 공격은 **Mark가 생긴 순간의 위치를 저장**하고 이후 움직이지 않습니다.
+~~~text
+FBossPattern.Seconds
+  0 ────── Track ────── Mark ── Cue ── Strike ── Recovery ── End
+           │             │       │      │
+           회전 추적      경고     Montage  실제 피해/투사체
+                         등장    Section
+~~~
 
-예:
+- `PatternClock`는 `DeltaSeconds × Tempo()`로 증가합니다.
+- `FBossSectionCue::Seconds`에서 `JumpToSection`을 실행합니다.
+- `FBossStrike::MarkSeconds`에 텔레그래프를 생성하고 `StrikeSeconds`에 타격합니다.
+- `LeapStartSeconds / LeapEndSeconds`가 설정되면 해당 구간의 이동을 실행합니다.
+- `Pattern.Seconds`에 도달하면 패턴을 종료하고 다음 패턴 대기 구간으로 들어갑니다.
 
-- Player 위치에 떨어지는 범위 공격
-- Ground-target projectile
+패턴별 Root Motion 강도는 `RootMotionScale`로 조절하고 패턴 종료 시 원래 값으로 복구합니다. **Animation의 Section 배치와 실제 타격 시간을 하나의 데이터 정의에서 조율**하는 구조입니다.
 
-즉 Telegraph를 본 뒤 Player가 피할 수 있게 **warning 이후 공격 위치가 고정되는 공격**을 표현할 수 있습니다.
+### 몽타주 Section Cue
 
----
-
-### Tracking / Re-aim
-
-Pattern 전체에서 Target을 끝까지 추적하면 Telegraph를 보고 피하는 의미가 없어집니다.
-
-반대로 Pattern 시작 순간에 방향을 완전히 고정하면 지나치게 쉽게 빗나갈 수 있습니다.
-
-그래서:
-
-- `TrackSeconds` — Pattern 시작 후 일정 시간 동안 Target 추적
-- `bReaim` — Combo 중 이전 Strike가 끝난 뒤 다음 Strike 전까지 다시 추적
-
-을 사용합니다.
-
-```text
-Track
- ↓
-Mark
- ↓ 방향 고정
-Strike
- ↓
-bReaim이면 다시 Track
- ↓
-다음 Mark
-```
-
-Tracking의 종료 시점 자체를 Pattern tuning 값으로 둡니다.
-
-Pattern이 Target을 추적하는 구간과 Telegraph가 기준 위치를 유지하는 구간을 분리해, 경고를 본 뒤 회피할 수 있는 시간을 확보합니다.
-
-<details>
-<summary><b>Tracking / Anchor Runtime 시연</b></summary>
-
-https://github.com/user-attachments/assets/91dbe45d-4a18-4934-ba9e-d732858faa88
-
-</details>
-
----
-
-### Montage Section Cue
-
-Pattern이 항상 Montage를 처음부터 끝까지 그대로 재생하지는 않습니다.
-
-```cpp
+~~~cpp
+// BossPatternDataAsset.h
 struct FBossSectionCue
 {
     float Seconds = 0.f;
     FName Section;
 };
-```
+~~~
 
-예를 들어 Charge loop 이후 특정 시점에 Release Section으로 이동할 수 있습니다.
-
-Boss 공용 상태 Montage도 convention을 사용합니다.
-
-- Wake Montage — `Sleep / Wake / Roar`
-- Down Montage — `Fall / Down / GetUp`
-- Leap / Hop — `Land`
-
-Animation asset의 Section 구조와 Runtime 상태 전환을 연결합니다.
+예를 들어 차징 Montage의 반복 구간에서 정해진 시점에 Release Section으로 이동할 수 있습니다. 공통 Wake/Down Montage는 `Sleep·Wake·Roar`, `Fall·Down·GetUp` Section을 사용하며, 점프·Hop은 `Land` Section을 사용합니다.
 
 ---
 
-## Phase / Break / Capture
+## 텔레그래프와 실제 타격
 
-### Phase Transition
+### 하나의 Strike가 경고 형상과 타격을 정의
 
-HP가 `PhaseTwoHealth` 이하가 되면 Pattern 사이에서 Phase 2로 전환합니다.
+`FBossStrike`는 공격의 경고 시점과 피해 시점, 영역·기준점·투사체를 정의합니다.
 
-대표 tuning:
+~~~cpp
+// BossPatternDataAsset.h — 주요 필드 발췌
+struct FBossStrike
+{
+    float MarkSeconds = 0.f;
+    float StrikeSeconds = 1.f;
+    int32 MinPhase = 1;
+    bool bReaim = false;
 
-```cpp
-float PhaseTwoHealth = 0.6f;
-float RoarSeconds = 1.8f;
-float PhaseTwoTempo = 1.2f;
-int32 PhaseTwoExtraCount = 2;
-```
+    EBossAreaShape Shape = EBossAreaShape::Circle;
+    EBossAreaAnchor Anchor = EBossAreaAnchor::Boss;
+    float Radius = 400.f;
+    float InnerRadius = 0.f;
+    float HalfAngle = 45.f;
+    float HalfWidth = 100.f;
 
-Phase 2에서는:
+    FAttackData Attack;
+    TSubclassOf<ABaseElement> Projectile;
+    int32 Count = 1;
+    EBossProjectileAim Aim = EBossProjectileAim::Direction;
+};
+~~~
 
-- Pattern tempo 증가
-- 일부 Strike의 projectile / area count 증가
-- Phase 2 전용 Strike 활성화
-- Rage VFX / Overlay
-- HUD Phase 표시
+| `EBossAreaShape` | 경고·영역 피해 |
+|---|---|
+| `Circle` | 중심에서 `Radius` 안쪽 |
+| `Ring` | `InnerRadius ~ Radius`의 띠 |
+| `Cone` | 중심에서 `Radius`까지, 전방 `HalfAngle` |
+| `Line` | 전방 `Radius` 길이·좌우 `HalfWidth` |
+| `None` | 영역 경고/피해 없이 투사체를 발사할 때 사용 |
 
-가 같은 Phase state를 기준으로 적용됩니다.
+### Boss 기준과 Target 기준
+
+~~~mermaid
+flowchart LR
+    STRIKE["FBossStrike<br/>Shape · Anchor · MarkSeconds"] --> CHOOSE{"Anchor"}
+    CHOOSE -->|"Boss"| FOLLOW["보스 발밑 기준<br/>표시가 Boss Transform 추종"]
+    CHOOSE -->|"Target"| FIXED["Mark 시점 타겟 위치 저장<br/>고정된 경고 영역"]
+    FOLLOW --> HIT["StrikeSeconds<br/>LandStrike"]
+    FIXED --> HIT
+~~~
+
+- **Boss Anchor:** `ABossTelegraph::FeetTransform`으로 보스 발밑 기준 위치를 만들고 `Follow`를 설정합니다. 표시와 타격은 Strike 실행 시점의 보스 위치를 따릅니다.
+- **Target Anchor:** `Mark` 시점의 타겟 발밑 위치와 방향을 `FStrikeRun::Where`에 보관합니다. 이후 플레이어가 이동해도 경고·영역 타격의 기준은 유지됩니다.
+
+타겟 지점 여러 곳에 공격할 때는 `Count`·`Scatter`·`SpreadDegrees`로 지점을 생성해 `FStrikeRun::Spots`에 보관합니다. **경고를 표시한 위치와 실제 공격할 위치를 같은 실행 상태에 기록**합니다.
+
+### 영역 판정과 투사체 실행
+
+`ABossMonster::LandStrike`는 서버에서 두 경로를 실행합니다.
+
+| 형태 | 처리 |
+|---|---|
+| **영역 타격** | `Spots`가 있으면 각 지점에 영역 구성 → `IsInside`로 대상 발 위치 검사 → `CalcDamage` |
+| **투사체** | `Projectile` 생성 → `Aim`에 따라 방향 또는 목표 지점 전달 → `InitElement` |
+| **효과** | `FAttackData`의 FireVFX/FireSFX를 영역·발사 지점에서 재생 |
+
+영역 타격에서는 모든 공격 영역을 대상으로 **한 번이라도 범위 안에 들어온 Actor에 한 번만 피해를 계산**합니다. 원형·링·부채꼴·직선에 대한 범위 판정은 `IsInside`가 처리합니다.
+
+투사체 패턴은 `LandStrike`가 직접 영역 피해를 적용하는 대신 `ABaseElement`를 생성합니다. 투사체의 비행과 충돌·피해는 각 Element 클래스가 처리합니다.
+
+### 텔레그래프의 네트워크 표현
+
+`ABossTelegraph`는 `FBossMark`를 **`COND_InitialOnly`로 복제**합니다. Mark에는 형상·시간·색상과 Boss 추종 참조가 들어 있습니다.
+
+~~~text
+서버 PlaceMark → FBossMark 초기 데이터 복제
+    ↓
+클라이언트 OnRep_Mark → 평면 Mesh·Material 구성
+    ↓
+Tick → Fill 진행도 표시
+       → Follow가 있으면 보스 발밑 Transform으로 이동
+~~~
+
+`ABossTelegraph`는 `bReplicates=true`지만 `SetReplicatingMovement(false)`를 사용합니다. **매 프레임 텔레그래프 위치를 복제하지 않고**, Boss를 추종하는 표시를 각 머신이 계산합니다.
+
+---
+
+## 타겟 추적·재조준·이동
+
+### 경고 전 추적과 재조준
+
+https://github.com/user-attachments/assets/91dbe45d-4a18-4934-ba9e-d732858faa88
+
+`TrackSeconds`는 패턴 시작 후 보스가 타겟 쪽으로 회전하는 시간입니다. `bReaim`이 켜진 후속 Strike는 앞 Strike가 착지한 뒤, **다음 경고가 생성되기 전까지** 다시 타겟을 향해 회전할 수 있습니다.
+
+~~~text
+처음 TrackSeconds 동안 방향 추적
+    ↓
+첫 Mark → 경고 범위 제시
+    ↓
+첫 Strike
+    ↓ bReaim (후속 Strike 설정)
+다시 회전 추적
+    ↓
+다음 Mark → 방향/위치 확정
+    ↓
+다음 Strike
+~~~
+
+경고가 표시된 이후 타겟을 계속 추적할지, 회피할 수 있도록 공격 방향·위치를 유지할지를 **Pattern과 Strike 설정으로 조정**합니다.
+
+### 전투 사이 이동과 도약
+
+`Fight`는 공격을 실행하지 않는 `GapSecondsMin / GapSecondsMax` 구간에 타겟 거리와 위치를 확인합니다. 너무 가까운 타겟에게서는 뒤로 Hop하고, 중거리에서는 측면 Hop 또는 접근 이동을 선택합니다.
+
+`Leap`가 설정된 패턴은 표시한 타겟 지점 또는 현재 타겟 위치를 착지 지점으로 사용하고, `Launch`에서 비행 시간을 기준으로 이동을 시작합니다. 착지하면 `Land` Section으로 전환합니다.
+
+---
+
+## Phase 2와 연출
 
 https://github.com/user-attachments/assets/00111f16-35b0-451a-af2c-4cdb72f506f5
 
-HP threshold를 통과하면 현재 공격을 바로 Phase 2로 덮어쓰는 대신, **Roaring 상태를 거쳐 Phase가 전환된 뒤** 다음 Pattern부터 Phase 2 설정을 적용합니다.
+`UBossFSM::Fight`는 실행 중인 패턴이 없는 시점에 HP가 `PhaseTwoHealth` 이하인지 검사합니다. 조건을 만족하면 `Phase=2`로 갱신하고 `Roaring` 상태·몽타주를 거친 뒤 다음 패턴을 선택합니다.
+
+| Phase 2 변경 | 적용 |
+|---|---|
+| **Tempo** | `PhaseTwoTempo`로 Montage·PatternClock 속도 증가 |
+| **타격 수** | `Projectile` 또는 다중 영역 Strike에 `PhaseTwoExtraCount` 추가 |
+| **패턴 선택** | `MinPhase=2` 패턴·Strike가 실행 후보에 포함 |
+| **외형** | `RageEffect`·`RageOverlay` 적용 |
+| **차징** | `ChargeEffect`의 Color·Size를 시간에 따라 조절 |
+
+`ABossMonster::RefreshLook`은 `FBossStatus`의 Phase와 현재 `ActionId`·`ActionStartServerTime`을 기준으로 Rage Aura와 Charge VFX를 구성합니다. `Tick`에서는 HP 비율과 서버 시간을 사용해 밝기·크기를 갱신합니다.
+
+이렇게 **Phase가 전환되는 시점, 이후 패턴의 실행 속도, 차징/분노 외형**을 같은 상태에 연결합니다.
 
 ---
 
-### Break / Down / Exhaust
+## Break·Down·Resting·포획
 
-Boss가 Fighting 중 Damage를 받으면 Break를 누적합니다.
-
-```text
-Damage
-  ↓
-Break += Damage / (MaxHP × DownAfterDamage)
-  ↓
-Break >= 1
-  ↓
-Down
-```
-
-Down, Waking, Resting 중 받은 Damage는 다음 Knockdown으로 이어지는 Break에 누적하지 않습니다.
-
-Down은 Break 누적으로 발생하는 일시적인 공격 기회이며, 이 상태 자체는 Capture Window가 아닙니다.
-
-<details>
-<summary><b>Break → Down → 전투 복귀 Runtime 시연</b></summary>
+### Break 누적과 Down
 
 https://github.com/user-attachments/assets/7553e42f-54d6-4265-a445-17cba43a15d3
 
-</details>
+`UBossFSM::OnDamaged`는 `Fighting` 중 받은 피해를 기준으로 Break를 누적합니다.
 
-Exhaust는 Break와 별도로 HP threshold를 사용합니다.
+~~~cpp
+// BossFSM.cpp — Break 누적
+Next.Break = FMath::Min(
+    1.f,
+    Status.Break + Damage / (MaxHP * Patterns->DownAfterDamage));
 
-```text
-HP <= ExhaustHealth[n]
-   ↓
-현재 Pattern 중단
-   ↓
-Resting
-   ↓
-Capture 가능
-```
+if (Next.Break >= 1.f)
+    KnockDown();
+~~~
 
-한 번에 큰 Damage가 여러 threshold를 지나더라도 현재 Exhaust 진입은 한 번만 발생하고, 통과한 threshold는 소비된 것으로 기록합니다.
+`Down`에 진입하면 실행 중인 패턴을 중단하고 `Fall` Section을 재생합니다. `DownSeconds` 종료 직전에는 `GetUp` Section으로 이동하며, 복귀 후 전투를 다시 시작합니다. Break는 Down 진입 시 0으로 초기화합니다.
 
----
+### Exhaust로 Resting 진입
 
-### Capture Window
+`ExhaustHealth`는 HP 비율 임계값 배열입니다. `TryExhaust`는 HP가 다음 임계값 이하로 떨어지면 **현재 패턴을 중단하고 Resting으로 전환**합니다.
 
-Boss FSM은 **Capture가 가능한 상태인지**만 결정합니다.
+~~~text
+ExhaustHealth = [0.3, 0.1] (DataAsset 기본값)
+    ↓
+HP가 다음 임계값 이하가 됨
+    ↓
+TryExhaust → EndPattern(true)
+    ↓
+Resting · ExhaustMontage
+    ↓
+ExhaustSeconds 경과 → Fighting
+~~~
 
-`FBossStatus::IsVulnerable()`:
+한 번의 큰 피해로 여러 임계값을 통과했더라도 `ExhaustsTaken`을 진행시켜 **한 번의 Resting만 발생**시킵니다. `Down`과 `Resting`은 각각 다른 조건으로 진입하며, `Resting` 도중에는 Break를 누적하지 않습니다.
 
-```cpp
+| 상태 | 발동 조건 | 게임플레이 결과 |
+|---|---|---|
+| **Down** | Break가 1에 도달 | 일시적인 공격 기회, 포획 불가 |
+| **Resting** | 다음 Exhaust HP 임계값 통과 | 정해진 시간 동안 포획 가능 |
+
+### Resting에서 기존 포획 시스템으로 연결
+
+https://github.com/user-attachments/assets/46026e10-a197-4c98-b244-260dd2fe42d3
+
+~~~cpp
+// BossMonster.cpp
+bool ABossMonster::CanCapture() const
+{
+    return Super::CanCapture() && Status.IsVulnerable();
+}
+
+// BossMonster.h
 bool IsVulnerable() const
 {
     return Stage == EBossStage::Resting;
 }
-```
+~~~
 
-실제 Capture 확률 판정, Reveal, ownership 적용은 기존 Pal Capture 시스템으로 연결합니다.
+보스는 **포획할 수 있는 상태만 FSM에서 결정**합니다. PalSphere 충돌 이후 포획 확률 판정·Reveal·보유 목록 등록은 공통 Pal 시스템을 사용합니다. 상세 과정은 [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]]에서 설명합니다.
 
-https://github.com/user-attachments/assets/46026e10-a197-4c98-b244-260dd2fe42d3
-
-영상에서는 낮은 HP threshold에서 Boss가 `Resting`으로 전환되고 Capture 안내가 활성화된 뒤, 기존 Pal Capture 흐름을 통해 실제 포획까지 이어집니다.
-
-Boss 전용 Capture 결과 처리 코드를 별도로 만들지 않았습니다.
+포획 Reveal 동안 보스의 `DeactivateMonster`는 `UBossFSM::Pause`도 호출합니다. 실패 후 다시 활성화할 때는 `Resume`으로 휴식/Down 시간에 포획 연출 동안의 시간을 보정합니다.
 
 ---
 
-## Combat & Replication
+## 상태 복제와 클라이언트 표현
 
-### Combat Pipeline Reuse
+`UBossFSM`이 결정한 현재 상태는 `ABossMonster::FBossStatus`에 저장됩니다.
 
-Boss Strike에는 별도 Boss Damage 구조체 대신:
-
-```cpp
-FAttackData Attack;
-```
-
-을 사용합니다.
-
-따라서 일반 Combat과 동일한:
-
-- Health / Stamina Damage
-- Element
-- Hit Stop
-- Knockback
-- VFX / SFX
-
-context가 그대로 `FCustomDamageEvent`로 전달됩니다.
-
-Boss Runtime은 **언제·어디서 공격을 발생시킬지**를 결정하고, Hit 이후의 방어·속성·HP/Stamina 감소·Knockback·HitStop 처리는 기존 Combat pipeline에 맡깁니다.
-
----
-
-### Replicated Boss Status
-
-Boss 자체의 실행 FSM을 Client가 다시 돌리지 않습니다.
-
-```cpp
+~~~cpp
+// BossMonster.h — 실제 복제 상태
 struct FBossStatus
 {
-    EBossStage Stage;
+    EBossStage Stage = EBossStage::Sleeping;
     int32 Phase = 1;
-
     FGameplayTag ActionId;
     double ActionStartServerTime = 0;
     double ActionEndServerTime = 0;
-
     float Break = 0.f;
 };
-```
+~~~
 
-이 상태를 통해 Client는:
+`ABossMonster::SetStatus`는 상태 변경 시 `ForceNetUpdate`와 `OnBossStatusChanged`를 실행합니다. 클라이언트 `OnRep_Status`도 같은 Delegate와 `RefreshLook`을 호출합니다.
 
-- 현재 행동
-- Action progress
-- Phase
-- Break
-- Capture 가능 여부
+~~~mermaid
+flowchart LR
+    FSM["서버 UBossFSM"] --> STATUS["ABossMonster::Status<br/>DOREPLIFETIME"]
+    STATUS --> VFX["OnRep_Status<br/>Charge · Rage 외형"]
+    STATUS --> DUNGEON["UDungeonStageRuntimeSubsystem<br/>Boss Status Delegate"]
+    DUNGEON --> SNAPSHOT["GameState<br/>DungeonStageState"]
+    SNAPSHOT --> HUD["Boss HUD<br/>Phase · Break · Action"]
+    FSM --> ANIM["Montage / Section<br/>NetMulticast"]
+~~~
 
-를 표현합니다.
+`UDungeonStageRuntimeSubsystem::HandleBossStatus`는 `Phase`·`ActionId`·Action 시간·Break·`IsVulnerable()` 값을 던전 Snapshot에 반영합니다. HUD는 이 Snapshot을 표시 데이터로 변환합니다.
 
-Dungeon Runtime은 Boss status를 다시 Run Snapshot에 반영해 HUD가 `UBossFSM`을 직접 참조하지 않도록 합니다.
+**현재 상태와 순간 연출을 별도 경로로 전송**합니다. Stage·Phase·Action 시간은 복제된 `FBossStatus`를 사용하고, Montage 시작·Section 이동·중단은 `NetMulticast`로 재생합니다. 보스가 늦게 relevant해진 클라이언트의 애니메이션 동기화와 관련성 문제는 [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]에서 다룹니다.
 
 ---
 
-## Trade-offs
+## 구현 선택과 비용
 
-| 선택 | 얻은 것 | 비용 / 제약 |
+| 설계 | 구현에서 얻은 효과 | 관리 요소 |
 |---|---|---|
-| **Boss 전용 FSM** | Wake/Phase/Down/Exhaust/Pattern을 한 Encounter state로 표현 | 일반 Skill system 외에 별도 Runtime 유지 필요 |
-| **Pattern / Strike DataAsset** | 공격 추가와 tuning을 C++ 분기에서 분리 | 데이터 조합이 많아 Validation 필요 |
-| **Telegraph와 Hit geometry 공유** | 화면 경고와 실제 공격 범위의 기준 일치 | Shape data가 presentation과 gameplay 모두에 영향을 줌 |
-| **Pattern Clock 기반 실행** | Montage/Cue/Mark/Strike timing을 한 timeline에서 조율 | Pattern timing과 animation asset convention을 함께 관리해야 함 |
-| **Replicated Boss Status** | Client가 FSM을 재실행하지 않고 HUD/VFX 복구 가능 | Client presentation용 status mapping 필요 |
+| **Monster 상속 + 전용 Boss FSM** | 기존 피격·포획과 별개로 Encounter 단계 구성 | FSM 상태와 Monster 수명 연결 |
+| **Pattern DataAsset** | 패턴 후보·타이밍·형상을 콘텐츠 설정으로 조정 | 선택 조건·타임라인·Montage Section 정합성 |
+| **PatternClock / Section Cue** | 추적·경고·타격을 정해진 시점에 실행 | Animation과 게임플레이 시간축 조율 |
+| **Strike/Telegraph 형상 공유** | 경고 영역과 서버 영역 타격의 형상 기준 공유 | Anchor·다중 지점·투사체 Aim 설정 |
+| **InitialOnly Mark 복제** | 텔레그래프 표시를 각 머신에서 갱신 | Actor Follow 참조·클라이언트 표시 타이밍 |
+| **Down / Resting 분리** | 공격 기회와 포획 가능 상태 구분 | 피해·HP 임계값·복귀 타이머 |
+| **FBossStatus + 던전 Snapshot** | 보스의 현재 행동·Break를 여러 화면에 전달 | 상태 복제와 몽타주 연출의 시점 관리 |
 
----
+## 관련 코드 및 문서
 
-## 연관 문서
-
-- [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Boss Strike가 재사용하는 Attack/Damage Pipeline
-- [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — Exhaust 상태에서 연결되는 기존 Capture 처리
-- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Boss가 Dungeon Stage의 Objective로 연결되는 과정
-- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Boss Status를 HUD로 변환하는 과정
-- [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — Pattern / Timing 데이터 검증
-
----
-
-## 관련 코드
-
-- [BossPatternDataAsset.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossPatternDataAsset.h)
-- [BossFSM.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossFSM.cpp)
-- [BossMonster.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossMonster.h)
-- [BossTelegraph.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossTelegraph.h)
+- [BossPatternDataAsset.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossPatternDataAsset.h) — 패턴·Strike·Phase·Exhaust 설정
+- [BossPatternDataAsset.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossPatternDataAsset.cpp) — Pattern 설정 검증
+- [BossFSM.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossFSM.cpp) — 패턴 선택·시간축·상태 전환
+- [BossMonster.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossMonster.cpp) — 몽타주·타격·상태·효과
+- [BossTelegraph.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossTelegraph.cpp) — 텔레그래프 구성·복제·Follow
+- [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — `FAttackData` 기반 피해 경로
+- [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — 보스 포획의 공통 Pal 시스템
+- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Boss 그룹·던전 진행
+- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Boss HUD 데이터 구성
+- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — 상태 복제와 연출 RPC
+- [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — 패턴·타격 타이밍 검증

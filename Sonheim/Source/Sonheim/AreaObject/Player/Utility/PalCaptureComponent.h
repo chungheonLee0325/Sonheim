@@ -91,9 +91,8 @@ public:
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_BeginCaptureReveal(ABaseMonster* TargetPal, const FPalCaptureRevealParams& Params, APalSphere* SourceSphere);
 
-    // 연출 끝난 뒤 실제로 결과 반영(서버 전용)
-    UFUNCTION(Server, Reliable)
-    void Server_ApplyCaptureOutcome(ABaseMonster* TargetPal, bool bSuccess);
+    // 연출 끝난 뒤 실제로 결과 반영(서버 전용, 서버 타이머에서만 호출)
+    void ApplyCaptureOutcome(ABaseMonster* TargetPal, bool bSuccess);
     
     // 델리게이트
     UPROPERTY(BlueprintAssignable)

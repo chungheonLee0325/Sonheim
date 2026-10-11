@@ -22,7 +22,7 @@ UPalCaptureComponent::UPalCaptureComponent()
 	PartyFullNotice.Title = LOCTABLE(SONHEIM_ST_NOTICE, "PartyFull.Title");
 	PartyFullNotice.Detail = LOCTABLE(SONHEIM_ST_NOTICE, "PartyFull.Detail");
 	PartyFullNotice.Symbol = INVTEXT("!");
-	PartyFullNotice.Icon = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT("/Game/CuratedDungeon/UI/Icons/T_Icon_Warning.T_Icon_Warning")));
+	PartyFullNotice.Icon = NoticeIcon(TEXT("T_IconWarning"));
 	PartyFullNotice.Tone = ENoticeTone::Warning;
 }
 
@@ -277,8 +277,9 @@ float UPalCaptureComponent::CalculateCaptureRate(ABaseMonster* TargetPal) const
 	return FMath::Clamp(rate, 0.f, 1.f);
 }
 
-void UPalCaptureComponent::Server_ApplyCaptureOutcome_Implementation(ABaseMonster* TargetPal, bool bSuccess)
+void UPalCaptureComponent::ApplyCaptureOutcome(ABaseMonster* TargetPal, bool bSuccess)
 {
+	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
 	if (!TargetPal || !OwnerPlayer || !PalInventory) return;
 
 	if (bSuccess)
@@ -287,6 +288,8 @@ void UPalCaptureComponent::Server_ApplyCaptureOutcome_Implementation(ABaseMonste
 		{
 			TargetPal->SetPartnerOwner(OwnerPlayer);
 			PalInventory->AddPal(TargetPal);
+			if (ASonheimPlayerState* OwnerState = OwnerPlayer->GetPlayerState<ASonheimPlayerState>())
+				OwnerState->ReportDeed(EPlayerDeed::Capture, TargetPal->m_AreaObjectID);
 		}
 		else
 		{
@@ -358,7 +361,7 @@ void UPalCaptureComponent::Server_AttemptCapture_Implementation(ABaseMonster* Ta
 	FTimerHandle ApplyHandle;
 	GetWorld()->GetTimerManager().SetTimer(
 		ApplyHandle,
-		FTimerDelegate::CreateUObject(this, &UPalCaptureComponent::Server_ApplyCaptureOutcome, TargetPal,
+		FTimerDelegate::CreateUObject(this, &UPalCaptureComponent::ApplyCaptureOutcome, TargetPal,
 		                              bCaptureSuccess),
 		RevealTotal, false);
 }
@@ -369,7 +372,7 @@ void UPalCaptureComponent::NotifyPartyFull() const
 	if (!Controller || !PalInventory) return;
 	FNoticeData Data = PartyFullNotice;
 	Data.Detail = FText::Format(PartyFullNotice.Detail, PalInventory->MaxPalCount);
-	Controller->PushNotice(ENoticeSlot::Banner, TEXT("Capture"), Data);
+	Controller->PushNotice(ENoticeSlot::Feed, TEXT("Capture"), Data);
 }
 
 void UPalCaptureComponent::OnRep_IsThrowingPalSphere()

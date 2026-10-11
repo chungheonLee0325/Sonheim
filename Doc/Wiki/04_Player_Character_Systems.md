@@ -1,154 +1,167 @@
 # 04. Player & Character Systems
 
-Player의 지속 데이터는 **PlayerState**, 월드의 실제 body 상태는 **Pawn**, 독립 gameplay 기능은 **ActorComponent**가 소유합니다.
+Sonheim의 플레이어 시스템은 **PlayerState에 보유 데이터와 최종 스탯을 두고, Pawn에 실제 이동·전투·애니메이션 상태를 적용**합니다. 장비를 바꾸면 Inventory의 선택 상태가 **스탯 보너스, 사용 가능한 스킬, 무기 Mesh·HUD**로 전달되고, 플레이어의 입력 가능 범위는 `EPlayerState`와 `FActionRestrictions`로 제어합니다.
 
-## 요약
-
-- **PlayerState** — Inventory, Pal Inventory, Stat처럼 Pawn lifecycle과 분리할 Player state
-- **Pawn** — Movement, Mesh, Animation, 실제 World action
-- **ActorComponent** — Health, Skill, Condition처럼 독립적인 gameplay state
-- **Equipment** — Inventory Slot 변경을 Stat / Skill / Weapon presentation으로 연결
-- **Action / Condition State** — Animation timing과 입력 가능 범위를 gameplay state로 연결
-
-## Runtime Demo
+## 게임 화면 — 장비 전환
 
 https://github.com/user-attachments/assets/2079af91-4ad9-4f93-99e1-3e21efbca57f
 
-*곡괭이와 Shotgun 장비 전환에 따라 Weapon Mesh/HUD와 실제 공격 방식이 함께 바뀌는 흐름.*
+곡괭이와 Shotgun을 전환하면서 **장착 무기 Mesh·HUD 표시·공격 방식이 함께 바뀌는 동작**을 확인할 수 있습니다.
+
+## 핵심 구현
+
+| 기능 | 상태를 관리하는 곳 | 실제 적용·결과 |
+|---|---|---|
+| **플레이어 보유 기록** | `ASonheimPlayerState`의 Inventory·PalInventory·MonsterDex·Quest 컴포넌트 | 장비·보유 Pal·도감·퀘스트 기록 |
+| **기본/최종 스탯** | `ASonheimPlayerState` + `UStatBonusComponent` | `ASonheimPlayer::StatChanged`로 Health·공격/방어·Movement에 반영 |
+| **장비와 무기 선택** | `UInventoryComponent` | `UStatBonusComponent`·`USonheimSkillComponent`·무기 Mesh/HUD 갱신 |
+| **행동 제한** | `ASonheimPlayer::CurrentPlayerState` + `FActionRestrictions` | 이동·회전·행동 입력 허용 여부 |
+| **상태 조건** | `UConditionComponent` | `Dead / Invincible / Hidden` 비트 조합·시간 만료 |
+| **월드 캐릭터** | `ASonheimPlayer : AAreaObject` | 카메라·무기·스프린트·락온·글라이더·Pal 관련 행동 |
+
+PlayerState/Pawn을 나눈 이유와 전체 시스템 소유권은 [[02. Gameplay Architecture|02_Gameplay_Architecture]]에서 설명합니다. 이 문서는 **플레이어 기능 간 실제 데이터·이벤트 연결**을 중심으로 다룹니다.
 
 ## 목차
 
-- [Runtime Demo](#runtime-demo)
-- [System Overview](#system-overview)
-- [Ownership Model](#ownership-model)
-- [Stat & Equipment](#stat--equipment)
-- [Character Gameplay State](#character-gameplay-state)
-- [Animation & Conditions](#animation--conditions)
-- [Movement & Replication Lifecycle](#movement--replication-lifecycle)
-- [Trade-offs](#trade-offs)
+- [플레이어를 구성하는 객체](#플레이어를-구성하는-객체)
+- [장비 변경이 스탯·스킬·외형에 반영되는 흐름](#장비-변경이-스탯스킬외형에-반영되는-흐름)
+- [기본 스탯과 Source별 Modifier](#기본-스탯과-source별-modifier)
+- [Action State로 입력 범위 제어](#action-state로-입력-범위-제어)
+- [Condition Bitmask와 시간 관리](#condition-bitmask와-시간-관리)
+- [이동·무기 상태와 복제](#이동무기-상태와-복제)
+- [PlayerState 연결 시점](#playerstate-연결-시점)
+- [설계 선택과 비용](#설계-선택과-비용)
+- [관련 코드 및 문서](#관련-코드-및-문서)
 
 ---
 
-## System Overview
+## 플레이어를 구성하는 객체
 
-~~~mermaid
-flowchart LR
-    INPUT["<b>PlayerController</b><br/>Input · UI Bootstrap"]
-    PS["<b>PlayerState</b><br/>Inventory · Pal · Stat"]
-    PAWN["<b>Player Pawn</b><br/>Movement · Mesh · Animation"]
-    AREA["<b>AAreaObject Components</b><br/>Health · Stamina · Condition · Skill"]
+### PlayerState — 플레이어별 기록·스탯
 
-    EQUIP["<b>Equipment</b>"]
-    BONUS["<b>StatBonus</b>"]
-    SKILL["<b>Skill Grant</b>"]
-
-    INPUT --> PAWN
-    PS --> PAWN
-    PAWN --> AREA
-
-    PS --> EQUIP
-    EQUIP --> BONUS
-    EQUIP --> SKILL
-    BONUS -->|"Final Stat"| PAWN
-    SKILL --> AREA
-~~~
-
-Inventory·Stat·Pal처럼 Player에 지속되는 상태와, Health/Movement/Animation처럼 현재 Pawn에 적용되는 상태를 서로 다른 lifecycle로 관리합니다.
-
----
-
-## Ownership Model
-
-### PlayerState — Player identity state
-
-\`ASonheimPlayerState\`는 다음 component를 생성합니다.
+현재 `ASonheimPlayerState` 생성자는 다음 컴포넌트를 생성합니다.
 
 ~~~cpp
-ASonheimPlayerState::ASonheimPlayerState()
-{
-    m_InventoryComponent =
-        CreateDefaultSubobject<UInventoryComponent>("Inventory");
-
-    m_StatBonusComponent =
-        CreateDefaultSubobject<UStatBonusComponent>("StatBonus");
-
-    m_PalInventoryComponent =
-        CreateDefaultSubobject<UPalInventoryComponent>("PalInventory");
-}
+// SonheimPlayerState.cpp — 실제 생성 필드
+m_InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
+m_StatBonusComponent = CreateDefaultSubobject<UStatBonusComponent>(TEXT("StatBonus"));
+m_PalInventoryComponent = CreateDefaultSubobject<UPalInventoryComponent>(TEXT("PalInventory"));
+m_MonsterDexComponent = CreateDefaultSubobject<UMonsterDexComponent>(TEXT("MonsterDex"));
+m_QuestComponent = CreateDefaultSubobject<UQuestComponent>(TEXT("Quest"));
 ~~~
 
-Inventory·장비·Pal 보유 목록·Stat modifier는 현재 Pawn의 Mesh나 Animation보다 **Player의 지속 상태**에 가깝습니다.
+| 컴포넌트 | 데이터·역할 |
+|---|---|
+| `UInventoryComponent` | 인벤토리 슬롯, 장비 목록, 현재 무기 슬롯 |
+| `UStatBonusComponent` | 장비 출처별 스탯 Modifier·무기 슬롯 보너스 |
+| `UPalInventoryComponent` | 보유 Pal 목록·선택 슬롯 |
+| `UMonsterDexComponent` | 발견·처치·포획·보상 수령 기록 |
+| `UQuestComponent` | 퀘스트 단계·목표 진행·완료 기록 |
 
-Pawn이 다시 Possess되더라도 이런 데이터를 World body의 생성/파괴와 같은 수명에 묶지 않습니다.
+각 컴포넌트의 **복제 대상과 저장 방식은 같지 않습니다.** 예를 들어 도감·퀘스트는 소유 플레이어에게 변경 기록을 복제하고 서버 저장 기능도 사용합니다. PlayerState에 배치했다는 사실 자체가 SaveGame 저장을 보장하지는 않습니다.
 
----
+### Pawn — 캐릭터의 현재 행동과 외형
 
-### Pawn — World body state
-
-PlayerState가 계산한 Stat을 Pawn이 실제 gameplay component에 반영합니다.
-
-예:
+`ASonheimPlayer`는 `AAreaObject`를 상속하며 기본 캐릭터 상태와 플레이어 전용 기능을 결합합니다.
 
 ~~~text
-Equipment Item
-   ↓
-StatBonusComponent
-   ↓
-PlayerState Modified Stat
-   ↓
-ASonheimPlayer::StatChanged
-   ├─ Max HP
-   ├─ Attack / Defense
-   ├─ Run Speed
-   └─ Jump Height
+ASonheimPlayer : AAreaObject
+ ├─ AAreaObject
+ │   ├─ UHealthComponent / UStaminaComponent
+ │   ├─ UConditionComponent / ULevelComponent
+ │   ├─ USonheimSkillComponent
+ │   └─ UMoveUtilComponent / URotateUtilComponent
+ └─ ASonheimPlayer
+     ├─ CharacterMovement / Animation / Camera
+     ├─ WeaponMesh / PalSphereMesh / GliderMesh
+     ├─ UInteractionComponent
+     ├─ UPalCaptureComponent
+     └─ UPalPartnerSkillComponent
 ~~~
 
-실제 적용:
-
-~~~cpp
-void ASonheimPlayer::StatChanged(
-    EAreaObjectStatType StatType,
-    float StatValue)
-{
-    if (!HasAuthority())
-        return;
-
-    switch (StatType)
-    {
-    case EAreaObjectStatType::HP:
-        m_HealthComponent->SetMaxHP(StatValue);
-        break;
-
-    case EAreaObjectStatType::Attack:
-        m_Attack = StatValue;
-        break;
-
-    case EAreaObjectStatType::Defense:
-        m_Defence = StatValue;
-        break;
-
-    case EAreaObjectStatType::RunSpeed:
-        GetCharacterMovement()->MaxWalkSpeed = StatValue;
-        break;
-
-    case EAreaObjectStatType::JumpHeight:
-        GetCharacterMovement()->JumpZVelocity = StatValue;
-        break;
-    }
-}
-~~~
-
-**Stat source는 PlayerState에 유지하면서, 실제 결과는 Pawn의 Health/Movement/Combat 상태에 반영**합니다.
+HP 조작은 `AAreaObject::DecreaseHP`처럼 캐릭터 공통 API에서 시작하고, 실제 값은 `UHealthComponent`가 관리합니다. Pal 보유 목록은 PlayerState에, PalSphere 투척·Partner 스킬처럼 Pawn과 함께 움직이는 실행 기능은 플레이어 컴포넌트에 둡니다.
 
 ---
 
-## Stat & Equipment
+## 장비 변경이 스탯·스킬·외형에 반영되는 흐름
 
-### Stat Modifier Source
+**하나의 무기 슬롯 전환이 세 경로로 이어집니다.**
 
-\`FStatModifier\`는 단순 +10 같은 값뿐 아니라 어디서 온 보너스인지 함께 저장합니다.
+~~~mermaid
+flowchart TB
+    INPUT["무기 전환 입력"] --> INV["UInventoryComponent<br/>SwitchWeaponSlot"]
+    INV --> ACTIVE["CurrentWeaponSlot 변경"]
+    ACTIVE --> STATS["UStatBonusComponent<br/>SetCurrentWeaponSlot"]
+    STATS --> MOD["활성 슬롯 Modifier 적용"]
+    MOD --> PLAYERSTATE["ASonheimPlayerState<br/>ModifiedStat · OnPlayerStatsChanged"]
+    PLAYERSTATE --> PAWN["ASonheimPlayer::StatChanged"]
+    ACTIVE --> NOTIFY["NotifyWeaponSlot<br/>OnWeaponChanged"]
+    NOTIFY --> WEAPON["ASonheimPlayer<br/>SelectedWeapon · Mesh / Anim"]
+    NOTIFY --> SKILL["USonheimSkillComponent<br/>ReplaceGrant"]
+    WEAPON --> HUD["무기 타입·크로스헤어"]
+~~~
+
+### 1. 현재 슬롯에 해당하는 보너스만 적용
+
+`UInventoryComponent::SwitchWeaponSlot`은 서버에서 현재 무기 슬롯을 바꾸고 `UStatBonusComponent::SetCurrentWeaponSlot`을 호출합니다.
+
+`SetCurrentWeaponSlot`은 **이전 무기의 Modifier를 제거하고 새로운 활성 무기의 Modifier를 추가**합니다. 장착돼 있지만 선택하지 않은 다른 무기 슬롯의 보너스는 `WeaponSlotBonuses`에 보관했다가 선택될 때 적용합니다.
+
+### 2. 선택한 무기의 스킬 사용 권한 교체
+
+`UInventoryComponent::NotifyWeaponSlot`은 현재 `ItemID`의 `FItemData::EquipmentData.SkillID`를 조회하고 `USonheimSkillComponent::ReplaceGrant`를 호출합니다.
 
 ~~~cpp
+// InventoryComponent.cpp — 선택 무기 스킬 변경부 발췌
+TArray<int32> Skills;
+if (SkillId > 0)
+{
+    Skills.Add(SkillId);
+}
+Comp->ReplaceGrant(ActiveWeaponGrantId, Skills);
+~~~
+
+`ActiveWeaponGrantId`로 무기 출처의 스킬 집합을 교체하므로, **기본 보유 스킬이나 다른 Grant에서 제공한 스킬과 구분**할 수 있습니다. Grant 참조 카운트·스킬 객체의 수명은 [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]]에서 설명합니다.
+
+### 3. 다른 플레이어도 무기 변경 결과를 확인
+
+`OnWeaponChanged`는 `ASonheimPlayer::UpdateSelectedWeapon`으로 전달됩니다. 서버에서 `SelectedWeaponSlot`·`CurrentWeaponItemID`를 변경하고, `OnRep_SelectedWeapon`이 `FItemData`의 무기 Mesh와 Animation 설정을 적용합니다.
+
+~~~text
+OnWeaponChanged(Slot, ItemID)
+    ↓ UpdateSelectedWeapon (Server)
+SelectedWeaponSlot / CurrentWeaponItemID
+    ↓ OnRep_SelectedWeapon
+UpdateWeaponMesh 또는 ClearWeaponMesh
+    ↓
+WeaponMesh + AnimInstance 정보
+    ↓
+로컬 CurrentWeaponType / 크로스헤어 반영
+~~~
+
+**Inventory의 아이템 기록**, **현재 무기 외형**, **스킬 사용 권한**을 하나의 Widget에서 임의로 변경하지 않고 각 소유 시스템에 전달하는 구조입니다.
+
+---
+
+## 기본 스탯과 Source별 Modifier
+
+### PlayerState에서 최종 스탯 계산
+
+`ASonheimPlayerState`는 서버에서 `BaseStat`을 초기화합니다. `UStatBonusComponent`는 각 스탯별 Modifier를 관리하며, `PlayerState::UpdateStat / UpdateStats`가 최종 값을 계산합니다.
+
+~~~text
+BaseStat
+   + UStatBonusComponent::StatBonuses
+   ↓ GetModifiedStatValue
+ModifiedStat
+   ├─ OnPlayerStatsChanged → Pawn::StatChanged
+   └─ ReplicatedStats → OnRep_ReplicatedStats → 클라이언트 UI
+~~~
+
+`UStatBonusComponent::GetModifiedStatValue`는 Additive를 기본값에 더한 다음, Multiplicative 보너스를 곱하고, Override가 있으면 그 값을 최종 값으로 사용합니다.
+
+~~~cpp
+// StatBonusComponent.h — Modifier 필드 발췌
 struct FStatModifier
 {
     EAreaObjectStatType StatType;
@@ -158,88 +171,31 @@ struct FStatModifier
 };
 ~~~
 
-예를 들어 같은 HP Stat에:
+장비가 등록한 Modifier는 `SourceID`(아이템 ID)로 추적하므로 `RemoveAllBonusesFromSource(ItemID)`로 **특정 아이템에서 적용한 보너스만 해제**할 수 있습니다.
 
-~~~text
-Base HP
- + Armor Item
- + Accessory
- + Buff
-~~~
+### 최종 값을 Pawn의 컴포넌트에 반영
 
-가 함께 적용돼도 특정 Item을 해제할 때 해당 Source가 만든 modifier만 제거할 수 있습니다.
+`ASonheimPlayer::BindDelegates`는 서버에서 PlayerState의 `OnPlayerStatsChanged`를 `StatChanged`에 연결합니다.
 
-\`UStatBonusComponent::RemoveAllBonusesFromSource()\`가 이 경계를 사용합니다.
+| 최종 스탯 | `ASonheimPlayer::StatChanged` 적용 |
+|---|---|
+| `HP` | `UHealthComponent::SetMaxHP` |
+| `Attack` · `Defense` | `m_Attack` · `m_Defence` |
+| `RunSpeed` | `CharacterMovement::MaxWalkSpeed` |
+| `JumpHeight` | `CharacterMovement::JumpZVelocity` |
 
----
+위 표는 **현재 `StatChanged`에서 실제로 처리하는 스탯**입니다. 작업 속도·스태미나·최대 무게 등의 최종 값은 PlayerState에 계산·보관되지만, 이 함수의 switch에 모두 포함된 것은 아닙니다.
 
-### Weapon Slot → Stat / Skill
-
-장비 변경은 Inventory UI의 slot 이동으로 끝나지 않습니다.
-
-~~~text
-Weapon Equip / Switch
-      ↓
-Inventory Component
-      ├─ Equipped Slot 갱신
-      ├─ StatBonus 등록/활성화
-      ├─ Weapon Mesh / HUD 갱신
-      └─ Skill Grant 교체
-~~~
-
-Stat 쪽은 현재 활성 Weapon Slot의 modifier를 적용하고, Skill 쪽은 \`ActiveWeaponGrantId\`와 \`ReplaceGrant()\`로 해당 무기가 제공한 Skill set을 교체합니다.
-
-따라서 Weapon이 바뀌면 **외형·능력치·사용 가능한 공격**이 같은 equipment change에서 함께 갱신됩니다.
+이를 통해 **장비 Modifier와 스탯 계산은 PlayerState 측**, **전투·이동 값의 적용은 Pawn 측**에서 수행합니다.
 
 ---
 
-## Character Gameplay State
+## Action State로 입력 범위 제어
 
-### AAreaObject Gameplay Facade
-
-Player와 Monster가 공유하는 기능은 \`AAreaObject\` 아래 component로 분리합니다.
-
-~~~text
-AAreaObject
- ├─ HealthComponent
- ├─ StaminaComponent
- ├─ ConditionComponent
- ├─ LevelComponent
- ├─ SkillComponent
- └─ Move / Rotate Utility
-~~~
-
-외부에서는:
-
-- \`DecreaseHP()\`
-- \`AddCondition()\`
-- \`CastSkill()\`
-
-같은 AreaObject 수준 API를 사용할 수 있고, 실제 상태 책임은 해당 component가 가집니다.
-
-Health/Skill/Condition의 상태는 각 Component가 소유하고, 외부에서는 AreaObject 수준 API를 통해 접근합니다.
-
----
-
-### Player Action State
-
-Combat 중 행동 제한을 입력 함수마다 서로 다른 bool 조건으로 관리하지 않습니다.
+`ASonheimPlayer`는 `EPlayerState`와 `FActionRestrictions`를 사용해 동작별 허용 여부를 조회합니다.
 
 ~~~cpp
-enum class EPlayerState : uint8
-{
-    NORMAL,
-    ONLY_ROTATE,
-    ACTION,
-    CANACTION,
-    DIE,
-    GLIDING,
-};
-~~~
-
-각 state는 별도 restriction을 가집니다.
-
-~~~cpp
+// SonheimPlayer.h — 주요 필드
 struct FActionRestrictions
 {
     bool bCanLook = true;
@@ -250,58 +206,57 @@ struct FActionRestrictions
 };
 ~~~
 
-예:
+| 상태 | 이동 | 행동 | 실제 처리 의도 |
+|---|---|---|---|
+| `NORMAL` | 허용 | 허용 | 일반 플레이 |
+| `ONLY_ROTATE` | 제한 | 제한 | 이동 입력을 위치 이동 대신 대상 방향 회전으로 사용 |
+| `ACTION` | 허용 | 제한 | 새 행동 시작 제한 |
+| `CANACTION` | 제한 | 허용 | 연계 행동·회피 등을 위한 상태 |
+| `DIE` | 제한 | 제한 | 사망 |
+| `GLIDING` | 제한 | 제한 | 일반 이동 입력 대신 글라이더 로직 |
 
-~~~text
-NORMAL
-→ 일반 이동 / Action 가능
+*`ACTION`의 `bCanMove=false`는 현재 코드에서 주석 처리돼 있습니다. 따라서 이 상태가 이동까지 차단한다고 설명하지 않습니다.*
 
-ACTION
-→ 새 Action 제한
+### 상태와 실제 입력 검사
 
-CANACTION
-→ 이동은 제한하지만 Combo / Dodge 가능
-
-DIE
-→ 이동 / Action 제한
-
-GLIDING
-→ 일반 이동 대신 Glider movement 사용
-~~~
-
-현재 Player state가 “무엇을 할 수 있는가”를 한 곳에서 결정합니다.
-
----
-
-## Animation & Conditions
-
-### Animation-driven Action State
-
-Combat Montage의 Notify는 공격 판정뿐 아니라 Player Action State도 전환합니다.
-
-~~~text
-ACTION
-   ↓
-Attack Window
-   ↓
-CANACTION
-   ├─ Combo
-   └─ Dodge
-   ↓
-NORMAL
-~~~
-
-C++ Timer와 Animation timing을 따로 맞추지 않고 **공격 motion과 cancel window를 같은 timeline에서 조정**합니다.
-
-자세한 Skill/Notify 구조는 [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]]에서 설명합니다.
-
----
-
-### Condition Bitmask
-
-Dead / Invincible / Hidden처럼 동시에 조합될 수 있는 상태를 각각 독립 bool로 늘리지 않습니다.
+`InitializeStateRestrictions`가 상태별 설정을 채우고, `CanPerformAction(CurrentPlayerState, "Move")`처럼 필요한 제약을 조회합니다.
 
 ~~~cpp
+// SonheimPlayer.cpp — Move 내부
+if (CanPerformAction(CurrentPlayerState, "Move"))
+{
+    AddMovementInput(ForwardDirection, MovementVector.Y);
+    AddMovementInput(RightDirection, MovementVector.X);
+}
+if (CanPerformAction(CurrentPlayerState, "OnlyRotate"))
+{
+    LookAtLocation(targetLocation, EPMRotationMode::Speed, 1000.f);
+}
+~~~
+
+`SetPlayerState`는 현재 상태를 변경하고 `bOrientRotationToMovement`를 갱신합니다. **이동 가능 여부는 `Move`의 입력 검사에서 적용**하며, 상태 전환만으로 `CharacterMovement::DisableMovement`를 호출하는 방식은 아닙니다.
+
+### Montage와 행동 가능 시점
+
+`USetPlayerStateNotify`는 Montage의 타이밍에 맞춰 `ACTION / CANACTION / NORMAL` 등으로 상태를 전환합니다.
+
+~~~text
+공격 Montage
+  → ACTION : 새 행동 제한
+  → CANACTION : 연계 행동 허용
+  → NORMAL : 일반 동작 복귀
+~~~
+
+이 흐름은 해당 Notify를 배치한 공격의 **입력 가능 구간을 애니메이션 타임라인에서 조절**하기 위한 것입니다. 실제 스킬 실행과 타격 Notify는 [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]]에서 설명합니다.
+
+---
+
+## Condition Bitmask와 시간 관리
+
+`UConditionComponent`는 조합 가능한 캐릭터 상태를 `uint32 ConditionFlags`로 관리합니다.
+
+~~~cpp
+// SonheimGameType.h
 enum class EConditionBitsType : uint32
 {
     None       = 0,
@@ -311,86 +266,93 @@ enum class EConditionBitsType : uint32
 };
 ~~~
 
-예를 들어 Capture 중 Monster를 \`Hidden\` 상태로 두면:
+`AddCondition`은 서버에서 `ConditionFlags`에 비트를 추가하고, `RemoveCondition`은 해당 비트를 제거합니다. `AAreaObject::CanAttack`·`TakeDamage` 등은 `HasCondition`을 이용해 사망·무적·숨김 상태를 확인합니다.
 
-- 공격 대상에서 제외
-- Rendering / Collision / AI 비활성
+### 같은 종류의 Condition을 다시 적용할 때
 
-같은 lifecycle과 함께 사용할 수 있습니다.
+`UConditionComponent::AddCondition(Type, Duration)`에서 같은 비트가 이미 켜져 있고 Duration이 양수라면 **기존 Timer를 지우고 새 만료 Timer를 설정**합니다. Duration이 끝나면 `RemoveConditionInternal`이 비트를 제거합니다.
 
-### Timed Condition 처리
+| 역할 | 현재 구현 |
+|---|---|
+| 중복 Condition 표시 | 비트 하나로 존재 여부 표현 |
+| Duration | `TMap<EConditionBitsType, FTimerHandle>` |
+| 복제 | `ConditionFlags` 프로퍼티 복제 |
+| 클라이언트 반영 | `OnRep_ConditionFlags`에서 추가·제거된 비트 계산 |
 
-Timed Condition은 Condition type을 key로 사용해 duration을 관리합니다. 같은 type의 재적용은 해당 Condition의 현재 timer를 기준으로 처리합니다.
-
----
-
-## Movement & Replication Lifecycle
-
-### CharacterMovement + Project State
-
-기본 위치/속도 이동은 CharacterMovement의 역할을 사용하고, 프로젝트 고유 상태만 별도로 관리합니다.
-
-대표적으로:
-
-- Sprint
-- Glider
-- Lock-on
-- Current Weapon / Weapon Visibility
-
-가 Client presentation에 영향을 줍니다.
-
-위치·속도 동기화는 CharacterMovement를 사용하고, Sprint·Glider·Lock-on·Weapon visibility 같은 프로젝트 상태를 추가로 관리합니다.
-
-자세한 동기화 방식은 [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]에서 다룹니다.
+**한 종류의 Condition에 여러 출처의 독립 만료 시간을 쌓는 구조는 아닙니다.** 같은 종류는 Timer 하나를 갱신하는 방식입니다.
 
 ---
 
-### PlayerState Rebind
+## 이동·무기 상태와 복제
 
-Remote Client에서는 Pawn이 생성되는 시점과 PlayerState가 유효해지는 시점이 같다고 가정하지 않습니다.
+위치·이동은 `CharacterMovement`를 사용하고, 프로젝트 고유의 현재 행동 표현은 `ASonheimPlayer`의 복제 변수와 `OnRep`로 처리합니다.
 
-\`OnRep_PlayerState()\` 이후:
+| 복제 변수 | 화면·이동에 반영되는 내용 |
+|---|---|
+| `bIsSprinting` | `OnRep_IsSprinting → ApplySprinting`으로 이동 속도 적용 |
+| `bIsLockOn` | `OnRep_IsLockOn`으로 회전 정책·Animation 상태 적용 |
+| `bIsGliding` | `OnRep_IsGliding → ApplyGliderState`로 글라이더 Mesh·Movement 설정 |
+| `SelectedWeaponSlot` · `CurrentWeaponItemID` | `OnRep_SelectedWeapon`으로 무기 Mesh·Animation 갱신 |
+| `bWeaponVisible` | `OnRep_WeaponVisible`로 무기 표시 전환 |
+| `CurrentWeaponType` | `COND_OwnerOnly` 복제, 로컬 크로스헤어 갱신 |
 
-~~~text
-PlayerState 확보
-   ↓
-PalCaptureComponent.InitializeWithPlayerState
-   ↓
-PalPartnerSkillComponent.InitializeWithPlayerState
-   ↓
-Player-owned component와 Pawn 다시 연결
+`Sprint_Pressed / Released`는 로컬에서도 `ApplySprinting`을 먼저 호출해 입력 피드백을 주고, `Server_SetSprinting` 이후 복제값을 반영합니다. 서버 `Sprint_Triggered`는 스태미나를 소모하고 부족하면 Sprint를 종료합니다.
+
+글라이더는 `Server_SetGliding`에서 허용 여부를 검사한 뒤 상태를 복제합니다. `ApplyGliderState`는 글라이더 Mesh·Animation·중력·공중 제어를 변경하고, `UpdateGliding`은 활성 상태의 이동 속도를 갱신합니다.
+
+이 문서는 **플레이어 상태가 이동·외형에 미치는 영향**에 초점을 둡니다. 네트워크 전송 조건·예측의 상세는 [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]에 있습니다.
+
+---
+
+## PlayerState 연결 시점
+
+Pawn과 PlayerState의 초기화 시점이 항상 같지는 않습니다. 특히 원격 클라이언트의 `PlayerState`가 늦게 준비되는 경우를 위해 **서버 Possess 경로와 클라이언트 복제 경로**에서 연결을 수행합니다.
+
+~~~mermaid
+flowchart TB
+    SERVER["서버 PossessedBy"] --> BIND["S_PlayerState 확보<br/>InitializeByPlayerState"]
+    SERVER --> DELEGATE["BindDelegates<br/>OnWeaponChanged · OnPlayerStatsChanged"]
+    CLIENT["클라이언트 OnRep_PlayerState"] --> SET["S_PlayerState 확보"]
+    SET --> INIT["InitializeByPlayerState"]
+    INIT --> PAL["PalCaptureComponent / PalPartnerSkillComponent"]
+    SET --> HUD["로컬 InitializeHUD"]
 ~~~
 
-처럼 PlayerState 기반 기능을 초기화합니다.
+`ASonheimPlayer::InitializeByPlayerState`는 다음 두 컴포넌트에 PlayerState를 다시 연결합니다.
 
-PlayerState / Pawn 수명을 나눈 만큼 **둘이 만나는 초기화 경계도 명시적으로 관리**합니다.
+~~~cpp
+PalCaptureComponent->InitializeWithPlayerState(S_PlayerState);
+PalPartnerSkillComponent->InitializeWithPlayerState(S_PlayerState);
+~~~
+
+Pawn이 PlayerState를 참조해야 하는 지점을 명시적으로 두어 **Pal 보유 기록과 현재 Pawn의 포획·소환 기능을 연결**합니다. Pal의 실제 서버 판정과 소유 목록 변경은 [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]]에서 설명합니다.
 
 ---
 
-## Trade-offs
+## 설계 선택과 비용
 
-| 선택 | 얻은 것 | 비용 / 제약 |
+| 선택 | 얻은 효과 | 관리할 부분 |
 |---|---|---|
-| **PlayerState / Pawn 분리** | Inventory·Stat·Pal을 World body lifecycle과 분리 | Pawn 생성/복제 시 다시 연결하는 초기화 필요 |
-| **ActorComponent 구성** | Health/Skill/Condition 기능 재사용 | component 간 orchestration 지점 필요 |
-| **Source 기반 Stat Modifier** | 장비/Buff별 선택적 제거 | Source identity 관리 필요 |
-| **Action State + Restriction** | Combat/Input 조건을 한 곳에서 관리 | 상태 종류가 늘면 transition 규칙 관리 필요 |
-| **Condition Bitmask** | 조합 가능한 상태를 작은 값으로 표현 | 같은 condition의 source별 독립 duration에는 한계 |
+| **PlayerState / Pawn 상태 분리** | 플레이어별 보유 기록과 현재 캐릭터 실행 상태 분리 | Possess·복제 시 PlayerState 재연결 |
+| **장비 이벤트 기반 연동** | 무기 하나를 바꿔도 스탯·스킬·Mesh가 각 담당 코드에서 갱신 | 이벤트 연결·초기 동기화 시점 |
+| **SourceID Modifier** | 장비 출처별 보너스 제거 | 아이템 ID·무기 슬롯 구분과 Modifier 갱신 |
+| **Action State + Restrictions** | 입력별 bool 분기 대신 상태별 허용 정책 조회 | 상태 전환과 입력 검사 위치 관리 |
+| **ConditionFlags + Timer** | 조합 가능한 상태와 시간 만료 관리 | 같은 Condition에 출처별 독립 Duration은 없음 |
+| **상태 복제 + OnRep** | 클라이언트 무기·이동·외형 갱신 | 로컬 입력 피드백과 서버 결과 정합성 |
 
----
+장비·행동·조건 상태를 하나의 거대한 Player 클래스에 모두 저장하지 않고, **각 상태의 원본은 컴포넌트에 두고 캐릭터의 실제 행동 변경만 Pawn에 반영**하도록 구성했습니다.
 
-## 연관 문서
+## 관련 코드 및 문서
 
-- [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Action State / Skill Grant / Animation timing
-- [[07. Inventory & Crafting|07_Inventory_Crafting]] — Equipment가 Stat/Skill Source가 되는 흐름
-- [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — PlayerState PalInventory와 Pawn Partner 기능 연결
-- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — Player-owned state의 동기화
-
----
-
-## 관련 코드
-
-- [SonheimPlayer.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayer.cpp)
-- [SonheimPlayerState.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayerState.cpp)
-- [AreaObject](https://github.com/chungheonLee0325/Sonheim/tree/main/Sonheim/Source/Sonheim/AreaObject)
-- [StatBonusComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Attribute/StatBonusComponent.cpp)
+- [SonheimPlayerState.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayerState.cpp) — 보유 컴포넌트·스탯 계산·이벤트
+- [SonheimPlayer.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayer.cpp) · [SonheimPlayer.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayer.h) — 상태 제한·무기 외형·복제·연결
+- [AreaObject.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Base/AreaObject.cpp) — 캐릭터 공통 컴포넌트
+- [StatBonusComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Attribute/StatBonusComponent.cpp) — Modifier·Source·활성 무기 슬롯
+- [InventoryComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/InventoryComponent.cpp) — 무기 전환·Stat/Skill 연동
+- [ConditionComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Attribute/ConditionComponent.cpp) — ConditionFlags·Timer
+- [SetPlayerStateNotify.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/Animation/Player/SetPlayerStateNotify.cpp) — Animation에 따른 행동 상태 전환
+- [[02. Gameplay Architecture|02_Gameplay_Architecture]] — PlayerState·Pawn·컴포넌트 책임
+- [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Skill Grant·Montage Notify·타격 판정
+- [[07. Inventory & Crafting|07_Inventory_Crafting]] — 아이템·장비·제작
+- [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — Pal 소유·포획·Partner 기능
+- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — 복제 범위와 서버 권한

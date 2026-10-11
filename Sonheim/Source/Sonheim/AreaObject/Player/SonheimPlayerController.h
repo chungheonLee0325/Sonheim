@@ -37,8 +37,8 @@ public:
 
 	class UPlayerStatusWidget* GetPlayerStatusWidget() const;
 
-	// 상태 조회
-	bool GetIsMenuActivate() { return IsMenuActivate; }
+	// 열린 화면이 이동·공격 같은 게임 입력을 막는지
+	bool IsUIBlockingInput() const;
 
 	UFUNCTION(Client, Unreliable)
 	void Client_DisplayItemPopup(int32 ItemID, int32 Delta);
@@ -48,6 +48,10 @@ public:
 	void PushNotice(ENoticeSlot Slot, FName Channel, const FNoticeData& Data);
 	UFUNCTION(Client, Reliable)
 	void Client_PushNotice(ENoticeSlot Slot, FName Channel, const FNoticeData& Data);
+
+	/** Opens the quest dialog of a quest giver the player used, on the player's screen. */
+	UFUNCTION(Client, Reliable)
+	void Client_OpenQuestDialog(AActor* Target);
 
 protected:
 	// 입력 설정
@@ -111,6 +115,22 @@ private:
 	/** Called for CKey input */
 	void On_CKey_Pressed(const FInputActionValue& InputActionValue);
 	void On_CKey_Released(const FInputActionValue& InputActionValue);
+	void On_Dex_Pressed(const FInputActionValue& InputActionValue);
+public:
+	/** Opens a menu tab's screen (UIScreen::Menu, MonsterDex, QuestJournal) in place of the tab showing, if one is. */
+	void OpenTab(FName Screen);
+private:
+	void OpenMenu();
+	/** The menu's tab actions (IMC_Menu: Q and E, the bumpers) step the tabs while a tab's screen is on top; returns whether they did. */
+	bool StepTab(int32 Dir);
+private:
+	void On_Journal_Pressed(const FInputActionValue& InputActionValue);
+
+
+	/** Development builds: QuestSet <QuestID> <Active|Ready|Done> puts one of this player's quests in that state on the server,
+	 * as if played there, so a later quest can be tried without playing the ones before it. */
+	UFUNCTION(Exec)
+	void QuestSet(int32 QuestID, const FString& State);
 
 	// Owner
 	UPROPERTY(VisibleAnywhere)
@@ -127,10 +147,6 @@ private:
 	// UI 관련
 	UPROPERTY()
 	class UPlayerStatusWidget* StatusWidget;
-	UPROPERTY()
-	class UInventoryWidget* InventoryWidget;
-	UPROPERTY()
-	class UPlayerStatWidget* PlayerStatWidget;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UPlayerStatusWidget> StatusWidgetClass;
@@ -213,6 +229,20 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* GliderAction;
 
+	/** 도감 (K) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* DexAction;
+
+	/** 퀘스트 일지 (J) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* JournalAction;
+
+	/** The HUD's quest card, made for the local player as play begins. */
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UUserWidget> QuestTrackerClass;
+	UPROPERTY()
+	class UUserWidget* QuestTracker;
+
 	/** FKey Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* FKeyAction;
@@ -221,8 +251,7 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* CKeyAction;
 
-	bool IsMenuActivate = false;
-	bool IsContainerActivate = false;
+	class UUIStackSubsystem* GetUIStack() const;
 
 	// 점프 횟수 추적을 위한 변수
 	float LastJumpTime = 0.0f;
@@ -278,15 +307,11 @@ public:
 	void Server_Crafting_CancelUnfinished(class ACraftingStation* Station);
 
 private:
-	// 상자 UI 위젯
-	UPROPERTY()
-	class UContainerInteractionWidget* ContainerInteractionWidget;
+	// 상자 UI 위젯 (열린 위젯은 UI 스택이 갖는다)
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UContainerInteractionWidget> ContainerInteractionWidgetClass;
 
 	// Crafting UI
-	UPROPERTY()
-	class UCraftingWidget* CraftingWidget;
 	UPROPERTY(EditDefaultsOnly, Category="UI")
 	TSubclassOf<class UCraftingWidget> CraftingWidgetClass;
 

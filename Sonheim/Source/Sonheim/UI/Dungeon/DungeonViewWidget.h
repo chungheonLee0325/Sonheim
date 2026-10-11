@@ -39,6 +39,9 @@ protected:
 	// An optional line's window and note; each hides while empty.
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> WindowText;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> NoteText;
+	/** The line's bonus as small inventory slots (USlotWidget::AddReadOnly). */
+	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UDynamicEntryBox> BonusBox;
+	UPROPERTY(EditAnywhere, Category="Dungeon") float BonusSlotSize = 32.f;
 };
 /** One step of the way through the dungeon, with an arrow in front of every step but the first. */
 UCLASS(Abstract)
@@ -244,6 +247,8 @@ protected:
 	// The result: tiles of figures, reward slots or reward lines, the record, and the new-best badge.
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UDynamicEntryBox> StatTiles;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UDynamicEntryBox> RewardSlots;
+	/** The square of a reward's item slot on the result card. */
+	UPROPERTY(EditAnywhere, Category="Style") float RewardSlotSize = 64.f;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> RewardText;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> SummaryText;
 	UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> NewBestBadge;

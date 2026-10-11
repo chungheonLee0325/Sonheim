@@ -1,6 +1,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Sonheim/GameManager/Dungeon/DungeonStageRuntimeTypes.h"
+#include "Sonheim/Rewards/RewardTypes.h"
 #include "DungeonViewData.generated.h"
 class UTexture2D;
 /** Where an objective line stands: the run's last goal, the stage's goal, or a goal the run may skip. */
@@ -25,6 +26,8 @@ struct FDungeonObjectiveViewData
 	UPROPERTY(BlueprintReadOnly) FText Note;
 	/** The goal's icon, drawn at the head of the line while it is open. */
 	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> Icon;
+	/** What taking the line pays, read from the definition's rules (a capture bonus), drawn as item slots after the note. */
+	UPROPERTY(BlueprintReadOnly) TArray<FItemReward> Bonus;
 };
 /** One step of the way through: done, where the run is, or still ahead. */
 UENUM(BlueprintType)
@@ -68,6 +71,9 @@ struct FDungeonRewardViewData
 	UPROPERTY(BlueprintReadOnly) FText Count;
 	/** The item's icon; none on the line that says the run gave nothing. */
 	UPROPERTY(BlueprintReadOnly) TObjectPtr<UTexture2D> Icon;
+	/** The item and how many, drawn as an item slot; 0 on the line that says the run gave nothing. */
+	UPROPERTY(BlueprintReadOnly) int32 ItemId = 0;
+	UPROPERTY(BlueprintReadOnly) int32 ItemCount = 0;
 };
 /** A place an open objective line leads to, marked on the screen with the line's icon and the distance. */
 USTRUCT(BlueprintType)
