@@ -67,8 +67,6 @@ struct FMonsterDexData : public FTableRowBase
 
 `dt_AreaObject`에서는 기본 몬스터 아이콘(`AreaObjectIcon`)과 속성(`DefenceElementalAttributes`)을 조회합니다. 실제 목록에는 `SnapStage`가 캡처한 **몬스터 썸네일**을 우선 사용하고, 캡처 결과가 없으면 `AreaObjectIcon`을 표시합니다. 도감 테이블에는 이 정보를 중복 등록하지 않습니다.
 
-에셋: [DT_MonsterDex.uasset](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Content/_BluePrint/_DataTable/DT_MonsterDex.uasset)
-
 ### FMonsterDexEntry — 플레이어별 도감 기록
 
 몬스터 정의는 모든 플레이어가 공유하지만, 도감 진행 기록은 플레이어마다 다릅니다. `ASonheimPlayerState`의 `UMonsterDexComponent`가 이를 `FMonsterDexEntry` 배열로 관리합니다.
@@ -125,7 +123,9 @@ flowchart TB
 
 ### 첫 처치·포획에 따른 등록과 화면 표시
 
-[**발견·도감 등록 플레이 영상 보기**](../Media/Wiki/16_MonsterDex_System/16_dex_discovery.mp4)
+**도감 등록 플레이 영상**
+
+https://github.com/user-attachments/assets/d1d96b5f-1076-4e29-872d-3399a540acac
 
 서버의 `UMonsterDexComponent::Record`는 도감에 등록된 몬스터의 처치 또는 포획 이벤트를 처음 받으면 `FMonsterDexEntry`를 생성합니다. 이후 `MonsterDexView::Build`는 **기록의 존재 여부**로 발견 상태를 판단합니다. 접근하거나 화면에서 선택하는 것만으로는 발견 처리되지 않습니다.
 
@@ -236,7 +236,9 @@ for (int32 Tier = 0; Tier < Page->RewardTiers.Num(); ++Tier)
 
 ## 보상 진행과 수령
 
-[**도감 보상 진행·수령 플레이 영상 보기**](../Media/Wiki/16_MonsterDex_System/16_dex_reward_flow.mp4)
+**보상 진행·수령 플레이 영상**
+
+https://github.com/user-attachments/assets/f498002f-d15e-45ab-ac9b-1380ac0ad82b
 
 `DT_MonsterDex`의 `RewardTiers`에는 단계마다 필요한 처치·포획 횟수와 경험치·아이템 보상이 설정됩니다. `FMonsterDexEntry::Meets`는 두 조건을 모두 비교합니다.
 
