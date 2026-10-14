@@ -7,6 +7,18 @@
  },
  "zones": [
   {
+   "label": "Region_Camp",
+   "id": "Camp",
+   "loc": [
+    -34300.0,
+    10750.0
+   ],
+   "ext": [
+    1300.0,
+    1450.0
+   ]
+  },
+  {
    "label": "Region_Beach",
    "id": "Beach",
    "loc": [
@@ -28,8 +40,7 @@
    "ext": [
     1200.0,
     1200.0
-   ],
-   "fog": false
+   ]
   },
   {
    "label": "Region_Cave",
@@ -77,8 +88,7 @@
    "ext": [
     8350.0,
     9000.0
-   ],
-   "fog": false
+   ]
   }
  ]
 }

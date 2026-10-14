@@ -12,8 +12,8 @@ class UQuestComponent;
 class UWorldMapComponent;
 
 /**
- * The round field minimap at the HUD's top right: the island's map (DA_WorldMap) around the player, north up, with the fog of the
- * regions the player has not found, the player's arrow turned to the view and the markers in reach. Where the tracked quests lead
+ * The round field minimap at the HUD's top right: the island's map (DA_WorldMap) around the player, north up, with the fog over
+ * what the player has not explored, the player's arrow turned to the view and the markers in reach. Where the tracked quests lead
  * shows as a pin, held on the rim when it is farther. It hides itself away from the island, as in the dungeon. MapImage's brush is
  * M_UI_Map, which draws the art, the fog and the round frame.
  */
@@ -39,6 +39,7 @@ private:
 	void PlaceMarkers(const FVector& Center, float Diameter);
 
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> MapMaterial;
+	UPROPERTY(Transient) TObjectPtr<class UMapFog> Fog;
 	FMapIconLayer Icons;
 	TArray<FMapRegion> Regions;
 	TArray<FVector> QuestPlaces;

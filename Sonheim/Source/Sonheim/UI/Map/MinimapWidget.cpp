@@ -5,6 +5,7 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/Utility/QuestComponent.h"
 #include "Sonheim/AreaObject/Player/Utility/WorldMapComponent.h"
+#include "Sonheim/Map/MapFog.h"
 #include "Sonheim/Map/WorldMapDefinition.h"
 #include "Sonheim/Map/WorldMapSubsystem.h"
 
@@ -24,9 +25,9 @@ void UMinimapWidget::NativeConstruct()
 	const UWorldMapDefinition* Map = MapOf(*this);
 	MapMaterial = MapImage->GetDynamicMaterial();
 	Regions = SonheimMap::CollectRegions(GetWorld());
+	Fog = NewObject<UMapFog>(this);
 	if (!Map || !MapMaterial) return;
 	MapMaterial->SetTextureParameterValue(TEXT("Art"), Map->Art);
-	MapMaterial->SetTextureParameterValue(TEXT("Regions"), Map->RegionMask);
 	MapMaterial->SetScalarParameterValue(TEXT("Span"), WorldSpan / (Map->WorldMax.X - Map->WorldMin.X));
 }
 
@@ -61,16 +62,14 @@ void UMinimapWidget::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	MapMaterial->SetVectorParameterValue(TEXT("Center"), FLinearColor(Center.X, Center.Y, 0.f, 0.f));
 	// North is up, so the arrow turns with the view: yaw 0 looks along +X, the map's up.
 	if (const APlayerController* Controller = GetOwningPlayer()) PlayerArrow->SetRenderTransformAngle(Controller->GetControlRotation().Yaw);
+	Fog->Apply(MapMaterial, InDeltaTime);
 	PlaceMarkers(Pawn->GetActorLocation(), MarkerLayer->GetCachedGeometry().GetLocalSize().X);
 }
 
 void UMinimapWidget::RefreshFog()
 {
 	const UWorldMapDefinition* Map = MapOf(*this);
-	if (!Map || !MapMaterial) return;
-	const FLinearColor Found = Map->FoundFog(BoundPlaces.IsValid() ? BoundPlaces->GetDiscovered() : TArray<FName>());
-	for (int32 Channel = 0; Channel < 4; ++Channel)
-		MapMaterial->SetScalarParameterValue(*FString::Printf(TEXT("Found%d"), Channel + 1), Found.Component(Channel));
+	if (Map && Fog) Fog->Show(BoundPlaces.IsValid() ? BoundPlaces->GetExplored() : TArray<uint8>(), Map->FogCells);
 }
 
 void UMinimapWidget::RefreshQuests()

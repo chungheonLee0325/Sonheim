@@ -19,8 +19,9 @@ struct FMapMarkerStyle
 };
 
 /**
- * The island's map: its painted art, the square of the world the art shows, and the regions its fog covers. The art's top is +X
- * in the world and its right +Y, the way Scripts/Map/capture_topdown.py shoots it; ToUV and ToWorld are the one place that knows.
+ * The island's map: its painted art, the square of the world the art shows, and how its fog lifts as players explore. The art's top
+ * is +X in the world and its right +Y, the way Scripts/Map/capture_topdown.py shoots it; ToUV and ToWorld are the one place that
+ * knows.
  */
 UCLASS(BlueprintType)
 class SONHEIM_API UWorldMapDefinition : public UDataAsset
@@ -28,13 +29,13 @@ class SONHEIM_API UWorldMapDefinition : public UDataAsset
 	GENERATED_BODY()
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") TObjectPtr<UTexture2D> Art;
-	/** Each pixel the index + 1 of its region in FogRegions, 0 where no fog falls (the sea). */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") TObjectPtr<UTexture2D> RegionMask;
 	/** The world X and Y at the art's bottom left corner (smallest X, smallest Y) and its top right one. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") FVector2D WorldMin = FVector2D(0.0, 0.0);
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") FVector2D WorldMax = FVector2D(1.0, 1.0);
-	/** The regions (ARegionZone::RegionId) the mask draws fog over, in the mask's order. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") TArray<FName> FogRegions;
+	/** The fog is a grid of this many cells a side over the art; a cell clears once a player has been near it. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") int32 FogCells = 64;
+	/** How near, in world centimetres: at least the minimap's reach, so the minimap never shows fog around the player. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") float RevealRadius = 4000.f;
 	/** Markers by kind, for the minimap and the world map; a kind left out is not drawn. Player is another player's arrow. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") TMap<EMapMarkerKind, FMapMarkerStyle> MarkerStyles;
 
@@ -51,13 +52,17 @@ public:
 		return FVector(WorldMax.X - UV.Y * (WorldMax.X - WorldMin.X), WorldMin.Y + UV.X * (WorldMax.Y - WorldMin.Y), Z);
 	}
 
-	/** The map material's fog: 1 in a channel per fog region (R first, in FogRegions' order) the player found, for Found1..Found4. */
-	FLinearColor FoundFog(const TArray<FName>& Discovered) const
+	/** The fog cells within RevealRadius of a world point, as indices (row * FogCells + column). */
+	TArray<int32> CellsNear(const FVector& World) const
 	{
-		// ponytail: four channels, four fog regions; a fifth needs a second parameter or a small texture of found flags.
-		float Found[4] = {0.f, 0.f, 0.f, 0.f};
-		for (int32 Index = 0; Index < FMath::Min(FogRegions.Num(), 4); ++Index) Found[Index] = Discovered.Contains(FogRegions[Index]) ? 1.f : 0.f;
-		return FLinearColor(Found[0], Found[1], Found[2], Found[3]);
+		TArray<int32> Cells;
+		const FVector2D UV = ToUV(World);
+		const double Reach = RevealRadius / (WorldMax.X - WorldMin.X) * FogCells;
+		const FVector2D At = UV * FogCells;
+		for (int32 Row = FMath::Max(0, FMath::FloorToInt(At.Y - Reach)); Row <= FMath::Min(FogCells - 1, FMath::FloorToInt(At.Y + Reach)); ++Row)
+			for (int32 Column = FMath::Max(0, FMath::FloorToInt(At.X - Reach)); Column <= FMath::Min(FogCells - 1, FMath::FloorToInt(At.X + Reach)); ++Column)
+				if (FVector2D::Distance(FVector2D(Column + 0.5, Row + 0.5), At) <= Reach) Cells.Add(Row * FogCells + Column);
+		return Cells;
 	}
 
 	/** Whether the art shows a world point: a place away from the island, such as the dungeon, is not on the map. */

@@ -12,6 +12,7 @@
 #include "Sonheim/AreaObject/Player/Utility/QuestComponent.h"
 #include "Sonheim/AreaObject/Player/Utility/WorldMapComponent.h"
 #include "Sonheim/GameObject/Map/FastTravelPoint.h"
+#include "Sonheim/Map/MapFog.h"
 #include "Sonheim/Map/WorldMapDefinition.h"
 #include "Sonheim/Map/WorldMapSubsystem.h"
 #include "Sonheim/UI/Input/InputHintSubsystem.h"
@@ -86,10 +87,10 @@ void UWorldMapWidget::NativeConstruct()
 	const UWorldMapDefinition* Map = Subsystem ? Subsystem->GetDefinition() : nullptr;
 	MapMaterial = MapImage->GetDynamicMaterial();
 	Regions = SonheimMap::CollectRegions(GetWorld());
+	Fog = NewObject<UMapFog>(this);
 	if (Map && MapMaterial)
 	{
 		MapMaterial->SetTextureParameterValue(TEXT("Art"), Map->Art);
-		MapMaterial->SetTextureParameterValue(TEXT("Regions"), Map->RegionMask);
 		MapMaterial->SetScalarParameterValue(TEXT("Round"), 0.f);
 	}
 	for (const FMapRegion& Region : Regions)
@@ -127,12 +128,7 @@ void UWorldMapWidget::Redraw()
 	const UWorldMapSubsystem* Subsystem = SubsystemOf(*this);
 	const UWorldMapDefinition* Map = Subsystem ? Subsystem->GetDefinition() : nullptr;
 	if (!Map) return;
-	if (MapMaterial)
-	{
-		const FLinearColor Found = Map->FoundFog(Places.IsValid() ? Places->GetDiscovered() : TArray<FName>());
-		for (int32 Channel = 0; Channel < 4; ++Channel)
-			MapMaterial->SetScalarParameterValue(*FString::Printf(TEXT("Found%d"), Channel + 1), Found.Component(Channel));
-	}
+	Fog->Show(Places.IsValid() ? Places->GetExplored() : TArray<uint8>(), Map->FogCells);
 	QuestPlaces = SonheimMap::TrackedQuestPlaces(GetWorld(), Regions, Quests.Get());
 
 	// The found points, in the world's order; the first is selected until the player picks one.
@@ -220,6 +216,7 @@ void UWorldMapWidget::NativeTick(const FGeometry& MyGeometry, const float InDelt
 		if (!FMath::IsNearlyZero(Pull)) Zoom(FMath::Pow(0.35f, Pull * InDeltaTime), Center);
 		ApplyView();
 	}
+	Fog->Apply(MapMaterial, InDeltaTime);
 	PlaceMarkers();
 
 	const UWorldMapSubsystem* Subsystem = SubsystemOf(*this);
@@ -322,8 +319,8 @@ void UWorldMapWidget::PlaceMarkers()
 		const FMapRegion& Region = Regions[Index];
 		const bool bFound = Places.IsValid() && Places->IsDiscovered(Region.Id);
 		const FVector2D Point = At(Region.Center);
-		// A fog region not found yet shows as unknown; a smaller place inside one shows only once found.
-		const bool bShown = InView(Point) && (bFound || Map->FogRegions.Contains(Region.Id));
+		// A region not found yet shows as unknown.
+		const bool bShown = InView(Point);
 		RegionLabels[Index]->SetVisibility(bShown ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		if (!bShown) continue;
 		RegionLabels[Index]->SetText(bFound ? Region.Name : UnknownName);

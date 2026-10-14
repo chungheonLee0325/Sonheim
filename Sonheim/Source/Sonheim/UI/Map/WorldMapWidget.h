@@ -58,7 +58,7 @@ private:
 
 /**
  * The menu's 지도 tab: the whole island's map (DA_WorldMap), panned by dragging or the left stick and zoomed with the wheel or the
- * triggers, with the fog of regions the player has not found, region names, the markers the legend lets through and where the
+ * triggers, with the fog over what the player has not explored, region names, the markers the legend lets through and where the
  * tracked quests lead. The side panel names the region under the cursor (or the player's), lists the found fast travel points,
  * which a click or the confirm key travels to, and holds the legend.
  */
@@ -132,6 +132,7 @@ private:
 	void DrawSidePanel(const FMapRegion* Region);
 
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> MapMaterial;
+	UPROPERTY(Transient) TObjectPtr<class UMapFog> Fog;
 	/** The region names, one per region, made at construction. */
 	UPROPERTY(Transient) TArray<TObjectPtr<UTextBlock>> RegionLabels;
 	FMapIconLayer Icons;

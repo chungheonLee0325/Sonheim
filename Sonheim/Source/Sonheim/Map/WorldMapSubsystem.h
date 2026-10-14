@@ -15,6 +15,8 @@ struct FWorldMapPlayerRecord
 	UPROPERTY() FString PlayerKey;
 	/** The regions and fast travel points the player found. */
 	UPROPERTY() TArray<FName> Discovered;
+	/** The map's explored cells, as UWorldMapComponent keeps them. */
+	UPROPERTY() TArray<uint8> Explored;
 };
 
 UCLASS()
@@ -26,8 +28,9 @@ public:
 };
 
 /**
- * The island's map (DA_WorldMap), the markers playing on this machine, and every player's found places, kept between sessions on
- * the machine that hosts the way UMonsterDexSubsystem keeps the monster book. Only the server reads and writes the save.
+ * The island's map (DA_WorldMap), the markers playing on this machine, and every player's found places and explored cells, kept
+ * between sessions on the machine that hosts the way UMonsterDexSubsystem keeps the monster book. Only the server reads and writes
+ * the save.
  */
 UCLASS(Config=Game)
 class SONHEIM_API UWorldMapSubsystem : public UGameInstanceSubsystem
@@ -39,9 +42,9 @@ public:
 
 	const UWorldMapDefinition* GetDefinition() const { return LoadedDefinition; }
 
-	TArray<FName> LoadPlayer(const FString& PlayerKey) const;
+	TArray<FName> LoadPlayer(const FString& PlayerKey, TArray<uint8>& OutExplored) const;
 	/** Replaces the player's record and writes the slot. */
-	void StorePlayer(const FString& PlayerKey, const TArray<FName>& Discovered);
+	void StorePlayer(const FString& PlayerKey, const TArray<FName>& Discovered, const TArray<uint8>& Explored);
 
 	void AddMarker(UMapMarkerComponent* Marker);
 	void RemoveMarker(UMapMarkerComponent* Marker);
