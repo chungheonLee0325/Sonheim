@@ -26,7 +26,7 @@ UMG v2에서는 인벤토리·도감·퀘스트·던전·HUD의 화면을 개편
 | **알림 표시** | `UNoticeSubsystem`에 `Feed / Headline / Title` 슬롯과 대기·교체·누적 정책 구성 |
 | **입력 안내** | `UInputHintSubsystem`이 Enhanced Input 매핑과 최근 사용 장치에 따라 키 안내 변경 |
 | **Widget Blueprint** | C++ `BindWidget` 계약을 유지하며 인벤토리·도감·퀘스트·던전·HUD 화면 개편 |
-| **공통 보상 슬롯** | `USlotWidget::AddReadOnly`로 도감·퀘스트 보상에 기존 아이템 표현 재사용 |
+| **공통 보상 슬롯** | `USlotWidget::AddReadOnly`로 도감·퀘스트·던전 결과 보상과 던전 HUD 추가 목표 보너스(던전 정의 데이터)에 기존 아이템 슬롯 UI 재사용 |
 | **에디터 저작·확인** | AgentMcp에서 Widget Tree 점검 → 수정 → Read-back → Compile/Save → PIE 확인 |
 
 ## 목차
@@ -281,13 +281,13 @@ flowchart LR
 | 키 안내 | `UInputHintSubsystem` | 액션 매핑과 입력 장치별 글리프 |
 | C++ / Blueprint 연결 | 각 `UUserWidget`의 `BindWidget` | 게임플레이 데이터·이벤트와 화면 구조 연결 |
 
-- [UIStackSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/System/UIStackSubsystem.cpp) — 중첩 메뉴 입력 복원
-- [InputHintSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Input/InputHintSubsystem.cpp) — 입력 안내
-- [NoticeSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Notice/NoticeSubsystem.cpp) — 알림 슬롯과 표시 정책
-- [DungeonUIRouterSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Dungeon/DungeonUIRouterSubsystem.cpp) — 던전 HUD·결과 수명
-- [SlotWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/SlotWidget.cpp) — 읽기 전용 아이템 보상 슬롯
-- [MonsterDexWidget.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexWidget.h) · [QuestWidget.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Quest/QuestWidget.h) — `BindWidget` 화면 구성
-- [DefaultGame.ini](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Config/DefaultGame.ini) — 화면·알림 슬롯 설정
+- [UIStackSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/System/UIStackSubsystem.cpp) — 중첩 메뉴 입력 복원
+- [InputHintSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Input/InputHintSubsystem.cpp) — 입력 안내
+- [NoticeSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Notice/NoticeSubsystem.cpp) — 알림 슬롯과 표시 정책
+- [DungeonUIRouterSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Dungeon/DungeonUIRouterSubsystem.cpp) — 던전 HUD·결과 수명
+- [SlotWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/SlotWidget.cpp) — 읽기 전용 아이템 보상 슬롯
+- [MonsterDexWidget.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexWidget.h) · [QuestWidget.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Quest/QuestWidget.h) — `BindWidget` 화면 구성
+- [DefaultGame.ini](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Config/DefaultGame.ini) — 화면·알림 슬롯 설정
 - [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — UI 데이터 흐름
 - [[14. Unreal Editor Automation & Verification|14_Unreal_Editor_Automation_Verification]] — Editor 도구·검증
 - [[16. MonsterDex System|16_MonsterDex_System]] · [[17. Quest System|17_Quest_System]] — 도감·퀘스트 구현
