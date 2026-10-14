@@ -134,6 +134,10 @@ private:
 	 * as if played there, so a later quest can be tried without playing the ones before it. */
 	UFUNCTION(Exec)
 	void QuestSet(int32 QuestID, const FString& State);
+	/** Development builds: DexMeet <AreaObjectID> reports one defeat of the species by this player on the server, as a kill would,
+	 * so the monster book's page (and its habitat) can be tried without hunting. */
+	UFUNCTION(Exec)
+	void DexMeet(int32 AreaObjectID);
 
 	// Owner
 	UPROPERTY(VisibleAnywhere)

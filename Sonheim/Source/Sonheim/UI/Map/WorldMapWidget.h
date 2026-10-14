@@ -71,6 +71,9 @@ public:
 	void Travel(FName PointId);
 	/** The confirm key (IA_UI_Confirm, through the controller): travels to the selected point. */
 	void ConfirmSelected() { if (!Selected.IsNone()) Travel(Selected); }
+	/** From the monster book: marks where a species lives (regions, or Dungeon for the dungeon's gate), names it over the map and
+	 * fits the view to those places. */
+	void ShowHabitat(const TArray<FName>& Habitats, const FText& Species);
 	void Select(FName PointId);
 	void ToggleKind(EMapMarkerKind Kind);
 	bool IsKindShown(EMapMarkerKind Kind) const { return !HiddenKinds.Contains(Kind); }
@@ -88,6 +91,8 @@ protected:
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UCanvasPanel> MarkerLayer;
 	/** A hidden text whose look the region names copy. */
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> RegionLabelStyle;
+	/** Over the map while it shows a species' habitat: 새싹콩 서식지. */
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> HabitatBanner;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> RegionNameText;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> RegionSubtitleText;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> RegionStateText;
@@ -105,6 +110,10 @@ protected:
 	/** The player's own arrow. */
 	UPROPERTY(EditAnywhere, Category="Map") TObjectPtr<UTexture2D> SelfIcon;
 	UPROPERTY(EditAnywhere, Category="Map") FLinearColor SelfColor = FLinearColor(0.17f, 0.78f, 1.f, 1.f);
+	UPROPERTY(EditAnywhere, Category="Map") TObjectPtr<UTexture2D> HabitatIcon;
+	UPROPERTY(EditAnywhere, Category="Map") FLinearColor HabitatColor = FLinearColor(0.2f, 0.82f, 0.48f, 1.f);
+	/** The banner's words, {0} the species. */
+	UPROPERTY(EditAnywhere, Category="Style") FText HabitatFormat;
 	UPROPERTY(EditAnywhere, Category="Style") FLinearColor FoundColor = FLinearColor(0.2f, 0.82f, 0.48f, 1.f);
 	UPROPERTY(EditAnywhere, Category="Style") FLinearColor UnknownColor = FLinearColor(0.62f, 0.7f, 0.78f, 1.f);
 	/** The legend's names by kind (ST_UI). */
@@ -128,6 +137,7 @@ private:
 	FMapIconLayer Icons;
 	TArray<FMapRegion> Regions;
 	TArray<FVector> QuestPlaces;
+	TArray<FVector> HabitatPlaces;
 	TSet<EMapMarkerKind> HiddenKinds;
 	FVector2D Center = FVector2D(0.5, 0.5);
 	float Span = 1.f;

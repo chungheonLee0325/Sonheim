@@ -13,6 +13,11 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/Utility/MonsterDexComponent.h"
 #include "Sonheim/Utilities/StringTableIds.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
+#include "Sonheim/AreaObject/Player/Utility/WorldMapComponent.h"
+#include "Sonheim/Map/MapView.h"
+#include "Sonheim/UI/Map/WorldMapWidget.h"
+#include "Sonheim/UI/System/UIStackSubsystem.h"
 
 void UMonsterDexChipWidget::Show(UTexture2D* Icon, const FText& Label, const FLinearColor& Fill, const FLinearColor& Ink, const FText& Tooltip)
 {
@@ -109,6 +114,7 @@ UMonsterDexComponent* UMonsterDexWidget::Dex() const
 void UMonsterDexWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	HabitatButton->OnClicked.AddUniqueDynamic(this, &UMonsterDexWidget::ShowHabitat);
 	if (UMonsterDexComponent* Component = Dex())
 	{
 		Bound = Component;
@@ -215,6 +221,20 @@ void UMonsterDexWidget::DrawPicked()
 		ElementBox->CreateEntry<UMonsterDexChipWidget>()->Show(MonsterDexView::ElementIcon(Element), MonsterDexView::ElementName(Element),
 		                                                       Color.CopyWithNewOpacity(0.9f), FLinearColor::White);
 	}
+	// The habitat by region name; a region the player has not found is ???, and a species not met has no habitat yet.
+	const auto* State = GetOwningPlayerState<ASonheimPlayerState>();
+	const UWorldMapComponent* Places = State ? State->m_WorldMapComponent : nullptr;
+	const TArray<FMapRegion> Regions = SonheimMap::CollectRegions(GetWorld());
+	TArray<FString> Names;
+	for (const FName& Habitat : Page->bDiscovered ? Page->Habitats : TArray<FName>())
+	{
+		const FMapRegion* Region = Regions.FindByPredicate([&Habitat](const FMapRegion& R) { return R.Id == Habitat; });
+		if (Habitat == TEXT("Dungeon")) Names.Add(LOCTABLE(SONHEIM_ST_DEX, "Habitat.Dungeon").ToString());
+		else if (Region) Names.Add((Places && Places->IsDiscovered(Habitat) ? Region->Name : LOCTABLE(SONHEIM_ST_DEX, "Habitat.Unknown")).ToString());
+	}
+	HabitatText->SetText(Names.Num() ? FText::FromString(FString::Join(Names, TEXT("  ·  "))) : LOCTABLE(SONHEIM_ST_DEX, "Habitat.Unknown"));
+	HabitatButton->SetIsEnabled(Names.Num() > 0);
+
 	TierBox->Reset(true);
 	for (const FMonsterDexTierView& Tier : Page->Tiers)
 	{
@@ -222,6 +242,19 @@ void UMonsterDexWidget::DrawPicked()
 		Row->Show(Tier);
 		Row->OnClaim.BindUObject(this, &UMonsterDexWidget::Claim);
 	}
+}
+
+void UMonsterDexWidget::ShowHabitat()
+{
+	const FMonsterDexPageView* Page = Book.Pages.FindByPredicate([this](const FMonsterDexPageView& P) { return P.AreaObjectID == Picked; });
+	auto* Controller = Cast<ASonheimPlayerController>(GetOwningPlayer());
+	const UUIStackSubsystem* UIStack = GetOwningLocalPlayer() ? GetOwningLocalPlayer()->GetSubsystem<UUIStackSubsystem>() : nullptr;
+	if (!Page || !Page->bDiscovered || !Controller || !UIStack) return;
+	// The map takes the book's place as the showing tab (closing this screen), then shows where the species lives.
+	const TArray<FName> Habitats = Page->Habitats;
+	const FText Species = Page->Name;
+	Controller->OpenTab(UIScreen::WorldMap);
+	if (auto* Map = Cast<UWorldMapWidget>(UIStack->GetWidget(UIScreen::WorldMap))) Map->ShowHabitat(Habitats, Species);
 }
 
 FReply UMonsterDexWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)

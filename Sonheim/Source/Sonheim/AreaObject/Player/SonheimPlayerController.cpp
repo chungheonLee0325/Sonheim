@@ -901,6 +901,13 @@ void ASonheimPlayerController::QuestSet(const int32 QuestID, const FString& Stat
 #endif
 }
 
+void ASonheimPlayerController::DexMeet(const int32 AreaObjectID)
+{
+#if !UE_BUILD_SHIPPING
+	if (HasAuthority() && m_PlayerState) m_PlayerState->ReportDeed(EPlayerDeed::Kill, AreaObjectID);
+#endif
+}
+
 void ASonheimPlayerController::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();

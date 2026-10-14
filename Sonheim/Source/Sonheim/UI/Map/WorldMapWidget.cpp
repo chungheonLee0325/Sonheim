@@ -106,6 +106,8 @@ void UWorldMapWidget::NativeConstruct()
 		RegionLabels.Add(Label);
 	}
 	RegionLabelStyle->SetVisibility(ESlateVisibility::Collapsed);
+	// The banner shows with its plate, the panel it sits on.
+	(HabitatBanner->GetParent() ? static_cast<UWidget*>(HabitatBanner->GetParent()) : HabitatBanner.Get())->SetVisibility(ESlateVisibility::Collapsed);
 
 	// The map opens on the player, at a middle zoom.
 	Span = FMath::Clamp(0.6f, MinSpan, MaxSpan);
@@ -155,6 +157,31 @@ void UWorldMapWidget::Redraw()
 		if (Style && Style->Icon) LegendBox->CreateEntry<UMapLegendEntryWidget>()->Show(this, Kind, Style->Icon, Style->Color, KindNames.FindRef(Kind), IsKindShown(Kind));
 	}
 	bShownRegionSet = false;
+}
+
+void UWorldMapWidget::ShowHabitat(const TArray<FName>& Habitats, const FText& Species)
+{
+	const UWorldMapSubsystem* Subsystem = SubsystemOf(*this);
+	const UWorldMapDefinition* Map = Subsystem ? Subsystem->GetDefinition() : nullptr;
+	if (!Map) return;
+	HabitatPlaces.Reset();
+	for (const FName& Habitat : Habitats)
+	{
+		if (const FMapRegion* Region = Regions.FindByPredicate([&Habitat](const FMapRegion& R) { return R.Id == Habitat; }))
+			HabitatPlaces.Add(Region->Center);
+		else if (Habitat == TEXT("Dungeon"))
+			for (const TWeakObjectPtr<UMapMarkerComponent>& Marker : Subsystem->GetMarkers())
+				if (Marker.IsValid() && Marker->Kind == EMapMarkerKind::Dungeon && Map->Shows(Marker->GetMarkerLocation())) HabitatPlaces.Add(Marker->GetMarkerLocation());
+	}
+	HabitatBanner->SetText(FText::Format(HabitatFormat, Species));
+	(HabitatBanner->GetParent() ? static_cast<UWidget*>(HabitatBanner->GetParent()) : HabitatBanner.Get())->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (HabitatPlaces.IsEmpty()) return;
+	// The view takes in every place with room around them.
+	FBox2D Fit(ForceInit);
+	for (const FVector& Place : HabitatPlaces) Fit += Map->ToUV(Place);
+	Center = Fit.GetCenter();
+	Span = FMath::Max(Fit.GetSize().GetMax() * 1.8f, 0.45f);
+	ApplyView();
 }
 
 void UWorldMapWidget::Select(const FName PointId)
@@ -322,6 +349,10 @@ void UWorldMapWidget::PlaceMarkers()
 		for (const FVector& Place : QuestPlaces)
 			if (InView(At(Place))) Icons.Add(MarkerLayer, Style->Icon, Style->Color, Style->Size * 1.3f, At(Place));
 	}
+	if (HabitatIcon)
+		for (const FVector& Place : HabitatPlaces)
+			// Above the region's name, which stands on the same spot.
+			if (InView(At(Place))) Icons.Add(MarkerLayer, HabitatIcon, HabitatColor, 40.f, At(Place) - FVector2D(0.0, 38.0));
 	if (Pawn && SelfIcon && InView(At(Pawn->GetActorLocation())))
 	{
 		const APlayerController* Controller = GetOwningPlayer();
