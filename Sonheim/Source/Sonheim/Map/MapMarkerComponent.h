@@ -11,6 +11,8 @@ enum class EMapMarkerKind : uint8
 	QuestGiver,
 	FastTravel,
 	Dungeon,
+	/** Not a component's kind: where a tracked quest leads, which the maps work out from the quests. */
+	QuestTarget,
 };
 
 /**

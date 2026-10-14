@@ -116,6 +116,9 @@ private:
 	void On_CKey_Pressed(const FInputActionValue& InputActionValue);
 	void On_CKey_Released(const FInputActionValue& InputActionValue);
 	void On_Dex_Pressed(const FInputActionValue& InputActionValue);
+	void On_Map_Pressed(const FInputActionValue& InputActionValue);
+	/** A tab's own key (K, J, M): closes its screen if it is open, opens it as the tab otherwise; not over a box or a station. */
+	void ToggleTab(FName Screen);
 public:
 	/** Opens a menu tab's screen (UIScreen::Menu, MonsterDex, QuestJournal) in place of the tab showing, if one is. */
 	void OpenTab(FName Screen);
@@ -236,6 +239,8 @@ private:
 	/** 퀘스트 일지 (J) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* JournalAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* MapAction;
 
 	/** The HUD's quest card, made for the local player as play begins. */
 	UPROPERTY(EditDefaultsOnly, Category = "UI")

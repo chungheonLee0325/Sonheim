@@ -1,0 +1,142 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+#include "Sonheim/Map/MapView.h"
+#include "WorldMapWidget.generated.h"
+
+class UButton;
+class UCanvasPanel;
+class UDynamicEntryBox;
+class UImage;
+class UInputAction;
+class UMaterialInstanceDynamic;
+class UQuestComponent;
+class UTextBlock;
+class UWorldMapComponent;
+class UWorldMapWidget;
+
+/** A found fast travel point in the map's list: its name and region; clicking it travels there. */
+UCLASS(Abstract)
+class SONHEIM_API UMapTravelEntryWidget : public UUserWidget
+{
+	GENERATED_BODY()
+public:
+	void Show(UWorldMapWidget* InMap, FName InPointId, const FText& Name, const FText& Region, bool bSelected);
+protected:
+	virtual void NativeOnInitialized() override;
+	UFUNCTION() void HandleClicked();
+	UFUNCTION() void HandleHovered();
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UButton> EntryButton;
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> NameText;
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> RegionText;
+	/** Lit on the point the confirm key travels to. */
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UWidget> SelectedMark;
+private:
+	TWeakObjectPtr<UWorldMapWidget> Map;
+	FName PointId;
+};
+
+/** A kind of marker in the legend: its icon and name; clicking it shows or hides that kind on the map. */
+UCLASS(Abstract)
+class SONHEIM_API UMapLegendEntryWidget : public UUserWidget
+{
+	GENERATED_BODY()
+public:
+	void Show(UWorldMapWidget* InMap, EMapMarkerKind InKind, UTexture2D* Icon, const FLinearColor& Color, const FText& Label, bool bOn);
+protected:
+	virtual void NativeOnInitialized() override;
+	UFUNCTION() void HandleClicked();
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UButton> EntryButton;
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UImage> IconImage;
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> LabelText;
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UWidget> CheckMark;
+private:
+	TWeakObjectPtr<UWorldMapWidget> Map;
+	EMapMarkerKind Kind = EMapMarkerKind::Player;
+};
+
+/**
+ * The menu's 지도 tab: the whole island's map (DA_WorldMap), panned by dragging or the left stick and zoomed with the wheel or the
+ * triggers, with the fog of regions the player has not found, region names, the markers the legend lets through and where the
+ * tracked quests lead. The side panel names the region under the cursor (or the player's), lists the found fast travel points,
+ * which a click or the confirm key travels to, and holds the legend.
+ */
+UCLASS(Abstract)
+class SONHEIM_API UWorldMapWidget : public UUserWidget
+{
+	GENERATED_BODY()
+public:
+	/** Asks the server to move the player to a found point, and closes the map. */
+	void Travel(FName PointId);
+	/** The confirm key (IA_UI_Confirm, through the controller): travels to the selected point. */
+	void ConfirmSelected() { if (!Selected.IsNone()) Travel(Selected); }
+	void Select(FName PointId);
+	void ToggleKind(EMapMarkerKind Kind);
+	bool IsKindShown(EMapMarkerKind Kind) const { return !HiddenKinds.Contains(Kind); }
+
+protected:
+	virtual void NativeConstruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseWheel(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UImage> MapImage;
+	/** Over the map, the same size: markers and region names are placed on it. */
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UCanvasPanel> MarkerLayer;
+	/** A hidden text whose look the region names copy. */
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> RegionLabelStyle;
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> RegionNameText;
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> RegionSubtitleText;
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> RegionStateText;
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UDynamicEntryBox> TravelBox;
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UWidget> TravelEmpty;
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UDynamicEntryBox> LegendBox;
+
+	/** The view's width as a share of the map at the closest and farthest zoom. */
+	UPROPERTY(EditAnywhere, Category="Map") float MinSpan = 0.25f;
+	UPROPERTY(EditAnywhere, Category="Map") float MaxSpan = 1.f;
+	/** How far the stick moves the view per second, as a share of the view. */
+	UPROPERTY(EditAnywhere, Category="Map") float StickSpeed = 0.8f;
+	UPROPERTY(EditAnywhere, Category="Map") TObjectPtr<UInputAction> PanAction;
+	UPROPERTY(EditAnywhere, Category="Map") TObjectPtr<UInputAction> ZoomAction;
+	/** The player's own arrow. */
+	UPROPERTY(EditAnywhere, Category="Map") TObjectPtr<UTexture2D> SelfIcon;
+	UPROPERTY(EditAnywhere, Category="Map") FLinearColor SelfColor = FLinearColor(0.17f, 0.78f, 1.f, 1.f);
+	UPROPERTY(EditAnywhere, Category="Style") FLinearColor FoundColor = FLinearColor(0.2f, 0.82f, 0.48f, 1.f);
+	UPROPERTY(EditAnywhere, Category="Style") FLinearColor UnknownColor = FLinearColor(0.62f, 0.7f, 0.78f, 1.f);
+	/** The legend's names by kind (ST_UI). */
+	UPROPERTY(EditAnywhere, Category="Style") TMap<EMapMarkerKind, FText> KindNames;
+	UPROPERTY(EditAnywhere, Category="Style") FText FoundText;
+	UPROPERTY(EditAnywhere, Category="Style") FText UnknownText;
+	UPROPERTY(EditAnywhere, Category="Style") FText UnknownName;
+
+private:
+	UFUNCTION() void Redraw();
+	void ApplyView();
+	void Zoom(float Factor, const FVector2D& AroundUV);
+	/** A point on the map image in local units of MapImage to the art's UV. */
+	FVector2D ImageToUV(const FVector2D& Local) const;
+	void PlaceMarkers();
+	void DrawSidePanel(const FMapRegion* Region);
+
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> MapMaterial;
+	/** The region names, one per region, made at construction. */
+	UPROPERTY(Transient) TArray<TObjectPtr<UTextBlock>> RegionLabels;
+	FMapIconLayer Icons;
+	TArray<FMapRegion> Regions;
+	TArray<FVector> QuestPlaces;
+	TSet<EMapMarkerKind> HiddenKinds;
+	FVector2D Center = FVector2D(0.5, 0.5);
+	float Span = 1.f;
+	bool bDragging = false;
+	FVector2D LastMouse;
+	FVector2D Hovered = FVector2D(-1.0, -1.0);
+	FName Selected;
+	const FMapRegion* ShownRegion = nullptr;
+	bool bShownRegionSet = false;
+	TWeakObjectPtr<UWorldMapComponent> Places;
+	TWeakObjectPtr<UQuestComponent> Quests;
+};

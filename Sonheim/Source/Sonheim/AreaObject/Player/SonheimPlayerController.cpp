@@ -15,6 +15,7 @@
 #include "Sonheim/GameObject/Buildings/Crafting/CraftingStation.h"
 #include "Sonheim/GameObject/Region/RegionZone.h"
 #include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
+#include "Sonheim/UI/Map/WorldMapWidget.h"
 #include "Sonheim/UI/Widget/GameObject/ContainerInteractionWidget.h"
 #include "Sonheim/UI/Widget/GameObject/Crafting/CraftingWidget.h"
 #include "Sonheim/UI/Widget/Player/PlayerStatusWidget.h"
@@ -178,6 +179,9 @@ ASonheimPlayerController::ASonheimPlayerController()
 	{
 		JournalAction = tempJournalAction.Object;
 	}
+	static ConstructorHelpers::FObjectFinder<UInputAction> tempMapAction(
+		TEXT("/Script/EnhancedInput.InputAction'/Game/_BluePrint/AreaObject/Player/Input/Actions/IA_Map.IA_Map'"));
+	if (tempMapAction.Succeeded()) MapAction = tempMapAction.Object;
 	static ConstructorHelpers::FClassFinder<UUserWidget> QuestTrackerFinder(
 		TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/UI/Quest/WBP_QuestTracker.WBP_QuestTracker_C'"));
 	if (QuestTrackerFinder.Succeeded()) QuestTrackerClass = QuestTrackerFinder.Class;
@@ -497,6 +501,8 @@ void ASonheimPlayerController::SetupInputComponent()
 			EnhancedInputComponent->BindAction(JournalAction, ETriggerEvent::Started, this,
 			                                   &ASonheimPlayerController::On_Journal_Pressed);
 		}
+		// M (지도)
+		if (MapAction) EnhancedInputComponent->BindAction(MapAction, ETriggerEvent::Started, this, &ASonheimPlayerController::On_Map_Pressed);
 		// The menu's own actions, on IMC_Menu, which UInputHintSubsystem turns on while a screen holds back gameplay.
 		static const TCHAR* MenuActions = TEXT("/Game/_BluePrint/AreaObject/Player/Input/Actions/Menu/");
 		auto FindMenuAction = [](const TCHAR* Name) { return LoadObject<UInputAction>(nullptr, *FString::Printf(TEXT("%s%s.%s"), MenuActions, Name, Name)); };
@@ -515,6 +521,8 @@ void ASonheimPlayerController::SetupInputComponent()
 				// In the quest dialog, confirm does what its button says, so a quest can be taken without the mouse.
 				UUIStackSubsystem* UIStack = GetUIStack();
 				if (auto* Dialog = UIStack ? Cast<UQuestDialogWidget>(UIStack->GetWidget(UIScreen::QuestDialog)) : nullptr) Dialog->Act();
+				// On the map it travels to the selected point.
+				else if (auto* Map = UIStack && UIStack->TopTab() == UIScreen::WorldMap ? Cast<UWorldMapWidget>(UIStack->GetWidget(UIScreen::WorldMap)) : nullptr) Map->ConfirmSelected();
 			});
 	}
 	else
@@ -834,10 +842,21 @@ void ASonheimPlayerController::On_CKey_Released(const FInputActionValue& InputAc
 
 void ASonheimPlayerController::On_Journal_Pressed(const FInputActionValue& InputActionValue)
 {
+	ToggleTab(UIScreen::QuestJournal);
+}
+
+void ASonheimPlayerController::On_Map_Pressed(const FInputActionValue& InputActionValue)
+{
+	ToggleTab(UIScreen::WorldMap);
+}
+
+void ASonheimPlayerController::ToggleTab(const FName Screen)
+{
+	// 상자·제작대처럼 서버와 맞물린 화면 위에서는 열지 않는다.
 	UUIStackSubsystem* UIStack = GetUIStack();
 	if (!UIStack || UIStack->IsOpen(UIScreen::Container) || UIStack->IsOpen(UIScreen::Crafting)) return;
-	if (UIStack->IsOpen(UIScreen::QuestJournal)) UIStack->Close(UIScreen::QuestJournal);
-	else OpenTab(UIScreen::QuestJournal);
+	if (UIStack->IsOpen(Screen)) UIStack->Close(Screen);
+	else OpenTab(Screen);
 }
 
 void ASonheimPlayerController::Client_OpenQuestDialog_Implementation(AActor* Target)
@@ -849,11 +868,7 @@ void ASonheimPlayerController::Client_OpenQuestDialog_Implementation(AActor* Tar
 
 void ASonheimPlayerController::On_Dex_Pressed(const FInputActionValue& InputActionValue)
 {
-	// 상자·제작대처럼 서버와 맞물린 화면 위에서는 열지 않는다.
-	UUIStackSubsystem* UIStack = GetUIStack();
-	if (!UIStack || UIStack->IsOpen(UIScreen::Container) || UIStack->IsOpen(UIScreen::Crafting)) return;
-	if (UIStack->IsOpen(UIScreen::MonsterDex)) UIStack->Close(UIScreen::MonsterDex);
-	else OpenTab(UIScreen::MonsterDex);
+	ToggleTab(UIScreen::MonsterDex);
 }
 
 void ASonheimPlayerController::OpenTab(const FName Screen)

@@ -26,6 +26,8 @@ public:
 	static void ShowWhereStanding(const APawn* Pawn, const ULocalPlayer* Local);
 	/** Whether a world point lies in the zone's box, for a pawn whose overlaps are not known yet (one just spawned). */
 	bool Contains(const FVector& Point) const;
+	/** The zone's box in the world. */
+	FBox GetBox() const;
 protected:
 	virtual void BeginPlay() override;
 private:
