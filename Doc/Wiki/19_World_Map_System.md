@@ -118,6 +118,10 @@ void UWorldMapWidget::Zoom(float Factor, const FVector2D& AroundUV)
 
 ## 탐험 기록을 안개 머티리얼로 표시하기
 
+**탐험 안개·지도 조작 시연**
+
+https://github.com/user-attachments/assets/d87819c4-dd46-496e-b314-dc4a624dc1e9
+
 지역 이름이 발견됐는지와 **지도에서 실제로 걸어본 범위**는 별도 상태로 둡니다. 지역은 `Discovered`(ID 목록), 탐험 범위는 `Explored`(64×64 비트 배열)에 기록합니다.
 
 `UWorldMapComponent`가 서버에서 0.25초 간격으로 Pawn 주변 40m의 탐험 칸을 표시합니다. 64×64칸은 원본 비트 데이터로 512바이트입니다. 해당 상태를 `COND_OwnerOnly`로 소유 클라이언트에 전달하고, 클라이언트 `UMapFog`가 화면용 64×64 `PF_G8` 텍스처를 만듭니다.
@@ -138,6 +142,12 @@ flowchart LR
 탐험과 발견 기록은 PlayerState의 `UWorldMapComponent`에 두고 호스트의 `WorldMap` SaveGame에 플레이어 키별로 저장합니다. 게임에 다시 접속하면 저장된 지역·표석·탐험 칸을 불러와 지도를 구성합니다.
 
 ## 빠른 이동: UI 선택을 게임플레이 동작으로 연결
+
+![PR #4에 추가한 빠른 이동 관련 게임 화면](https://github.com/user-attachments/assets/7ea3a5a1-74a2-4c46-b3a7-c27980d08cad)
+
+**표석 활성화·빠른 이동 시연**
+
+https://github.com/user-attachments/assets/588c9b6b-05d3-4048-9a93-99fa6ec5d54a
 
 표석 `AFastTravelPoint`는 공용 Actor지만, `PointId`의 활성화 기록은 각 플레이어의 `UWorldMapComponent`가 보유합니다. 상호작용은 기존 `IInteractableInterface` 경로로 받고, 서버에서 `Discover(PointId)`를 처리합니다.
 
