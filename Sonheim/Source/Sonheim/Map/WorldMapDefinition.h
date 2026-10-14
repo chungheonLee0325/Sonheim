@@ -2,9 +2,21 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "MapMarkerComponent.h"
 #include "WorldMapDefinition.generated.h"
 
 class UTexture2D;
+
+/** How a kind of marker looks on the maps. */
+USTRUCT(BlueprintType)
+struct FMapMarkerStyle
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") TObjectPtr<UTexture2D> Icon;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") FLinearColor Color = FLinearColor::White;
+	/** The icon's size on the minimap, in slate units; the world map scales it. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") float Size = 22.f;
+};
 
 /**
  * The island's map: its painted art, the square of the world the art shows, and the regions its fog covers. The art's top is +X
@@ -23,6 +35,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") FVector2D WorldMax = FVector2D(1.0, 1.0);
 	/** The regions (ARegionZone::RegionId) the mask draws fog over, in the mask's order. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") TArray<FName> FogRegions;
+	/** Markers by kind, for the minimap and the world map; a kind left out is not drawn. Player is another player's arrow. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") TMap<EMapMarkerKind, FMapMarkerStyle> MarkerStyles;
 
 	/** A world point on the art, 0..1 from its top left corner. */
 	UFUNCTION(BlueprintPure, Category="Map")
@@ -35,6 +49,15 @@ public:
 	FVector ToWorld(const FVector2D& UV, double Z = 0.0) const
 	{
 		return FVector(WorldMax.X - UV.Y * (WorldMax.X - WorldMin.X), WorldMin.Y + UV.X * (WorldMax.Y - WorldMin.Y), Z);
+	}
+
+	/** The map material's fog: 1 in a channel per fog region (R first, in FogRegions' order) the player found, for Found1..Found4. */
+	FLinearColor FoundFog(const TArray<FName>& Discovered) const
+	{
+		// ponytail: four channels, four fog regions; a fifth needs a second parameter or a small texture of found flags.
+		float Found[4] = {0.f, 0.f, 0.f, 0.f};
+		for (int32 Index = 0; Index < FMath::Min(FogRegions.Num(), 4); ++Index) Found[Index] = Discovered.Contains(FogRegions[Index]) ? 1.f : 0.f;
+		return FLinearColor(Found[0], Found[1], Found[2], Found[3]);
 	}
 
 	/** Whether the art shows a world point: a place away from the island, such as the dungeon, is not on the map. */

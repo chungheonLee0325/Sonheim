@@ -242,6 +242,11 @@ private:
 	TSubclassOf<class UUserWidget> QuestTrackerClass;
 	UPROPERTY()
 	class UUserWidget* QuestTracker;
+	/** The HUD's round minimap at the top right, above the quest card. */
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UUserWidget> MinimapClass;
+	UPROPERTY()
+	class UUserWidget* Minimap;
 
 	/** FKey Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))

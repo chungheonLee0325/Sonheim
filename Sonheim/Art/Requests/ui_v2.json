@@ -545,6 +545,51 @@
         3
       ],
       "status": "approved"
+    },
+    {
+      "id": "icon_map_arrow",
+      "usage": "icon",
+      "subject": "The player's facing on a map: an arrowhead pointing up",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconMapArrow",
+      "usedBy": "Minimap and world map: the player, rotated to the view",
+      "status": "approved"
+    },
+    {
+      "id": "icon_map_travel",
+      "usage": "icon",
+      "subject": "A fast travel stone: a standing obelisk on a base",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconMapTravel",
+      "usedBy": "Minimap and world map: a found fast travel point",
+      "status": "approved"
+    },
+    {
+      "id": "icon_map_dungeon",
+      "usage": "icon",
+      "subject": "A dungeon's entrance: an arched gate",
+      "size": [
+        64,
+        64
+      ],
+      "transparent": true,
+      "padding": 4,
+      "mipmaps": true,
+      "target": "/Game/UI/Icons/T_IconMapDungeon",
+      "usedBy": "Minimap and world map: the dungeon portal",
+      "status": "approved"
     }
   ],
   "captures": []

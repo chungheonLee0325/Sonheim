@@ -181,6 +181,8 @@ ASonheimPlayerController::ASonheimPlayerController()
 	static ConstructorHelpers::FClassFinder<UUserWidget> QuestTrackerFinder(
 		TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/UI/Quest/WBP_QuestTracker.WBP_QuestTracker_C'"));
 	if (QuestTrackerFinder.Succeeded()) QuestTrackerClass = QuestTrackerFinder.Class;
+	static ConstructorHelpers::FClassFinder<UUserWidget> MinimapFinder(TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/UI/Map/WBP_Minimap.WBP_Minimap_C'"));
+	if (MinimapFinder.Succeeded()) MinimapClass = MinimapFinder.Class;
 
 	m_Player = nullptr;
 
@@ -245,6 +247,11 @@ void ASonheimPlayerController::BeginPlay()
 	{
 		QuestTracker = CreateWidget<UUserWidget>(this, QuestTrackerClass);
 		QuestTracker->AddToViewport(1);
+	}
+	if (MinimapClass)
+	{
+		Minimap = CreateWidget<UUserWidget>(this, MinimapClass);
+		Minimap->AddToViewport(1);
 	}
 	// 시작할 때 이미 가진 폰은 모든 액터가 시작해 겹침이 정해진 다음 틱에 본다.
 	GetWorldTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this]() { ShowRegionOfPawn(nullptr, GetPawn()); }));
