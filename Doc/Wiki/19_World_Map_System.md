@@ -1,26 +1,117 @@
 # 19. World Map & Fast Travel
 
-섬을 탐험한 범위를 지도와 미니맵에 표시하고, 발견한 표석을 통해 빠른 이동할 수 있도록 구현했습니다. 지역 발견은 퀘스트·도감에도 사용합니다.
+탐험한 지역을 미니맵과 전체 지도에 표시하고, 플레이어별 발견 기록을 저장·복제해 빠른 이동과 도감 서식지에 사용합니다.
 
 ## 게임 화면
 
-| 전체 지도 (M) | 필드 미니맵 |
+| 전체 지도 | 필드 미니맵 |
 |---|---|
-| ![탐험 안개·마커·표석 목록이 표시된 지도 탭](../Media/Wiki/19_World_Map_System/19_world_map.jpg) | ![필드 HUD 오른쪽의 원형 미니맵](../Media/Wiki/19_World_Map_System/19_hud_minimap.jpg) |
-| 탐험한 영역만 열리고, 오른쪽에서 활성화한 표석을 선택합니다. | 북쪽을 위로 고정하고 플레이어 방향과 퀘스트 목적지를 표시합니다. |
+| ![탐험 안개·마커·활성화된 표석 목록](../Media/Wiki/19_World_Map_System/19_world_map.jpg) | ![HUD 오른쪽의 원형 미니맵](../Media/Wiki/19_World_Map_System/19_hud_minimap.jpg) |
 
-| 표석 활성화 전·후 | 도감에서 서식지 찾기 |
+| 빠른 이동 표석 | 도감 서식지 표시 |
 |---|---|
-| ![빨간색 비활성 표석과 파란색 활성 표석](../Media/Wiki/19_World_Map_System/19_stone_states.jpg) | ![도감 서식지에서 이동한 지도](../Media/Wiki/19_World_Map_System/19_habitat_map.jpg) |
-| 표석에서 F를 눌러 활성화합니다. 활성화 여부와 빛기둥 색은 플레이어마다 다릅니다. | 도감의 '지도에서 보기'로 해당 몬스터의 서식지를 표시합니다. |
+| ![표석 활성화 전후](../Media/Wiki/19_World_Map_System/19_stone_states.jpg) | ![도감에서 선택한 서식지의 지도 표시](../Media/Wiki/19_World_Map_System/19_habitat_map.jpg) |
 
-## 월드 위치를 지도에 맞추기
+## 플레이어별 지도 상태와 서버 동기화
 
-지도 이미지는 레벨의 직교 `SceneCapture2D` 캡처를 바탕으로 만들었습니다. 원본과 수정본을 겹쳐 지형 위치를 확인하고, 캡처 월드 범위를 `DA_WorldMap`에 기록했습니다.
+지도에는 두 종류의 기록이 있습니다.
 
-![실제 레벨 캡처·지도용 이미지·겹쳐 본 비교 화면](../Media/Wiki/19_World_Map_System/19_art_pipeline.jpg)
+| 기록 | 데이터 | 용도 |
+|---|---|---|
+| `Discovered` | `TArray<FName>` | 발견한 지역 ID, 활성화한 표석 ID |
+| `Explored` | `TArray<uint8>` | 탐험한 64×64 지도 칸의 비트 배열 |
 
-지도는 위쪽이 월드 +X, 오른쪽이 +Y입니다. 이 변환을 지도·미니맵·마커에 따로 구현하지 않고 `UWorldMapDefinition`에서 공유합니다.
+둘 다 `PlayerState`에 붙은 `UWorldMapComponent`에서 관리합니다. **서버가 기록을 변경하고 소유 클라이언트에만 복제**하며, 호스트의 `WorldMap` SaveGame에 플레이어 키별로 저장합니다.
+
+~~~cpp
+// WorldMapComponent.cpp — 복제 대상
+DOREPLIFETIME_CONDITION(UWorldMapComponent, Discovered, COND_OwnerOnly);
+DOREPLIFETIME_CONDITION(UWorldMapComponent, Explored, COND_OwnerOnly);
+~~~
+
+~~~mermaid
+flowchart LR
+    subgraph Server["Listen Server"]
+        P["Pawn 위치 · 지역 진입<br/>표석 상호작용"] --> C["PlayerState<br/>UWorldMapComponent"]
+        C --> D["Discovered / Explored"]
+        D --> S["UWorldMapSubsystem<br/>StorePlayer(PlayerKey)"]
+        S --> G[("WorldMap SaveGame")]
+    end
+    subgraph Client["해당 플레이어의 클라이언트"]
+        R["OwnerOnly 복제<br/>OnRep → OnMapChanged"] --> U["전체 지도 · 미니맵"]
+        R --> V["활성 표석 목록 · 표시 상태"]
+    end
+    D -->|"COND_OwnerOnly"| R
+~~~
+
+이 구조에서는 다른 플레이어의 탐험 칸이나 활성화한 표석이 내 지도에 섞이지 않습니다. 클라이언트는 복제 알림(`OnMapChanged`)을 받아 지도를 다시 그립니다. **서버의 기록과 UI가 사용하는 표시 데이터는 분리**돼 있습니다.
+
+저장 시 `UWorldMapSubsystem::StorePlayer`가 `PlayerKey`에 해당하는 `Discovered`·`Explored`를 기록합니다. 지역이나 표석을 처음 발견하면 바로 저장하고, 탐험 칸은 변경 후 마지막 저장으로부터 5초 이상 지났을 때 저장합니다. 컴포넌트 종료 시 남은 변경도 저장합니다.
+
+지역 발견은 `ARegionZone` 진입 이벤트를 사용합니다. 다만 지역 안에서 Pawn이 생성되면 BeginOverlap이 발생하지 않을 수 있어 `OnPawnSet`에서도 포함된 지역을 확인합니다. 저장 기록을 나중에 읽을 때는 스폰 직후 발견한 탐험 비트가 사라지지 않도록 OR로 합칩니다.
+
+## 빠른 이동 요청과 플레이어별 활성화 상태
+
+표석은 월드에 있는 `AFastTravelPoint` Actor이고, **활성화 기록은 표석 Actor가 아닌 각 플레이어의 `UWorldMapComponent`에 저장**합니다.
+
+1. 표석과 상호작용하면 서버 `AFastTravelPoint::Interact`가 거리·생존 상태를 확인하고 `Discover(PointId)`로 활성화 ID를 기록합니다.
+2. `Discovered`가 소유 클라이언트에 복제되면 지도는 활성화한 표석만 목록에 넣고, 월드 표석의 표시도 해당 플레이어 기록으로 결정합니다.
+3. 지도에서 표석을 선택하면 클라이언트가 `ServerFastTravel(PointId)`을 호출합니다. **클라이언트의 선택 결과만으로 이동시키지 않고 서버에서 다시 검증**합니다.
+
+~~~cpp
+// WorldMapComponent.cpp — ServerFastTravel_Implementation() 발췌
+if (!GetOwner()->HasAuthority() || !IsDiscovered(PointId) ||
+    !IsValid(Player) || Player->IsDie()) return;
+
+if (!Map || !Map->GetDefinition() ||
+    !Map->GetDefinition()->Shows(Player->GetActorLocation())) return;
+
+for (TActorIterator<AFastTravelPoint> It(GetWorld()); It; ++It)
+    if (It->PointId == PointId) { It->Receive(Player); return; }
+~~~
+
+서버는 활성화한 목적지인지, 플레이어가 이동할 수 있는 상태인지, 현재 위치가 섬 지도 범위인지 검사합니다. 던전은 지도 범위 밖이므로 기존 포탈을 거치지 않고 빠져나가는 요청을 막습니다. 조건을 통과하면 목적지 표석의 `Arrival` 위치로 `TeleportTo`하고, 소유 클라이언트의 회전과 화면 전환을 처리합니다.
+
+**플레이어 A와 B가 같은 표석을 보더라도 활성화 여부는 다를 수 있습니다.** 표석은 공용 Actor로 두고, 표시 색은 각 클라이언트가 자신의 `Discovered`에서 결정합니다. 별도의 플레이어 공통 활성화 상태를 표석에 복제하지 않습니다.
+
+## 탐험 안개: 512바이트 기록에서 화면까지
+
+지역 ID는 퀘스트의 `Reach`·도감 서식지·지역 이름에 사용하고, 실제 탐험 범위는 별도의 64×64 격자로 기록합니다. 큰 지역을 한 번 발견해도 지도의 안개가 전부 걷히지 않도록 한 것입니다.
+
+서버 `UWorldMapComponent::Explore`는 **0.25초마다 Pawn 위치 주변 4,000cm(40m)** 에 해당하는 칸을 찾습니다. 각 칸을 1비트로 저장하므로 **4,096비트 = 512바이트**입니다. 이 수치는 비트 배열 원본 크기이며 실제 네트워크 전송량을 뜻하지는 않습니다.
+
+~~~cpp
+// WorldMapComponent.cpp — 새로 탐험한 칸 표시
+for (const int32 Cell : Definition->CellsNear(Pawn->GetActorLocation()))
+{
+    if (IsExplored(Cell)) continue;
+    Explored[Cell / 8] |= 1 << (Cell % 8);
+    bChanged = true;
+}
+~~~
+
+클라이언트는 복제받은 비트를 `UMapFog::Show`에서 **64×64 `PF_G8` 텍스처의 목표값(`Target`)** 으로 바꿉니다. 화면에 표시하는 값(`Shown`)은 별도로 유지하고, 새 탐험 칸만 약 1.2초에 걸쳐 밝아지도록 갱신합니다.
+
+~~~cpp
+// MapFog.cpp — Apply() 발췌
+const int32 Step = FMath::Max(
+    1, FMath::RoundToInt(255.f * DeltaSeconds / FadeSeconds));
+
+for (int32 Cell = 0; Cell < Shown.Num(); ++Cell)
+{
+    if (Shown[Cell] == Target[Cell]) continue;
+    Shown[Cell] = FMath::Min(Shown[Cell] + Step, (int32)Target[Cell]);
+}
+Upload(); // UpdateTextureRegions
+~~~
+
+새 `Explored` 데이터가 들어와도 `Shown`을 초기화하지 않으므로, 앞서 걷히던 칸은 그대로 이어서 밝아집니다. 처음 지도를 열 때는 이미 탐험한 칸을 페이드 없이 표시합니다. `M_UI_Map`은 이 텍스처를 받아 격자 경계를 보간·노이즈 처리하고, 미니맵과 전체 지도에서 공통으로 사용합니다.
+
+## 같은 월드 좌표를 두 지도에 표시
+
+지도 이미지는 레벨을 직교 `SceneCapture2D`로 촬영한 뒤 지형을 유지하며 다듬었습니다. 캡처 범위와 방향(월드 +X = 지도 위쪽, +Y = 오른쪽)을 `DA_WorldMap`에 기록했습니다.
+
+![레벨 캡처·지도 이미지·겹쳐 본 확인 화면](../Media/Wiki/19_World_Map_System/19_art_pipeline.jpg)
 
 ~~~cpp
 // WorldMapDefinition.h
@@ -32,117 +123,23 @@ FVector2D ToUV(const FVector& World) const
 }
 ~~~
 
-`ToUV` / `ToWorld`는 화면 표시와 지도 위 위치 선택에 사용합니다. `Shows`는 플레이어가 섬 지도 범위에 있는지 확인할 때 사용하며, 지도 밖에 배치한 던전에서는 미니맵을 숨기고 빠른 이동 요청도 거부합니다.
+`UWorldMapDefinition::ToUV` / `ToWorld`에서 좌표 변환을 공통 처리합니다. 미니맵은 현재 Pawn 위치를 중심으로 좁은 범위를 표시하고, 전체 지도는 드래그·확대와 화면 비율에 맞춰 표시 범위를 계산합니다. 두 위젯은 같은 지도 정의·안개·마커 데이터를 사용합니다.
 
-## 지역 발견과 탐험 안개는 별도로 기록
+`UMapMarkerComponent`가 월드 Actor를 `UWorldMapSubsystem`에 등록하면 각 지도는 해당 목록에서 마커를 배치합니다. 아이콘·크기는 `DA_WorldMap.MarkerStyles`에서 정하고, `FMapIconLayer`가 `UImage`를 재사용합니다. 퀘스트 목적지는 별도로 퀘스트 기록을 읽어 `Reach` 지역 중심, `Talk/Deliver` NPC, `ClearDungeon` 포탈 위치로 변환합니다. 미니맵 밖의 목적지는 테두리에 고정해 방향만 표시합니다.
 
-지역 ID와 탐험 범위는 별도로 관리합니다. `ARegionZone`은 지역 이름·퀘스트 `Reach` 목표·도감 서식지에 사용하고, 안개는 Pawn이 지나간 위치를 기준으로 격자에 기록합니다. 지역 전체를 발견 처리하는 방식과 달리, 큰 지역 안에서도 **실제 이동 범위만** 지도에 표시할 수 있습니다.
+## 도감 서식지 연결
 
-### 서버 기록과 소유자 복제
+![도감 서식지와 지도 열기 버튼](../Media/Wiki/19_World_Map_System/19_dex_habitat.jpg)
 
-`UWorldMapComponent`는 PlayerState에 붙어 있습니다. 서버가 0.25초마다 Pawn 위치를 읽어 주변 40m에 해당하는 칸을 발견 처리합니다.
+도감 데이터의 `Habitats`에는 지역 ID를 저장합니다. `UMonsterDexWidget`은 페이지에서 서식지 목록과 몬스터 이름을 복사한 뒤 지도 탭으로 전환하고, `UWorldMapWidget::ShowHabitat`에 전달합니다. 전환 과정에서 도감 위젯이 닫혀도 필요한 값이 유지되도록 **탭 전환 전에 데이터 복사**를 끝냅니다. 지도는 서식지 위치가 함께 들어오도록 중심·확대 범위를 계산합니다.
 
-~~~cpp
-// WorldMapComponent.cpp — Explore() 발췌
-for (const int32 Cell : Definition->CellsNear(Pawn->GetActorLocation()))
-{
-    if (IsExplored(Cell)) continue;
-    Explored[Cell / 8] |= 1 << (Cell % 8);
-    bChanged = true;
-}
-if (!bChanged) return;
-OnMapChanged.Broadcast();
-bUnstored = true;
-~~~
+## 관련 코드
 
-안개 기록은 64×64칸의 비트 배열입니다. 원본 데이터는 **4,096비트(512바이트)**이고, `Discovered`(지역·표석 ID)와 `Explored`(탐험 비트)는 모두 `COND_OwnerOnly`로 복제합니다. 탐험 위치를 클라이언트에서 보고받지 않고 서버의 Pawn 위치로 결정합니다.
-
-저장은 호스트 SaveGame의 `WorldMap` 슬롯에 모았습니다. 탐험 칸이 변경됐을 때 마지막 저장에서 5초 이상 지났으면 기록하고, 컴포넌트 종료 시 남은 변경도 저장합니다. 이미 발견한 지역·표석은 발견 시 바로 저장합니다.
-
-스폰 위치의 지역이 기록되지 않는 경우도 수정했습니다. 지역 안에서 Pawn이 생성되면 BeginOverlap만으로는 발견 처리가 되지 않으므로, `OnPawnSet`에서 모든 `ARegionZone`의 포함 여부를 한 번 확인합니다. 저장 데이터를 읽을 때도 스폰 직후 기록한 탐험 칸이 지워지지 않도록 비트 OR로 합칩니다.
-
-### 안개가 걷히는 화면
-
-클라이언트의 `UMapFog`는 탐험 기록을 64×64 `PF_G8` 텍스처로 바꿉니다. 한 칸의 값은 미발견 0, 발견 255입니다. 새로 발견한 칸은 약 1.2초 동안 현재 값에서 목표 값으로 이동시킵니다.
-
-~~~cpp
-// MapFog.cpp — Apply() 발췌
-const int32 Step =
-    FMath::Max(1, FMath::RoundToInt(255.f * DeltaSeconds / FadeSeconds));
-
-for (int32 Cell = 0; Cell < Shown.Num(); ++Cell)
-{
-    if (Shown[Cell] == Target[Cell]) continue;
-    Shown[Cell] = Shown[Cell] < Target[Cell]
-        ? FMath::Min(Shown[Cell] + Step, (int32)Target[Cell])
-        : FMath::Max(Shown[Cell] - Step, (int32)Target[Cell]);
-}
-Upload();
-~~~
-
-페이드 진행 상태는 텍스처 전체의 혼합 비율이 아니라 **각 칸의 `Shown` 값**으로 보관합니다. 서버의 발견 기록이 갱신돼도 기존 칸의 밝기 변화는 이어지고 새 칸만 새 목표값으로 이동합니다. 지도를 처음 열 때는 이미 발견한 칸을 즉시 표시합니다.
-
-`M_UI_Map` 머티리얼에서는 안개 텍스처를 보간하고 노이즈를 섞어 격자 경계를 흐립니다. 미니맵은 원형 마스크, 전체 지도는 사각 뷰로 표시하지만, 같은 지도 이미지와 안개 처리 경로를 사용합니다.
-
-## 미니맵·전체 지도·마커
-
-지도 마커는 `UMapMarkerComponent`가 BeginPlay/EndPlay에서 `UWorldMapSubsystem`에 등록·해제합니다. 마커를 그리는 쪽은 목록에서 위치·종류·발견 조건을 읽으므로 액터 클래스별 표시 분기를 둘 필요가 없습니다. 아이콘·색상·크기는 `DA_WorldMap.MarkerStyles`를 사용합니다. 활성화한 표석의 **목록 UI**는 별도로 `AFastTravelPoint`를 조회합니다.
-
-- **미니맵:** 북쪽 고정, 플레이어 화살표만 회전. 멀리 있는 추적 퀘스트 목적지는 원형 테두리에 붙여 표시합니다.
-- **전체 지도:** 마우스 드래그·휠, 게임패드 스틱·트리거로 이동·확대. 화면 비율에 따라 가로/세로 표시 범위를 다르게 계산해 지도 이미지가 늘어나지 않도록 했습니다.
-- **마커:** 퀘스트 목적지·플레이어·표석·NPC·던전 순으로 표시 우선순위를 구분하고, 퀘스트 핀은 아래쪽 끝이 목표 위치를 가리키게 했습니다. `FMapIconLayer`는 `UImage`를 재사용하며 위치·크기·ZOrder를 갱신합니다.
-
-추적 퀘스트의 목적지는 일반 마커와 별도로 퀘스트 기록에서 계산합니다. `Reach`는 지역 중심, `Talk`/`Deliver`는 NPC, `ClearDungeon`은 던전 포탈을 사용합니다. 완료 보고 대기 중이면 보고 대상 위치를 표시합니다.
-
-전체 지도는 기존 `UUIStackSubsystem`의 지도 탭으로 열고 닫습니다. 메뉴 탭 상태·키 입력 안내는 다른 인벤토리/도감/퀘스트 탭과 같은 흐름을 사용합니다.
-
-## 빠른 이동 표석
-
-`AFastTravelPoint`는 기존 `IInteractableInterface`를 구현합니다. F 상호작용을 받으면 서버가 활성화 기록을 갱신하고, 이미 활성화한 표석인 경우 해당 플레이어에게 지도 탭을 엽니다.
-
-`AFastTravelPoint::Interact`는 서버에서 생존·거리·상태를 확인하고 처음 활성화할 때 `PointId`를 발견 기록에 추가합니다. 지도에서 목적지를 선택하면 `ServerFastTravel(PointId)`를 요청합니다.
-
-~~~cpp
-// WorldMapComponent.cpp — ServerFastTravel_Implementation() 발췌
-if (!IsDiscovered(PointId) || !IsValid(Player) || Player->IsDie())
-    return;
-
-if (!Map || !Map->GetDefinition() ||
-    !Map->GetDefinition()->Shows(Player->GetActorLocation()))
-    return;
-
-for (TActorIterator<AFastTravelPoint> It(GetWorld()); It; ++It)
-    if (It->PointId == PointId) { It->Receive(Player); return; }
-~~~
-
-**이동은 서버에서 확정**합니다. 서버는 활성화 여부·생존 상태·현재 위치가 지도 범위 안인지 확인한 뒤 대상 표석의 `Arrival` 위치로 이동시킵니다. 던전은 지도 범위 밖이어서 이동 요청을 거부하며, 기존 포탈을 통한 종료 절차와 충돌하지 않습니다. 이동 후 컨트롤러 회전과 화면 페이드를 적용합니다.
-
-표석의 활성화 기록은 플레이어별 `UWorldMapComponent`에 보관됩니다. 각 클라이언트는 자신의 기록을 조회해 빛기둥을 빨강/파랑으로 표시하므로, **공유 Actor에 플레이어 공통 색상 상태를 복제하지 않습니다.** 활성화 직후에는 빛기둥·바닥 링 머티리얼의 `Flash` 값과 점광원 밝기를 짧게 변화시킵니다.
-
-![표석 활성화 직후 빛기둥·링 연속 화면](../Media/Wiki/19_World_Map_System/19_stone_flash.jpg)
-
-## 도감에서 서식지 보기
-
-도감 정의 데이터에 지역 ID 목록(`Habitats`)을 추가했습니다. 발견한 몬스터만 서식지를 보여주고, 플레이어가 아직 찾지 못한 지역 이름은 `???`로 표시합니다.
-
-![도감 상세의 서식지와 '지도에서 보기' 버튼](../Media/Wiki/19_World_Map_System/19_dex_habitat.jpg)
-
-`UMonsterDexWidget::ShowHabitat`에서 서식지 목록과 몬스터 이름을 복사한 뒤 지도 탭을 열고, `UWorldMapWidget::ShowHabitat`으로 전달합니다. 도감 탭이 닫히면서 선택 페이지가 바뀔 수 있으므로 **탭 전환 전에 표시 데이터를 확보**합니다. 지도는 서식지 위치들을 포함하도록 중심과 확대 범위를 조정합니다.
-
-서식지 ID는 현재 몬스터 배치를 기준으로 정의 데이터에 기입했습니다. 배치가 바뀌면 해당 목록도 갱신해야 합니다.
-
-## 확인한 동작과 시연 자료
-
-PR #4의 `verify_map` 5/5에서 Listen Server와 클라이언트의 지역·안개 발견, 표석 활성화 전 이동 거부 및 활성화 후 이동, 지도 탭의 입력, 도감에서 지도 전환, 새 세션의 저장 복원을 확인했습니다. `verify_ui_stack` 6/6 및 `verify_dex` 3/3도 실행했습니다. `verify_quest`는 이 변경에서 다시 실행하지 않았습니다.
-
-게임플레이 영상은 별도로 촬영해 추가할 예정입니다. 정지 화면만으로는 안개의 칸별 페이드와 표석 이동 전후의 입력·화면 전환을 확인하기 어렵습니다.
-
-## 코드
-
-- [WorldMapDefinition.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/WorldMapDefinition.h) — 좌표 변환·지도 범위·마커 스타일
-- [WorldMapComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/AreaObject/Player/Utility/WorldMapComponent.cpp) — 탐험 기록·OwnerOnly 복제·저장·서버 빠른 이동
-- [MapFog.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/MapFog.cpp) — 64×64 텍스처·칸별 페이드
-- [MapView.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/MapView.cpp) · [MapMarkerComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/MapMarkerComponent.cpp) — 마커 등록·배치·재사용
+- [WorldMapComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/AreaObject/Player/Utility/WorldMapComponent.cpp) — 플레이어별 복제·저장·서버 빠른 이동
+- [WorldMapSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/WorldMapSubsystem.cpp) — SaveGame·마커 목록
+- [FastTravelPoint.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/GameObject/Map/FastTravelPoint.cpp) — 활성화·도착 처리
+- [MapFog.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/MapFog.cpp) — 텍스처 갱신·칸별 페이드
+- [WorldMapDefinition.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/WorldMapDefinition.h) — 월드↔지도 좌표
 - [WorldMapWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/UI/Map/WorldMapWidget.cpp) · [MinimapWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/UI/Map/MinimapWidget.cpp) — 전체 지도·미니맵
-- [FastTravelPoint.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/GameObject/Map/FastTravelPoint.cpp) — 활성화·플레이어별 표시·도착 처리
+- [MapMarkerComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/MapMarkerComponent.cpp) · [MapView.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/MapView.cpp) — 마커 구성·퀘스트 목적지
 - [16. MonsterDex System](16_MonsterDex_System.md) · [17. Quest System](17_Quest_System.md) · [18. UMG v2 Migration](18_UMG_v2_Migration.md)
