@@ -33,16 +33,15 @@ flowchart LR
 
 ~~~cpp
 // WorldMapWidget.cpp — NativeConstruct / Redraw 발췌
-Places->OnMapChanged.AddUniqueDynamic(this, &UWorldMapWidget::Redraw);
-Quests->OnQuestsChanged.AddUniqueDynamic(this, &UWorldMapWidget::Redraw);
+if (Places.IsValid())
+    Places->OnMapChanged.AddUniqueDynamic(this, &UWorldMapWidget::Redraw);
+if (Quests.IsValid())
+    Quests->OnQuestsChanged.AddUniqueDynamic(this, &UWorldMapWidget::Redraw);
 
-void UWorldMapWidget::Redraw()
-{
-    Fog->Show(Places.IsValid() ? Places->GetExplored() : TArray<uint8>(),
-              Map->FogCells);
-    QuestPlaces = SonheimMap::TrackedQuestPlaces(GetWorld(), Regions, Quests.Get());
-    // 발견한 표석만 TravelBox에 추가하고 범례를 갱신
-}
+// Redraw() — Map 유효성 확인 후
+Fog->Show(Places.IsValid() ? Places->GetExplored() : TArray<uint8>(),
+          Map->FogCells);
+QuestPlaces = SonheimMap::TrackedQuestPlaces(GetWorld(), Regions, Quests.Get());
 ~~~
 
 위 코드는 변경 경로를 보여주는 **발췌**입니다. `Redraw()`에서는 탐험 안개 데이터와 퀘스트 목적지를 갱신하고, `Discovered`를 기준으로 빠른 이동 목록을 다시 구성합니다. 미니맵은 PlayerState가 HUD보다 늦게 준비될 수 있어 `NativeTick`에서 컴포넌트 연결을 확인한 후 같은 Delegate를 바인딩합니다.
@@ -129,10 +128,6 @@ flowchart LR
 탐험과 발견 기록은 PlayerState의 `UWorldMapComponent`에 두고 호스트의 `WorldMap` SaveGame에 플레이어 키별로 저장합니다. 게임에 다시 접속하면 저장된 지역·표석·탐험 칸을 불러와 지도를 구성합니다.
 
 ## 빠른 이동: UI 선택을 게임플레이 동작으로 연결
-
-| 활성화 상태 | 선택 가능한 표석 목록 |
-|---|---|
-| ![표석 활성화 전후](../Media/Wiki/19_World_Map_System/19_stone_states.jpg) | ![전체 지도에서 활성화한 표석 목록](../Media/Wiki/19_World_Map_System/19_world_map.jpg) |
 
 표석 `AFastTravelPoint`는 공용 Actor지만, `PointId`의 활성화 기록은 각 플레이어의 `UWorldMapComponent`가 보유합니다. 상호작용은 기존 `IInteractableInterface` 경로로 받고, 서버에서 `Discover(PointId)`를 처리합니다.
 
