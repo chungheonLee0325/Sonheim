@@ -72,6 +72,25 @@ for (TActorIterator<AFastTravelPoint> It(GetWorld()); It; ++It)
 
 서버는 활성화한 목적지인지, 플레이어가 이동할 수 있는 상태인지, 현재 위치가 섬 지도 범위인지 검사합니다. 던전은 지도 범위 밖이므로 기존 포탈을 거치지 않고 빠져나가는 요청을 막습니다. 조건을 통과하면 목적지 표석의 `Arrival` 위치로 `TeleportTo`하고, 소유 클라이언트의 회전과 화면 전환을 처리합니다.
 
+~~~mermaid
+sequenceDiagram
+    participant P as 플레이어
+    participant A as 서버: 표석 Actor
+    participant S as 서버: WorldMapComponent
+    participant G as WorldMap SaveGame
+    participant C as 소유 클라이언트
+
+    P->>A: 표석 상호작용
+    A->>S: Discover(PointId)
+    S->>G: StorePlayer(PlayerKey, Discovered, Explored)
+    S-->>C: Discovered 복제 (OwnerOnly)
+    C->>S: ServerFastTravel(PointId)
+    S->>S: 발견 여부 · 생존 · 현재 지도 범위 검사
+    S->>A: 목적지 PointId 탐색 후 Receive(Player)
+    A->>P: TeleportTo(Arrival)
+    A-->>C: 시점 회전 · 화면 페이드
+~~~
+
 **플레이어 A와 B가 같은 표석을 보더라도 활성화 여부는 다를 수 있습니다.** 표석은 공용 Actor로 두고, 표시 색은 각 클라이언트가 자신의 `Discovered`에서 결정합니다. 별도의 플레이어 공통 활성화 상태를 표석에 복제하지 않습니다.
 
 ## 탐험 안개: 512바이트 기록에서 화면까지
@@ -100,7 +119,9 @@ const int32 Step = FMath::Max(
 for (int32 Cell = 0; Cell < Shown.Num(); ++Cell)
 {
     if (Shown[Cell] == Target[Cell]) continue;
-    Shown[Cell] = FMath::Min(Shown[Cell] + Step, (int32)Target[Cell]);
+    Shown[Cell] = Shown[Cell] < Target[Cell]
+        ? FMath::Min(Shown[Cell] + Step, (int32)Target[Cell])
+        : FMath::Max(Shown[Cell] - Step, (int32)Target[Cell]);
 }
 Upload(); // UpdateTextureRegions
 ~~~
