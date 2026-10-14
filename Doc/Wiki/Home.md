@@ -22,6 +22,11 @@
 | ![분기 던전의 단계별 목표와 HUD](../Media/Wiki/16_UMG_Migration_with_Claude/16_dungeon_hud_after.jpg) | ![도감 신규 등록과 Feed·Headline·Title 알림이 표시된 게임 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg) |
 | 레버·웨이브·보스·보상을 Stage 규칙으로 연결하고 서버 Snapshot으로 진행을 공유합니다. **[09. Branching Dungeon Runtime](09_Branching_Dungeon_Runtime.md)** · **[10. Boss Encounter Runtime](10_Boss_Encounter_Runtime.md)** | 중첩 메뉴 입력, 공통 알림 슬롯, 키보드·패드 안내와 Widget Blueprint 화면을 개편했습니다. **[18. UMG v2 Migration](18_UMG_v2_Migration.md)** |
 
+| **World Map — 탐험 안개·빠른 이동** | **빠른 이동 표석 — 상호작용 활성화** |
+|---|---|
+| ![탐험한 자리만 걷힌 안개와 지역·마커가 표시된 전체 화면 지도](../Media/Wiki/19_World_Map_System/19_world_map.jpg) | ![빨간 빛기둥의 비활성 표석과 파란 빛기둥의 활성 표석](../Media/Wiki/19_World_Map_System/19_stone_states.jpg) |
+| 서버가 기록한 탐험 칸으로 안개를 걷고, 미니맵과 지도 탭이 같은 머티리얼·마커 목록을 씁니다. **[19. World Map & Fast Travel](19_World_Map_System.md)** | F로 활성화한 표석으로만 이동을 허용하고, 빛기둥 색은 플레이어마다 따로 보여줍니다. **[19. World Map & Fast Travel](19_World_Map_System.md)** |
+
 **시연 영상:** [도감 첫 발견](https://github.com/user-attachments/assets/d1d96b5f-1076-4e29-872d-3399a540acac) · [퀘스트 수락부터 완료까지](https://github.com/user-attachments/assets/356d1438-7c3c-417d-8bd4-b8dcb7a3efb6) · [던전 지름길 분기](https://github.com/user-attachments/assets/29858da6-7d13-4297-9d71-41f53272a952) · [보스 패턴](https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd)
 
 ---
@@ -35,6 +40,7 @@
 | **아이템·제작·Partner** | [07. Inventory & Crafting](07_Inventory_Crafting.md) · [08. Pal Capture & Partner Lifecycle](08_Pal_Capture_Partner_Lifecycle.md) |
 | **서버 권위·복제** | [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) — RPC, FastArray, UObject, OwnerOnly, Snapshot |
 | **UI 상태와 화면 수명** | [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) · [18. UMG v2 Migration](18_UMG_v2_Migration.md) |
+| **지도·안개·머티리얼 UI** | [19. World Map & Fast Travel](19_World_Map_System.md) — 탐험 칸 복제, HLSL 머티리얼, 마커 레이어 |
 | **콘텐츠 데이터·검증** | [03. Data & Content Architecture](03_Data_Content_Architecture.md) · [13. Content Authoring & Validation](13_Content_Authoring_Validation.md) |
 | **에디터 자동화·개발 이력** | [14. Unreal Editor Automation & Verification](14_Unreal_Editor_Automation_Verification.md) · [15. Development History & Retrospective](15_Development_History_Retrospective.md) |
 
@@ -79,13 +85,14 @@
 | [14. Unreal Editor Automation & Verification](14_Unreal_Editor_Automation_Verification.md) | AgentMcp로 Inspect·Edit·Compile·PIE 확인 |
 | [15. Development History & Retrospective](15_Development_History_Retrospective.md) | 실제 커밋으로 확인하는 시스템 구조 개선 |
 
-### 16–18 · 도감·퀘스트·UI 확장
+### 16–19 · 도감·퀘스트·UI·지도 확장
 
 | 문서 | 내용 |
 |---|---|
 | [16. MonsterDex System](16_MonsterDex_System.md) | 종별 처치·포획 기록, 보상·3D 프리뷰 |
 | [17. Quest System](17_Quest_System.md) | 단계별 목표·NPC·월드 오브젝트·보상 |
 | [18. UMG v2 Migration & Editor Verification](18_UMG_v2_Migration.md) | 화면 개편 전후, 입력 정책·알림·에디터 검증 |
+| [19. World Map & Fast Travel](19_World_Map_System.md) | 탐험 안개·미니맵·지도 탭·빠른 이동 표석·도감 서식지 |
 
 ---
 

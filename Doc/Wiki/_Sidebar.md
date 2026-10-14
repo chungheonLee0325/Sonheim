@@ -13,6 +13,7 @@
   * [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]]
   * [[16. MonsterDex System|16_MonsterDex_System]]
   * [[17. Quest System|17_Quest_System]]
+  * [[19. World Map & Fast Travel|19_World_Map_System]]
 
 * **Integrated Content**
   * [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]]
