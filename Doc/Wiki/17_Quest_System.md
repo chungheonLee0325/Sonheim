@@ -281,12 +281,12 @@ QuestView::Build → FQuestView
 
 ## 관련 코드
 
-- [QuestTypes.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/Quest/QuestTypes.h) — 퀘스트 정의·플레이어 기록·상태
-- [QuestSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/Quest/QuestSubsystem.cpp) — `DT_Quest` 조회·SaveGame
-- [QuestComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/QuestComponent.cpp) — 목표 집계·단계 전환·서버 검증·복제
-- [QuestGiver.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Quest/QuestGiver.cpp) — NPC 상호작용·마커·대화창
-- [QuestBuildSite.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Quest/QuestBuildSite.cpp) — 자재 전달과 건설 상태 연동
-- [QuestView.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Quest/QuestView.cpp) — 일지·대화·추적기 표시 데이터
-- [QuestWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Quest/QuestWidget.cpp) — 퀘스트 UI 구성·갱신
+- [QuestTypes.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/Quest/QuestTypes.h) — 퀘스트 정의·플레이어 기록·상태
+- [QuestSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/Quest/QuestSubsystem.cpp) — `DT_Quest` 조회·SaveGame
+- [QuestComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/Utility/QuestComponent.cpp) — 목표 집계·단계 전환·서버 검증·복제
+- [QuestGiver.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Quest/QuestGiver.cpp) — NPC 상호작용·마커·대화창
+- [QuestBuildSite.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/GameObject/Quest/QuestBuildSite.cpp) — 자재 전달과 건설 상태 연동
+- [QuestView.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Quest/QuestView.cpp) — 일지·대화·추적기 표시 데이터
+- [QuestWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Quest/QuestWidget.cpp) — 퀘스트 UI 구성·갱신
 - [[16. MonsterDex System|16_MonsterDex_System]] — `ReportDeed` 공유·도감 기록
 - [[18. UMG v2 Migration|18_UMG_v2_Migration]] — 퀘스트 화면 및 알림 UI 개편
