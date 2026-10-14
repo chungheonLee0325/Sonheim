@@ -7,6 +7,7 @@
 #include "Components/DynamicEntryBox.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
+#include "GameFramework/PlayerState.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/Utility/QuestComponent.h"
@@ -105,6 +106,10 @@ void UWorldMapWidget::NativeConstruct()
 		Placed->SetAlignment(FVector2D(0.5f, 0.5f));
 		Placed->SetAutoSize(true);
 		RegionLabels.Add(Label);
+		const FVector Extent = Map ? FVector(Map->WorldMax.X - Map->WorldMin.X, Map->WorldMax.Y - Map->WorldMin.Y, 1.0) : FVector::OneVector;
+		double Biggest = 0.0;
+		for (const FBox& Box : Region.Boxes) Biggest = FMath::Max(Biggest, Box.GetSize().X * Box.GetSize().Y);
+		SmallRegions.Add(Biggest / (Extent.X * Extent.Y) < SmallRegion);
 	}
 	RegionLabelStyle->SetVisibility(ESlateVisibility::Collapsed);
 	// The banner shows with its plate, the panel it sits on.
@@ -327,21 +332,20 @@ void UWorldMapWidget::PlaceMarkers()
 	auto At = [&](const FVector& World) { return ((Map->ToUV(World) - Center) / View + FVector2D(0.5)) * Size; };
 	auto InView = [&](const FVector2D& Point) { return Point.X >= 0.0 && Point.Y >= 0.0 && Point.X <= Size.X && Point.Y <= Size.Y; };
 
-	for (int32 Index = 0; Index < Regions.Num(); ++Index)
+	// Every marker in view first, so the one under the cursor can be told apart and the region names can make room.
+	struct FPlaced
 	{
-		const FMapRegion& Region = Regions[Index];
-		const bool bFound = Places.IsValid() && Places->IsDiscovered(Region.Id);
-		const FVector2D Point = At(Region.Center);
-		// A region not found yet shows as unknown.
-		const bool bShown = InView(Point);
-		RegionLabels[Index]->SetVisibility(bShown ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-		if (!bShown) continue;
-		RegionLabels[Index]->SetText(bFound ? Region.Name : UnknownName);
-		Cast<UCanvasPanelSlot>(RegionLabels[Index]->Slot)->SetPosition(Point);
-	}
-
+		UTexture2D* Icon;
+		FLinearColor Color;
+		float Size;
+		FVector2D Point;
+		float Angle;
+		int32 Layer;
+		FVector2D Alignment;
+		FText Name;
+	};
+	TArray<FPlaced> Placed;
 	const APawn* Pawn = GetOwningPlayerPawn();
-	Icons.Begin();
 	for (const TWeakObjectPtr<UMapMarkerComponent>& Weak : Subsystem->GetMarkers())
 	{
 		const UMapMarkerComponent* Marker = Weak.Get();
@@ -351,22 +355,71 @@ void UWorldMapWidget::PlaceMarkers()
 		const FVector2D Point = At(Marker->GetMarkerLocation());
 		if (!Style || !Style->Icon || !InView(Point)) continue;
 		const bool bPicked = Marker->Kind == EMapMarkerKind::FastTravel && Marker->DiscoveryId == Selected;
-		Icons.Add(MarkerLayer, Style->Icon, Style->Color, Style->Size * (bPicked ? 1.6f : 1.2f), Point,
-		          Marker->Kind == EMapMarkerKind::Player ? Marker->GetOwner()->GetActorRotation().Yaw : 0.f);
+		const APawn* Other = Cast<APawn>(Marker->GetOwner());
+		const FText Name = Marker->Kind == EMapMarkerKind::Player && Other && Other->GetPlayerState()
+			? FText::FromString(Other->GetPlayerState()->GetPlayerName()) : Marker->Label;
+		Placed.Add({Style->Icon, Style->Color, Style->Size * (bPicked ? 1.6f : 1.2f), Point,
+		            Marker->Kind == EMapMarkerKind::Player ? static_cast<float>(Marker->GetOwner()->GetActorRotation().Yaw) : 0.f,
+		            SonheimMap::LayerOf(Marker->Kind) + (bPicked ? 5 : 0), FVector2D(0.5), Name});
 	}
 	if (const FMapMarkerStyle* Style = Map->MarkerStyles.Find(EMapMarkerKind::QuestTarget); Style && Style->Icon && IsKindShown(EMapMarkerKind::QuestTarget))
-	{
 		for (const FVector& Place : QuestPlaces)
-			if (InView(At(Place))) Icons.Add(MarkerLayer, Style->Icon, Style->Color, Style->Size * 1.3f, At(Place));
-	}
+			if (InView(At(Place)))
+				Placed.Add({Style->Icon, Style->Color, Style->Size * 1.3f, At(Place), 0.f, SonheimMap::LayerOf(EMapMarkerKind::QuestTarget),
+				            SonheimMap::PinTip, KindNames.FindRef(EMapMarkerKind::QuestTarget)});
 	if (HabitatIcon)
 		for (const FVector& Place : HabitatPlaces)
 			// Above the region's name, which stands on the same spot.
-			if (InView(At(Place))) Icons.Add(MarkerLayer, HabitatIcon, HabitatColor, 40.f, At(Place) - FVector2D(0.0, 38.0));
+			if (InView(At(Place))) Placed.Add({HabitatIcon, HabitatColor, 40.f, At(Place) - FVector2D(0.0, 38.0), 0.f, 55, FVector2D(0.5), HabitatBanner->GetText()});
 	if (Pawn && SelfIcon && InView(At(Pawn->GetActorLocation())))
 	{
 		const APlayerController* Controller = GetOwningPlayer();
-		Icons.Add(MarkerLayer, SelfIcon, SelfColor, 30.f, At(Pawn->GetActorLocation()), Controller ? Controller->GetControlRotation().Yaw : 0.f);
+		Placed.Add({SelfIcon, SelfColor, 30.f, At(Pawn->GetActorLocation()), Controller ? static_cast<float>(Controller->GetControlRotation().Yaw) : 0.f, 100,
+		            FVector2D(0.5), FText::GetEmpty()});
+	}
+
+	// The marker under the cursor grows, comes to the top and shows its name; of markers on one spot, the top one is it.
+	int32 Hover = INDEX_NONE;
+	for (int32 Index = 0; Index < Placed.Num(); ++Index)
+	{
+		const FPlaced& Item = Placed[Index];
+		const FVector2D Middle = Item.Point + (FVector2D(0.5) - Item.Alignment) * Item.Size;
+		if (Hovered.X >= 0.0 && FVector2D::Distance(Middle, Hovered) <= Item.Size * 0.6f && !Item.Name.IsEmpty()
+			&& (Hover == INDEX_NONE || Item.Layer > Placed[Hover].Layer))
+			Hover = Index;
+	}
+	Icons.Begin();
+	for (int32 Index = 0; Index < Placed.Num(); ++Index)
+	{
+		const FPlaced& Item = Placed[Index];
+		const bool bHover = Index == Hover;
+		Icons.Add(MarkerLayer, Item.Icon, Item.Color, Item.Size * (bHover ? 1.35f : 1.f), Item.Point, Item.Angle, bHover ? 1000 : Item.Layer, Item.Alignment);
 	}
 	Icons.End();
+	UWidget* Plate = HoverText->GetParent() ? static_cast<UWidget*>(HoverText->GetParent()) : HoverText.Get();
+	Plate->SetVisibility(Hover == INDEX_NONE ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	if (Hover != INDEX_NONE)
+	{
+		const FPlaced& Item = Placed[Hover];
+		HoverText->SetText(Item.Name);
+		const FVector2D Top = Item.Point + (FVector2D(0.5, 0.0) - Item.Alignment) * Item.Size * 1.35f;
+		if (auto* Held = Cast<UCanvasPanelSlot>(Plate->Slot)) Held->SetPosition(Top - FVector2D(0.0, 6.0));
+	}
+
+	// Region names lie under the markers: an unknown one dims, a small one waits for a closer zoom, and one with a marker on it
+	// moves below the marker.
+	for (int32 Index = 0; Index < Regions.Num(); ++Index)
+	{
+		const FMapRegion& Region = Regions[Index];
+		const bool bFound = Places.IsValid() && Places->IsDiscovered(Region.Id);
+		FVector2D Point = At(Region.Center);
+		const bool bShown = InView(Point) && (!SmallRegions[Index] || Span <= LabelZoom);
+		RegionLabels[Index]->SetVisibility(bShown ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		if (!bShown) continue;
+		for (const FPlaced& Item : Placed)
+			if (FVector2D::Distance(Item.Point, Point) < 30.0) Point.Y = Item.Point.Y + Item.Size * 0.5f + 16.0;
+		RegionLabels[Index]->SetText(bFound ? Region.Name : UnknownName);
+		RegionLabels[Index]->SetRenderOpacity(bFound ? 1.f : 0.6f);
+		Cast<UCanvasPanelSlot>(RegionLabels[Index]->Slot)->SetPosition(Point);
+	}
 }

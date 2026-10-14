@@ -30,14 +30,21 @@ namespace SonheimMap
 	/** Where the player's tracked, unfinished quests lead next: a region to walk into, the person or site an objective or the
 	 * report names, the dungeon to clear. */
 	TArray<FVector> TrackedQuestPlaces(const UWorld* World, const TArray<FMapRegion>& Regions, const UQuestComponent* Quests);
+	/** Which kind is drawn over which where markers meet: the tracked quest's pin on top, then players, stones, quest givers, the
+	 * dungeon. Region names lie under every marker. */
+	int32 LayerOf(EMapMarkerKind Kind);
+	/** A quest pin's tip, at the bottom of its picture, is what points at the place. */
+	inline const FVector2D PinTip(0.5, 0.92);
 }
 
 /** Draws icons on a canvas, reusing its images from one frame to the next: Begin, Add each, End. */
 struct FMapIconLayer
 {
 	void Begin() { Used = 0; }
-	/** At Position on the canvas (its centre), Size across, turned by Angle degrees. Returns the image. */
-	UImage* Add(UCanvasPanel* Canvas, UTexture2D* Icon, const FLinearColor& Color, float Size, const FVector2D& Position, float Angle = 0.f);
+	/** At Position on the canvas (by its Alignment point, the centre unless said), Size across, turned by Angle degrees, over the
+	 * images of lower Layers. Returns the image. */
+	UImage* Add(UCanvasPanel* Canvas, UTexture2D* Icon, const FLinearColor& Color, float Size, const FVector2D& Position, float Angle = 0.f,
+	            int32 Layer = 0, const FVector2D& Alignment = FVector2D(0.5, 0.5));
 	/** Hides the images not added since Begin. */
 	void End();
 

@@ -91,6 +91,8 @@ protected:
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UCanvasPanel> MarkerLayer;
 	/** A hidden text whose look the region names copy. */
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> RegionLabelStyle;
+	/** The name of the marker under the cursor, over it: a plate (its parent) with the text. */
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> HoverText;
 	/** Over the map while it shows a species' habitat: 새싹콩 서식지. */
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> HabitatBanner;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> RegionNameText;
@@ -100,6 +102,9 @@ protected:
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UWidget> TravelEmpty;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UDynamicEntryBox> LegendBox;
 
+	/** A region whose biggest zone covers less than this share of the map shows its name only zoomed in past LabelZoom. */
+	UPROPERTY(EditAnywhere, Category="Map") float SmallRegion = 0.02f;
+	UPROPERTY(EditAnywhere, Category="Map") float LabelZoom = 0.45f;
 	/** The view's height as a share of the map at the closest and farthest zoom; its width follows the screen's shape. */
 	UPROPERTY(EditAnywhere, Category="Map") float MinSpan = 0.25f;
 	UPROPERTY(EditAnywhere, Category="Map") float MaxSpan = 1.f;
@@ -139,6 +144,8 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UTextBlock>> RegionLabels;
 	FMapIconLayer Icons;
 	TArray<FMapRegion> Regions;
+	/** Per region, whether it is small enough to name only zoomed in. */
+	TArray<bool> SmallRegions;
 	TArray<FVector> QuestPlaces;
 	TArray<FVector> HabitatPlaces;
 	TSet<EMapMarkerKind> HiddenKinds;

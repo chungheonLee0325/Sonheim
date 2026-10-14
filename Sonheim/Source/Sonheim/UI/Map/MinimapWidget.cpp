@@ -98,7 +98,7 @@ void UMinimapWidget::PlaceMarkers(const FVector& Center, const float Diameter)
 		if (!Style || !Style->Icon || Offset.Size() > Radius - Style->Size * 0.5f) continue;
 		// Another player's arrow points where their pawn faces; other markers stand upright.
 		Icons.Add(MarkerLayer, Style->Icon, Style->Color, Style->Size, FVector2D(Radius) + Offset,
-		          Marker->Kind == EMapMarkerKind::Player ? Marker->GetOwner()->GetActorRotation().Yaw : 0.f);
+		          Marker->Kind == EMapMarkerKind::Player ? Marker->GetOwner()->GetActorRotation().Yaw : 0.f, SonheimMap::LayerOf(Marker->Kind));
 	}
 	// A tracked quest's place stays in sight: past the rim it is held on the rim, in its direction.
 	if (const FMapMarkerStyle* Style = Map->MarkerStyles.Find(EMapMarkerKind::QuestTarget); Style && Style->Icon)
@@ -107,7 +107,8 @@ void UMinimapWidget::PlaceMarkers(const FVector& Center, const float Diameter)
 		for (const FVector& Place : QuestPlaces)
 		{
 			const FVector2D Offset = OffsetOf(Place);
-			Icons.Add(MarkerLayer, Style->Icon, Style->Color, Style->Size, FVector2D(Radius) + (Offset.Size() > Reach ? Offset.GetSafeNormal() * Reach : Offset));
+			Icons.Add(MarkerLayer, Style->Icon, Style->Color, Style->Size, FVector2D(Radius) + (Offset.Size() > Reach ? Offset.GetSafeNormal() * Reach : Offset),
+			          0.f, SonheimMap::LayerOf(EMapMarkerKind::QuestTarget), SonheimMap::PinTip);
 		}
 	}
 	Icons.End();

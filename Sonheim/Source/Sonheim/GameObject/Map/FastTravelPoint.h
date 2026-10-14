@@ -18,7 +18,8 @@ class UWidgetComponent;
 /**
  * A stone players fast travel to. A player activates it with the interaction key (UWorldMapComponent records it) and from then on
  * can travel here from the map; using an active stone opens the map. A pillar of light over it is red until the looking player
- * activates it and blue after. Arrivals stand at the arrow, facing along it.
+ * activates it and blue after, with light running up it and rings spreading over the ground from the stone; both flash as the
+ * player activates it. Arrivals stand at the arrow, facing along it.
  */
 UCLASS()
 class SONHEIM_API AFastTravelPoint : public AActor, public IInteractableInterface
@@ -33,8 +34,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") FText ActivateText;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") FText OpenMapText;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") float InteractionDistance = 350.f;
-	/** The light pillar's material (M_TravelBeam, Color parameter) and its colours. */
+	/** The light pillar's and the ground ring's materials (M_TravelBeam, M_TravelRing: Color and Flash parameters) and colours. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") TObjectPtr<UMaterialInterface> BeamMaterial;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") TObjectPtr<UMaterialInterface> RingMaterial;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") FLinearColor InactiveColor = FLinearColor(1.f, 0.12f, 0.08f, 1.f);
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Map") FLinearColor ActiveColor = FLinearColor(0.1f, 0.55f, 1.f, 1.f);
 
@@ -54,21 +56,27 @@ protected:
 private:
 	/** Whether the player on this machine activated the stone. */
 	bool IsActiveHere() const;
-	/** Colours the pillar for the player on this machine. */
+	/** Colours the pillar for the player on this machine, and flashes it when that player activates the stone. */
 	void RefreshLook();
+	void StepFlash();
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USceneComponent> Base;
 	/** What the interaction trace hits. */
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UBoxComponent> InteractionBox;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> Mesh;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> Beam;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> Ring;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UPointLightComponent> Glow;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UArrowComponent> Arrival;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UMapMarkerComponent> Marker;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UWidgetComponent> DetectWidgetComponent;
 	UPROPERTY() TSubclassOf<UUserWidget> DetectWidgetClass;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> BeamDrawn;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> RingDrawn;
 	UPROPERTY(EditAnywhere, Category="Map") float FadeSeconds = 0.6f;
 	FTimerHandle LookTimer;
+	FTimerHandle FlashTimer;
+	double FlashStart = 0.0;
+	UPROPERTY(EditAnywhere, Category="Map") float FlashSeconds = 1.2f;
 	int8 ShownActive = -1;
 };

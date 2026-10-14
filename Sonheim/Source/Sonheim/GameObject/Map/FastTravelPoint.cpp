@@ -42,6 +42,15 @@ AFastTravelPoint::AFastTravelPoint()
 	// A 100 unit cylinder made a column 70 wide and 30 m tall, standing on the stone.
 	Beam->SetRelativeScale3D(FVector(0.7f, 0.7f, 30.f));
 	Beam->SetRelativeLocation(FVector(0, 0, 1500));
+	Ring = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Ring"));
+	Ring->SetupAttachment(Base);
+	Ring->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Ring->SetCastShadow(false);
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> Plane(TEXT("/Engine/BasicShapes/Plane.Plane"));
+	if (Plane.Succeeded()) Ring->SetStaticMesh(Plane.Object);
+	// A 100 unit plane made 5 m across, just over the ground.
+	Ring->SetRelativeScale3D(FVector(5.f, 5.f, 1.f));
+	Ring->SetRelativeLocation(FVector(0, 0, 4));
 	Glow = CreateDefaultSubobject<UPointLightComponent>(TEXT("Glow"));
 	Glow->SetupAttachment(Base);
 	Glow->SetRelativeLocation(FVector(0, 0, 250));
@@ -74,6 +83,7 @@ void AFastTravelPoint::BeginPlay()
 	if (DetectWidgetClass) DetectWidgetComponent->SetWidgetClass(DetectWidgetClass);
 	if (GetNetMode() == NM_DedicatedServer) return;
 	if (BeamMaterial) BeamDrawn = Beam->CreateDynamicMaterialInstance(0, BeamMaterial);
+	if (RingMaterial) RingDrawn = Ring->CreateDynamicMaterialInstance(0, RingMaterial);
 	// ponytail: looks at the local player's stones twice a second; bind to UWorldMapComponent::OnMapChanged if many stones stand.
 	GetWorldTimerManager().SetTimer(LookTimer, FTimerDelegate::CreateUObject(this, &AFastTravelPoint::RefreshLook), 0.5f, true, 0.f);
 }
@@ -89,10 +99,27 @@ void AFastTravelPoint::RefreshLook()
 {
 	const int8 Active = IsActiveHere() ? 1 : 0;
 	if (Active == ShownActive) return;
+	// Turning blue while watched flashes; a stone already active when play begins does not.
+	const bool bJustActivated = ShownActive == 0 && Active == 1;
 	ShownActive = Active;
 	const FLinearColor Color = Active ? ActiveColor : InactiveColor;
-	if (BeamDrawn) BeamDrawn->SetVectorParameterValue(TEXT("Color"), Color);
+	for (UMaterialInstanceDynamic* Drawn : {BeamDrawn.Get(), RingDrawn.Get()})
+		if (Drawn) Drawn->SetVectorParameterValue(TEXT("Color"), Color);
 	Glow->SetLightColor(Color);
+	if (!bJustActivated) return;
+	FlashStart = GetWorld()->GetTimeSeconds();
+	GetWorldTimerManager().SetTimer(FlashTimer, FTimerDelegate::CreateUObject(this, &AFastTravelPoint::StepFlash), 0.03f, true, 0.f);
+}
+
+void AFastTravelPoint::StepFlash()
+{
+	// From full at once down to nothing over FlashSeconds, easing out.
+	const float Left = 1.f - FMath::Clamp((GetWorld()->GetTimeSeconds() - FlashStart) / FlashSeconds, 0.0, 1.0);
+	const float Flash = Left * Left;
+	for (UMaterialInstanceDynamic* Drawn : {BeamDrawn.Get(), RingDrawn.Get()})
+		if (Drawn) Drawn->SetScalarParameterValue(TEXT("Flash"), Flash);
+	Glow->SetIntensity(8000.f * (1.f + 4.f * Flash));
+	if (Left <= 0.f) GetWorldTimerManager().ClearTimer(FlashTimer);
 }
 
 void AFastTravelPoint::Interact_Implementation(ASonheimPlayer* Player)

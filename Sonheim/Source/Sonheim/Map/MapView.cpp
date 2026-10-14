@@ -125,7 +125,21 @@ TArray<FVector> SonheimMap::TrackedQuestPlaces(const UWorld* World, const TArray
 	return Places;
 }
 
-UImage* FMapIconLayer::Add(UCanvasPanel* Canvas, UTexture2D* Icon, const FLinearColor& Color, const float Size, const FVector2D& Position, const float Angle)
+int32 SonheimMap::LayerOf(const EMapMarkerKind Kind)
+{
+	switch (Kind)
+	{
+	case EMapMarkerKind::QuestTarget: return 60;
+	case EMapMarkerKind::Player: return 50;
+	case EMapMarkerKind::FastTravel: return 40;
+	case EMapMarkerKind::QuestGiver: return 30;
+	case EMapMarkerKind::Dungeon: return 20;
+	}
+	return 10;
+}
+
+UImage* FMapIconLayer::Add(UCanvasPanel* Canvas, UTexture2D* Icon, const FLinearColor& Color, const float Size, const FVector2D& Position, const float Angle,
+                           const int32 Layer, const FVector2D& Alignment)
 {
 	if (!Images.IsValidIndex(Used) || !Images[Used].IsValid())
 	{
@@ -151,6 +165,8 @@ UImage* FMapIconLayer::Add(UCanvasPanel* Canvas, UTexture2D* Icon, const FLinear
 	UCanvasPanelSlot* Placed = Cast<UCanvasPanelSlot>(Image->Slot);
 	Placed->SetSize(FVector2D(Size));
 	Placed->SetPosition(Position);
+	Placed->SetAlignment(Alignment);
+	Placed->SetZOrder(Layer);
 	Image->SetRenderTransformAngle(Angle);
 	Image->SetVisibility(ESlateVisibility::HitTestInvisible);
 	++Used;
