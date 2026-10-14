@@ -291,10 +291,10 @@ Stage Actor는 도감 화면을 닫을 때 제거하며, 네트워크 복제 없
 
 ## 관련 코드
 
-- [MonsterDexTypes.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/MonsterDex/MonsterDexTypes.h) — 도감 정의, 플레이어 기록, FastArray
-- [MonsterDexSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/MonsterDex/MonsterDexSubsystem.cpp) — 도감 테이블 조회와 SaveGame
-- [MonsterDexComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/MonsterDexComponent.cpp) — 처치·포획 집계, 보상 검증·지급, 복제
-- [MonsterDexView.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexView.cpp) — 도감·보상 표시 데이터 구성
-- [MonsterDexWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexWidget.cpp) — 도감 목록·상세·보상 UI
-- [MonsterDexStage.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexStage.cpp) — 3D 프리뷰와 몬스터 썸네일 캡처
+- [MonsterDexTypes.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/MonsterDex/MonsterDexTypes.h) — 도감 정의, 플레이어 기록, FastArray
+- [MonsterDexSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/MonsterDex/MonsterDexSubsystem.cpp) — 도감 테이블 조회와 SaveGame
+- [MonsterDexComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/AreaObject/Player/Utility/MonsterDexComponent.cpp) — 처치·포획 집계, 보상 검증·지급, 복제
+- [MonsterDexView.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexView.cpp) — 도감·보상 표시 데이터 구성
+- [MonsterDexWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexWidget.cpp) — 도감 목록·상세·보상 UI
+- [MonsterDexStage.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexStage.cpp) — 3D 프리뷰와 몬스터 썸네일 캡처
 - [[17. Quest System|17_Quest_System]] · [[18. UMG v2 Migration|18_UMG_v2_Migration]]
