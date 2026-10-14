@@ -6,11 +6,21 @@
 
 | 전체 지도 | 필드 미니맵 |
 |---|---|
-| ![탐험 범위와 표석 목록·마커가 표시된 전체 지도](../Media/Wiki/19_World_Map_System/19_world_map.jpg) | ![HUD 오른쪽 위 원형 미니맵](../Media/Wiki/19_World_Map_System/19_hud_minimap.jpg) |
+| ![전체 지도 UI의 처리 영역 1~5번 표시](../Media/Wiki/19_World_Map_System/19_map_ui_callouts.svg) | ![HUD 오른쪽 위 원형 미니맵](../Media/Wiki/19_World_Map_System/19_hud_minimap.jpg) |
 
 | 빠른 이동 지점 | 도감에서 서식지 보기 |
 |---|---|
 | ![빠른 이동 표석 활성화 전후](../Media/Wiki/19_World_Map_System/19_stone_states.jpg) | ![도감에서 선택한 서식지를 표시한 지도](../Media/Wiki/19_World_Map_System/19_habitat_map.jpg) |
+
+지도 화면에 번호로 표시한 영역은 다음 코드에서 처리합니다.
+
+| 표시 영역 | 화면에 반영하는 데이터·처리 |
+|---|---|
+| **① 지도와 안개** | `Explored` 탐험 기록을 `UMapFog` 텍스처로 변환하고, `M_UI_Map` 머티리얼에 적용 |
+| **② 마커** | 월드 Actor·퀘스트 목표 위치를 지도 좌표로 바꾸고 `FMapIconLayer`에서 `UImage`로 배치 |
+| **③ 지역 정보** | 커서 아래 지점을 `RegionAt()`으로 조회하고 발견 여부에 따라 지역명·설명을 변경 |
+| **④ 빠른 이동** | `Discovered`를 기준으로 활성 표석 목록을 구성하고 선택한 `PointId`로 이동 요청. 이 캡처는 활성 표석이 없는 상태 |
+| **⑤ 지도 입력** | `WorldMapWidget`에서 드래그·휠 확대를 처리하고, 기존 메뉴 탭·입력 안내와 함께 사용 |
 
 ## 게임 데이터에서 지도 UI까지
 
