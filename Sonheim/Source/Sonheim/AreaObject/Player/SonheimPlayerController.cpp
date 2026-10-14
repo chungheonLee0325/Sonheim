@@ -871,6 +871,11 @@ void ASonheimPlayerController::On_Dex_Pressed(const FInputActionValue& InputActi
 	ToggleTab(UIScreen::MonsterDex);
 }
 
+void ASonheimPlayerController::Client_OpenTab_Implementation(const FName Screen)
+{
+	OpenTab(Screen);
+}
+
 void ASonheimPlayerController::OpenTab(const FName Screen)
 {
 	UUIStackSubsystem* UIStack = GetUIStack();

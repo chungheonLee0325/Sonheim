@@ -100,7 +100,7 @@ protected:
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UWidget> TravelEmpty;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UDynamicEntryBox> LegendBox;
 
-	/** The view's width as a share of the map at the closest and farthest zoom. */
+	/** The view's height as a share of the map at the closest and farthest zoom; its width follows the screen's shape. */
 	UPROPERTY(EditAnywhere, Category="Map") float MinSpan = 0.25f;
 	UPROPERTY(EditAnywhere, Category="Map") float MaxSpan = 1.f;
 	/** How far the stick moves the view per second, as a share of the view. */
@@ -128,6 +128,8 @@ private:
 	void Zoom(float Factor, const FVector2D& AroundUV);
 	/** A point on the map image in local units of MapImage to the art's UV. */
 	FVector2D ImageToUV(const FVector2D& Local) const;
+	/** The view's size in UV: Span tall, and as wide as the image is against its height. */
+	FVector2D ViewSize() const;
 	void PlaceMarkers();
 	void DrawSidePanel(const FMapRegion* Region);
 

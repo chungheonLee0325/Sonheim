@@ -211,11 +211,13 @@ void UWorldMapWidget::NativeTick(const FGeometry& MyGeometry, const float InDelt
 	{
 		const FVector2D Stick = PanAction ? Input->GetPlayerInput()->GetActionValue(PanAction).Get<FVector2D>() : FVector2D::ZeroVector;
 		// Stick up is north, the map's up (smaller V).
-		Center += FVector2D(Stick.X, -Stick.Y) * Span * StickSpeed * InDeltaTime;
+		Center += FVector2D(Stick.X, -Stick.Y) * ViewSize() * StickSpeed * InDeltaTime;
 		const float Pull = ZoomAction ? Input->GetPlayerInput()->GetActionValue(ZoomAction).Get<float>() : 0.f;
 		if (!FMath::IsNearlyZero(Pull)) Zoom(FMath::Pow(0.35f, Pull * InDeltaTime), Center);
 		ApplyView();
 	}
+	// The image's shape is known only once it is laid out, and can change with the window, so the view is set each frame.
+	ApplyView();
 	Fog->Apply(MapMaterial, InDeltaTime);
 	PlaceMarkers();
 
@@ -241,15 +243,25 @@ void UWorldMapWidget::DrawSidePanel(const FMapRegion* Region)
 	RegionStateText->SetColorAndOpacity(bFound ? FoundColor : UnknownColor);
 }
 
+FVector2D UWorldMapWidget::ViewSize() const
+{
+	const FVector2D Size = MapImage->GetCachedGeometry().GetLocalSize();
+	return FVector2D(Size.Y > 0.0 ? Span * Size.X / Size.Y : Span, Span);
+}
+
 void UWorldMapWidget::ApplyView()
 {
-	Span = FMath::Clamp(Span, MinSpan, MaxSpan);
-	const double Half = FMath::Min(Span * 0.5, 0.5);
-	Center.X = FMath::Clamp(Center.X, Half, 1.0 - Half);
-	Center.Y = FMath::Clamp(Center.Y, Half, 1.0 - Half);
+	// The view is never wider than the art, so the screen is all map; on a wide screen it zooms out as far as the art's width.
+	const FVector2D Size = MapImage->GetCachedGeometry().GetLocalSize();
+	const float Widest = Size.X > Size.Y && Size.Y > 0.0 ? Size.Y / Size.X : 1.f;
+	Span = FMath::Clamp(Span, FMath::Min(MinSpan, Widest), FMath::Min(MaxSpan, Widest));
+	const FVector2D Half = ViewSize() * 0.5;
+	Center.X = Half.X < 0.5 ? FMath::Clamp(Center.X, Half.X, 1.0 - Half.X) : 0.5;
+	Center.Y = Half.Y < 0.5 ? FMath::Clamp(Center.Y, Half.Y, 1.0 - Half.Y) : 0.5;
 	if (!MapMaterial) return;
 	MapMaterial->SetVectorParameterValue(TEXT("Center"), FLinearColor(Center.X, Center.Y, 0.f, 0.f));
 	MapMaterial->SetScalarParameterValue(TEXT("Span"), Span);
+	MapMaterial->SetScalarParameterValue(TEXT("Aspect"), ViewSize().X / Span);
 }
 
 void UWorldMapWidget::Zoom(const float Factor, const FVector2D& AroundUV)
@@ -264,7 +276,7 @@ void UWorldMapWidget::Zoom(const float Factor, const FVector2D& AroundUV)
 FVector2D UWorldMapWidget::ImageToUV(const FVector2D& Local) const
 {
 	const FVector2D Size = MapImage->GetCachedGeometry().GetLocalSize();
-	return Size.X > 0.0 ? Center + (Local / Size - FVector2D(0.5)) * Span : Center;
+	return Size.X > 0.0 ? Center + (Local / Size - FVector2D(0.5)) * ViewSize() : Center;
 }
 
 FReply UWorldMapWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
@@ -292,7 +304,7 @@ FReply UWorldMapWidget::NativeOnMouseMove(const FGeometry& InGeometry, const FPo
 	const FVector2D Size = Image.GetLocalSize();
 	const FVector2D Delta = Image.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition()) - Image.AbsoluteToLocal(LastMouse);
 	LastMouse = InMouseEvent.GetScreenSpacePosition();
-	if (Size.X > 0.0) Center -= Delta / Size * Span;
+	if (Size.X > 0.0) Center -= Delta / Size * ViewSize();
 	ApplyView();
 	return FReply::Handled();
 }
@@ -311,7 +323,8 @@ void UWorldMapWidget::PlaceMarkers()
 	const UWorldMapDefinition* Map = Subsystem ? Subsystem->GetDefinition() : nullptr;
 	const FVector2D Size = MapImage->GetCachedGeometry().GetLocalSize();
 	if (!Map || Size.X <= 0.0) return;
-	auto At = [&](const FVector& World) { return ((Map->ToUV(World) - Center) / Span + FVector2D(0.5)) * Size; };
+	const FVector2D View = ViewSize();
+	auto At = [&](const FVector& World) { return ((Map->ToUV(World) - Center) / View + FVector2D(0.5)) * Size; };
 	auto InView = [&](const FVector2D& Point) { return Point.X >= 0.0 && Point.Y >= 0.0 && Point.X <= Size.X && Point.Y <= Size.Y; };
 
 	for (int32 Index = 0; Index < Regions.Num(); ++Index)

@@ -122,6 +122,9 @@ private:
 public:
 	/** Opens a menu tab's screen (UIScreen::Menu, MonsterDex, QuestJournal) in place of the tab showing, if one is. */
 	void OpenTab(FName Screen);
+	/** The server opening a tab's screen on this player's machine, as an active fast travel stone opens the map. */
+	UFUNCTION(Client, Reliable)
+	void Client_OpenTab(FName Screen);
 private:
 	void OpenMenu();
 	/** The menu's tab actions (IMC_Menu: Q and E, the bumpers) step the tabs while a tab's screen is on top; returns whether they did. */
