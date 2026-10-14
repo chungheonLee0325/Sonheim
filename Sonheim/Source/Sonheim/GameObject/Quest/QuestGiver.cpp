@@ -6,6 +6,7 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/AreaObject/Player/Utility/QuestComponent.h"
+#include "Sonheim/Map/MapMarkerComponent.h"
 #include "Sonheim/UI/Widget/DetectWidget.h"
 #include "Sonheim/UI/System/UIStackSubsystem.h"
 
@@ -39,10 +40,14 @@ AQuestGiver::AQuestGiver()
 	MarkerWidgetComponent->SetDrawSize(FVector2D(64, 64));
 	MarkerWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	MarkerWidgetComponent->SetVisibility(false);
+
+	MapMarker = CreateDefaultSubobject<UMapMarkerComponent>(TEXT("MapMarker"));
+	MapMarker->Kind = EMapMarkerKind::QuestGiver;
 }
 
 void AQuestGiver::BeginPlay()
 {
+	MapMarker->Label = DisplayName;
 	Super::BeginPlay();
 	if (DetectWidgetClass) DetectWidgetComponent->SetWidgetClass(DetectWidgetClass);
 	if (IdleAnimation)

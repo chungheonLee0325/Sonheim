@@ -55,6 +55,7 @@ private:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USkeletalMeshComponent> Mesh;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UWidgetComponent> DetectWidgetComponent;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UWidgetComponent> MarkerWidgetComponent;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<class UMapMarkerComponent> MapMarker;
 	void RefreshMarker();
 	FTimerHandle MarkerTimer;
 	UPROPERTY() TSubclassOf<UUserWidget> DetectWidgetClass;

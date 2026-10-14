@@ -24,6 +24,8 @@ public:
 	/** Shows a local player the region their pawn stands in, for a pawn they just got: one that spawned inside a region never walked
 	 * into it. Of nested regions, the smallest is the one shown. */
 	static void ShowWhereStanding(const APawn* Pawn, const ULocalPlayer* Local);
+	/** Whether a world point lies in the zone's box, for a pawn whose overlaps are not known yet (one just spawned). */
+	bool Contains(const FVector& Point) const;
 protected:
 	virtual void BeginPlay() override;
 private:

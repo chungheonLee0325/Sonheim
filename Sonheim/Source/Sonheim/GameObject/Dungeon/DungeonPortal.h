@@ -60,5 +60,6 @@ private:
 	/** Where a player coming from the other end stands, on the floor, and the way they face. */
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UArrowComponent> Arrival;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UWidgetComponent> DetectWidgetComponent;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<class UMapMarkerComponent> MapMarker;
 	UPROPERTY() TSubclassOf<UUserWidget> DetectWidgetClass;
 };

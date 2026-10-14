@@ -461,6 +461,9 @@ private:
 	class UPalPartnerSkillComponent* PalPartnerSkillComponent;
 	UPROPERTY()
 	class UPalCaptureComponent* PalCaptureComponent;
+	/** Puts the player on the maps; they read the name from the PlayerState. */
+	UPROPERTY(VisibleAnywhere)
+	class UMapMarkerComponent* MapMarker;
 
 	// === Sprint ===
 	UPROPERTY(ReplicatedUsing=OnRep_IsSprinting)

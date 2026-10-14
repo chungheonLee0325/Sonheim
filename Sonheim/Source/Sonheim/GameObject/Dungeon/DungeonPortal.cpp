@@ -12,6 +12,7 @@
 #include "Sonheim/UI/Widget/DetectWidget.h"
 #include "Sonheim/GameManager/Dungeon/DungeonStageRuntimeSubsystem.h"
 #include "Sonheim/GameManager/SonheimGameState.h"
+#include "Sonheim/Map/MapMarkerComponent.h"
 ADungeonPortal::ADungeonPortal()
 {
 	bReplicates = true;
@@ -41,9 +42,13 @@ ADungeonPortal::ADungeonPortal()
 	static ConstructorHelpers::FClassFinder<UUserWidget> WidgetClass(
 		TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/_BluePrint/Widget/WBP_Detect.WBP_Detect_C'"));
 	if (WidgetClass.Succeeded()) DetectWidgetClass = WidgetClass.Class;
+	// A portal inside the dungeon is off the map, so only the island's entrance shows.
+	MapMarker = CreateDefaultSubobject<UMapMarkerComponent>(TEXT("MapMarker"));
+	MapMarker->Kind = EMapMarkerKind::Dungeon;
 }
 void ADungeonPortal::BeginPlay()
 {
+	MapMarker->Label = DisplayName;
 	Super::BeginPlay();
 	if (DetectWidgetClass && DetectWidgetComponent) DetectWidgetComponent->SetWidgetClass(DetectWidgetClass);
 	if (!bOpensOnClear) return;
