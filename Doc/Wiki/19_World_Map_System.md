@@ -6,20 +6,24 @@
 
 | 전체 지도 | 필드 미니맵 |
 |---|---|
-| ![전체 지도 UI의 처리 영역 1~5번 표시](../Media/Wiki/19_World_Map_System/19_map_ui_callouts.svg) | ![HUD 오른쪽 위 원형 미니맵](../Media/Wiki/19_World_Map_System/19_hud_minimap.jpg) |
+| ![탐험 범위와 활성화된 표석 두 곳이 표시된 전체 지도](https://github.com/user-attachments/assets/7ea3a5a1-74a2-4c46-b3a7-c27980d08cad) | ![HUD 오른쪽 위 원형 미니맵](../Media/Wiki/19_World_Map_System/19_hud_minimap.jpg) |
 
 | 빠른 이동 지점 | 도감에서 서식지 보기 |
 |---|---|
 | ![빠른 이동 표석 활성화 전후](../Media/Wiki/19_World_Map_System/19_stone_states.jpg) | ![도감에서 선택한 서식지를 표시한 지도](../Media/Wiki/19_World_Map_System/19_habitat_map.jpg) |
 
-지도 화면에 번호로 표시한 영역은 다음 코드에서 처리합니다.
+전체 지도에서는 탐험 범위와 마커뿐 아니라 **활성화한 표석 두 곳이 오른쪽 목록에 표시되는 모습**을 확인할 수 있습니다.
+
+![지도 화면의 처리 영역 1~5번 표시](../Media/Wiki/19_World_Map_System/19_map_ui_callouts.svg)
+
+위 번호에 해당하는 UI 처리 코드는 다음과 같습니다.
 
 | 표시 영역 | 화면에 반영하는 데이터·처리 |
 |---|---|
 | **① 지도와 안개** | `Explored` 탐험 기록을 `UMapFog` 텍스처로 변환하고, `M_UI_Map` 머티리얼에 적용 |
 | **② 마커** | 월드 Actor·퀘스트 목표 위치를 지도 좌표로 바꾸고 `FMapIconLayer`에서 `UImage`로 배치 |
 | **③ 지역 정보** | 커서 아래 지점을 `RegionAt()`으로 조회하고 발견 여부에 따라 지역명·설명을 변경 |
-| **④ 빠른 이동** | `Discovered`를 기준으로 활성 표석 목록을 구성하고 선택한 `PointId`로 이동 요청. 이 캡처는 활성 표석이 없는 상태 |
+| **④ 빠른 이동** | `Discovered`를 기준으로 활성 표석 목록을 구성하고 선택한 `PointId`로 이동 요청 |
 | **⑤ 지도 입력** | `WorldMapWidget`에서 드래그·휠 확대를 처리하고, 기존 메뉴 탭·입력 안내와 함께 사용 |
 
 ## 게임 데이터에서 지도 UI까지
@@ -118,7 +122,7 @@ void UWorldMapWidget::Zoom(float Factor, const FVector2D& AroundUV)
 
 ## 탐험 기록을 안개 머티리얼로 표시하기
 
-**탐험 안개·지도 조작 시연**
+**필드 이동 → 탐험 범위 갱신 → 지도에서 확인·확대**
 
 https://github.com/user-attachments/assets/d87819c4-dd46-496e-b314-dc4a624dc1e9
 
@@ -143,9 +147,7 @@ flowchart LR
 
 ## 빠른 이동: UI 선택을 게임플레이 동작으로 연결
 
-![PR #4에 추가한 빠른 이동 관련 게임 화면](https://github.com/user-attachments/assets/7ea3a5a1-74a2-4c46-b3a7-c27980d08cad)
-
-**표석 활성화·빠른 이동 시연**
+**표석 활성화 → 지도에서 목적지 선택 → 이동**
 
 https://github.com/user-attachments/assets/588c9b6b-05d3-4048-9a93-99fa6ec5d54a
 
