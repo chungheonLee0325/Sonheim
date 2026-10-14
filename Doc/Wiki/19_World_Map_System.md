@@ -127,9 +127,7 @@ for (TActorIterator<AFastTravelPoint> It(GetWorld()); It; ++It)
 
 도감 정의 데이터에 지역 ID 목록(`Habitats`)을 추가했습니다. 발견한 몬스터만 서식지를 보여주고, 플레이어가 아직 찾지 못한 지역 이름은 `???`로 표시합니다.
 
-| 도감 상세 | 지도에서 보기 |
-|---|---|
-| ![도감의 서식지 표시와 지도에서 보기 버튼](../Media/Wiki/19_World_Map_System/19_dex_habitat.jpg) | ![해당 몬스터 서식지를 표시한 지도](../Media/Wiki/19_World_Map_System/19_habitat_map.jpg) |
+![도감 상세의 서식지와 '지도에서 보기' 버튼](../Media/Wiki/19_World_Map_System/19_dex_habitat.jpg)
 
 `UMonsterDexWidget::ShowHabitat`에서 서식지 목록과 몬스터 이름을 복사한 뒤 지도 탭을 열고, `UWorldMapWidget::ShowHabitat`으로 전달합니다. 도감 탭이 닫히면서 선택 페이지가 바뀔 수 있으므로 **탭 전환 전에 표시 데이터를 확보**합니다. 지도는 서식지 위치들을 포함하도록 중심과 확대 범위를 조정합니다.
 
