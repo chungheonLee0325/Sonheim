@@ -24,7 +24,7 @@
 
 | **World Map — 탐험 안개·빠른 이동** | **빠른 이동 표석 — 상호작용 활성화** |
 |---|---|
-| ![탐험한 자리만 걷힌 안개와 지역·마커가 표시된 전체 화면 지도](../Media/Wiki/19_World_Map_System/19_world_map.jpg) | ![빨간 빛기둥의 비활성 표석과 파란 빛기둥의 활성 표석](../Media/Wiki/19_World_Map_System/19_stone_states.jpg) |
+| ![탐험한 지역과 활성화한 빠른 이동 표석 두 곳이 표시된 전체 지도](https://github.com/user-attachments/assets/7ea3a5a1-74a2-4c46-b3a7-c27980d08cad) | ![빨간 빛기둥의 비활성 표석과 파란 빛기둥의 활성 표석](../Media/Wiki/19_World_Map_System/19_stone_states.jpg) |
 | 탐험 기록·퀘스트 목표를 전체 지도와 미니맵에 표시하고, 공통 좌표 변환·마커·안개 처리를 사용합니다. **[19. World Map & Fast Travel](19_World_Map_System.md)** | 플레이어별 활성화 기록으로 빠른 이동 목록을 구성하고, 선택한 목적지로 이동하는 흐름을 연결했습니다. **[19. World Map & Fast Travel](19_World_Map_System.md)** |
 
 **시연 영상:** [도감 첫 발견](https://github.com/user-attachments/assets/d1d96b5f-1076-4e29-872d-3399a540acac) · [퀘스트 수락부터 완료까지](https://github.com/user-attachments/assets/356d1438-7c3c-417d-8bd4-b8dcb7a3efb6) · [던전 지름길 분기](https://github.com/user-attachments/assets/29858da6-7d13-4297-9d71-41f53272a952) · [보스 패턴](https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd) · [지도 탐험·안개](https://github.com/user-attachments/assets/d87819c4-dd46-496e-b314-dc4a624dc1e9) · [표석 활성화·빠른 이동](https://github.com/user-attachments/assets/588c9b6b-05d3-4048-9a93-99fa6ec5d54a)
