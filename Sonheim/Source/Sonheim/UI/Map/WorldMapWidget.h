@@ -89,7 +89,7 @@ protected:
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UImage> MapImage;
 	/** Over the map, the same size: markers and region names are placed on it. */
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UCanvasPanel> MarkerLayer;
-	/** A hidden text whose look the region names copy. */
+	/** A hidden text whose look the region names copy; its plate (parent border) gives theirs. */
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> RegionLabelStyle;
 	/** The name of the marker under the cursor, over it: a plate (its parent) with the text. */
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> HoverText;
@@ -140,8 +140,9 @@ private:
 
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> MapMaterial;
 	UPROPERTY(Transient) TObjectPtr<class UMapFog> Fog;
-	/** The region names, one per region, made at construction. */
+	/** The region names, one per region, made at construction, each on a dark plate so it reads over any part of the map. */
 	UPROPERTY(Transient) TArray<TObjectPtr<UTextBlock>> RegionLabels;
+	UPROPERTY(Transient) TArray<TObjectPtr<class UBorder>> RegionPlates;
 	FMapIconLayer Icons;
 	TArray<FMapRegion> Regions;
 	/** Per region, whether it is small enough to name only zoomed in. */

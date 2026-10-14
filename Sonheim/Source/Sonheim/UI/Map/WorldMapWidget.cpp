@@ -1,6 +1,7 @@
 #include "WorldMapWidget.h"
 #include "EngineUtils.h"
 #include "EnhancedInputSubsystems.h"
+#include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
@@ -102,16 +103,25 @@ void UWorldMapWidget::NativeConstruct()
 		Label->SetShadowOffset(RegionLabelStyle->GetShadowOffset());
 		Label->SetShadowColorAndOpacity(RegionLabelStyle->GetShadowColorAndOpacity());
 		Label->SetJustification(ETextJustify::Center);
-		UCanvasPanelSlot* Placed = MarkerLayer->AddChildToCanvas(Label);
+		UBorder* Plate = NewObject<UBorder>(MarkerLayer);
+		if (const UBorder* Style = Cast<UBorder>(RegionLabelStyle->GetParent()))
+		{
+			Plate->SetBrush(Style->Background);
+			Plate->SetBrushColor(Style->GetBrushColor());
+			Plate->SetPadding(Style->GetPadding());
+		}
+		Plate->SetContent(Label);
+		UCanvasPanelSlot* Placed = MarkerLayer->AddChildToCanvas(Plate);
 		Placed->SetAlignment(FVector2D(0.5f, 0.5f));
 		Placed->SetAutoSize(true);
 		RegionLabels.Add(Label);
+		RegionPlates.Add(Plate);
 		const FVector Extent = Map ? FVector(Map->WorldMax.X - Map->WorldMin.X, Map->WorldMax.Y - Map->WorldMin.Y, 1.0) : FVector::OneVector;
 		double Biggest = 0.0;
 		for (const FBox& Box : Region.Boxes) Biggest = FMath::Max(Biggest, Box.GetSize().X * Box.GetSize().Y);
 		SmallRegions.Add(Biggest / (Extent.X * Extent.Y) < SmallRegion);
 	}
-	RegionLabelStyle->SetVisibility(ESlateVisibility::Collapsed);
+	(RegionLabelStyle->GetParent() ? static_cast<UWidget*>(RegionLabelStyle->GetParent()) : RegionLabelStyle.Get())->SetVisibility(ESlateVisibility::Collapsed);
 	// The banner shows with its plate, the panel it sits on.
 	(HabitatBanner->GetParent() ? static_cast<UWidget*>(HabitatBanner->GetParent()) : HabitatBanner.Get())->SetVisibility(ESlateVisibility::Collapsed);
 
@@ -414,12 +424,12 @@ void UWorldMapWidget::PlaceMarkers()
 		const bool bFound = Places.IsValid() && Places->IsDiscovered(Region.Id);
 		FVector2D Point = At(Region.Center);
 		const bool bShown = InView(Point) && (!SmallRegions[Index] || Span <= LabelZoom);
-		RegionLabels[Index]->SetVisibility(bShown ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		RegionPlates[Index]->SetVisibility(bShown ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		if (!bShown) continue;
 		for (const FPlaced& Item : Placed)
 			if (FVector2D::Distance(Item.Point, Point) < 30.0) Point.Y = Item.Point.Y + Item.Size * 0.5f + 16.0;
 		RegionLabels[Index]->SetText(bFound ? Region.Name : UnknownName);
-		RegionLabels[Index]->SetRenderOpacity(bFound ? 1.f : 0.6f);
-		Cast<UCanvasPanelSlot>(RegionLabels[Index]->Slot)->SetPosition(Point);
+		RegionPlates[Index]->SetRenderOpacity(bFound ? 1.f : 0.7f);
+		Cast<UCanvasPanelSlot>(RegionPlates[Index]->Slot)->SetPosition(Point);
 	}
 }
