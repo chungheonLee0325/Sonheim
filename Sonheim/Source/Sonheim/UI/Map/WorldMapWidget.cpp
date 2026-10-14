@@ -187,11 +187,13 @@ void UWorldMapWidget::ShowHabitat(const TArray<FName>& Habitats, const FText& Sp
 	HabitatBanner->SetText(FText::Format(HabitatFormat, Species));
 	(HabitatBanner->GetParent() ? static_cast<UWidget*>(HabitatBanner->GetParent()) : HabitatBanner.Get())->SetVisibility(ESlateVisibility::HitTestInvisible);
 	if (HabitatPlaces.IsEmpty()) return;
-	// The view takes in every place with room around them.
+	// The view takes in every place with room around them, by the screen's shape (16:9 until the image is laid out).
 	FBox2D Fit(ForceInit);
 	for (const FVector& Place : HabitatPlaces) Fit += Map->ToUV(Place);
+	const FVector2D Size = MapImage->GetCachedGeometry().GetLocalSize();
+	const double Aspect = Size.Y > 0.0 ? Size.X / Size.Y : 16.0 / 9.0;
 	Center = Fit.GetCenter();
-	Span = FMath::Max(Fit.GetSize().GetMax() * 1.8f, 0.45f);
+	Span = FMath::Max(FMath::Max(Fit.GetSize().Y, Fit.GetSize().X / Aspect) * 1.35, 0.45);
 	ApplyView();
 }
 
@@ -266,10 +268,8 @@ FVector2D UWorldMapWidget::ViewSize() const
 
 void UWorldMapWidget::ApplyView()
 {
-	// The view is never wider than the art, so the screen is all map; on a wide screen it zooms out as far as the art's width.
-	const FVector2D Size = MapImage->GetCachedGeometry().GetLocalSize();
-	const float Widest = Size.X > Size.Y && Size.Y > 0.0 ? Size.Y / Size.X : 1.f;
-	Span = FMath::Clamp(Span, FMath::Min(MinSpan, Widest), FMath::Min(MaxSpan, Widest));
+	// Zoomed out on a wide screen the view is wider than the art; the material carries the fog's clouds past its edge there.
+	Span = FMath::Clamp(Span, MinSpan, MaxSpan);
 	const FVector2D Half = ViewSize() * 0.5;
 	Center.X = Half.X < 0.5 ? FMath::Clamp(Center.X, Half.X, 1.0 - Half.X) : 0.5;
 	Center.Y = Half.Y < 0.5 ? FMath::Clamp(Center.Y, Half.Y, 1.0 - Half.Y) : 0.5;
