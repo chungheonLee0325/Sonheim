@@ -37,6 +37,8 @@ class SONHEIM_API UMonsterDexCellWidget : public UUserWidget
 public:
 	/** Picture is the species' still from the book's stage; without one the cell draws the species' icon. */
 	void Show(const FMonsterDexPageView& Page, bool bSelected, UMaterialInterface* Picture);
+	/** Lets go of the picture, so the stage's render target it shows can be freed while the cell waits in its box's pool. */
+	void ClearPicture();
 	TDelegate<void(int32 AreaObjectID)> OnPicked;
 protected:
 	virtual void NativeOnInitialized() override;

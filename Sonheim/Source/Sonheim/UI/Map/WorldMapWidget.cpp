@@ -88,14 +88,19 @@ void UWorldMapWidget::NativeConstruct()
 	const UWorldMapSubsystem* Subsystem = SubsystemOf(*this);
 	const UWorldMapDefinition* Map = Subsystem ? Subsystem->GetDefinition() : nullptr;
 	MapMaterial = MapImage->GetDynamicMaterial();
-	Regions = SonheimMap::CollectRegions(GetWorld());
-	Fog = NewObject<UMapFog>(this);
+	// Kept by the UI stack after it closes, the map makes its region names once and only takes up the player's state again.
+	const bool bFirst = !Fog;
+	if (bFirst)
+	{
+		Regions = SonheimMap::CollectRegions(GetWorld());
+		Fog = NewObject<UMapFog>(this);
+	}
 	if (Map && MapMaterial)
 	{
 		MapMaterial->SetTextureParameterValue(TEXT("Art"), Map->Art);
 		MapMaterial->SetScalarParameterValue(TEXT("Round"), 0.f);
 	}
-	for (const FMapRegion& Region : Regions)
+	if (bFirst) for (const FMapRegion& Region : Regions)
 	{
 		UTextBlock* Label = NewObject<UTextBlock>(MarkerLayer);
 		Label->SetFont(RegionLabelStyle->GetFont());
@@ -125,7 +130,8 @@ void UWorldMapWidget::NativeConstruct()
 	// The banner shows with its plate, the panel it sits on.
 	(HabitatBanner->GetParent() ? static_cast<UWidget*>(HabitatBanner->GetParent()) : HabitatBanner.Get())->SetVisibility(ESlateVisibility::Collapsed);
 
-	// The map opens on the player, at a middle zoom.
+	// The map opens on the player, at a middle zoom, with no habitat shown.
+	HabitatPlaces.Reset();
 	Span = FMath::Clamp(0.6f, MinSpan, MaxSpan);
 	if (const APawn* Pawn = GetOwningPlayerPawn(); Pawn && Map && Map->Shows(Pawn->GetActorLocation())) Center = Map->ToUV(Pawn->GetActorLocation());
 	ApplyView();

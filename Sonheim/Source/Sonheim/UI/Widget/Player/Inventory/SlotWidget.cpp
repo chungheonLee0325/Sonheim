@@ -32,10 +32,11 @@ void USlotWidget::Init(int Index)
 
 void USlotWidget::SetItemData(const FItemData* ItemData, int32 NewQuantity)
 {
-	// ItemID = NewItemID;
+	if (ItemData == ShownItem && NewQuantity == Quantity) return;
+	ClearSlot();
 	if (NewQuantity != 0)
 	{
-		TXT_Quantity->SetText(FText::FromString(FString::Printf(TEXT("%d"), NewQuantity)));
+		TXT_Quantity->SetText(FText::AsNumber(NewQuantity));
 		TXT_Quantity->SetVisibility(ESlateVisibility::Visible);
 	}
 	if (!FMath::IsNearlyZero(ItemData->Weight))
@@ -54,22 +55,19 @@ void USlotWidget::SetItemData(const FItemData* ItemData, int32 NewQuantity)
 	IMG_Item->SetBrushFromTexture(ItemData->ItemIcon);
 	IMG_Item->SetVisibility(ESlateVisibility::Visible);
 
+	ShownItem = ItemData;
 	ItemID = ItemData->ItemID;
 	Quantity = NewQuantity;
-	//ToDo : Durability 등 묶어서 구조체로 관리해야할듯.. FInventoryItem 의 확장?
+	if (IsHovered()) RefreshToolTip();
+}
 
-	// 툴팁 위젯이 없으면 생성
-	if (!ToolTipInstance && ToolTipWidgetClass)
-	{
-		ToolTipInstance = CreateWidget<UToolTipWidget>(this, ToolTipWidgetClass);
-	}
-
-	// ToolTip 초기화
-	if (ItemData != nullptr && ToolTipInstance != nullptr)
-	{
-		ToolTipInstance->InitToolTip(ItemData, Quantity);
-		SetToolTip(ToolTipInstance);
-	}
+void USlotWidget::RefreshToolTip()
+{
+	if (!ShownItem) return;
+	if (!ToolTipInstance && ToolTipWidgetClass) ToolTipInstance = CreateWidget<UToolTipWidget>(this, ToolTipWidgetClass);
+	if (!ToolTipInstance) return;
+	ToolTipInstance->InitToolTip(ShownItem, Quantity);
+	SetToolTip(ToolTipInstance);
 }
 
 void USlotWidget::ClearSlot()
@@ -78,6 +76,7 @@ void USlotWidget::ClearSlot()
 	TXT_Weight->SetVisibility(ESlateVisibility::Hidden);
 	IMG_Item->SetVisibility(ESlateVisibility::Hidden);
 	IMG_BackGround->SetVisibility(ESlateVisibility::Hidden);
+	ShownItem = nullptr;
 	ItemID = 0;
 	Quantity = 0;
 
@@ -129,6 +128,7 @@ bool USlotWidget::IsEmpty() const
 void USlotWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	Super::NativeOnMouseEnter(InGeometry, InMouseEvent);
+	RefreshToolTip();
 
 	if (bOnlyView) return;
 

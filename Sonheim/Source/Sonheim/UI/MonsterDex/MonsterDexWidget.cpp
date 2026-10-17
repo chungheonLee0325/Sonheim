@@ -36,6 +36,11 @@ void UMonsterDexCellWidget::NativeOnInitialized()
 	PickButton->OnClicked.AddDynamic(this, &UMonsterDexCellWidget::HandleClicked);
 }
 
+void UMonsterDexCellWidget::ClearPicture()
+{
+	PortraitImage->SetBrushFromTexture(nullptr);
+}
+
 void UMonsterDexCellWidget::Show(const FMonsterDexPageView& Page, const bool bSelected, UMaterialInterface* Picture)
 {
 	AreaObjectID = Page.AreaObjectID;
@@ -136,6 +141,11 @@ void UMonsterDexWidget::NativeDestruct()
 	if (SnapStage) SnapStage->Destroy();
 	Stage = nullptr;
 	SnapStage = nullptr;
+	// The book is kept to open again (UIStack), with new stages: the brushes let go of the old stages' render targets, so a
+	// closed book holds none, and the next opening takes up the new ones.
+	StageDrawn = nullptr;
+	PortraitImage->SetBrushFromTexture(nullptr);
+	for (UUserWidget* Cell : PageGrid->GetAllEntries()) Cast<UMonsterDexCellWidget>(Cell)->ClearPicture();
 	CellPictures.Reset();
 	Super::NativeDestruct();
 }

@@ -40,6 +40,10 @@ struct FUIScreenRule
 	UPROPERTY() EUIStackInputMode InputMode = EUIStackInputMode::GameAndUI;
 	UPROPERTY() bool bShowMouse = true;
 	UPROPERTY() bool bBlockGameInput = true;
+	/** The screen's widgets outlive its closing and open again as they were, instead of being made anew each time: for screens
+	 * opened often whose making costs a frame (the menu's tabs). Their NativeConstruct runs on every opening, so it must hold
+	 * only what an opening redoes. */
+	UPROPERTY() bool bKeepWhenClosed = false;
 };
 
 USTRUCT()
@@ -101,6 +105,8 @@ private:
 
 	UPROPERTY(Config) TArray<FUIScreenRule> Screens;
 	UPROPERTY(Transient) TArray<FUIStackEntry> Stack;
+	/** Closed screens of bKeepWhenClosed rules, waiting to open again. */
+	UPROPERTY(Transient) TArray<FUIStackEntry> Kept;
 	/** The bar across the top of the menu's screens; its tabs name the screens it shows over. */
 	UPROPERTY(Config) TSoftClassPtr<UMenuTabBarWidget> TabBarClass;
 	UPROPERTY(Config) int32 TabBarZOrder = 50;
