@@ -755,10 +755,11 @@ void ASonheimPlayerController::OpenMenu()
 	if (Widgets.Num() != 2) return;
 	UInventoryWidget* InventoryWidget = Cast<UInventoryWidget>(Widgets[0]);
 	InventoryWidget->SetInventoryComponent(m_PlayerState->m_InventoryComponent);
-	m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(InventoryWidget,
-	                                                                   &UInventoryWidget::UpdateInventoryFromData);
-	m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(InventoryWidget,
-	                                                                   &UInventoryWidget::UpdateEquipmentFromData);
+	// The menu's widgets are kept and opened again (UIStack), so they are bound once.
+	m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddUniqueDynamic(InventoryWidget,
+	                                                                         &UInventoryWidget::UpdateInventoryFromData);
+	m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddUniqueDynamic(InventoryWidget,
+	                                                                         &UInventoryWidget::UpdateEquipmentFromData);
 	Cast<UPlayerStatWidget>(Widgets[1])->InitializePlayerStatWidget(m_PlayerState);
 }
 

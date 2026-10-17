@@ -136,6 +136,8 @@ void UMonsterDexWidget::NativeDestruct()
 	if (SnapStage) SnapStage->Destroy();
 	Stage = nullptr;
 	SnapStage = nullptr;
+	// The book is kept to open again (UIStack), with new stages: their pictures are taken up anew.
+	StageDrawn = nullptr;
 	CellPictures.Reset();
 	Super::NativeDestruct();
 }

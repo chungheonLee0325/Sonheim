@@ -19,6 +19,8 @@
 void UInventoryWidget::NativePreConstruct()
 {
 	Super::NativePreConstruct();
+	// A widget opened again keeps the slots it made the first time.
+	if (!IsDesignTime() && SlotWidgets.Num() == GridRows * GridColumns) return;
 	// 그리드 패널이 존재하고 슬롯 위젯 클래스가 지정되었는지 확인
 	if (SlotGrid && SlotWidgetClass)
 	{
@@ -247,13 +249,13 @@ void UInventoryWidget::BindSlotEvents(USlotWidget* SlotWidget)
 		return;
 
 	// 클릭 이벤트 바인딩
-	SlotWidget->OnItemClicked.AddDynamic(this, &UInventoryWidget::OnSlotClicked);
+	SlotWidget->OnItemClicked.AddUniqueDynamic(this, &UInventoryWidget::OnSlotClicked);
 
 	// 드래그 시작 이벤트 바인딩
-	SlotWidget->OnItemDragStarted.AddDynamic(this, &UInventoryWidget::OnSlotDragStarted);
+	SlotWidget->OnItemDragStarted.AddUniqueDynamic(this, &UInventoryWidget::OnSlotDragStarted);
 
 	// 드롭 이벤트 바인딩
-	SlotWidget->OnItemDropped.AddDynamic(this, &UInventoryWidget::OnSlotDropped);
+	SlotWidget->OnItemDropped.AddUniqueDynamic(this, &UInventoryWidget::OnSlotDropped);
 }
 
 void UInventoryWidget::SwapInventoryItems(int32 FromIndex, int32 ToIndex)

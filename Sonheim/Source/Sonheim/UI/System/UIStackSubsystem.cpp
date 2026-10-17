@@ -34,6 +34,25 @@ TArray<UUserWidget*> UUIStackSubsystem::Open(const FName Id, const TArray<TSubcl
 	if (!PC) return Result;
 	FUIStackEntry Entry;
 	Entry.Id = Id;
+	const int32 KeptIndex = Kept.IndexOfByPredicate([Id](const FUIStackEntry& Closed) { return Closed.Id == Id; });
+	if (KeptIndex != INDEX_NONE)
+	{
+		FUIStackEntry Closed = Kept[KeptIndex];
+		Kept.RemoveAt(KeptIndex);
+		// Widgets of another controller (left behind by a map change) or of other classes are let go and made anew.
+		const bool bSame = Closed.Widgets.Num() == Classes.Num() && !Closed.Widgets.ContainsByPredicate([&](const UUserWidget* Widget)
+		{
+			return !IsValid(Widget) || Widget->GetOwningPlayer() != PC || Widget->GetClass() != Classes[Closed.Widgets.IndexOfByKey(Widget)];
+		});
+		if (bSame)
+		{
+			for (UUserWidget* Widget : Closed.Widgets) Widget->AddToViewport(RuleOf(Id).ZOrder);
+			Stack.Add(Closed);
+			Result.Append(Closed.Widgets);
+			ApplyInputState();
+			return Result;
+		}
+	}
 	for (const TSubclassOf<UUserWidget>& Class : Classes)
 	{
 		UUserWidget* Widget = Class ? CreateWidget<UUserWidget>(PC, Class) : nullptr;
@@ -149,6 +168,11 @@ void UUIStackSubsystem::RemoveAt(const int32 Index)
 	{
 		if (Widget) Widget->RemoveFromParent();
 	}
+	if (RuleOf(Entry.Id).bKeepWhenClosed)
+	{
+		Kept.RemoveAll([&Entry](const FUIStackEntry& Closed) { return Closed.Id == Entry.Id; });
+		Kept.Add(Entry);
+	}
 }
 
 bool UUIStackSubsystem::IsLive(const FUIStackEntry& Entry)
@@ -233,18 +257,18 @@ FName UUIStackSubsystem::StepTab(const int32 Dir) const
 void UUIStackSubsystem::RefreshTabBar()
 {
 	const FName Top = TopTab();
+	// The bar is kept while no tab shows, to come back without being made again.
 	if (Top.IsNone())
 	{
 		if (TabBar) TabBar->RemoveFromParent();
-		TabBar = nullptr;
 		return;
 	}
-	if (!IsValid(TabBar) || !TabBar->IsInViewport())
+	if (!IsValid(TabBar) || TabBar->GetOwningPlayer() != GetController())
 	{
 		TabBar = CreateWidget<UMenuTabBarWidget>(GetController(), TabBarClass.LoadSynchronous());
 		if (!TabBar) return;
-		TabBar->AddToViewport(TabBarZOrder);
 	}
+	if (!TabBar->IsInViewport()) TabBar->AddToViewport(TabBarZOrder);
 	TabBar->ShowActive(Top);
 }
 

@@ -36,6 +36,7 @@ void UMenuTabEntryWidget::Clicked()
 
 void UMenuTabBarWidget::ShowActive(const FName Screen)
 {
-	TabBox->Reset(true);
+	// The entries go back to the box's pool and come out again for the next tab, instead of being made anew.
+	TabBox->Reset();
 	for (const FMenuTab& Tab : Tabs) TabBox->CreateEntry<UMenuTabEntryWidget>()->Show(Tab, Tab.Screen == Screen);
 }

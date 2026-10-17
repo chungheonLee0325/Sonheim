@@ -61,7 +61,7 @@ void UPlayerStatWidget::InitializePlayerStatWidget(ASonheimPlayerState* PlayerSt
 	CurrentPlayerState = PlayerState;
 	
 	// 스탯 변경 델리게이트에 바인딩
-	CurrentPlayerState->OnPlayerStatsChanged.AddDynamic(this, &UPlayerStatWidget::OnPlayerStatsUpdated);
+	CurrentPlayerState->OnPlayerStatsChanged.AddUniqueDynamic(this, &UPlayerStatWidget::OnPlayerStatsUpdated);
 	
 	// 초기 스탯 업데이트
 	TMap<EAreaObjectStatType, float> CurrentStats = PlayerState->GetModifiedStats();
