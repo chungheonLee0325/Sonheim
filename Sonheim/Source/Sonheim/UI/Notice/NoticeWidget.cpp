@@ -112,6 +112,11 @@ void UNoticeWidget::ShowFrom(const FName Channel, const FNoticeData& Data)
 	if (LifetimeBar) LifetimeBar->SetPercent(1.f);
 }
 
+void UNoticeWidget::ShowToast(const FName Channel, const FInstancedStruct& Payload)
+{
+	if (const FNoticeData* Data = Payload.GetPtr<FNoticeData>()) ShowFrom(Channel, *Data);
+}
+
 void UNoticeWidget::Stop()
 {
 	bPlaying = false;

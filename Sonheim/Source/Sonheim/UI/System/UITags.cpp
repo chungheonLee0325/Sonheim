@@ -16,4 +16,8 @@ namespace UITags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Crafting, "UI.Screen.Crafting", "A crafting station");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(ItemQuantity, "UI.Popup.ItemQuantity", "How many of an item to drop or discard");
+
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(ToastFeed, "UI.Toast.Feed", "The left-hand stack of progress notices");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(ToastTitle, "UI.Toast.Title", "A place's name across the top of the screen");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(ToastHeadline, "UI.Toast.Headline", "A big moment alone in the middle");
 }

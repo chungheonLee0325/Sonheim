@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DeveloperSettings.h"
 #include "GameplayTagContainer.h"
+#include "GameUIToastSubsystem.h"
 #include "GameUISettings.generated.h"
 
 class UGameUIRootWidget;
@@ -23,4 +24,8 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category="Screens", meta=(Categories="UI.Layer")) FGameplayTag DefaultScreenLayer;
 	/** The layer of a popup whose class names none. */
 	UPROPERTY(Config, EditAnywhere, Category="Screens", meta=(Categories="UI.Layer")) FGameplayTag DefaultPopupLayer;
+	/** The layer the toasts' widgets fill. */
+	UPROPERTY(Config, EditAnywhere, Category="Toasts", meta=(Categories="UI.Layer")) FGameplayTag ToastLayer;
+	/** The toast slots, in the order their widgets are drawn, back to front. */
+	UPROPERTY(Config, EditAnywhere, Category="Toasts", meta=(TitleProperty="Tag")) TArray<FGameUIToastSlot> ToastSlots;
 };
