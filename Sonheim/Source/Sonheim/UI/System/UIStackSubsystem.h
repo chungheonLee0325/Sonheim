@@ -16,6 +16,7 @@ namespace UIScreen
 	inline const FName MonsterDex(TEXT("MonsterDex"));
 	inline const FName QuestDialog(TEXT("QuestDialog"));
 	inline const FName QuestJournal(TEXT("QuestJournal"));
+	inline const FName WorldMap(TEXT("WorldMap"));
 }
 
 UENUM()

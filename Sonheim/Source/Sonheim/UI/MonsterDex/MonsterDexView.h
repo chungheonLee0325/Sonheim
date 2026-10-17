@@ -45,6 +45,8 @@ struct FMonsterDexPageView
 	UPROPERTY(BlueprintReadOnly) int32 Kills = 0;
 	UPROPERTY(BlueprintReadOnly) int32 Captures = 0;
 	UPROPERTY(BlueprintReadOnly) TArray<FMonsterDexTierView> Tiers;
+	/** Where the species lives (FMonsterDexData::Habitats). */
+	UPROPERTY(BlueprintReadOnly) TArray<FName> Habitats;
 };
 
 USTRUCT(BlueprintType)

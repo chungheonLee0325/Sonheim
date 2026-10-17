@@ -58,6 +58,14 @@ void ARegionZone::ShowWhereStanding(const APawn* Pawn, const ULocalPlayer* Local
 	}
 	if (Smallest) Smallest->ShowTo(Local);
 }
+bool ARegionZone::Contains(const FVector& Point) const
+{
+	return FBox(-Zone->GetScaledBoxExtent(), Zone->GetScaledBoxExtent()).IsInside(Zone->GetComponentTransform().InverseTransformPositionNoScale(Point));
+}
+FBox ARegionZone::GetBox() const
+{
+	return Zone->Bounds.GetBox();
+}
 void ARegionZone::ShowTo(const ULocalPlayer* Local) const
 {
 	if (!Local || DisplayName.IsEmpty()) return;

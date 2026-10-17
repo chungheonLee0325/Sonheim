@@ -72,7 +72,7 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	void InitPlayerState();
-	// 고유 ID가 정해지면 서버가 이 플레이어의 저장된 도감과 퀘스트를 읽는다.
+	// 고유 ID가 정해지면 서버가 이 플레이어의 저장된 도감, 퀘스트, 지도를 읽는다.
 	virtual void OnSetUniqueId() override;
 
 	/** Server: tells the systems that count deeds (the monster book, the quests) what the player did. */
@@ -118,6 +118,9 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category="Quest")
 	class UQuestComponent* m_QuestComponent;
+
+	UPROPERTY(BlueprintReadOnly, Category="Map")
+	class UWorldMapComponent* m_WorldMapComponent;
 
 	// 스탯 업데이트 함수 - 서버 권한
 	UFUNCTION(BlueprintCallable, Category="Stats")

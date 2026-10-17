@@ -116,9 +116,15 @@ private:
 	void On_CKey_Pressed(const FInputActionValue& InputActionValue);
 	void On_CKey_Released(const FInputActionValue& InputActionValue);
 	void On_Dex_Pressed(const FInputActionValue& InputActionValue);
+	void On_Map_Pressed(const FInputActionValue& InputActionValue);
+	/** A tab's own key (K, J, M): closes its screen if it is open, opens it as the tab otherwise; not over a box or a station. */
+	void ToggleTab(FName Screen);
 public:
 	/** Opens a menu tab's screen (UIScreen::Menu, MonsterDex, QuestJournal) in place of the tab showing, if one is. */
 	void OpenTab(FName Screen);
+	/** The server opening a tab's screen on this player's machine, as an active fast travel stone opens the map. */
+	UFUNCTION(Client, Reliable)
+	void Client_OpenTab(FName Screen);
 private:
 	void OpenMenu();
 	/** The menu's tab actions (IMC_Menu: Q and E, the bumpers) step the tabs while a tab's screen is on top; returns whether they did. */
@@ -131,6 +137,10 @@ private:
 	 * as if played there, so a later quest can be tried without playing the ones before it. */
 	UFUNCTION(Exec)
 	void QuestSet(int32 QuestID, const FString& State);
+	/** Development builds: DexMeet <AreaObjectID> reports one defeat of the species by this player on the server, as a kill would,
+	 * so the monster book's page (and its habitat) can be tried without hunting. */
+	UFUNCTION(Exec)
+	void DexMeet(int32 AreaObjectID);
 
 	// Owner
 	UPROPERTY(VisibleAnywhere)
@@ -236,12 +246,19 @@ private:
 	/** 퀘스트 일지 (J) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* JournalAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* MapAction;
 
 	/** The HUD's quest card, made for the local player as play begins. */
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UUserWidget> QuestTrackerClass;
 	UPROPERTY()
 	class UUserWidget* QuestTracker;
+	/** The HUD's round minimap at the top right, above the quest card. */
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UUserWidget> MinimapClass;
+	UPROPERTY()
+	class UUserWidget* Minimap;
 
 	/** FKey Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))

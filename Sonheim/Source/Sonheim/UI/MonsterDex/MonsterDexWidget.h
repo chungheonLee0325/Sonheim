@@ -107,6 +107,8 @@ public:
 	UFUNCTION(BlueprintPure, Category="MonsterDex") const FMonsterDexBookView& GetBook() const { return Book; }
 	/** Claims a tier of the picked page, as its button does. */
 	UFUNCTION(BlueprintCallable, Category="MonsterDex") void Claim(int32 Tier);
+	/** Opens the map on the picked species' habitat, as its button does. */
+	UFUNCTION(BlueprintCallable, Category="MonsterDex") void ShowHabitat();
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
@@ -124,6 +126,10 @@ protected:
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> KillCountText;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> CaptureCountText;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UDynamicEntryBox> TierBox;
+	/** Where the picked species lives, by region name (??? for a region the player has not found). */
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> HabitatText;
+	/** Opens the map on the species' habitat; off for a species not met yet. */
+	UPROPERTY(meta=(BindWidget)) TObjectPtr<UButton> HabitatButton;
 
 	UPROPERTY(EditAnywhere, Category="Style") TMap<EElementalAttribute, FLinearColor> ElementColors;
 	UPROPERTY(EditAnywhere, Category="Style") FLinearColor SilhouetteColor = FLinearColor(0.f, 0.f, 0.f, 0.75f);

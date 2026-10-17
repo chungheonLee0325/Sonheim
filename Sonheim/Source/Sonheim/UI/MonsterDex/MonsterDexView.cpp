@@ -88,6 +88,7 @@ FMonsterDexBookView MonsterDexView::Build(const UMonsterDexComponent& Dex)
 		// The portrait shows on an undiscovered page too, where the cell draws it as a silhouette.
 		View.Portrait = Species ? Species->AreaObjectIcon : nullptr;
 		View.DisplayClass = Page.DisplayClass;
+		View.Habitats = Page.Habitats;
 		View.Kills = Entry ? Entry->KillCount : 0;
 		View.Captures = Entry ? Entry->CaptureCount : 0;
 		if (View.bDiscovered)

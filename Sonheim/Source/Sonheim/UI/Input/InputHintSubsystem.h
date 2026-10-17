@@ -78,6 +78,9 @@ private:
 	UFUNCTION() void MappingsRebuilt() { OnChanged.Broadcast(); }
 	UPROPERTY(Config) TSoftObjectPtr<UInputGlyphSet> GlyphSet;
 	UPROPERTY(Config) TSoftObjectPtr<UInputMappingContext> MenuContext;
+	/** Where a gameplay action's key is looked up while the menu's context holds that key (F is the menu's confirm on a screen, so
+	 * a screen naming the interaction key still shows F). */
+	UPROPERTY(Config) TSoftObjectPtr<UInputMappingContext> GameplayContext;
 	UPROPERTY(Config) int32 MenuContextPriority = 10;
 	UPROPERTY(Transient) TObjectPtr<UInputGlyphSet> LoadedGlyphs;
 	EInputHintDevice Device = EInputHintDevice::KeyboardMouse;

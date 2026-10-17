@@ -1,0 +1,94 @@
+{
+ "rect": {
+  "min_x": -41800,
+  "max_x": -15800,
+  "min_y": -2000,
+  "max_y": 24000
+ },
+ "zones": [
+  {
+   "label": "Region_Camp",
+   "id": "Camp",
+   "loc": [
+    -34300.0,
+    10750.0
+   ],
+   "ext": [
+    1300.0,
+    1450.0
+   ]
+  },
+  {
+   "label": "Region_Beach",
+   "id": "Beach",
+   "loc": [
+    -35500.0,
+    12900.0
+   ],
+   "ext": [
+    4300.0,
+    7700.0
+   ]
+  },
+  {
+   "label": "Region_RuinGate",
+   "id": "RuinGate",
+   "loc": [
+    -35400.0,
+    8400.0
+   ],
+   "ext": [
+    1200.0,
+    1200.0
+   ]
+  },
+  {
+   "label": "Region_Cave",
+   "id": "Cave",
+   "loc": [
+    -27400.0,
+    10000.0
+   ],
+   "ext": [
+    3800.0,
+    7200.0
+   ]
+  },
+  {
+   "label": "Region_ValleyNorth",
+   "id": "Valley",
+   "loc": [
+    -21600.0,
+    11700.0
+   ],
+   "ext": [
+    2000.0,
+    8900.0
+   ]
+  },
+  {
+   "label": "Region_ValleyEast",
+   "id": "Valley",
+   "loc": [
+    -27400.0,
+    18900.0
+   ],
+   "ext": [
+    3800.0,
+    1700.0
+   ]
+  },
+  {
+   "label": "Region_RockTop",
+   "id": "RockTop",
+   "loc": [
+    -26150.0,
+    10500.0
+   ],
+   "ext": [
+    8350.0,
+    9000.0
+   ]
+  }
+ ]
+}

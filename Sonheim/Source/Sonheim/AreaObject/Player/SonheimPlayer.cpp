@@ -27,6 +27,7 @@
 #include "Utility/PalCaptureComponent.h"
 #include "Utility/PalInventoryComponent.h"
 #include "Utility/PalPartnerSkillComponent.h"
+#include "Sonheim/Map/MapMarkerComponent.h"
 
 
 class UEnhancedInputLocalPlayerSubsystem;
@@ -129,6 +130,8 @@ ASonheimPlayer::ASonheimPlayer()
 	PalCaptureComponent = CreateDefaultSubobject<UPalCaptureComponent>(TEXT("PalCapture"));
 	PalPartnerSkillComponent = CreateDefaultSubobject<UPalPartnerSkillComponent>(TEXT("PalPartnerSkill"));
 	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
+	MapMarker = CreateDefaultSubobject<UMapMarkerComponent>(TEXT("MapMarker"));
+	MapMarker->Kind = EMapMarkerKind::Player;
 }
 
 // Called when the game starts or when spawned

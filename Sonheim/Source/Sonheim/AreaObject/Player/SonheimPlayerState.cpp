@@ -10,6 +10,7 @@
 #include "Utility/PalInventoryComponent.h"
 #include "Utility/MonsterDexComponent.h"
 #include "Utility/QuestComponent.h"
+#include "Utility/WorldMapComponent.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 
@@ -20,6 +21,7 @@ ASonheimPlayerState::ASonheimPlayerState()
 	m_PalInventoryComponent = CreateDefaultSubobject<UPalInventoryComponent>(TEXT("PalInventory"));
 	m_MonsterDexComponent = CreateDefaultSubobject<UMonsterDexComponent>(TEXT("MonsterDex"));
 	m_QuestComponent = CreateDefaultSubobject<UQuestComponent>(TEXT("Quest"));
+	m_WorldMapComponent = CreateDefaultSubobject<UWorldMapComponent>(TEXT("WorldMap"));
 	
 	// 컴포넌트 복제 설정
 	m_InventoryComponent->SetIsReplicated(true);
@@ -106,6 +108,7 @@ void ASonheimPlayerState::OnSetUniqueId()
 	{
 		m_MonsterDexComponent->LoadSaved();
 		m_QuestComponent->LoadSaved();
+		m_WorldMapComponent->LoadSaved();
 	}
 }
 

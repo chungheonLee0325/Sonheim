@@ -75,7 +75,12 @@ bool UInputHintSubsystem::GlyphFor(const UInputAction* Action, FInputGlyph& OutG
 	const auto* Input = Player ? Player->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>() : nullptr;
 	if (!Action || !Input) return false;
 	const bool bPad = Device == EInputHintDevice::Gamepad;
-	for (const FKey& Key : Input->QueryKeysMappedToAction(Action))
+	TArray<FKey> Keys = Input->QueryKeysMappedToAction(Action);
+	if (Keys.IsEmpty())
+		if (const UInputMappingContext* Gameplay = GameplayContext.LoadSynchronous())
+			for (const FEnhancedActionKeyMapping& Mapping : Gameplay->GetMappings())
+				if (Mapping.Action == Action) Keys.Add(Mapping.Key);
+	for (const FKey& Key : Keys)
 	{
 		if (Key.IsGamepadKey() != bPad) continue;
 		if (const FInputGlyph* Glyph = LoadedGlyphs ? LoadedGlyphs->Glyphs.Find(Key) : nullptr) OutGlyph = *Glyph;
