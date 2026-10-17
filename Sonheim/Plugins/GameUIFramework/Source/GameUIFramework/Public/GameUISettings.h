@@ -17,7 +17,7 @@ class GAMEUIFRAMEWORK_API UGameUISettings : public UDeveloperSettings
 public:
 	virtual FName GetCategoryName() const override { return TEXT("Game"); }
 	UPROPERTY(Config, EditAnywhere, Category="Layout") TSoftClassPtr<UGameUIRootWidget> RootClass;
-	/** The root's place among widgets still added to the viewport on their own. */
+	/** The root's place among other widgets on the player's screen, if the game adds any. */
 	UPROPERTY(Config, EditAnywhere, Category="Layout") int32 RootZOrder = 0;
 	UPROPERTY(Config, EditAnywhere, Category="Screens") TSoftObjectPtr<UGameUIScreenRegistry> Registry;
 	/** The layer of a screen whose class names none. */

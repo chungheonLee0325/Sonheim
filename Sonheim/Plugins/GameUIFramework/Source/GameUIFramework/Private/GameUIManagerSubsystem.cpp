@@ -283,9 +283,7 @@ UGameUIRootWidget* UGameUIManagerSubsystem::GetRoot()
 		UE_LOG(LogGameUI, Error, TEXT("[GameUI] No root widget: %s"), *Settings->RootClass.ToString());
 		return nullptr;
 	}
-	// ponytail: on the viewport, among the widgets the game still adds there itself (the HUD); a split screen needs
-	// AddToPlayerScreen, once those widgets are in the root's layers.
-	Root->AddToViewport(Settings->RootZOrder);
+	Root->AddToPlayerScreen(Settings->RootZOrder);
 	// Nothing of the last world is open any more.
 	LastTop = FGameplayTag();
 	if (bLastBlocked)
@@ -294,6 +292,18 @@ UGameUIRootWidget* UGameUIManagerSubsystem::GetRoot()
 		OnInputStateChanged.Broadcast(false);
 	}
 	return Root;
+}
+
+void UGameUIManagerSubsystem::AddToLayer(const FGameplayTag Layer, UUserWidget* Widget)
+{
+	UGameUIRootWidget* Layout = GetRoot();
+	UGameUILayer* Found = Layout ? Layout->FindLayer(Layer) : nullptr;
+	if (!Found || !Widget)
+	{
+		UE_LOG(LogGameUI, Error, TEXT("[GameUI] %s could not go to layer %s of %s"), *GetNameSafe(Widget), *Layer.ToString(), *GetNameSafe(Layout));
+		return;
+	}
+	Found->AddLayerWidget(Widget);
 }
 
 UGameUIStackLayer* UGameUIManagerSubsystem::LayerOf(const UGameUIScreenWidget* Screen)

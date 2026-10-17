@@ -5,8 +5,10 @@
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Engine/AssetManager.h"
 #include "Engine/LocalPlayer.h"
+#include "GameUIManagerSubsystem.h"
 #include "GameFramework/PlayerController.h"
 #include "Sonheim/UI/Notice/NoticeSubsystem.h"
+#include "Sonheim/UI/System/UITags.h"
 #include "Sonheim/Utilities/LogMacro.h"
 const FName UDungeonUIRouterSubsystem::NoticeChannel(TEXT("Dungeon"));
 void UDungeonUIRouterSubsystem::Attach(APlayerController* Controller)
@@ -128,7 +130,7 @@ void UDungeonUIRouterSubsystem::RefreshWidget()
 	if (ActiveWidget)
 	{
 		ActiveId = Id;
-		ActiveWidget->AddToPlayerScreen(Entry->Layer == EDungeonUILayer::HUD ? 1800 : 1900);
+		if (auto* UI = GetLocalPlayer()->GetSubsystem<UGameUIManagerSubsystem>()) UI->AddToLayer(UITags::LayerHUD, ActiveWidget);
 		ActiveWidget->ApplyViewData(LatestView);
 		UE_LOG(SONHEIM, Log, TEXT("[DungeonHUD] Created=%s Controller=%s Revision=%d Count=%s"), *Id.ToString(), *Owner->GetName(), LatestView.Revision, *LatestView.CountText.ToString());
 	}

@@ -57,6 +57,8 @@ public:
 	UFUNCTION(BlueprintPure, Category="UI") UGameUIScreenWidget* GetTopScreen() const;
 	/** Whether gameplay input waits: the top screen asks for it, or a screen is loading to open. */
 	UFUNCTION(BlueprintPure, Category="UI") bool IsGameplayBlocked() const;
+	/** Adds a widget that is no screen, such as a part of the HUD, to a plain layer of the root; RemoveFromParent takes it off. */
+	void AddToLayer(FGameplayTag Layer, UUserWidget* Widget);
 	/** The root on the local player's screen, made when there is none or its world is gone. */
 	UGameUIRootWidget* GetRoot();
 

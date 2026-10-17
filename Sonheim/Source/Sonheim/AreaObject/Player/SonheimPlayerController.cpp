@@ -223,15 +223,18 @@ void ASonheimPlayerController::BeginPlay()
 	//InitializeHUD();
 
 	OnPossessedPawnChanged.AddDynamic(this, &ASonheimPlayerController::ShowRegionOfPawn);
-	if (QuestTrackerClass)
+	if (UGameUIManagerSubsystem* UI = GetUI())
 	{
-		QuestTracker = CreateWidget<UUserWidget>(this, QuestTrackerClass);
-		QuestTracker->AddToViewport(1);
-	}
-	if (MinimapClass)
-	{
-		Minimap = CreateWidget<UUserWidget>(this, MinimapClass);
-		Minimap->AddToViewport(1);
+		if (QuestTrackerClass)
+		{
+			QuestTracker = CreateWidget<UUserWidget>(this, QuestTrackerClass);
+			UI->AddToLayer(UITags::LayerHUD, QuestTracker);
+		}
+		if (MinimapClass)
+		{
+			Minimap = CreateWidget<UUserWidget>(this, MinimapClass);
+			UI->AddToLayer(UITags::LayerHUD, Minimap);
+		}
 	}
 	// 시작할 때 이미 가진 폰은 모든 액터가 시작해 겹침이 정해진 다음 틱에 본다.
 	GetWorldTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this]() { ShowRegionOfPawn(nullptr, GetPawn()); }));
@@ -292,7 +295,7 @@ void ASonheimPlayerController::InitializeHUD_Implementation(ASonheimPlayer* NewP
 	StatusWidget = CreateWidget<UPlayerStatusWidget>(this, StatusWidgetClass);
 	if (StatusWidget)
 	{
-		StatusWidget->AddToViewport();
+		if (UGameUIManagerSubsystem* UI = GetUI()) UI->AddToLayer(UITags::LayerHUD, StatusWidget);
 
 		// HP 변경 이벤트 바인딩
 		if (m_Player->m_HealthComponent)
