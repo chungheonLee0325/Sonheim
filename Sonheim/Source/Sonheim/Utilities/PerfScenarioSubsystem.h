@@ -16,6 +16,7 @@
  * Each open, close and swap is marked as a CSV event (PerfUI/Open Menu, ...), so the frames it costs can be found in the capture.
  *
  *   -PerfShots           also saves a screenshot of each scene as it starts recording, into Saved/Perf/<label>/shots
+ *   -PerfEndCmds="obj gc;obj list class=UserWidget"  console commands run (';' between) after the last scene, before quitting
  *   -PerfProfileGPU=Dex  also writes one frame's GPU passes (ProfileGPU) into the log as that scene starts recording
  */
 UCLASS()
@@ -40,6 +41,7 @@ private:
 	TArray<FString> Scenes;
 	FString Label;
 	FString ProfileGpuScene;
+	FString EndCommands;
 	bool bShots = false;
 	int32 Run = 1;
 	float WarmupSeconds = 3.f;

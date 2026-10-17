@@ -44,6 +44,7 @@ void UPerfScenarioSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	FParse::Value(FCommandLine::Get(), TEXT("PerfWarmup="), WarmupSeconds);
 	FParse::Value(FCommandLine::Get(), TEXT("PerfSeconds="), RecordSeconds);
 	FParse::Value(FCommandLine::Get(), TEXT("PerfProfileGPU="), ProfileGpuScene);
+	FParse::Value(FCommandLine::Get(), TEXT("PerfEndCmds="), EndCommands, false);
 	bShots = FParse::Param(FCommandLine::Get(), TEXT("PerfShots"));
 	if (Label.IsEmpty()) Label = TEXT("run");
 	TickHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &UPerfScenarioSubsystem::Tick));
@@ -110,6 +111,11 @@ bool UPerfScenarioSubsystem::Tick(const float DeltaSeconds)
 			return true;
 		}
 		Phase = EPhase::Done;
+		{
+			TArray<FString> Commands;
+			EndCommands.TrimQuotes().ParseIntoArray(Commands, TEXT(";"));
+			for (const FString& Command : Commands) GEngine->Exec(GetGameInstance()->GetWorld(), *Command.TrimStartAndEnd());
+		}
 		UE_LOG(LogTemp, Display, TEXT("[Perf] done"));
 		FPlatformMisc::RequestExit(false);
 		return false;
