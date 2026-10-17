@@ -5,7 +5,10 @@
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Engine/Texture2D.h"
+#include "GameUILayer.h"
 #include "GameUIManagerSubsystem.h"
+#include "GameUIRootWidget.h"
+#include "UITags.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 
 void UMenuTabEntryWidget::NativeOnInitialized()
@@ -41,8 +44,12 @@ void UMenuTabBarWidget::NativeOnInitialized()
 	SetVisibility(ESlateVisibility::Collapsed);
 	if (UGameUIManagerSubsystem* Manager = UGameUIManagerSubsystem::Get(this))
 	{
-		Manager->OnTopScreenChanged.AddWeakLambda(this, [this](const FGameplayTag Top)
+		// The bar follows the menu layer's top screen, so it stays over a tab while a popup is open above it.
+		Manager->OnTopScreenChanged.AddWeakLambda(this, [this, Manager](FGameplayTag)
 		{
+			const UGameUIRootWidget* Root = Manager->GetRoot();
+			const UGameUIStackLayer* Menu = Root ? Cast<UGameUIStackLayer>(Root->FindLayer(UITags::LayerMenu)) : nullptr;
+			const FGameplayTag Top = Menu && Menu->GetTop() ? Menu->GetTop()->GetScreenTag() : FGameplayTag();
 			const bool bTab = HasTab(Top);
 			SetVisibility(bTab ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 			if (bTab) ShowActive(Top);

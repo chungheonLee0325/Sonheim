@@ -14,4 +14,6 @@ namespace UITags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(QuestDialog, "UI.Screen.QuestDialog", "A quest giver's offer or report");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Container, "UI.Screen.Container", "A chest beside the player's bag");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Crafting, "UI.Screen.Crafting", "A crafting station");
+
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(ItemQuantity, "UI.Popup.ItemQuantity", "How many of an item to drop or discard");
 }

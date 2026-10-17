@@ -13,6 +13,8 @@
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
 #include "Sonheim/UI/Widget/GameObject/ContainerWidget.h"
+#include "GameUIManagerSubsystem.h"
+#include "Sonheim/UI/System/UITags.h"
 
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 
@@ -383,18 +385,24 @@ void UInventoryWidget::HandleTrashDrop(USlotWidget* FromSlot, bool bDiscardMode)
 {
 	if (!FromSlot || !InventoryComponent) return;
 
-	// 팝업 생성
-	if (!ConfirmClass) return;
-	UConfirmWidget* W = CreateWidget<UConfirmWidget>(this, ConfirmClass);
-	if (!W) return;
-
-	PendingFromSlot = FromSlot;
-	PendingDiscardMode = bDiscardMode;
-
+	UGameUIManagerSubsystem* UI = UGameUIManagerSubsystem::Get(this);
+	const FItemData* Item = m_GameInstance ? m_GameInstance->GetDataItem(FromSlot->ItemID) : nullptr;
+	if (!UI || !Item) return;
 	// 수량 선택 필요(스택형)는 팝업에서 판단하도록 MaxCount=슬롯 수량 전달
-	W->Setup(FromSlot->ItemID, FromSlot->Quantity, bDiscardMode);
-	W->OnConfirm.AddDynamic(this, &UInventoryWidget::OnConfirmTrashAction);
-	W->AddToViewport();
+	FItemQuantityView View;
+	View.Icon = Item->ItemIcon;
+	View.Name = Item->ItemName;
+	View.MaxCount = FromSlot->Quantity;
+	View.bDiscard = bDiscardMode;
+	const int32 SlotIndex = FromSlot->SlotIndex;
+	UI->Open<UConfirmWidget>(UITags::ItemQuantity, [this, View, SlotIndex, bDiscardMode](UConfirmWidget& Popup)
+	{
+		Popup.Setup(View);
+		Popup.OnResult.BindWeakLambda(this, [this, SlotIndex, bDiscardMode](UGameUIPopupWidget& Answered, const bool bConfirmed)
+		{
+			if (bConfirmed) OnConfirmTrashAction(SlotIndex, CastChecked<UConfirmWidget>(&Answered)->GetCount(), bDiscardMode);
+		});
+	});
 }
 
 void UInventoryWidget::SetContainerMode(bool bEnabled, class ABaseContainer* Container, ASonheimPlayerController* PC)
@@ -404,11 +412,10 @@ void UInventoryWidget::SetContainerMode(bool bEnabled, class ABaseContainer* Con
 	m_PlayerController = PC;
 }
 
-void UInventoryWidget::OnConfirmTrashAction(int32 Count, bool bDiscardMode)
+void UInventoryWidget::OnConfirmTrashAction(const int32 Index, int32 Count, bool bDiscardMode)
 {
-	if (!InventoryComponent || !PendingFromSlot.IsValid()) return;
+	if (!InventoryComponent) return;
 
-	const int32 Index = PendingFromSlot.Get()->SlotIndex;
 	const int32 UseCount = FMath::Max(1, Count);
 
 	if (bDiscardMode)
@@ -421,6 +428,4 @@ void UInventoryWidget::OnConfirmTrashAction(int32 Count, bool bDiscardMode)
 		// 버리기(바닥 드롭)
 		InventoryComponent->ServerDropItemByIndex(Index, UseCount);
 	}
-
-	PendingFromSlot.Reset();
 }

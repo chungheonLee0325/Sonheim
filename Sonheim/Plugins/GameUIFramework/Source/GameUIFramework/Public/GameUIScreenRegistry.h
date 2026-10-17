@@ -11,7 +11,7 @@ USTRUCT(BlueprintType)
 struct FGameUIScreenEntry
 {
 	GENERATED_BODY()
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(Categories="UI.Screen")) FGameplayTag Tag;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(Categories="UI.Screen,UI.Popup")) FGameplayTag Tag;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) TSoftClassPtr<UGameUIScreenWidget> Class;
 	/** Loaded, with the screen's preload assets, as the local player comes in, so the first opening does not wait for it. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) bool bPreload = false;

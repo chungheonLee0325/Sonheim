@@ -21,4 +21,6 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category="Screens") TSoftObjectPtr<UGameUIScreenRegistry> Registry;
 	/** The layer of a screen whose class names none. */
 	UPROPERTY(Config, EditAnywhere, Category="Screens", meta=(Categories="UI.Layer")) FGameplayTag DefaultScreenLayer;
+	/** The layer of a popup whose class names none. */
+	UPROPERTY(Config, EditAnywhere, Category="Screens", meta=(Categories="UI.Layer")) FGameplayTag DefaultPopupLayer;
 };

@@ -82,7 +82,7 @@ Sonheim/Plugins/GameUIFramework/
 | 이음매 | 플러그인이 내놓는 것 | Sonheim이 하는 일 |
 |---|---|---|
 | 입력 상태 | `FOnGameUIInputStateChanged OnInputStateChanged(bool bBlockGameplay)` | `UInputHintSubsystem`이 받아 `IMC_Menu`를 켜고 끔 (지금 `SetMenuInput` 직접 호출을 대체) |
-| 맨 위 화면 변경 | `FOnGameUITopScreenChanged OnTopScreenChanged(FGameplayTag)` | 메뉴 탭바가 받아 탭이면 보이고 불을 켬 |
+| 맨 위 화면 변경 | `FOnGameUITopScreenChanged OnTopScreenChanged(FGameplayTag)` | 메뉴 탭바가 받아, Menu 레이어의 맨 위 화면이 탭이면 보이고 불을 켬 (위에 팝업이 떠도 그대로) |
 | 뒤로 가기 입력 | `bool HandleBack()` | `IA_UI_Close`(Esc, 게임패드 B)에서 호출 |
 | 화면 내용 | 기반 클래스의 가상 함수 | 인벤토리·도감·지도·퀘스트·상자·제작대·팝업 위젯이 상속 |
 | 토스트 내용 | `FInstancedStruct` 페이로드 + `UGameUIToastWidget` | `FNoticeData`를 싣고, `UNoticeWidget`이 상속해 풀어 그림 |
@@ -127,9 +127,9 @@ FOnGameUIPopupResult OnResult;          // 여는 쪽이 설정, 한 번만 불�
 void Finish(bool bConfirmed);           // OnResult 부르고 CloseSelf
 ```
 
-- 기본값: `Layer` = 설정의 `DefaultPopupLayer`, `InputMode = UIOnly`, `Back = Custom`(뒤로 = `Finish(false)`).
+- 기본값: 레이어는 설정의 `DefaultPopupLayer`(`GetDefaultLayer`), `Back = Custom`(뒤로 = `Finish(false)`). 입력 모드는 Screen 기본값(`GameAndUI`) 그대로: `UIOnly`면 Esc·게임패드 B가 Enhanced Input에 닿지 않는다.
 - 다른 이유로 닫히면(맵 이동, 부모 화면 닫힘) `OnClosed`에서 결과를 안 받은 상태면 `Finish(false)`와 같은 취소를 보낸다. 결과 콜백은 정확히 한 번.
-- 결과 값은 파생 클래스가 가진다. 예: `UItemQuantityPopup::GetCount()`. 콜백이 팝업 참조를 받으니 꺼내 쓴다.
+- 결과 값은 파생 클래스가 가진다. 예: `UConfirmWidget::GetCount()`. 콜백이 팝업 참조를 받으니 꺼내 쓴다.
 - 팝업 뒤를 막는 반투명 배경은 각 팝업 WBP의 전체 화면 Border. 코드는 없다.
 
 ### HUD
@@ -263,7 +263,7 @@ Open(Tag, OnReady)
 
 ### 3단계: 팝업
 
-- `UConfirmWidget` → `UItemQuantityPopup`(`UGameUIPopupWidget`), `UI.Popup.ItemQuantity`. `InventoryWidget::HandleTrashDrop`이 매니저로 열고 `OnResult`로 받음. `NativeOnKeyDown`의 Esc 처리는 뒤로 가기로 대체.
+- `UConfirmWidget`의 부모를 `UGameUIPopupWidget`으로 (클래스 이름은 WBP가 가리키고 있어 그대로), `UI.Popup.ItemQuantity`. `InventoryWidget::HandleTrashDrop`이 `FItemQuantityView`를 만들어 매니저로 열고 `OnResult`로 받음. 팝업이 아이템 데이터를 직접 읽지 않음.
 
 ### 4단계: 알림을 Toast 레이어로
 

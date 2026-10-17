@@ -35,7 +35,7 @@ class GAMEUIFRAMEWORK_API UGameUIScreenWidget : public UUserWidget
 {
 	GENERATED_BODY()
 public:
-	/** The layer the screen opens into; empty takes UGameUISettings::DefaultScreenLayer. */
+	/** The layer the screen opens into; empty takes GetDefaultLayer. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Screen", meta=(Categories="UI.Layer"))
 	FGameplayTag Layer;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Screen") EGameUIInputMode InputMode = EGameUIInputMode::GameAndUI;
@@ -51,6 +51,8 @@ public:
 	FGameplayTag GetScreenTag() const { return ScreenTag; }
 	/** Closes this screen through its player's UI manager. */
 	UFUNCTION(BlueprintCallable, Category="Screen") void CloseSelf();
+	/** The layer of a screen whose class names none: UGameUISettings::DefaultScreenLayer. */
+	virtual FGameplayTag GetDefaultLayer() const;
 	/** Assets to load with the class before the first widget is made, read from the class default object. */
 	virtual void GatherPreloadAssets(TArray<FSoftObjectPath>& OutPaths) const {}
 

@@ -300,7 +300,7 @@ UGameUIStackLayer* UGameUIManagerSubsystem::LayerOf(const UGameUIScreenWidget* S
 {
 	UGameUIRootWidget* Layout = GetRoot();
 	if (!Layout || !Screen) return nullptr;
-	const FGameplayTag Tag = Screen->Layer.IsValid() ? Screen->Layer : GetDefault<UGameUISettings>()->DefaultScreenLayer;
+	const FGameplayTag Tag = Screen->Layer.IsValid() ? Screen->Layer : Screen->GetDefaultLayer();
 	return Cast<UGameUIStackLayer>(Layout->FindLayer(Tag));
 }
 
