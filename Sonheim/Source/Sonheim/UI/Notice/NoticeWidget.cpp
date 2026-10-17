@@ -164,7 +164,8 @@ void UNoticeFeedWidget::ShowFrom(const FName Channel, const FNoticeData& Data)
 
 void UNoticeFeedWidget::StopChannel(const FName Channel)
 {
-	for (UUserWidget* Entry : RowBox->GetAllEntries())
+	// A copy: removing an entry changes the box's own list.
+	for (UUserWidget* Entry : TArray<UUserWidget*>(RowBox->GetAllEntries()))
 	{
 		if (const UNoticeWidget* Row = Cast<UNoticeWidget>(Entry); Row && Row->ShowingChannel == Channel) RowBox->RemoveEntry(Entry);
 	}
@@ -174,7 +175,7 @@ void UNoticeFeedWidget::NativeTick(const FGeometry& Geometry, float DeltaSeconds
 {
 	UUserWidget::NativeTick(Geometry, DeltaSeconds);
 	// A row that has played out leaves the column, and the rows under it close the gap.
-	for (UUserWidget* Entry : RowBox->GetAllEntries())
+	for (UUserWidget* Entry : TArray<UUserWidget*>(RowBox->GetAllEntries()))
 	{
 		if (!Entry->IsVisible()) RowBox->RemoveEntry(Entry);
 	}
