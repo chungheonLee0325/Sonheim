@@ -9,7 +9,8 @@
  * Development builds: plays fixed UI scenes for measuring, when the game is started with -PerfScenes. Each scene sets the player in
  * one place and view, opens what it measures (the HUD alone, a stream of notices, the inventory, the monster book, the world map
  * being panned and zoomed; OpenClose opens and closes the inventory, the book and the map in turn; InvSwap fills the inventory
- * and swaps two of its items over and over), lets it settle for -PerfWarmup seconds, records a CSV profile for -PerfSeconds into
+ * and swaps two of its items over and over; DragSwap drags an item between two slots with the mouse, as a player does), lets it
+ * settle for -PerfWarmup seconds, records a CSV profile for -PerfSeconds into
  * Saved/Perf/<-PerfLabel>/csv, closes it and goes on; after the last scene the game quits. Scripts/Perf/measure_ui.py drives it.
  *
  *   -PerfScenes=HUD,Notices,Inventory,Dex,Map -PerfWarmup=3 -PerfSeconds=10 -PerfLabel=baseline -PerfRun=1
@@ -36,6 +37,8 @@ private:
 	/** What a scene does every frame while it runs (the notices it pushes, the map view it moves). */
 	void Drive(const FString& Scene, float Time);
 	void TearDown();
+	/** DragSwap's synthetic mouse: press, move and release between two inventory slots. */
+	void DriveDrag(const class ULocalPlayer* Local, float Time);
 	class ASonheimPlayerController* Controller() const;
 
 	TArray<FString> Scenes;
@@ -52,6 +55,10 @@ private:
 	float NextNotice = 0.f;
 	/** The scene's next timed step (a notice, an open or close, a swap) and how many it took. */
 	int32 Steps = 0;
+	/** DragSwap: whether the synthetic left button is down, and the drag it belongs to. */
+	bool bPointerDown = false;
+	int32 DragIndex = -1;
+	FVector2D PointerAt = FVector2D::ZeroVector;
 	FTSTicker::FDelegateHandle TickHandle;
 	/** The capture's file, written on another thread after the frame that ends it. */
 	TSharedFuture<FString> Written;

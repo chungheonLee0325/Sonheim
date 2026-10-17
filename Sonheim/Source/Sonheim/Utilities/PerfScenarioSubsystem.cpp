@@ -1,5 +1,8 @@
 #include "PerfScenarioSubsystem.h"
 #include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Widgets/SWindow.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
@@ -19,6 +22,8 @@
 #include "Sonheim/UI/MonsterDex/MonsterDexWidget.h"
 #include "Sonheim/UI/Notice/NoticeSubsystem.h"
 #include "Sonheim/UI/System/UIStackSubsystem.h"
+#include "Sonheim/UI/Widget/Player/Inventory/InventoryWidget.h"
+#include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
 
 #if CSV_PROFILER
 CSV_DEFINE_CATEGORY(PerfUI, true);
@@ -137,13 +142,19 @@ void UPerfScenarioSubsystem::SetUp(const FString& Scene)
 	NextNotice = 0.f;
 	Steps = 0;
 	if (Scene == TEXT("Inventory")) PC->OpenTab(UIScreen::Menu);
-	else if (Scene == TEXT("InvSwap"))
+	else if (Scene == TEXT("InvSwap") || Scene == TEXT("DragSwap"))
 	{
 		// Every slot holds an item, each with its tooltip, as a late game bag would.
 		if (UInventoryComponent* Inventory = Cast<ASonheimPlayer>(PC->GetPawn()) ? Cast<ASonheimPlayer>(PC->GetPawn())->GetInventoryComponent() : nullptr)
+		{
 			for (const TPair<int32, FItemData>& Item : USonheimGameInstance::Get(GetGameInstance()->GetWorld())->dt_Item)
 				Inventory->AddItem(Item.Key, 1);
-		PC->OpenTab(UIScreen::Menu);
+			PC->OpenTab(UIScreen::Menu);
+			// The menu's widgets are kept and opened again, so this shows whether a reopening bound them twice.
+			UE_LOG(LogTemp, Display, TEXT("[Perf] OnInventoryChanged bound objects: %d"), Inventory->OnInventoryChanged.GetAllObjects().Num());
+		}
+		bPointerDown = false;
+		DragIndex = -1;
 	}
 	else if (Scene == TEXT("OpenClose")) PC->ConsoleCommand(TEXT("DexMeet 100"));
 	else if (Scene == TEXT("Dex"))
@@ -209,11 +220,67 @@ void UPerfScenarioSubsystem::Drive(const FString& Scene, const float Time)
 		}
 		++Steps;
 	}
+	else if (Scene == TEXT("DragSwap"))
+	{
+		DriveDrag(Local, Time);
+	}
 	else if (Scene == TEXT("Dex") && Time < 0.1f)
 	{
 		const UUIStackSubsystem* UIStack = Local->GetSubsystem<UUIStackSubsystem>();
 		if (auto* Book = UIStack ? Cast<UMonsterDexWidget>(UIStack->GetWidget(UIScreen::MonsterDex)) : nullptr) Book->Pick(100);
 	}
+}
+
+void UPerfScenarioSubsystem::DriveDrag(const ULocalPlayer* Local, const float Time)
+{
+	// Every 0.8 s the item of the first slot and of the sixth trade places by the mouse, back and forth: the pointer rests on one
+	// slot, presses, moves to the other over 0.4 s (Slate detects the drag on the way) and lets go there. The events go through
+	// FSlateApplication as the platform's would, so the drag visual, the hover highlights and the drop all run.
+	const UUIStackSubsystem* UIStack = Local->GetSubsystem<UUIStackSubsystem>();
+	const UInventoryWidget* Bag = UIStack ? Cast<UInventoryWidget>(UIStack->GetWidget(UIScreen::Menu)) : nullptr;
+	const USlotWidget* First = Bag ? Bag->GetSlot(0) : nullptr;
+	const USlotWidget* Sixth = Bag ? Bag->GetSlot(5) : nullptr;
+	const TSharedPtr<SWindow> Window = GEngine->GameViewport ? GEngine->GameViewport->GetWindow() : nullptr;
+	if (!First || !Sixth || !Window.IsValid() || !FSlateApplication::IsInitialized()) return;
+	FSlateApplication& Slate = FSlateApplication::Get();
+	const int32 Index = FMath::FloorToInt(Time / 0.8f);
+	const float Into = Time - Index * 0.8f;
+	const FVector2D From = (Index % 2 ? Sixth : First)->GetCachedGeometry().GetAbsolutePositionAtCoordinates(FVector2D(0.5f, 0.5f));
+	const FVector2D To = (Index % 2 ? First : Sixth)->GetCachedGeometry().GetAbsolutePositionAtCoordinates(FVector2D(0.5f, 0.5f));
+	auto Event = [&](const FVector2D& At, const bool bDown)
+	{
+		TSet<FKey> Pressed;
+		if (bDown) Pressed.Add(EKeys::LeftMouseButton);
+		const FPointerEvent Pointer(FSlateApplication::CursorUserIndex, FSlateApplication::CursorPointerIndex, At, PointerAt, Pressed,
+		                            EKeys::LeftMouseButton, 0.f, Slate.GetModifierKeys());
+		PointerAt = At;
+		return Pointer;
+	};
+	if (Index != DragIndex && !bPointerDown)
+	{
+		if (Into < 0.1f) { Slate.ProcessMouseMoveEvent(Event(From, false)); return; }
+		CSV_EVENT(PerfUI, TEXT("DragPress"));
+		TRACE_CPUPROFILER_EVENT_SCOPE_STR("PerfUI DragPress");
+		Slate.ProcessMouseButtonDownEvent(Window->GetNativeWindow(), Event(From, true));
+		bPointerDown = true;
+		DragIndex = Index;
+		return;
+	}
+	if (!bPointerDown || Index != DragIndex) return;
+	if (Into < 0.5f)
+	{
+		const bool bFirstMove = PointerAt.Equals(From, 0.5);
+		const FVector2D At = FMath::Lerp(From, To, FMath::Clamp((Into - 0.1f) / 0.4f, 0.f, 1.f));
+		if (bFirstMove) CSV_EVENT(PerfUI, TEXT("DragMove"));
+		TRACE_CPUPROFILER_EVENT_SCOPE_STR("PerfUI DragMove");
+		Slate.ProcessMouseMoveEvent(Event(At, true));
+		return;
+	}
+	CSV_EVENT(PerfUI, TEXT("Drop"));
+	TRACE_CPUPROFILER_EVENT_SCOPE_STR("PerfUI Drop");
+	Slate.ProcessMouseMoveEvent(Event(To, true));
+	Slate.ProcessMouseButtonUpEvent(Event(To, false));
+	bPointerDown = false;
 }
 
 void UPerfScenarioSubsystem::TearDown()

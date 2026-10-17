@@ -81,6 +81,7 @@ protected:
 	UInventoryComponent* InventoryComponent;
 
 public:
+	USlotWidget* GetSlot(int32 Index) const { return SlotWidgets.IsValidIndex(Index) ? SlotWidgets[Index] : nullptr; }
 	UFUNCTION()
 	void UpdateInventoryFromData(const TArray<FInventoryItem>& InventoryData);
 	UFUNCTION()
