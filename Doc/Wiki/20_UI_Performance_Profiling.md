@@ -18,6 +18,10 @@
 
 *PR #6의 이벤트별 측정 중앙값입니다. Game Thread는 괄호 안에 구분했습니다. 실행 환경 및 장면의 영향을 받는 수치이므로 다른 프로젝트의 고정 성능값으로 일반화하지 않습니다.*
 
+![UI 조작별 개선 전후 이벤트 프레임 시간 비교](../Media/Wiki/20_UI_Performance_Profiling/20_interaction_frame_comparison.svg)
+
+*위 그래프는 표의 측정값으로 직접 구성한 비교 자료이며, Unreal Insights 원본 화면 캡처는 아닙니다.*
+
 > **측정 조건.** RTX 2070 SUPER, 1920×1080, VSync와 프레임 제한을 끈 독립 실행 게임(`-game`)에서 장면마다 3회 측정한 중앙값입니다. 측정 전에 워밍업 실행을 한 번 버리고, 실행 중 다른 프로세스의 CPU 부하를 1초마다 샘플링해 평균 10%를 넘은 실행은 다시 돌립니다. 개선 전후 차이는 양쪽 측정의 실행 간 편차보다 클 때만 결과로 보며, 0.5ms 미만의 차이는 6회씩 측정합니다. 화면의 첫 열기(에셋 로드와 첫 생성)와 다시 열기는 따로 봅니다.
 
 조작에 따라 병목이 달랐습니다. Unreal Insights 트레이스에서 각 조작 프레임의 게임 스레드 시간을 타이머별로 합산한 결과입니다(개선 전, 조작 1회당).
@@ -157,7 +161,9 @@ flowchart LR
 
 도감의 3D 프리뷰는 별도 `AMonsterDexStage`와 `SceneCaptureComponent2D`를 사용합니다. 프리뷰에는 몬스터 메시와 전용 조명을 표시하므로, 메인 월드의 모든 렌더링 효과가 필요하지 않습니다.
 
-`ProfileGPU`로 캡처 한 프레임을 나눠 보면, 캡처 비용 2.67ms의 대부분은 Lumen이 아니라 메인 월드와 같은 고정 패스(Virtual Shadow Map 약 0.5ms, Nanite 약 0.45ms, AO 약 0.11ms, 태양광 그림자 투영)였습니다. 그래서 `AMonsterDexStage`의 `ShowFlagSettings`에서 기존 대기·안개·구름 등에 더해 Dynamic Shadows, Ambient Occlusion, Nanite Meshes, Lumen GI/Reflections 등 사용하지 않는 패스를 비활성화했습니다. 캡처 비용은 1.35ms로 줄었고, 도감 장면 평균은 **Frame -0.83ms / GPU -0.62ms**입니다. 이는 위 표의 *도감 열기 이벤트 프레임*과 다른, SceneCapture 관련 프레임 비용 비교입니다.
+`ProfileGPU`로 캡처 한 프레임을 나눠 보면, 캡처 비용 2.67ms의 대부분은 Lumen이 아니라 메인 월드와 같은 고정 패스(Virtual Shadow Map 약 0.5ms, Nanite 약 0.45ms, AO 약 0.11ms, 태양광 그림자 투영)였습니다. 그래서 `AMonsterDexStage`의 `ShowFlagSettings`에서 기존 대기·안개·구름 등에 더해 Dynamic Shadows, Ambient Occlusion, Nanite Meshes, Lumen GI/Reflections 등 사용하지 않는 패스를 비활성화했습니다. `ProfileGPU`에서 관찰한 해당 캡처의 패스 비용은 **2.67 → 1.35ms**로 줄었습니다.
+
+같은 변경의 반복 장면 측정에서는 **Frame -0.83ms / GPU -0.62ms**를 기록했습니다. `ProfileGPU` 수치는 한 캡처의 패스 비용 분석이고, 장면 측정은 별도의 실행에서 수집한 전체 프레임 통계이므로 두 감소량을 동일 지표로 해석하지 않습니다. 또한 위 표의 *도감 열기 이벤트 프레임*과도 별개의 측정입니다.
 
 또한 도감 화면을 닫으면 Stage Actor는 파괴되지만, **재사용되는 위젯의 Image Brush가 이전 Render Target을 참조할 수 있습니다.** `obj refs`로 확인하면 프리뷰 Image와 엔트리 박스 풀에 들어간 목록 셀의 Brush가 파괴된 Stage의 렌더 타깃 7개(약 8.9MB)를 붙잡고 있었습니다. 이를 위해 `UMonsterDexWidget::NativeDestruct()`에서 프리뷰 Image와 현재 도감 목록 셀의 Brush 참조를 비우고, Stage 관련 참조도 초기화합니다. 닫힌 도감이 붙잡는 렌더 타깃은 0개이며, 다음 열기에는 새로운 Stage와 프리뷰가 연결됩니다.
 
@@ -177,7 +183,7 @@ flowchart LR
 
 ## 함께 수정한 UI 이벤트 처리
 
-Feed 알림에서 `RowBox->GetAllEntries()`를 순회하면서 항목을 제거하면 순회 중 원본 배열이 변경됩니다. 개발 빌드에서는 이 때문에 ensure가 발생해 콜스택 기록으로 한 프레임이 806ms 멈췄고, 출시 빌드에서는 지워진 칸을 읽을 수 있었습니다. `StopChannel()`과 `NativeTick()`에서 **목록 복사본을 순회하며 제거**하도록 수정했습니다.
+Feed 알림에서 `RowBox->GetAllEntries()`를 순회하면서 항목을 제거하면 순회 중 원본 배열이 변경됩니다. 개발 빌드에서는 이 과정에서 ensure가 발생했고, 콜스택을 기록한 프레임이 **806ms**까지 지연됐습니다. 순회 대상 컬렉션을 변경하는 코드는 항목 접근과 반복 과정에도 위험이 있어, `StopChannel()`과 `NativeTick()`에서 **목록 복사본을 순회하며 제거**하도록 수정했습니다. Shipping 빌드에서의 재현 여부는 확인하지 않았습니다.
 
 ~~~cpp
 // NoticeWidget.cpp — 실제 변경 코드 발췌
@@ -195,12 +201,12 @@ for (UUserWidget* Entry : TArray<UUserWidget*>(RowBox->GetAllEntries()))
 
 | 구성 | 역할 |
 |---|---|
-| `perf-investigation` 스킬 | 장면 → 기준 측정 → 순간 표시 → 트레이스 → 원인 → 수정 → 재측정 절차, 장면 실행기 계약과 골격 코드, 측정 규칙 |
-| `scripts/run.py`, `preflight.py` | 에디터를 닫은 상태에서 독립 실행 게임으로 측정. 측정 전 머신 점검, 워밍업, 백그라운드 부하 샘플링과 방해받은 실행의 재실행, 실행마다 `GameUserSettings.ini` 복원 |
-| `perf_summarize_csv` | 장면별 실행 평균의 중앙값·편차·95번째 백분위와 표시한 순간(`CSV_EVENT`)의 비용 |
-| `perf_compare_csv` | 개선 전후 비교. 양쪽 편차보다 큰 변화만 표시 |
-| `perf_trace_hotspots` | Insights를 열지 않고 트레이스를 내보내, 순간마다 타이머별 자체·포함 시간, 호출한 함수, 회차별 길이를 합산 |
-| `perf_read_gpu_profile` | 게임 로그의 `ProfileGPU` 덤프를 패스 트리로 읽기 |
+| [`perf-investigation` 스킬](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Skills/perf-investigation/SKILL.md) | 장면 → 기준 측정 → 순간 표시 → 트레이스 → 원인 → 수정 → 재측정 절차, [장면 실행기 계약](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Skills/perf-investigation/references/scene-runner.md)과 골격 코드, 측정 규칙 |
+| [`scripts/run.py`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Skills/perf-investigation/scripts/run.py) · [`preflight.py`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Skills/perf-investigation/scripts/preflight.py) | 에디터를 닫은 상태에서 독립 실행 게임으로 측정. 측정 전 머신 점검, 워밍업, 백그라운드 부하 샘플링과 방해받은 실행의 재실행, 실행마다 `GameUserSettings.ini` 복원 |
+| [`perf_summarize_csv`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Source/AgentMcpTools/Private/Toolsets/AgentMcpPerfTools.cpp) | 장면별 실행 평균의 중앙값·편차·95번째 백분위와 표시한 순간(`CSV_EVENT`)의 비용 |
+| [`perf_compare_csv`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Source/AgentMcpTools/Private/Toolsets/AgentMcpPerfTools.cpp) | 개선 전후 비교. 양쪽 편차보다 큰 변화만 표시 |
+| [`perf_trace_hotspots`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Source/AgentMcpTools/Private/Toolsets/AgentMcpPerfTools.cpp) | Insights를 열지 않고 트레이스를 내보내, 순간마다 타이머별 자체·포함 시간, 호출한 함수, 회차별 길이를 합산 |
+| [`perf_read_gpu_profile`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Source/AgentMcpTools/Private/Toolsets/AgentMcpPerfTools.cpp) | 게임 로그의 `ProfileGPU` 덤프를 패스 트리로 읽기 |
 
 ~~~text
 에이전트: 장면 추가 → run.py 기준 측정 → perf_summarize_csv
