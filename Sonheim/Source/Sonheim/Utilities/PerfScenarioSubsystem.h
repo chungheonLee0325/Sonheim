@@ -9,8 +9,10 @@
  * Development builds: plays fixed UI scenes for measuring, when the game is started with -PerfScenes. Each scene sets the player in
  * one place and view, opens what it measures (the HUD alone, a stream of notices, the inventory, the monster book, the world map
  * being panned and zoomed; OpenClose opens and closes the inventory, the book and the map in turn; InvSwap fills the inventory
- * and swaps two of its items over and over; DragSwap drags an item between two slots with the mouse, as a player does), lets it
- * settle for -PerfWarmup seconds, records a CSV profile for -PerfSeconds into
+ * and swaps two of its items over and over; DragSwap drags an item between two slots with the mouse, as a player does; Loot
+ * picks up five stacks at once; Kills defeats a quest's target every half second with every quest open; Journal leafs through
+ * the quest journal with every quest listed; Hits shows a burst of damage numbers; Craft opens and closes a crafting station
+ * with a full bag, Chest a filled chest, and each then rearranges the bag with the screen shut), lets it settle for -PerfWarmup seconds, records a CSV profile for -PerfSeconds into
  * Saved/Perf/<-PerfLabel>/csv, closes it and goes on; after the last scene the game quits. Scripts/Perf/measure_ui.py drives it.
  *
  *   -PerfScenes=HUD,Notices,Inventory,Dex,Map -PerfWarmup=3 -PerfSeconds=10 -PerfLabel=baseline -PerfRun=1
@@ -40,6 +42,10 @@ private:
 	/** DragSwap's synthetic mouse: press, move and release between two inventory slots. */
 	void DriveDrag(const class ULocalPlayer* Local, float Time);
 	class ASonheimPlayerController* Controller() const;
+	/** Every item of the table once into the player's bag, as a late game bag holds. */
+	void FillBag(const class ASonheimPlayerController* PC) const;
+	/** Opens or closes, by turns, the screen a world object shows when the player uses it (a station, a chest). */
+	void UseOrClose(class ASonheimPlayerController* PC, const TCHAR* Name);
 
 	TArray<FString> Scenes;
 	FString Label;
@@ -59,6 +65,9 @@ private:
 	bool bPointerDown = false;
 	int32 DragIndex = -1;
 	FVector2D PointerAt = FVector2D::ZeroVector;
+	/** What the scene works with: the station or chest it uses, the items, species or quests it goes through. */
+	TWeakObjectPtr<AActor> Prop;
+	TArray<int32> Ids;
 	FTSTicker::FDelegateHandle TickHandle;
 	/** The capture's file, written on another thread after the frame that ends it. */
 	TSharedFuture<FString> Written;

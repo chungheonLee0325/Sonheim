@@ -16,7 +16,17 @@
 #include "ProfilingDebugging/CsvProfiler.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
+#include "Sonheim/AreaObject/Player/Utility/QuestComponent.h"
+#include "Sonheim/GameObject/InteractableInterface.h"
+#include "Sonheim/GameObject/Buildings/Crafting/CraftingStation.h"
+#include "Sonheim/GameObject/Buildings/Storage/BaseContainer.h"
+#include "Sonheim/GameObject/Buildings/Utility/ContainerComponent.h"
+#include "Sonheim/Quest/QuestSubsystem.h"
+#include "Sonheim/UI/FloatingDamagePool.h"
+#include "Sonheim/UI/Quest/QuestWidget.h"
+#include "EngineUtils.h"
 #include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/UI/Map/WorldMapWidget.h"
 #include "Sonheim/UI/MonsterDex/MonsterDexWidget.h"
@@ -147,8 +157,7 @@ void UPerfScenarioSubsystem::SetUp(const FString& Scene)
 		// Every slot holds an item, each with its tooltip, as a late game bag would.
 		if (UInventoryComponent* Inventory = Cast<ASonheimPlayer>(PC->GetPawn()) ? Cast<ASonheimPlayer>(PC->GetPawn())->GetInventoryComponent() : nullptr)
 		{
-			for (const TPair<int32, FItemData>& Item : USonheimGameInstance::Get(GetGameInstance()->GetWorld())->dt_Item)
-				Inventory->AddItem(Item.Key, 1);
+			FillBag(PC);
 			PC->OpenTab(UIScreen::Menu);
 			// The menu's widgets are kept and opened again, so this shows whether a reopening bound them twice.
 			UE_LOG(LogTemp, Display, TEXT("[Perf] OnInventoryChanged bound objects: %d"), Inventory->OnInventoryChanged.GetAllObjects().Num());
@@ -164,6 +173,72 @@ void UPerfScenarioSubsystem::SetUp(const FString& Scene)
 		PC->OpenTab(UIScreen::MonsterDex);
 	}
 	else if (Scene == TEXT("Map")) PC->OpenTab(UIScreen::WorldMap);
+	else if (Scene == TEXT("Loot"))
+	{
+		// Stacks, so the bursts add to the same slots and the bag never fills.
+		Ids.Reset();
+		for (const TPair<int32, FItemData>& Item : USonheimGameInstance::Get(GetGameInstance()->GetWorld())->dt_Item)
+			if (Item.Value.bStackable && Ids.Num() < 5) Ids.Add(Item.Key);
+	}
+	else if (Scene == TEXT("Kills") || Scene == TEXT("Journal"))
+	{
+		// Every quest of the game taken (in the journal every other one finished), as a late game journal lists them.
+		const UQuestSubsystem* Book = GetGameInstance()->GetSubsystem<UQuestSubsystem>();
+		const ASonheimPlayerState* State = PC->GetPlayerState<ASonheimPlayerState>();
+		UQuestComponent* Quests = State ? State->m_QuestComponent : nullptr;
+		Ids.Reset();
+		if (Book && Quests)
+		{
+			int32 Index = 0;
+			for (const FQuestData& Quest : Book->GetQuests())
+			{
+				const bool bDone = Scene == TEXT("Journal") && Index++ % 2;
+				Quests->DebugSet(Quest.QuestID, bDone ? EQuestState::Completed : EQuestState::Active);
+				if (Scene == TEXT("Journal")) Ids.Add(Quest.QuestID);
+				else
+					for (const FQuestStep& Step : Quest.Steps)
+						for (const FQuestObjective& Objective : Step.Objectives)
+							if (Objective.Goal == EQuestGoal::Kill && Objective.Id) Ids.AddUnique(Objective.Id);
+			}
+		}
+		if (Scene == TEXT("Journal"))
+		{
+			PC->OpenTab(UIScreen::QuestJournal);
+			const UUIStackSubsystem* UIStack = PC->GetLocalPlayer()->GetSubsystem<UUIStackSubsystem>();
+			if (auto* Journal = UIStack ? Cast<UQuestJournalWidget>(UIStack->GetWidget(UIScreen::QuestJournal)) : nullptr) Journal->SetFilter(2);
+		}
+		UE_LOG(LogTemp, Display, TEXT("[Perf] %d quests, %d ids"), Book ? Book->GetQuests().Num() : 0, Ids.Num());
+	}
+	else if (Scene == TEXT("Craft"))
+	{
+		// The station with the longest recipe list, used with a full bag.
+		FillBag(PC);
+		int32 Most = -1;
+		for (TActorIterator<ACraftingStation> It(PC->GetWorld()); It; ++It)
+		{
+			const int32 Count = It->GetRecipeTable() ? It->GetRecipeTable()->GetRowMap().Num() : 0;
+			if (Count > Most) { Most = Count; Prop = *It; }
+		}
+		UE_LOG(LogTemp, Display, TEXT("[Perf] station %s, %d recipes"), *GetNameSafe(Prop.Get()), Most);
+	}
+	else if (Scene == TEXT("Chest"))
+	{
+		// A medium chest beside the player, every slot holding an item, and a full bag.
+		FillBag(PC);
+		if (!Prop.IsValid() || !Prop->IsA<ABaseContainer>())
+		{
+			UClass* Class = LoadClass<ABaseContainer>(nullptr, TEXT("/Game/_BluePrint/GameObject/Building/Chest/BP_Contaniner_Medium.BP_Contaniner_Medium_C"));
+			FActorSpawnParameters Params;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			Prop = Class ? PC->GetWorld()->SpawnActor<ABaseContainer>(Class, PerfSpot + FVector(-300.f, 0.f, -80.f), FRotator::ZeroRotator, Params) : nullptr;
+		}
+		if (UContainerComponent* Box = Prop.IsValid() ? Cast<ABaseContainer>(Prop.Get())->GetContainerComponent() : nullptr)
+		{
+			for (const TPair<int32, FItemData>& Item : USonheimGameInstance::Get(GetGameInstance()->GetWorld())->dt_Item)
+				if (!Box->AddItem(Item.Key, 1)) break;
+			UE_LOG(LogTemp, Display, TEXT("[Perf] chest %s, %d slots"), *GetNameSafe(Prop.Get()), Box->GetMaxSlots());
+		}
+	}
 	UE_LOG(LogTemp, Display, TEXT("[Perf] scene %s"), *Scene);
 }
 
@@ -224,11 +299,103 @@ void UPerfScenarioSubsystem::Drive(const FString& Scene, const float Time)
 	{
 		DriveDrag(Local, Time);
 	}
+	else if (Scene == TEXT("Loot") && Time >= Steps * 1.5f)
+	{
+		// Five stacks at once, as a defeated monster's drops are picked up together.
+		if (UInventoryComponent* Inventory = Cast<ASonheimPlayer>(PC->GetPawn()) ? Cast<ASonheimPlayer>(PC->GetPawn())->GetInventoryComponent() : nullptr)
+		{
+			CSV_EVENT(PerfUI, TEXT("Loot"));
+			TRACE_CPUPROFILER_EVENT_SCOPE_STR("PerfUI Loot");
+			for (const int32 Id : Ids) Inventory->AddItem(Id, 1);
+		}
+		++Steps;
+	}
+	else if (Scene == TEXT("Kills") && Ids.Num() && Time >= Steps * 0.5f)
+	{
+		// A quest's target defeated every half second; every 8th time the quests are taken again, so their counts keep moving.
+		if (ASonheimPlayerState* State = PC->GetPlayerState<ASonheimPlayerState>())
+		{
+			CSV_EVENT(PerfUI, TEXT("Kill"));
+			TRACE_CPUPROFILER_EVENT_SCOPE_STR("PerfUI Kill");
+			State->ReportDeed(EPlayerDeed::Kill, Ids[Steps % Ids.Num()]);
+		}
+		if (++Steps % 8 == 0)
+		{
+			const int32 Done = Steps;
+			SetUp(Scene);
+			Steps = Done;
+		}
+	}
+	else if (Scene == TEXT("Journal") && Ids.Num() && Time >= Steps * 0.3f)
+	{
+		// The next quest picked every 0.3 s, as a player reads down the list.
+		const UUIStackSubsystem* UIStack = Local->GetSubsystem<UUIStackSubsystem>();
+		if (auto* Journal = UIStack ? Cast<UQuestJournalWidget>(UIStack->GetWidget(UIScreen::QuestJournal)) : nullptr)
+		{
+			CSV_EVENT(PerfUI, TEXT("Pick Quest"));
+			TRACE_CPUPROFILER_EVENT_SCOPE_STR("PerfUI Pick Quest");
+			Journal->Pick(Ids[Steps % Ids.Num()]);
+		}
+		++Steps;
+	}
+	else if (Scene == TEXT("Hits") && Time >= Steps * 0.5f)
+	{
+		// Twenty numbers at once in front of the player, as a wide skill hitting a pack would show.
+		if (AFloatingDamagePool* Pool = AFloatingDamagePool::GetInstance(PC->GetWorld()))
+		{
+			CSV_EVENT(PerfUI, TEXT("Hits"));
+			TRACE_CPUPROFILER_EVENT_SCOPE_STR("PerfUI Hits");
+			const FVector Ahead = PC->GetPawn()->GetActorLocation() + PerfView.Vector() * 600.f;
+			for (int32 i = 0; i < 20; ++i)
+			{
+				FDamageNumberRequest Request;
+				Request.Damage = 100 + i * 37;
+				Request.WorldLocation = Ahead + FVector(0.f, (i % 5 - 2) * 80.f, (i / 5) * 60.f);
+				Request.WeakPointType = i % 4 ? EFloatingOutLineDamageType::Normal : EFloatingOutLineDamageType::CriticalDamaged;
+				Pool->RequestDamageNumber(Request);
+			}
+		}
+		++Steps;
+	}
+	else if ((Scene == TEXT("Craft") || Scene == TEXT("Chest")) && Time >= Steps * 0.6f)
+	{
+		// Open, close, then two items of the bag trade places with the screen shut, as a player sorts after putting things away.
+		if (Steps % 3 != 2) UseOrClose(PC, Scene == TEXT("Craft") ? TEXT("Crafting") : TEXT("Chest"));
+		else if (UInventoryComponent* Inventory = Cast<ASonheimPlayer>(PC->GetPawn()) ? Cast<ASonheimPlayer>(PC->GetPawn())->GetInventoryComponent() : nullptr)
+		{
+			CSV_EVENT(PerfUI, TEXT("Bag Swap"));
+			TRACE_CPUPROFILER_EVENT_SCOPE_STR("PerfUI Bag Swap");
+			Inventory->SwapItems(0, Inventory->GetInventory().Num() - 1);
+			UE_LOG(LogTemp, Display, TEXT("[Perf] OnInventoryChanged bound objects: %d"), Inventory->OnInventoryChanged.GetAllObjects().Num());
+			++Steps;
+		}
+	}
 	else if (Scene == TEXT("Dex") && Time < 0.1f)
 	{
 		const UUIStackSubsystem* UIStack = Local->GetSubsystem<UUIStackSubsystem>();
 		if (auto* Book = UIStack ? Cast<UMonsterDexWidget>(UIStack->GetWidget(UIScreen::MonsterDex)) : nullptr) Book->Pick(100);
 	}
+}
+
+void UPerfScenarioSubsystem::FillBag(const ASonheimPlayerController* PC) const
+{
+	if (UInventoryComponent* Inventory = Cast<ASonheimPlayer>(PC->GetPawn()) ? Cast<ASonheimPlayer>(PC->GetPawn())->GetInventoryComponent() : nullptr)
+		for (const TPair<int32, FItemData>& Item : USonheimGameInstance::Get(GetGameInstance()->GetWorld())->dt_Item)
+			Inventory->AddItem(Item.Key, 1);
+}
+
+void UPerfScenarioSubsystem::UseOrClose(ASonheimPlayerController* PC, const TCHAR* Name)
+{
+	// The player's own way in and out: the object's interaction (F) opens its screen, the menu key (Tab) closes the top screen.
+	ASonheimPlayer* Player = Cast<ASonheimPlayer>(PC->GetPawn());
+	if (!Prop.IsValid() || !Player) return;
+	const bool bOpen = Steps % 3 == 0;
+	const FString Event = FString::Printf(TEXT("%s %s"), bOpen ? TEXT("Open") : TEXT("Close"), Name);
+	CSV_EVENT(PerfUI, TEXT("%s"), *Event);
+	TRACE_CPUPROFILER_EVENT_SCOPE_TEXT(*(TEXT("PerfUI ") + Event));
+	if (bOpen) IInteractableInterface::Execute_Interact(Prop.Get(), Player);
+	else if (UUIStackSubsystem* UIStack = PC->GetLocalPlayer()->GetSubsystem<UUIStackSubsystem>()) UIStack->CloseTop();
+	++Steps;
 }
 
 void UPerfScenarioSubsystem::DriveDrag(const ULocalPlayer* Local, const float Time)
