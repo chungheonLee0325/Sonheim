@@ -89,29 +89,14 @@ void UInventoryWidget::NativeConstruct()
 
 void UInventoryWidget::UpdateInventoryFromData(const TArray<FInventoryItem>& InventoryData)
 {
-	// 슬롯 위젯 배열이 비어있지 않은지 확인
-	if (SlotWidgets.Num() > 0)
+	// Every slot is offered its item; only those whose item or count changed redraw (a swap touches two of them).
+	for (int32 i = 0; i < SlotWidgets.Num(); i++)
 	{
-		// 모든 슬롯 초기화
-		for (USlotWidget* SlotWidget : SlotWidgets)
-		{
-			if (SlotWidget)
-			{
-				SlotWidget->ClearSlot();
-			}
-		}
-
-		// 인벤토리 데이터로 슬롯 업데이트
-		for (int32 i = 0; i < InventoryData.Num() && i < SlotWidgets.Num(); i++)
-		{
-			const FItemData* ItemData = m_GameInstance->GetDataItem(InventoryData[i].ItemID);
-			if (ItemData == nullptr)
-			{
-				return;
-			}
-
-			SlotWidgets[i]->SetItemData(ItemData, InventoryData[i].Count);
-		}
+		USlotWidget* SlotWidget = SlotWidgets[i];
+		if (!SlotWidget) continue;
+		const FItemData* ItemData = InventoryData.IsValidIndex(i) ? m_GameInstance->GetDataItem(InventoryData[i].ItemID) : nullptr;
+		if (ItemData) SlotWidget->SetItemData(ItemData, InventoryData[i].Count);
+		else if (!SlotWidget->IsEmpty()) SlotWidget->ClearSlot();
 	}
 }
 
