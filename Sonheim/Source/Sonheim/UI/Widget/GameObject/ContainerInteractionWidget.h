@@ -8,6 +8,7 @@ class UInventoryWidget;
 class UContainerWidget;
 class ABaseContainer;
 class UButton;
+class UInventoryComponent;
 
 UCLASS()
 class SONHEIM_API UContainerInteractionWidget : public UUserWidget
@@ -31,6 +32,9 @@ protected:
 	// 현재 열린 상자
 	UPROPERTY()
 	ABaseContainer* CurrentContainer;
+
+	// 열려 있는 동안 PlayerInventoryWidget이 묶이는 가방
+	TWeakObjectPtr<UInventoryComponent> InventoryComponent;
 
 public:
 	// 상자 UI 열기

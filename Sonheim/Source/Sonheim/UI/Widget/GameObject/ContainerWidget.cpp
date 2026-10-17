@@ -10,8 +10,8 @@ void UContainerWidget::NativePreConstruct()
 {
 	Super::NativePreConstruct();
 	
-	// 에디터에서 미리보기용 그리드 생성
-	if (SlotGrid && SlotWidgetClass)
+	// 에디터에서 미리보기용 그리드 생성. 다시 열 때마다 불리므로 크기가 바뀌었을 때만 새로 만든다.
+	if (SlotGrid && SlotWidgetClass && SlotWidgets.Num() != GridColumns * GridRows)
 	{
 		CreateSlotGrid();
 	}
@@ -58,6 +58,8 @@ void UContainerWidget::SetContainerComponent(UContainerComponent* InContainerCom
     {
         // 새 바인딩
         ContainerComponent->OnContainerInventoryChanged.AddDynamic(this, &UContainerWidget::UpdateContainerInventory);
+		// 다시 쓰는 화면이 지난 상자의 칸을 보이지 않게 지금 가진 내용으로 먼저 채운다.
+		UpdateContainerInventory(ContainerComponent->GetContainerInventory());
 		
 		// 초기 데이터로 업데이트
 		// Replicate 될 시간 타이머로 지연
