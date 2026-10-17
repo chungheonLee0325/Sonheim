@@ -12,7 +12,8 @@
  * and swaps two of its items over and over; DragSwap drags an item between two slots with the mouse, as a player does; Loot
  * picks up five stacks at once; Kills defeats a quest's target every half second with every quest open; Journal leafs through
  * the quest journal with every quest listed; Hits shows a burst of damage numbers; Craft opens and closes a crafting station
- * with a full bag, Chest a filled chest, and each then rearranges the bag with the screen shut), lets it settle for -PerfWarmup seconds, records a CSV profile for -PerfSeconds into
+ * with a full bag, Chest a filled chest, and each then rearranges the bag with the screen shut; on a client of a listen server
+ * Chest uses the chest the host's ServeChest puts down), lets it settle for -PerfWarmup seconds, records a CSV profile for -PerfSeconds into
  * Saved/Perf/<-PerfLabel>/csv, closes it and goes on; after the last scene the game quits. Scripts/Perf/measure_ui.py drives it.
  *
  *   -PerfScenes=HUD,Notices,Inventory,Dex,Map -PerfWarmup=3 -PerfSeconds=10 -PerfLabel=baseline -PerfRun=1

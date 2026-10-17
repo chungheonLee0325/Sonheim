@@ -221,10 +221,19 @@ void UPerfScenarioSubsystem::SetUp(const FString& Scene)
 		}
 		UE_LOG(LogTemp, Display, TEXT("[Perf] station %s, %d recipes"), *GetNameSafe(Prop.Get()), Most);
 	}
-	else if (Scene == TEXT("Chest"))
+	else if (Scene == TEXT("Chest") && !PC->HasAuthority())
 	{
-		// A medium chest beside the player, every slot holding an item, and a full bag.
+		// A client of a listen server uses the chest its host serves (ServeChest), through the server as a player's F does.
 		FillBag(PC);
+		for (TActorIterator<ABaseContainer> It(PC->GetWorld()); It; ++It)
+			if (!Prop.IsValid() || FVector::Dist(It->GetActorLocation(), PerfSpot) < FVector::Dist(Prop->GetActorLocation(), PerfSpot)) Prop = *It;
+		UE_LOG(LogTemp, Display, TEXT("[Perf] served chest %s"), *GetNameSafe(Prop.Get()));
+	}
+	else if (Scene == TEXT("Chest") || Scene == TEXT("ServeChest"))
+	{
+		// A medium chest beside the player, every slot holding an item, and a full bag. ServeChest only puts the chest there,
+		// for a client of this listen server to use.
+		if (Scene == TEXT("Chest")) FillBag(PC);
 		if (!Prop.IsValid() || !Prop->IsA<ABaseContainer>())
 		{
 			UClass* Class = LoadClass<ABaseContainer>(nullptr, TEXT("/Game/_BluePrint/GameObject/Building/Chest/BP_Contaniner_Medium.BP_Contaniner_Medium_C"));
@@ -298,6 +307,15 @@ void UPerfScenarioSubsystem::Drive(const FString& Scene, const float Time)
 	else if (Scene == TEXT("DragSwap"))
 	{
 		DriveDrag(Local, Time);
+	}
+	else if (Scene == TEXT("ServeChest"))
+	{
+		// The server checks a player's distance to the chest, so a client's player is put on the spot here, where it counts.
+		for (FConstPlayerControllerIterator It = PC->GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		{
+			APawn* Pawn = It->IsValid() && !(*It)->IsLocalController() ? (*It)->GetPawn() : nullptr;
+			if (Pawn && FVector::Dist(Pawn->GetActorLocation(), PerfSpot) > 300.f) Pawn->SetActorLocation(PerfSpot, false, nullptr, ETeleportType::TeleportPhysics);
+		}
 	}
 	else if (Scene == TEXT("Loot") && Time >= Steps * 1.5f)
 	{
@@ -393,7 +411,8 @@ void UPerfScenarioSubsystem::UseOrClose(ASonheimPlayerController* PC, const TCHA
 	const FString Event = FString::Printf(TEXT("%s %s"), bOpen ? TEXT("Open") : TEXT("Close"), Name);
 	CSV_EVENT(PerfUI, TEXT("%s"), *Event);
 	TRACE_CPUPROFILER_EVENT_SCOPE_TEXT(*(TEXT("PerfUI ") + Event));
-	if (bOpen) IInteractableInterface::Execute_Interact(Prop.Get(), Player);
+	if (bOpen && PC->HasAuthority()) IInteractableInterface::Execute_Interact(Prop.Get(), Player);
+	else if (bOpen) Player->GetInteractionComponent()->Server_TryInteract(Prop.Get());
 	else if (UUIStackSubsystem* UIStack = PC->GetLocalPlayer()->GetSubsystem<UUIStackSubsystem>()) UIStack->CloseTop();
 	++Steps;
 }
