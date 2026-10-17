@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "GameUIScreenWidget.h"
 #include "Sonheim/Map/MapView.h"
 #include "WorldMapWidget.generated.h"
 
@@ -63,9 +64,12 @@ private:
  * which a click or the confirm key travels to, and holds the legend.
  */
 UCLASS(Abstract)
-class SONHEIM_API UWorldMapWidget : public UUserWidget
+class SONHEIM_API UWorldMapWidget : public UGameUIScreenWidget
 {
 	GENERATED_BODY()
+public:
+	UWorldMapWidget() { bKeepWhenClosed = true; }
+private:
 public:
 	/** Asks the server to move the player to a found point, and closes the map. */
 	void Travel(FName PointId);

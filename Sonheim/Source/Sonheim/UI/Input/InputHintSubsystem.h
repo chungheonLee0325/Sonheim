@@ -52,7 +52,7 @@ DECLARE_MULTICAST_DELEGATE(FOnInputHintsChanged);
 /**
  * What the local player's key hints show. It follows the last device the player touched (a gamepad button or stick, or the keyboard
  * and mouse), asks Enhanced Input which keys an input action is mapped to, and keeps the menu's own mappings (IMC_Menu: tabs,
- * close, confirm) on while UUIStackSubsystem shows a screen that holds back gameplay. Hints redraw on OnChanged.
+ * close, confirm) on while the UI manager shows a screen that holds back gameplay. Hints redraw on OnChanged.
  */
 UCLASS(Config=Game)
 class SONHEIM_API UInputHintSubsystem : public ULocalPlayerSubsystem
@@ -65,7 +65,7 @@ public:
 	/** The glyph of the key Action is mapped to for the current device; false when no key of that device is mapped. */
 	bool GlyphFor(const UInputAction* Action, FInputGlyph& OutGlyph) const;
 	EInputHintDevice GetDevice() const { return Device; }
-	/** Turns the menu's mappings on or off; UUIStackSubsystem calls it as screens open and close. */
+	/** Turns the menu's mappings on or off; the UI manager's OnInputStateChanged calls it as screens open and close. */
 	void SetMenuInput(bool bOn);
 
 	FOnInputHintsChanged OnChanged;

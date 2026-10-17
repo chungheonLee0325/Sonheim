@@ -31,7 +31,9 @@
 #include "Sonheim/UI/Map/WorldMapWidget.h"
 #include "Sonheim/UI/MonsterDex/MonsterDexWidget.h"
 #include "Sonheim/UI/Notice/NoticeSubsystem.h"
-#include "Sonheim/UI/System/UIStackSubsystem.h"
+#include "GameUIManagerSubsystem.h"
+#include "Sonheim/UI/System/UITags.h"
+#include "Sonheim/UI/Widget/Player/Inventory/InventoryScreenWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/InventoryWidget.h"
 #include "Sonheim/UI/Widget/Player/Inventory/SlotWidget.h"
 
@@ -151,14 +153,14 @@ void UPerfScenarioSubsystem::SetUp(const FString& Scene)
 	PC->SetControlRotation(PerfView);
 	NextNotice = 0.f;
 	Steps = 0;
-	if (Scene == TEXT("Inventory")) PC->OpenTab(UIScreen::Menu);
+	if (Scene == TEXT("Inventory")) PC->OpenTab(UITags::Inventory);
 	else if (Scene == TEXT("InvSwap") || Scene == TEXT("DragSwap"))
 	{
 		// Every slot holds an item, each with its tooltip, as a late game bag would.
 		if (UInventoryComponent* Inventory = Cast<ASonheimPlayer>(PC->GetPawn()) ? Cast<ASonheimPlayer>(PC->GetPawn())->GetInventoryComponent() : nullptr)
 		{
 			FillBag(PC);
-			PC->OpenTab(UIScreen::Menu);
+			PC->OpenTab(UITags::Inventory);
 			// The menu's widgets are kept and opened again, so this shows whether a reopening bound them twice.
 			UE_LOG(LogTemp, Display, TEXT("[Perf] OnInventoryChanged bound objects: %d"), Inventory->OnInventoryChanged.GetAllObjects().Num());
 		}
@@ -170,9 +172,9 @@ void UPerfScenarioSubsystem::SetUp(const FString& Scene)
 	{
 		// A met species, so the picture is the lit model and not a silhouette.
 		PC->ConsoleCommand(TEXT("DexMeet 100"));
-		PC->OpenTab(UIScreen::MonsterDex);
+		PC->OpenTab(UITags::MonsterDex);
 	}
-	else if (Scene == TEXT("Map")) PC->OpenTab(UIScreen::WorldMap);
+	else if (Scene == TEXT("Map")) PC->OpenTab(UITags::WorldMap);
 	else if (Scene == TEXT("Loot"))
 	{
 		// Stacks, so the bursts add to the same slots and the bag never fills.
@@ -203,9 +205,9 @@ void UPerfScenarioSubsystem::SetUp(const FString& Scene)
 		}
 		if (Scene == TEXT("Journal"))
 		{
-			PC->OpenTab(UIScreen::QuestJournal);
-			const UUIStackSubsystem* UIStack = PC->GetLocalPlayer()->GetSubsystem<UUIStackSubsystem>();
-			if (auto* Journal = UIStack ? Cast<UQuestJournalWidget>(UIStack->GetWidget(UIScreen::QuestJournal)) : nullptr) Journal->SetFilter(2);
+			PC->OpenTab(UITags::QuestJournal);
+			const UGameUIManagerSubsystem* UI = PC->GetLocalPlayer()->GetSubsystem<UGameUIManagerSubsystem>();
+			if (auto* Journal = UI ? Cast<UQuestJournalWidget>(UI->Find(UITags::QuestJournal)) : nullptr) Journal->SetFilter(2);
 		}
 		UE_LOG(LogTemp, Display, TEXT("[Perf] %d quests, %d ids"), Book ? Book->GetQuests().Num() : 0, Ids.Num());
 	}
@@ -273,8 +275,8 @@ void UPerfScenarioSubsystem::Drive(const FString& Scene, const float Time)
 	else if (Scene == TEXT("Map"))
 	{
 		// The view circles the island and breathes in and out, as a player dragging and zooming would move it.
-		const UUIStackSubsystem* UIStack = Local->GetSubsystem<UUIStackSubsystem>();
-		if (auto* Map = UIStack ? Cast<UWorldMapWidget>(UIStack->GetWidget(UIScreen::WorldMap)) : nullptr)
+		const UGameUIManagerSubsystem* UI = Local->GetSubsystem<UGameUIManagerSubsystem>();
+		if (auto* Map = UI ? Cast<UWorldMapWidget>(UI->Find(UITags::WorldMap)) : nullptr)
 		{
 			const float Angle = Time * UE_TWO_PI / 6.f;
 			Map->SetView(FVector2D(0.5f + 0.15f * FMath::Cos(Angle), 0.5f + 0.15f * FMath::Sin(Angle)), 0.55f + 0.2f * FMath::Sin(Time * 0.9f));
@@ -283,10 +285,12 @@ void UPerfScenarioSubsystem::Drive(const FString& Scene, const float Time)
 	else if (Scene == TEXT("OpenClose") && Time >= Steps * 0.6f)
 	{
 		// The inventory, the book and the map in turn: open for 0.6 s, closed for 0.6 s.
-		static const FName Screens[] = {UIScreen::Menu, UIScreen::MonsterDex, UIScreen::WorldMap};
-		const FName Screen = Screens[(Steps / 2) % UE_ARRAY_COUNT(Screens)];
+		// The events keep the screens' names from before the tags (Menu, MonsterDex, WorldMap), so runs compare with older ones.
+		static const TPair<FGameplayTag, const TCHAR*> Screens[] = {
+			{UITags::Inventory, TEXT("Menu")}, {UITags::MonsterDex, TEXT("MonsterDex")}, {UITags::WorldMap, TEXT("WorldMap")}};
+		const FGameplayTag Screen = Screens[(Steps / 2) % UE_ARRAY_COUNT(Screens)].Key;
 		// Each step is also a named scope in an Insights trace (-trace=cpu), to find its frames there.
-		const FString Event = FString::Printf(TEXT("%s %s"), Steps % 2 == 0 ? TEXT("Open") : TEXT("Close"), *Screen.ToString());
+		const FString Event = FString::Printf(TEXT("%s %s"), Steps % 2 == 0 ? TEXT("Open") : TEXT("Close"), Screens[(Steps / 2) % UE_ARRAY_COUNT(Screens)].Value);
 		CSV_EVENT(PerfUI, TEXT("%s"), *Event);
 		TRACE_CPUPROFILER_EVENT_SCOPE_TEXT(*(TEXT("PerfUI ") + Event));
 		if (Steps % 2 == 0) PC->OpenTab(Screen);
@@ -347,8 +351,8 @@ void UPerfScenarioSubsystem::Drive(const FString& Scene, const float Time)
 	else if (Scene == TEXT("Journal") && Ids.Num() && Time >= Steps * 0.3f)
 	{
 		// The next quest picked every 0.3 s, as a player reads down the list.
-		const UUIStackSubsystem* UIStack = Local->GetSubsystem<UUIStackSubsystem>();
-		if (auto* Journal = UIStack ? Cast<UQuestJournalWidget>(UIStack->GetWidget(UIScreen::QuestJournal)) : nullptr)
+		const UGameUIManagerSubsystem* UI = Local->GetSubsystem<UGameUIManagerSubsystem>();
+		if (auto* Journal = UI ? Cast<UQuestJournalWidget>(UI->Find(UITags::QuestJournal)) : nullptr)
 		{
 			CSV_EVENT(PerfUI, TEXT("Pick Quest"));
 			TRACE_CPUPROFILER_EVENT_SCOPE_STR("PerfUI Pick Quest");
@@ -390,8 +394,8 @@ void UPerfScenarioSubsystem::Drive(const FString& Scene, const float Time)
 	}
 	else if (Scene == TEXT("Dex") && Time < 0.1f)
 	{
-		const UUIStackSubsystem* UIStack = Local->GetSubsystem<UUIStackSubsystem>();
-		if (auto* Book = UIStack ? Cast<UMonsterDexWidget>(UIStack->GetWidget(UIScreen::MonsterDex)) : nullptr) Book->Pick(100);
+		const UGameUIManagerSubsystem* UI = Local->GetSubsystem<UGameUIManagerSubsystem>();
+		if (auto* Book = UI ? Cast<UMonsterDexWidget>(UI->Find(UITags::MonsterDex)) : nullptr) Book->Pick(100);
 	}
 }
 
@@ -413,7 +417,7 @@ void UPerfScenarioSubsystem::UseOrClose(ASonheimPlayerController* PC, const TCHA
 	TRACE_CPUPROFILER_EVENT_SCOPE_TEXT(*(TEXT("PerfUI ") + Event));
 	if (bOpen && PC->HasAuthority()) IInteractableInterface::Execute_Interact(Prop.Get(), Player);
 	else if (bOpen) Player->GetInteractionComponent()->Server_TryInteract(Prop.Get());
-	else if (UUIStackSubsystem* UIStack = PC->GetLocalPlayer()->GetSubsystem<UUIStackSubsystem>()) UIStack->CloseTop();
+	else if (UGameUIManagerSubsystem* UI = PC->GetLocalPlayer()->GetSubsystem<UGameUIManagerSubsystem>()) UI->CloseTop();
 	++Steps;
 }
 
@@ -422,8 +426,9 @@ void UPerfScenarioSubsystem::DriveDrag(const ULocalPlayer* Local, const float Ti
 	// Every 0.8 s the item of the first slot and of the sixth trade places by the mouse, back and forth: the pointer rests on one
 	// slot, presses, moves to the other over 0.4 s (Slate detects the drag on the way) and lets go there. The events go through
 	// FSlateApplication as the platform's would, so the drag visual, the hover highlights and the drop all run.
-	const UUIStackSubsystem* UIStack = Local->GetSubsystem<UUIStackSubsystem>();
-	const UInventoryWidget* Bag = UIStack ? Cast<UInventoryWidget>(UIStack->GetWidget(UIScreen::Menu)) : nullptr;
+	const UGameUIManagerSubsystem* UI = Local->GetSubsystem<UGameUIManagerSubsystem>();
+	const UInventoryScreenWidget* Screen = UI ? UI->Find<UInventoryScreenWidget>(UITags::Inventory) : nullptr;
+	const UInventoryWidget* Bag = Screen ? Screen->GetInventory() : nullptr;
 	const USlotWidget* First = Bag ? Bag->GetSlot(0) : nullptr;
 	const USlotWidget* Sixth = Bag ? Bag->GetSlot(5) : nullptr;
 	const TSharedPtr<SWindow> Window = GEngine->GameViewport ? GEngine->GameViewport->GetWindow() : nullptr;
@@ -474,8 +479,8 @@ void UPerfScenarioSubsystem::TearDown()
 	const ASonheimPlayerController* PC = Controller();
 	const ULocalPlayer* Local = PC ? PC->GetLocalPlayer() : nullptr;
 	if (!Local) return;
-	if (UUIStackSubsystem* UIStack = Local->GetSubsystem<UUIStackSubsystem>())
-		while (UIStack->CloseTop()) {}
+	if (UGameUIManagerSubsystem* UI = Local->GetSubsystem<UGameUIManagerSubsystem>())
+		while (UI->CloseTop()) {}
 	if (UNoticeSubsystem* Notices = Local->GetSubsystem<UNoticeSubsystem>())
 	{
 		Notices->Clear(TEXT("Perf"));

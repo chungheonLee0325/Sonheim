@@ -9,6 +9,8 @@ Sonheim/Intermediate/
 Sonheim/Saved/
 Sonheim/DerivedDataCache/
 Sonheim/Plugins/NeoStackAI/
+Sonheim/Plugins/*/Binaries/
+Sonheim/Plugins/*/Intermediate/
 Sonheim/.vs/
 Sonheim/*.sln
 Sonheim/.agents/

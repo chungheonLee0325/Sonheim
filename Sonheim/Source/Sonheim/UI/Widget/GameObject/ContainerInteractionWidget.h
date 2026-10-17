@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "GameUIScreenWidget.h"
 #include "ContainerInteractionWidget.generated.h"
 
 class UInventoryWidget;
@@ -11,9 +11,12 @@ class UButton;
 class UInventoryComponent;
 
 UCLASS()
-class SONHEIM_API UContainerInteractionWidget : public UUserWidget
+class SONHEIM_API UContainerInteractionWidget : public UGameUIScreenWidget
 {
 	GENERATED_BODY()
+public:
+	UContainerInteractionWidget() { bKeepWhenClosed = true; }
+private:
 
 protected:
 	virtual void NativeConstruct() override;

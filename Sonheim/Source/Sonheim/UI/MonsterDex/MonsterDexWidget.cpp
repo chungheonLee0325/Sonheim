@@ -17,7 +17,8 @@
 #include "Sonheim/AreaObject/Player/Utility/WorldMapComponent.h"
 #include "Sonheim/Map/MapView.h"
 #include "Sonheim/UI/Map/WorldMapWidget.h"
-#include "Sonheim/UI/System/UIStackSubsystem.h"
+#include "GameUIManagerSubsystem.h"
+#include "Sonheim/UI/System/UITags.h"
 
 void UMonsterDexChipWidget::Show(UTexture2D* Icon, const FText& Label, const FLinearColor& Fill, const FLinearColor& Ink, const FText& Tooltip)
 {
@@ -96,6 +97,7 @@ void UMonsterDexTierWidget::HandleClaim()
 
 UMonsterDexWidget::UMonsterDexWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
+	bKeepWhenClosed = true;
 	// Element plates, in the spirit of the usual element colors; the screen tints a plate's rim and label with them.
 	ElementColors = {
 		{EElementalAttribute::Neutral, FLinearColor(0.62f, 0.6f, 0.55f)},
@@ -141,7 +143,7 @@ void UMonsterDexWidget::NativeDestruct()
 	if (SnapStage) SnapStage->Destroy();
 	Stage = nullptr;
 	SnapStage = nullptr;
-	// The book is kept to open again (UIStack), with new stages: the brushes let go of the old stages' render targets, so a
+	// The book is kept to open again (bKeepWhenClosed), with new stages: the brushes let go of the old stages' render targets, so a
 	// closed book holds none, and the next opening takes up the new ones.
 	StageDrawn = nullptr;
 	PortraitImage->SetBrushFromTexture(nullptr);
@@ -258,13 +260,14 @@ void UMonsterDexWidget::ShowHabitat()
 {
 	const FMonsterDexPageView* Page = Book.Pages.FindByPredicate([this](const FMonsterDexPageView& P) { return P.AreaObjectID == Picked; });
 	auto* Controller = Cast<ASonheimPlayerController>(GetOwningPlayer());
-	const UUIStackSubsystem* UIStack = GetOwningLocalPlayer() ? GetOwningLocalPlayer()->GetSubsystem<UUIStackSubsystem>() : nullptr;
-	if (!Page || !Page->bDiscovered || !Controller || !UIStack) return;
+	if (!Page || !Page->bDiscovered || !Controller) return;
 	// The map takes the book's place as the showing tab (closing this screen), then shows where the species lives.
 	const TArray<FName> Habitats = Page->Habitats;
 	const FText Species = Page->Name;
-	Controller->OpenTab(UIScreen::WorldMap);
-	if (auto* Map = Cast<UWorldMapWidget>(UIStack->GetWidget(UIScreen::WorldMap))) Map->ShowHabitat(Habitats, Species);
+	Controller->OpenTab(UITags::WorldMap, [Habitats, Species](UGameUIScreenWidget& Map)
+	{
+		CastChecked<UWorldMapWidget>(&Map)->ShowHabitat(Habitats, Species);
+	});
 }
 
 FReply UMonsterDexWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)

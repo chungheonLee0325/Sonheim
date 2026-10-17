@@ -69,11 +69,11 @@ void UDungeonUIRouterSubsystem::RefreshHidden()
 	// Checked on every update, so a screen the world adds during the run is hidden too.
 	for (const TSoftClassPtr<UUserWidget>& Class : Registry->HiddenDuringRun)
 	{
-		// A class that is not loaded has no screen up.
+		// A class that is not loaded has no screen up. Screens sit in the UI root's layers, so nested widgets are searched too.
 		UClass* Loaded = Class.Get();
 		if (!Loaded) continue;
 		TArray<UUserWidget*> Found;
-		UWidgetBlueprintLibrary::GetAllWidgetsOfClass(Owner.Get(), Found, Loaded, true);
+		UWidgetBlueprintLibrary::GetAllWidgetsOfClass(Owner.Get(), Found, Loaded, false);
 		for (UUserWidget* Widget : Found)
 			if (!HiddenWidgets.Contains(Widget))
 			{

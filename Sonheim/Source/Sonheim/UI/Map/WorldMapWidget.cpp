@@ -18,7 +18,8 @@
 #include "Sonheim/Map/WorldMapDefinition.h"
 #include "Sonheim/Map/WorldMapSubsystem.h"
 #include "Sonheim/UI/Input/InputHintSubsystem.h"
-#include "Sonheim/UI/System/UIStackSubsystem.h"
+#include "GameUIManagerSubsystem.h"
+#include "Sonheim/UI/System/UITags.h"
 
 namespace
 {
@@ -220,7 +221,7 @@ void UWorldMapWidget::Travel(const FName PointId)
 {
 	if (!Places.IsValid() || !Places->IsDiscovered(PointId)) return;
 	Places->ServerFastTravel(PointId);
-	UUIStackSubsystem::CloseWidget(this);
+	CloseSelf();
 }
 
 void UWorldMapWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)

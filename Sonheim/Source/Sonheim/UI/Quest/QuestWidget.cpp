@@ -9,7 +9,8 @@
 #include "Sonheim/AreaObject/Player/Utility/QuestComponent.h"
 #include "Sonheim/GameObject/InteractableInterface.h"
 #include "Sonheim/UI/MonsterDex/MonsterDexWidget.h"
-#include "Sonheim/UI/System/UIStackSubsystem.h"
+#include "GameUIManagerSubsystem.h"
+#include "Sonheim/UI/System/UITags.h"
 #include "Sonheim/Utilities/StringTableIds.h"
 
 namespace
@@ -162,12 +163,12 @@ void UQuestDialogWidget::Act()
 	if (Quest->State == EQuestViewState::ReadyToTurnIn) Component->ServerTurnIn(Quest->QuestID, Target.Get());
 	else if (Quest->State == EQuestViewState::Offered) Component->ServerAccept(Quest->QuestID, Target.Get());
 	// The server's answer arrives as a notice; the dialog has said what it had to.
-	UUIStackSubsystem::CloseWidget(this);
+	CloseSelf();
 }
 
 void UQuestDialogWidget::HandleClose()
 {
-	UUIStackSubsystem::CloseWidget(this);
+	CloseSelf();
 }
 
 void UQuestJournalWidget::NativeOnInitialized()

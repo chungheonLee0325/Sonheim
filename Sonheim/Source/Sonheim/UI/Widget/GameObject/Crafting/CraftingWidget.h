@@ -1,6 +1,6 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "GameUIScreenWidget.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "CraftingWidget.generated.h"
 
@@ -17,7 +17,7 @@ class UInventoryComponent;
 class USonheimGameInstance;
 
 UCLASS()
-class SONHEIM_API UCraftingWidget : public UUserWidget
+class SONHEIM_API UCraftingWidget : public UGameUIScreenWidget
 {
 	GENERATED_BODY()
 

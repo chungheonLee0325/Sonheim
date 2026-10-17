@@ -37,7 +37,7 @@ Popup은 Screen의 한 종류라 어느 스택 레이어에도 놓일 수 있다
 ```
 APlayerController (로컬)
 └─ GameViewport
-   └─ WBP_UIRoot  (UGameUIRootWidget, AddToPlayerScreen 한 번)
+   └─ WBP_UIRoot  (UGameUIRootWidget, 뷰포트에 한 번)
       ├─ UGameUILayer       Tag=UI.Layer.HUD     상태창, 퀘스트 추적, 미니맵, 던전 HUD
       ├─ UGameUIStackLayer  Tag=UI.Layer.Menu    인벤토리, 도감, 지도, 퀘스트, 상자, 제작대
       ├─ WBP_MenuTabBar     (게임 쪽 요소)       매니저 이벤트를 듣고 스스로 보이고 숨음
@@ -53,6 +53,7 @@ APlayerController (로컬)
 - 열려 있는 화면을 다시 열면 스택 맨 위로 올린다. 떼었다가 다시 붙인다 (지금과 같음).
 - 입력 모드·마우스·게임 입력 차단은 **입력에 끼는 레이어 중 가장 위 레이어의 맨 위 화면**이 정한다. 그런 화면이 없으면 GameOnly.
 - 뒤로 가기(Esc / 게임패드 B)도 같은 화면 하나에만 간다.
+- 루트는 `AddToViewport(RootZOrder)`로 붙는다. HUD가 아직 뷰포트에 직접 붙어 있어서, 플레이어 레이어(`AddToPlayerScreen`)에 두면 HUD 아래로 깔린다. 5단계에서 HUD가 루트로 들어오면 `AddToPlayerScreen`으로 바꾼다(분할 화면 대응).
 - 루트는 로컬 플레이어마다 하나. 맵이 바뀌어 루트가 사라지면 다음 요청 때 다시 만든다. 이전 컨트롤러의 유지 화면은 버린다 (지금 `Kept` 검사와 같음).
 - 화면이 놓일 레이어는 화면 클래스 기본값 `Layer`. 여는 쪽이 레이어를 덮어쓰는 인자는 같은 화면을 두 레이어에 띄울 일이 생기면 그때 더한다.
 - 화면 태그(`UI.Screen.*`)와 레이어 태그(`UI.Layer.*`)는 따로 둔다. 화면 태그는 이름, 레이어는 그 화면의 속성이다. `UI.Screen.Menu.Inventory`처럼 레이어를 이름에 넣으면 화면을 다른 레이어로 옮길 때 태그가 바뀌고, 그 태그를 이름 문자열로 저장한 에셋(레지스트리, 탭바)이 조용히 빈 태그가 된다.
@@ -171,7 +172,7 @@ UCLASS(Config=Game, DefaultConfig, meta=(DisplayName="Game UI")) class UGameUISe
 - 프로젝트 설정 > Game > Game UI에서 편집, `DefaultGame.ini`의 `[/Script/GameUIFramework.GameUISettings]`에 저장.
 - `[/Script/Sonheim.UIStackSubsystem]`의 `Screens`, `TabBarClass`, `TabBarZOrder`와 `[/Script/Sonheim.NoticeSubsystem]`의 슬롯 설정은 없어진다.
 - 레지스트리 에셋: `/Game/UI/DA_UIScreens`.
-- 태그: `Sonheim/Config/Tags/UI.ini` 새 파일 (지금 태그 파일 방식과 같음).
+- 태그: 코드가 쓰는 태그라 `Sonheim/UI/System/UITags.cpp`에 네이티브 태그(`UE_DEFINE_GAMEPLAY_TAG_COMMENT`)로 정의한다. 에디터 태그 목록에도 그대로 나온다.
 
 ```
 UI.Screen.Inventory     (지금 Menu: 인벤토리 + 플레이어 스탯을 한 WBP로 묶음)
@@ -244,7 +245,7 @@ Open(Tag, OnReady)
 
 ### 1단계: 플러그인 + 루트 레이아웃 + 기반 클래스 + 레지스트리
 
-- 새로: `Plugins/GameUIFramework` 전부, `Config/Tags/UI.ini`, `WBP_UIRoot`, `DA_UIScreens`.
+- 새로: `Plugins/GameUIFramework` 전부, `UITags.h/.cpp`, `WBP_UIRoot`, `WBP_InventoryScreen`, `DA_UIScreens`.
 - `Sonheim.uproject`에 플러그인 추가, `Sonheim.Build.cs`에 `GameUIFramework` 의존.
 - `UUIStackSubsystem` 삭제. 호출 쪽을 매니저로 바꿈:
   `SonheimPlayerController.cpp`, `InteractionComponent.cpp`, `QuestGiver.cpp`, `FastTravelPoint.cpp`, `PerfScenarioSubsystem.cpp`, `MonsterDexWidget.cpp`, `WorldMapWidget.cpp`, `QuestWidget.cpp`, `ContainerInteractionWidget.cpp`, `CraftingWidget.cpp`, `InputHintSubsystem`(델리게이트 구독), `MenuTabWidget`(태그 + `TopTab`/`StepTab`).

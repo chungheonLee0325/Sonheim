@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "GameUIScreenWidget.h"
 #include "MonsterDexView.h"
 #include "MonsterDexWidget.generated.h"
 
@@ -97,7 +98,7 @@ private:
  * again whenever the component changes; claiming a tier asks the server.
  */
 UCLASS(Abstract)
-class SONHEIM_API UMonsterDexWidget : public UUserWidget
+class SONHEIM_API UMonsterDexWidget : public UGameUIScreenWidget
 {
 	GENERATED_BODY()
 public:

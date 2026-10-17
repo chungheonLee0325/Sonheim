@@ -8,7 +8,8 @@
 #include "Sonheim/AreaObject/Player/Utility/QuestComponent.h"
 #include "Sonheim/Map/MapMarkerComponent.h"
 #include "Sonheim/UI/Widget/DetectWidget.h"
-#include "Sonheim/UI/System/UIStackSubsystem.h"
+#include "GameUIManagerSubsystem.h"
+#include "Sonheim/UI/System/UITags.h"
 
 AQuestGiver::AQuestGiver()
 {
@@ -81,8 +82,8 @@ void AQuestGiver::RefreshMarker()
 		if (auto* Mark = Cast<UTextBlock>(Marker->GetWidgetFromName(TEXT("MarkText")))) Mark->SetText(bReport ? INVTEXT("?") : INVTEXT("!"));
 	}
 	// Hidden under a screen that holds back gameplay, as the F prompt is.
-	const UUIStackSubsystem* UIStack = Local && Local->GetLocalPlayer() ? Local->GetLocalPlayer()->GetSubsystem<UUIStackSubsystem>() : nullptr;
-	MarkerWidgetComponent->SetVisibility((bReport || bOffer) && !(UIStack && UIStack->IsGameplayBlocked()));
+	const UGameUIManagerSubsystem* UI = Local && Local->GetLocalPlayer() ? Local->GetLocalPlayer()->GetSubsystem<UGameUIManagerSubsystem>() : nullptr;
+	MarkerWidgetComponent->SetVisibility((bReport || bOffer) && !(UI && UI->IsGameplayBlocked()));
 }
 
 void AQuestGiver::Interact_Implementation(ASonheimPlayer* Player)

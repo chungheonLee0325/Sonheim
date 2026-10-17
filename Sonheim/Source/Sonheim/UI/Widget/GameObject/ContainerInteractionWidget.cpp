@@ -7,7 +7,8 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/GameObject/Buildings/Storage/BaseContainer.h"
-#include "Sonheim/UI/System/UIStackSubsystem.h"
+#include "GameUIManagerSubsystem.h"
+#include "Sonheim/UI/System/UITags.h"
 
 void UContainerInteractionWidget::NativeConstruct()
 {
@@ -71,7 +72,7 @@ void UContainerInteractionWidget::CloseContainer()
 {
 	ReleaseContainer();
 	// 입력 모드와 커서는 UI 스택이 남은 화면에 맞춘다.
-	UUIStackSubsystem::CloseWidget(this);
+	CloseSelf();
 }
 
 void UContainerInteractionWidget::ReleaseContainer()

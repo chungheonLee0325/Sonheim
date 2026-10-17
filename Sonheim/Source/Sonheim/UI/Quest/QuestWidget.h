@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "GameUIScreenWidget.h"
 #include "QuestView.h"
 #include "QuestWidget.generated.h"
 
@@ -59,7 +60,7 @@ private:
  * quests change.
  */
 UCLASS(Abstract)
-class SONHEIM_API UQuestScreenWidget : public UUserWidget
+class SONHEIM_API UQuestScreenWidget : public UGameUIScreenWidget
 {
 	GENERATED_BODY()
 public:
