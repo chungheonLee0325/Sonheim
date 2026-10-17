@@ -1,12 +1,12 @@
-# 20. UI Performance Profiling & Optimization
+# 20. Agent MCP 기반 UI 성능 분석과 최적화
 
-인벤토리·도감·지도처럼 자주 사용하는 UI에서 **평상시 프레임 시간보다 화면을 열거나 아이템을 교환하는 순간의 지연**에 주목했습니다. 동일한 플레이 상황을 반복할 수 있는 측정 장면을 만들고, Unreal Insights와 CSV 이벤트 기록으로 비용이 발생하는 경로를 확인한 뒤 UI 갱신과 화면 수명 관리를 수정했습니다.
+Unreal Engine의 UI 성능 문제를 에이전트가 반복 조사할 수 있도록 **[Agent MCP](https://github.com/chungheonLee0325/AgentMcp)에 측정·트레이스·GPU 프로파일 분석 도구와 `perf-investigation` 스킬을 구현**했습니다. Sonheim에는 화면 열기, 아이템 교환, 드래그, 보관함 조작을 재현하는 `UPerfScenarioSubsystem`을 추가하고, 이 환경으로 실제 게임의 병목을 찾아 수정했습니다.
 
-주요 결과는 아이템 교환 프레임 **32.6 → 17.1ms**, 인벤토리 열기 **57.5 → 22.1ms**입니다. 모두 1920×1080 환경에서 기록한 *조작 이벤트가 발생한 프레임의 중앙값*이며, 전체 게임의 평균 FPS 개선을 뜻하지는 않습니다.
+분석에서는 평균 FPS보다 **플레이어가 조작한 프레임의 지연**을 우선했습니다. Unreal Insights로 원인 함수를 좁히고, CSV로 변경 전후를 비교했습니다. 그 결과 아이템 교환은 **32.6 → 17.1ms**, 인벤토리 열기는 **57.5 → 22.1ms**로 줄었습니다.
 
-이 문서는 기존 [18. UMG v2 Migration](18_UMG_v2_Migration.md)에서 만든 UIStack·인벤토리·도감 화면을 대상으로 **측정 → 원인 분석 → 구조 수정 → 재측정**한 내용을 다룹니다. 측정과 분석은 [Agent MCP](https://github.com/chungheonLee0325/AgentMcp)의 성능 도구와 `perf-investigation` 스킬로 묶어, AI 에이전트가 다른 UI에도 같은 절차를 반복할 수 있게 했습니다.
+**Agent MCP는 프로젝트에 재사용할 조사 절차와 도구를, Sonheim은 게임별 측정 장면과 실제 개선 코드를 담당합니다.** 기존 UI 구조는 [18. UMG v2 Migration](18_UMG_v2_Migration.md), 구현 변경 내역은 [PR #6](https://github.com/chungheonLee0325/Sonheim/pull/6)에서 확인할 수 있습니다.
 
-## 개선 전후
+## Sonheim 적용 결과
 
 | 조작 | 개선 전 Frame (Game Thread) | 개선 후 Frame (Game Thread) |
 |---|---:|---:|
@@ -16,11 +16,11 @@
 | 월드맵 열기 | 21.0ms (7.4ms) | **19.6ms (5.6ms)** |
 | 보관함 열기 | 30.4ms (16.9ms) | **22.6ms (9.2ms)** |
 
-*PR #6의 이벤트별 측정 중앙값입니다. Game Thread는 괄호 안에 구분했습니다. 실행 환경 및 장면의 영향을 받는 수치이므로 다른 프로젝트의 고정 성능값으로 일반화하지 않습니다.*
+조작 이벤트가 발생한 프레임의 중앙값이며, 괄호 안은 Game Thread 시간입니다. 전체 게임의 평균 FPS가 아닌 화면 조작 순간의 지연을 비교했습니다.
 
 ![UI 조작별 개선 전후 이벤트 프레임 시간 비교](../Media/Wiki/20_UI_Performance_Profiling/20_interaction_frame_comparison.svg)
 
-> **측정 조건.** RTX 2070 SUPER, 1920×1080, VSync와 프레임 제한을 끈 독립 실행 게임(`-game`)에서 장면마다 3회 측정한 중앙값입니다. 측정 전에 워밍업 실행을 한 번 버리고, 실행 중 다른 프로세스의 CPU 부하를 1초마다 샘플링해 평균 10%를 넘은 실행은 다시 돌립니다. 개선 전후 차이는 양쪽 측정의 실행 간 편차보다 클 때만 결과로 보며, 0.5ms 미만의 차이는 6회씩 측정합니다. 화면의 첫 열기(에셋 로드와 첫 생성)와 다시 열기는 따로 봅니다.
+측정은 RTX 2070 SUPER, 1920×1080, VSync·프레임 제한을 끈 독립 실행 게임(`-game`)에서 진행했습니다. 워밍업 실행을 제외하고 장면마다 3회 측정했으며, 실행 중 외부 프로세스의 평균 CPU 부하가 10%를 넘으면 해당 실행을 다시 측정했습니다. 개선 전후 차이는 실행 간 편차와 함께 판단하고, 0.5ms 미만 변화는 6회씩 측정했습니다. 화면의 첫 생성과 재오픈도 구분했습니다.
 
 조작에 따라 병목이 달랐습니다. Unreal Insights 트레이스에서 각 조작 프레임의 게임 스레드 시간을 타이머별로 합산한 결과입니다(개선 전, 조작 1회당).
 
@@ -32,9 +32,59 @@
 
 도감은 화면 열기 비용과 별도로 **3D 프리뷰의 매 프레임 SceneCapture 렌더링 비용**도 조사했습니다.
 
-## 실제 조작 프레임을 측정하기
+## Agent MCP 성능 조사 기능 구현
 
-평균 프레임 시간만 보면 1회성으로 발생하는 화면 열기·드래그·교환의 지연을 놓치기 쉽습니다. 그래서 `UPerfScenarioSubsystem : UGameInstanceSubsystem`에 개발 빌드용 시나리오를 구현했습니다.
+기존에는 UI가 끊기는 장면을 사람이 수동으로 재현하고, 프로파일러에서 함수를 찾고, 수정 전후를 각각 측정해야 했습니다. 이 과정을 에이전트가 반복 수행할 수 있도록 **측정 실행·결과 분석은 Agent MCP의 공통 도구로, 실제 UI 조작은 게임별 실행기로 분리**했습니다.
+
+| 구현 위치 | 담당 역할 |
+|---|---|
+| **[Agent MCP](https://github.com/chungheonLee0325/AgentMcp)** | `perf-investigation` 스킬, 반복 실행 스크립트, CSV 비교·CPU Trace·GPU 프로파일 분석 MCP 도구 |
+| **[Sonheim](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/Utilities/PerfScenarioSubsystem.cpp)** | `UPerfScenarioSubsystem`이 인벤토리·지도·도감·보관함 등 실제 게임의 UI 조작을 수행하고 이벤트를 기록 |
+| **코딩 에이전트** | 스킬에 따라 장면을 실행하고, 수치와 원인 함수를 확인한 뒤 코드 변경·재측정을 연결 |
+
+### 구현한 도구와 분석 절차
+
+| 구성 | 역할 |
+|---|---|
+| [`perf-investigation` 스킬](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Skills/perf-investigation/SKILL.md) | 장면 → 기준 측정 → 순간 표시 → 트레이스 → 원인 → 수정 → 재측정 절차, [장면 실행기 계약](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Skills/perf-investigation/references/scene-runner.md)과 골격 코드, 측정 규칙 |
+| [`scripts/run.py`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Skills/perf-investigation/scripts/run.py) · [`preflight.py`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Skills/perf-investigation/scripts/preflight.py) | 에디터를 닫은 상태에서 독립 실행 게임으로 측정. 측정 전 머신 점검, 워밍업, 백그라운드 부하 샘플링과 방해받은 실행의 재실행, 실행마다 `GameUserSettings.ini` 복원 |
+| [`perf_summarize_csv`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Source/AgentMcpTools/Private/Toolsets/AgentMcpPerfTools.cpp) | 장면별 실행 평균의 중앙값·편차·95번째 백분위와 표시한 순간(`CSV_EVENT`)의 비용 |
+| [`perf_compare_csv`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Source/AgentMcpTools/Private/Toolsets/AgentMcpPerfTools.cpp) | 개선 전후 비교. 양쪽 편차보다 큰 변화만 표시 |
+| [`perf_trace_hotspots`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Source/AgentMcpTools/Private/Toolsets/AgentMcpPerfTools.cpp) | Insights를 열지 않고 트레이스를 내보내, 순간마다 타이머별 자체·포함 시간, 호출한 함수, 회차별 길이를 합산 |
+| [`perf_read_gpu_profile`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Source/AgentMcpTools/Private/Toolsets/AgentMcpPerfTools.cpp) | 게임 로그의 `ProfileGPU` 덤프를 패스 트리로 읽기 |
+
+~~~text
+장면 정의(Sonheim)
+    ↓
+run.py로 기준 측정 → perf_summarize_csv
+    ↓
+CPU Trace / ProfileGPU 수집
+    ↓
+perf_trace_hotspots / perf_read_gpu_profile로 원인 조사
+    ↓
+원인 코드 수정(Sonheim)
+    ↓
+동일 장면 재측정 → perf_compare_csv
+~~~
+
+`run.py`는 에디터를 닫은 상태에서 독립 실행 게임으로 측정합니다. 워밍업과 외부 CPU 부하 확인을 거쳐 기록한 CSV는 에디터를 다시 실행한 후 MCP 도구에서 분석합니다. **계측을 위한 실행 조건 통제와 분석을 위한 에이전트 인터페이스를 구분**한 구조입니다.
+
+### 자동 조사 환경을 Sonheim에 적용한 사례
+
+처음부터 문제가 알려진 인벤토리만 측정하지 않았습니다. 도구의 적용 범위를 확인하기 위해 보관함, 알림, 제작, 퀘스트, 전리품, 데미지 숫자 등의 장면으로 조사 대상을 넓혔습니다.
+
+| 조사 대상 | 확인한 문제·비용 | 실제 처리 |
+|---|---|---|
+| 인벤토리 교환 | 전체 슬롯·툴팁 반복 갱신, `SWidget::Invalidate` 11,635회 | 변경 슬롯의 속성만 갱신, 툴팁 지연 생성 |
+| 메뉴·보관함 재오픈 | `CreateWidget` 반복, 보관함 Delegate 바인딩 누적 | UIStack 재사용, 화면 종료 시 구독 해제 |
+| 도감 프리뷰 | `SceneCapture`의 불필요한 렌더 패스와 종료 후 Render Target 참조 | Show Flag 제한, Brush 참조 정리 |
+| 알림 Feed | 항목 순회 중 제거로 발생한 ensure·프레임 지연 | 복사한 항목 목록을 순회하며 제거 |
+
+이처럼 **도구 개발을 Sonheim의 최적화로 연결**했고, 새로운 UI에도 장면을 추가하면 동일한 조사 절차를 적용할 수 있도록 구성했습니다.
+
+## Sonheim 측정 장면 실행기
+
+Agent MCP가 어떤 게임에서도 같은 측정·분석 절차를 사용할 수 있도록 하고, **게임별 조작은 Sonheim의 `UPerfScenarioSubsystem : UGameInstanceSubsystem`에서 실행**하도록 했습니다. 화면 열기·드래그·아이템 교환처럼 짧게 발생하는 비용을 이벤트 프레임으로 구분해 측정합니다.
 
 - 플레이어 위치와 시선을 일정하게 맞춰 배경 렌더링 차이를 줄입니다.
 - `-PerfScenes`, `-PerfWarmup`, `-PerfSeconds`, `-PerfRun`으로 장면·워밍업·수집 시간을 지정합니다.
@@ -49,7 +99,7 @@
 
 `OpenClose`는 인벤토리·도감·지도를 차례로 여닫고, `InvSwap`은 인벤토리 컴포넌트에 교환 요청을 전달합니다. `DragSwap`은 `FSlateApplication`에 Press → Move → Drop 입력을 전달해 **실제 UMG 드래그 경로**(드래그 감지, 드래그 비주얼 생성, 칸 강조, 드롭 후 `UpdateInventoryFromData`)를 통과합니다. 두 교환 장면은 측정하는 코드 경로가 서로 다르므로 구분했습니다. 개선 후 드래그 장면의 이벤트 프레임은 최대 17.9ms, 게임 스레드는 최대 5.6ms입니다.
 
-측정 시나리오의 목적은 모든 플레이 상황을 완벽하게 재현하는 것이 아니라 **동일 조작을 반복해 개선 전후를 비교하고, Insights에서 원인을 추적할 수 있게 하는 것**입니다.
+이벤트를 `CSV_EVENT`와 CPU Trace Scope에 함께 기록하므로 **CSV에서 느린 프레임을 찾은 다음 Insights에서 해당 동작의 함수 비용을 추적**할 수 있습니다.
 
 [측정 장면 구현 — PerfScenarioSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/Utilities/PerfScenarioSubsystem.cpp)
 
@@ -179,9 +229,9 @@ flowchart LR
 
 [MonsterDexStage.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexStage.cpp) · [MonsterDexWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexWidget.cpp)
 
-## 함께 수정한 UI 이벤트 처리
+## 알림 Feed: 순회 중 항목 제거 수정
 
-Feed 알림에서 `RowBox->GetAllEntries()`를 순회하면서 항목을 제거하면 순회 중 원본 배열이 변경됩니다. 개발 빌드에서는 이 과정에서 ensure가 발생했고, 콜스택을 기록한 프레임이 **806ms**까지 지연됐습니다. 순회 대상 컬렉션을 변경하는 코드는 항목 접근과 반복 과정에도 위험이 있어, `StopChannel()`과 `NativeTick()`에서 **목록 복사본을 순회하며 제거**하도록 수정했습니다. Shipping 빌드에서의 재현 여부는 확인하지 않았습니다.
+Feed 알림에서 `RowBox->GetAllEntries()`를 순회하면서 항목을 제거하면 순회 중 원본 배열이 변경됩니다. 개발 빌드에서는 이 과정에서 ensure가 발생했고, 콜스택을 기록한 프레임이 **806ms**까지 지연됐습니다. 순회 대상 컬렉션을 변경하는 코드는 항목 접근과 반복 과정에도 위험이 있어, `StopChannel()`과 `NativeTick()`에서 **목록 복사본을 순회하며 제거**하도록 수정했습니다.
 
 ~~~cpp
 // NoticeWidget.cpp — 실제 변경 코드 발췌
@@ -193,33 +243,12 @@ for (UUserWidget* Entry : TArray<UUserWidget*>(RowBox->GetAllEntries()))
 
 [NoticeWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/Notice/NoticeWidget.cpp)
 
-## AI 에이전트가 반복할 수 있는 성능 조사 환경
+## 구현 결과
 
-측정·분석 절차는 이 프로젝트 안의 스크립트로 끝내지 않고 [Agent MCP](https://github.com/chungheonLee0325/AgentMcp)에 도구와 스킬로 넣었습니다. Agent MCP는 Unreal Editor 안에서 MCP 서버를 실행해 Claude Code·Codex 같은 코딩 에이전트가 프로젝트를 조사·수정·검증하게 하는 에디터 플러그인입니다.
+**Agent MCP에는 성능 측정·비교·CPU/GPU 원인 분석의 공통 절차를 구현**하고, **Sonheim에는 실제 UI 조작 장면과 최적화 코드를 구현**했습니다. 조사 도구를 만들면서 인벤토리의 불필요한 속성 갱신, 화면 재생성, Delegate 수명, Render Target 참조와 렌더 패스 등 서로 다른 문제를 확인하고 수정했습니다.
 
-| 구성 | 역할 |
-|---|---|
-| [`perf-investigation` 스킬](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Skills/perf-investigation/SKILL.md) | 장면 → 기준 측정 → 순간 표시 → 트레이스 → 원인 → 수정 → 재측정 절차, [장면 실행기 계약](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Skills/perf-investigation/references/scene-runner.md)과 골격 코드, 측정 규칙 |
-| [`scripts/run.py`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Skills/perf-investigation/scripts/run.py) · [`preflight.py`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Skills/perf-investigation/scripts/preflight.py) | 에디터를 닫은 상태에서 독립 실행 게임으로 측정. 측정 전 머신 점검, 워밍업, 백그라운드 부하 샘플링과 방해받은 실행의 재실행, 실행마다 `GameUserSettings.ini` 복원 |
-| [`perf_summarize_csv`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Source/AgentMcpTools/Private/Toolsets/AgentMcpPerfTools.cpp) | 장면별 실행 평균의 중앙값·편차·95번째 백분위와 표시한 순간(`CSV_EVENT`)의 비용 |
-| [`perf_compare_csv`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Source/AgentMcpTools/Private/Toolsets/AgentMcpPerfTools.cpp) | 개선 전후 비교. 양쪽 편차보다 큰 변화만 표시 |
-| [`perf_trace_hotspots`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Source/AgentMcpTools/Private/Toolsets/AgentMcpPerfTools.cpp) | Insights를 열지 않고 트레이스를 내보내, 순간마다 타이머별 자체·포함 시간, 호출한 함수, 회차별 길이를 합산 |
-| [`perf_read_gpu_profile`](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Source/AgentMcpTools/Private/Toolsets/AgentMcpPerfTools.cpp) | 게임 로그의 `ProfileGPU` 덤프를 패스 트리로 읽기 |
+UI 갱신은 원본 데이터 변경과 실제 위젯 속성 변경을 구분했고, 화면 수명은 UObject 유지·Viewport 표시·Delegate 구독·GPU 리소스 참조를 각각 관리하도록 조정했습니다. 이 과정에서 개선 효과가 측정 편차보다 작은 변경은 유지하지 않았습니다.
 
-~~~text
-에이전트: 장면 추가 → run.py 기준 측정 → perf_summarize_csv
-        → run.py --trace → perf_trace_hotspots → 원인 코드 수정
-        → run.py 재측정 → perf_compare_csv
-~~~
+**관련 문서:** [07. Inventory & Crafting](07_Inventory_Crafting.md) · [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) · [14. Unreal Editor Automation & Verification](14_Unreal_Editor_Automation_Verification.md) · [16. MonsterDex System](16_MonsterDex_System.md) · [18. UMG v2 Migration](18_UMG_v2_Migration.md) · [19. World Map & Fast Travel](19_World_Map_System.md)
 
-위의 보관함 열기 비용, 보관함 바인딩 누수, 알림 피드 순회 문제는 에이전트가 이 환경으로 아직 조사하지 않았던 UI(퀘스트, 제작, 보관함, 전리품, 데미지 숫자)를 장면으로 만들어 측정하면서 찾은 것입니다. 다음 UI 작업에서도 장면을 추가하면 같은 절차로 측정·원인 분석·재측정을 반복할 수 있습니다.
-
-## 구현에서 얻은 기준
-
-이번 최적화는 렌더링 옵션만 조정한 작업이 아닙니다. **전체 상태 전달과 화면 속성 갱신을 분리**하고, **Widget UObject의 유지 여부와 실제 화면 표시 기간을 분리**했으며, 화면 재사용으로 생기는 Delegate·Render Target 수명도 함께 처리했습니다.
-
-평균 FPS 외에 실제 조작 프레임을 비교했기 때문에 인벤토리 교환과 화면 재진입의 비용을 별도로 찾을 수 있었습니다. 또한 모든 실험을 채택하지 않고, 반복 측정에서 차이가 확인된 수정만 남겼습니다.
-
-**관련 문서:** [07. Inventory & Crafting](07_Inventory_Crafting.md) · [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) · [16. MonsterDex System](16_MonsterDex_System.md) · [18. UMG v2 Migration](18_UMG_v2_Migration.md) · [19. World Map & Fast Travel](19_World_Map_System.md)
-
-**개발 변경:** [PR #6 — UI 조작 순간의 끊김 측정·수정과 성능 장면 실행기](https://github.com/chungheonLee0325/Sonheim/pull/6)
+**관련 저장소:** [Agent MCP](https://github.com/chungheonLee0325/AgentMcp) · [Sonheim PR #6](https://github.com/chungheonLee0325/Sonheim/pull/6)
