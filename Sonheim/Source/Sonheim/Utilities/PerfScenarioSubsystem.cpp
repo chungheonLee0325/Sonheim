@@ -1,4 +1,5 @@
 #include "PerfScenarioSubsystem.h"
+#include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
@@ -7,6 +8,7 @@
 #include "HAL/PlatformMisc.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Paths.h"
+#include "UnrealClient.h"
 #include "ProfilingDebugging/CsvProfiler.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
 #include "Sonheim/UI/Map/WorldMapWidget.h"
@@ -33,6 +35,8 @@ void UPerfScenarioSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	FParse::Value(FCommandLine::Get(), TEXT("PerfRun="), Run);
 	FParse::Value(FCommandLine::Get(), TEXT("PerfWarmup="), WarmupSeconds);
 	FParse::Value(FCommandLine::Get(), TEXT("PerfSeconds="), RecordSeconds);
+	FParse::Value(FCommandLine::Get(), TEXT("PerfProfileGPU="), ProfileGpuScene);
+	bShots = FParse::Param(FCommandLine::Get(), TEXT("PerfShots"));
 	if (Label.IsEmpty()) Label = TEXT("run");
 	TickHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &UPerfScenarioSubsystem::Tick));
 	UE_LOG(LogTemp, Display, TEXT("[Perf] %d scenes, label %s, run %d, %.0fs warmup, %.0fs each"), Scenes.Num(), *Label, Run, WarmupSeconds, RecordSeconds);
@@ -72,6 +76,9 @@ bool UPerfScenarioSubsystem::Tick(const float DeltaSeconds)
 		FCsvProfiler::SetMetadata(TEXT("PerfLabel"), *Label);
 		FCsvProfiler::Get()->BeginCapture(-1, FPaths::ProjectSavedDir() / TEXT("Perf") / Label / TEXT("csv"),
 		                                  FString::Printf(TEXT("%s_r%d.csv"), *Scene, Run));
+		if (Scene == ProfileGpuScene) GEngine->Exec(GetGameInstance()->GetWorld(), TEXT("ProfileGPU"));
+		if (bShots)
+			FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir() / TEXT("Perf") / Label / TEXT("shots") / (Scene + TEXT(".png")), true, false);
 		Phase = EPhase::Recording;
 		PhaseTime = 0.f;
 		return true;
@@ -115,7 +122,12 @@ void UPerfScenarioSubsystem::SetUp(const FString& Scene)
 	PC->SetControlRotation(PerfView);
 	NextNotice = 0.f;
 	if (Scene == TEXT("Inventory")) PC->OpenTab(UIScreen::Menu);
-	else if (Scene == TEXT("Dex")) PC->OpenTab(UIScreen::MonsterDex);
+	else if (Scene == TEXT("Dex"))
+	{
+		// A met species, so the picture is the lit model and not a silhouette.
+		PC->ConsoleCommand(TEXT("DexMeet 100"));
+		PC->OpenTab(UIScreen::MonsterDex);
+	}
 	else if (Scene == TEXT("Map")) PC->OpenTab(UIScreen::WorldMap);
 	UE_LOG(LogTemp, Display, TEXT("[Perf] scene %s"), *Scene);
 }

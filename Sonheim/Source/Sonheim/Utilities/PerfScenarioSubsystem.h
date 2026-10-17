@@ -12,6 +12,8 @@
  * Saved/Perf/<-PerfLabel>/csv, closes it and goes on; after the last scene the game quits. Scripts/Perf/measure_ui.py drives it.
  *
  *   -PerfScenes=HUD,Notices,Inventory,Dex,Map -PerfWarmup=3 -PerfSeconds=10 -PerfLabel=baseline -PerfRun=1
+ *   -PerfShots           also saves a screenshot of each scene as it starts recording, into Saved/Perf/<label>/shots
+ *   -PerfProfileGPU=Dex  also writes one frame's GPU passes (ProfileGPU) into the log as that scene starts recording
  */
 UCLASS()
 class SONHEIM_API UPerfScenarioSubsystem : public UGameInstanceSubsystem
@@ -34,6 +36,8 @@ private:
 
 	TArray<FString> Scenes;
 	FString Label;
+	FString ProfileGpuScene;
+	bool bShots = false;
 	int32 Run = 1;
 	float WarmupSeconds = 3.f;
 	float RecordSeconds = 10.f;
