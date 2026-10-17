@@ -85,7 +85,9 @@ public:
 	bool IsKindShown(EMapMarkerKind Kind) const { return !HiddenKinds.Contains(Kind); }
 
 protected:
-	virtual void NativeConstruct() override;
+	virtual void NativeOnInitialized() override;
+	virtual void NativeOnOpened() override;
+	virtual void NativeOnClosed() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
@@ -153,7 +155,7 @@ private:
 	TArray<FMapRegion> Regions;
 	/** Per region, whether it is small enough to name only zoomed in. */
 	TArray<bool> SmallRegions;
-	TArray<FVector> QuestPlaces;
+	FWorldMapView MapView;
 	TArray<FVector> HabitatPlaces;
 	TSet<EMapMarkerKind> HiddenKinds;
 	FVector2D Center = FVector2D(0.5, 0.5);

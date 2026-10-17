@@ -88,7 +88,7 @@ Sonheim/Plugins/GameUIFramework/
 | 토스트 내용 | `FInstancedStruct` 페이로드 + `UGameUIToastWidget` | `FNoticeData`를 싣고, `UNoticeWidget`이 상속해 풀어 그림 |
 | 미리 로드할 에셋 | `UGameUIScreenWidget::GatherPreloadAssets` | 도감이 종의 `DisplayClass` 경로를 돌려줌 |
 
-게임에 남는 것: 각 화면 위젯, View 구조체(`MonsterDexView`, `QuestView`, 새로 `InventoryView`), 알림 내용(`FNoticeData`, `UNoticeStyle`), 입력 힌트, 메뉴 탭바, 성능 장면, `UI.Screen.*` 태그 정의, `WBP_UIRoot`(플러그인 루트 클래스를 상속한 게임 에셋).
+게임에 남는 것: 각 화면 위젯, View 구조체(`MonsterDexView`, `QuestView`, 새로 `FWorldMapView`), 알림 내용(`FNoticeData`, `UNoticeStyle`), 입력 힌트, 메뉴 탭바, 성능 장면, `UI.Screen.*` 태그 정의, `WBP_UIRoot`(플러그인 루트 클래스를 상속한 게임 에셋).
 
 ## 4. 기반 클래스 계약
 
@@ -233,8 +233,8 @@ Open(Tag, OnReady)
 |---|---|---|
 | 도감 | `MonsterDexView` 있음 | 그대로 |
 | 퀘스트 | `QuestView` 있음 | 그대로 |
-| 지도 | 위젯이 서브시스템을 직접 읽음 | `WorldMapView` 만듦 (2단계) |
-| 인벤토리 | 위젯이 `InventoryComponent`를 직접 읽음 | `InventoryView` 만듦, 슬롯 차이 갱신은 View 비교로 (2단계) |
+| 지도 | 위젯이 컴포넌트와 액터를 직접 읽음 | `FWorldMapView`(찾은 곳, 탐험한 칸, 퀘스트 위치, 이동 지점)를 `SonheimMap::BuildView`가 만듦 (2단계) |
+| 인벤토리 | 컴포넌트 이벤트가 넘기는 `FInventoryItem` 배열을 그림. 슬롯 차이 갱신도 이 배열 기준 | 그대로. 입력이 이미 데이터 배열이라 따로 View를 두지 않음 |
 | 수량 팝업 | `ItemID`로 위젯이 아이템 데이터 조회 | 여는 쪽이 `FItemQuantityView`를 넘김 (3단계) |
 | 알림 | `FNoticeData`가 이미 View 구조체 | 그대로 |
 | HUD | 상태 위젯이 컴포넌트 이벤트에 직접 묶임 | 5단계에서 정리, 범위는 그때 측정 보고 판단 |
@@ -259,7 +259,7 @@ Open(Tag, OnReady)
 - 대상: `UInventoryScreenWidget`, `UMonsterDexWidget`, `UWorldMapWidget`, `UQuestJournalWidget`, `UQuestDialogWidget`(`UQuestScreenWidget` 공통 부모), `UContainerInteractionWidget`, `UCraftingWidget`.
 - 각 위젯의 `NativeConstruct`/`NativeDestruct`에 있는 열림/닫힘 일을 `OnOpened`/`OnClosed`로 옮김. `OpenMenu`의 `AddUniqueDynamic` 묶기는 인벤토리 화면 `OnOpened`/`OnClosed`로.
 - 도감 `GatherPreloadAssets` + `bPreload`.
-- `WorldMapView`, `InventoryView`.
+- `FWorldMapView`.
 
 ### 3단계: 팝업
 

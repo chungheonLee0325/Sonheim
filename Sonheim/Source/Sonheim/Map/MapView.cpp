@@ -7,6 +7,8 @@
 #include "WorldMapDefinition.h"
 #include "WorldMapSubsystem.h"
 #include "Sonheim/AreaObject/Player/Utility/QuestComponent.h"
+#include "Sonheim/AreaObject/Player/Utility/WorldMapComponent.h"
+#include "Sonheim/GameObject/Map/FastTravelPoint.h"
 #include "Sonheim/GameObject/Region/RegionZone.h"
 #include "Sonheim/Quest/QuestSubsystem.h"
 
@@ -72,6 +74,25 @@ namespace
 		}
 		return false;
 	}
+}
+
+FWorldMapView SonheimMap::BuildView(const UWorld* World, const TArray<FMapRegion>& Regions, const UWorldMapComponent* Places,
+                                    const UQuestComponent* Quests)
+{
+	FWorldMapView View;
+	if (Places)
+	{
+		View.Discovered.Append(Places->GetDiscovered());
+		View.Explored = Places->GetExplored();
+	}
+	View.QuestPlaces = TrackedQuestPlaces(World, Regions, Quests);
+	for (TActorIterator<AFastTravelPoint> It(World); It; ++It)
+	{
+		if (!View.Discovered.Contains(It->PointId)) continue;
+		const FMapRegion* Region = RegionAt(Regions, It->GetActorLocation());
+		View.TravelPoints.Add({It->PointId, It->DisplayName, Region ? Region->Name : FText::GetEmpty()});
+	}
+	return View;
 }
 
 TArray<FVector> SonheimMap::TrackedQuestPlaces(const UWorld* World, const TArray<FMapRegion>& Regions, const UQuestComponent* Quests)

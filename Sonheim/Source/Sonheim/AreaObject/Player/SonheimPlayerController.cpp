@@ -728,18 +728,7 @@ void ASonheimPlayerController::OpenMenu(TFunction<void(UGameUIScreenWidget&)> On
 	UGameUIManagerSubsystem* UI = GetUI();
 	if (!UI || !m_PlayerState) return;
 	m_Player->Menu_Pressed();
-	UI->Open<UInventoryScreenWidget>(UITags::Inventory, [Self = TWeakObjectPtr<ASonheimPlayerController>(this), OnReady = MoveTemp(OnReady)](UInventoryScreenWidget& Screen)
-	{
-		ASonheimPlayerState* State = Self.IsValid() ? Self->m_PlayerState : nullptr;
-		if (!State) return;
-		UInventoryWidget* InventoryWidget = Screen.GetInventory();
-		InventoryWidget->SetInventoryComponent(State->m_InventoryComponent);
-		// The screen is kept and opened again (bKeepWhenClosed), so it is bound once.
-		State->m_InventoryComponent->OnInventoryChanged.AddUniqueDynamic(InventoryWidget, &UInventoryWidget::UpdateInventoryFromData);
-		State->m_InventoryComponent->OnEquipmentChanged.AddUniqueDynamic(InventoryWidget, &UInventoryWidget::UpdateEquipmentFromData);
-		Screen.GetPlayerStat()->InitializePlayerStatWidget(State);
-		if (OnReady) OnReady(Screen);
-	});
+	UI->Open(UITags::Inventory, MoveTemp(OnReady));
 }
 
 bool ASonheimPlayerController::IsUIBlockingInput() const

@@ -60,9 +60,9 @@ UQuestComponent* UQuestScreenWidget::Quests() const
 	return QuestsOf(*this);
 }
 
-void UQuestScreenWidget::NativeConstruct()
+void UQuestScreenWidget::NativeOnOpened()
 {
-	Super::NativeConstruct();
+	Super::NativeOnOpened();
 	if (UQuestComponent* Component = Quests())
 	{
 		Bound = Component;
@@ -71,10 +71,10 @@ void UQuestScreenWidget::NativeConstruct()
 	Redraw();
 }
 
-void UQuestScreenWidget::NativeDestruct()
+void UQuestScreenWidget::NativeOnClosed()
 {
 	if (Bound.IsValid()) Bound->OnQuestsChanged.RemoveDynamic(this, &UQuestScreenWidget::Redraw);
-	Super::NativeDestruct();
+	Super::NativeOnClosed();
 }
 
 const FQuestView* UQuestScreenWidget::PickedView() const

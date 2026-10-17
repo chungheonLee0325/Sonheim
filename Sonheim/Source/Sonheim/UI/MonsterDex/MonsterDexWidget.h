@@ -113,8 +113,13 @@ public:
 	/** Opens the map on the picked species' habitat, as its button does. */
 	UFUNCTION(BlueprintCallable, Category="MonsterDex") void ShowHabitat();
 protected:
-	virtual void NativeConstruct() override;
-	virtual void NativeDestruct() override;
+	virtual void NativeOnInitialized() override;
+	virtual void NativeOnOpened() override;
+	virtual void NativeOnClosed() override;
+public:
+	/** The species the stages show, loaded with the book's class (DA_UIScreens preloads it). */
+	virtual void GatherPreloadAssets(TArray<FSoftObjectPath>& OutPaths) const override;
+protected:
 
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> CompletionText;
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UProgressBar> CompletionBar;

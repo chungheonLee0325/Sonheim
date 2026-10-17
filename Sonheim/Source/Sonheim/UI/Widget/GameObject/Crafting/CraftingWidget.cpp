@@ -39,9 +39,9 @@ void UCraftingWidget::Initialise(ACraftingStation* InStation)
 	}
 }
 
-void UCraftingWidget::NativeConstruct()
+void UCraftingWidget::NativeOnInitialized()
 {
-	Super::NativeConstruct();
+	Super::NativeOnInitialized();
 	if (CraftButton) CraftButton->OnClicked.AddDynamic(this, &UCraftingWidget::OnClickCraft);
 	if (MaxButton) MaxButton->OnClicked.AddDynamic(this, &UCraftingWidget::OnClickMax);
 	if (MinButton) MinButton->OnClicked.AddDynamic(this, &UCraftingWidget::OnClickMin);
@@ -51,7 +51,7 @@ void UCraftingWidget::NativeConstruct()
 	if (CloseButton) CloseButton->OnClicked.AddDynamic(this, &UCraftingWidget::OnClickedClose);
 }
 
-void UCraftingWidget::NativeDestruct()
+void UCraftingWidget::NativeOnClosed()
 {
 	// UI 닫힐 때 서버에 UI 락 해제
 	if (Station)
@@ -66,7 +66,7 @@ void UCraftingWidget::NativeDestruct()
 		InventoryComp->OnInventoryChanged.RemoveDynamic(this, &UCraftingWidget::UpdateInventoryFromData);
 	}
 
-	Super::NativeDestruct();
+	Super::NativeOnClosed();
 }
 
 void UCraftingWidget::RefreshRecipes()

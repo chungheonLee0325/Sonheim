@@ -67,8 +67,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Quest") void Pick(int32 QuestID);
 	UFUNCTION(BlueprintPure, Category="Quest") int32 GetPicked() const { return Picked; }
 protected:
-	virtual void NativeConstruct() override;
-	virtual void NativeDestruct() override;
+	virtual void NativeOnOpened() override;
+	virtual void NativeOnClosed() override;
 	/** The quests the list shows, in order. */
 	virtual TArray<FQuestView> ListQuests(const UQuestComponent& Quests) const PURE_VIRTUAL(UQuestScreenWidget::ListQuests, return {};);
 	/** After the list and the detail are drawn: the screen's own buttons. */

@@ -118,10 +118,20 @@ UMonsterDexComponent* UMonsterDexWidget::Dex() const
 	return PS ? PS->m_MonsterDexComponent : nullptr;
 }
 
-void UMonsterDexWidget::NativeConstruct()
+void UMonsterDexWidget::NativeOnInitialized()
 {
-	Super::NativeConstruct();
-	HabitatButton->OnClicked.AddUniqueDynamic(this, &UMonsterDexWidget::ShowHabitat);
+	Super::NativeOnInitialized();
+	HabitatButton->OnClicked.AddDynamic(this, &UMonsterDexWidget::ShowHabitat);
+}
+
+void UMonsterDexWidget::GatherPreloadAssets(TArray<FSoftObjectPath>& OutPaths) const
+{
+	UMonsterDexSubsystem::GatherDisplayClasses(OutPaths);
+}
+
+void UMonsterDexWidget::NativeOnOpened()
+{
+	Super::NativeOnOpened();
 	if (UMonsterDexComponent* Component = Dex())
 	{
 		Bound = Component;
@@ -136,7 +146,7 @@ void UMonsterDexWidget::NativeConstruct()
 	Redraw();
 }
 
-void UMonsterDexWidget::NativeDestruct()
+void UMonsterDexWidget::NativeOnClosed()
 {
 	if (Bound.IsValid()) Bound->OnDexChanged.RemoveDynamic(this, &UMonsterDexWidget::Redraw);
 	if (Stage) Stage->Destroy();
@@ -149,7 +159,7 @@ void UMonsterDexWidget::NativeDestruct()
 	PortraitImage->SetBrushFromTexture(nullptr);
 	for (UUserWidget* Cell : PageGrid->GetAllEntries()) Cast<UMonsterDexCellWidget>(Cell)->ClearPicture();
 	CellPictures.Reset();
-	Super::NativeDestruct();
+	Super::NativeOnClosed();
 }
 
 void UMonsterDexWidget::Redraw()

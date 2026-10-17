@@ -18,6 +18,16 @@ void UMonsterDexSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	UE_LOG(SONHEIM, Log, TEXT("[MonsterDex] %d pages, %d players saved"), Pages.Num(), Save ? Save->Players.Num() : 0);
 }
 
+void UMonsterDexSubsystem::GatherDisplayClasses(TArray<FSoftObjectPath>& OutPaths)
+{
+	const UDataTable* Table = GetDefault<UMonsterDexSubsystem>()->PageTable.LoadSynchronous();
+	if (!Table) return;
+	Table->ForeachRow<FMonsterDexData>(TEXT("GatherDisplayClasses"), [&OutPaths](const FName&, const FMonsterDexData& Page)
+	{
+		OutPaths.Add(Page.DisplayClass.ToSoftObjectPath());
+	});
+}
+
 const FMonsterDexData* UMonsterDexSubsystem::FindPage(const int32 AreaObjectID) const
 {
 	return Pages.FindByPredicate([AreaObjectID](const FMonsterDexData& Page) { return Page.AreaObjectID == AreaObjectID; });

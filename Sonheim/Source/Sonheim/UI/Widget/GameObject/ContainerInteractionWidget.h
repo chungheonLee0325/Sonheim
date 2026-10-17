@@ -19,8 +19,8 @@ public:
 private:
 
 protected:
-	virtual void NativeConstruct() override;
-	virtual void NativeDestruct() override;
+	virtual void NativeOnInitialized() override;
+	virtual void NativeOnClosed() override;
 
 	// UI 컴포넌트
 	UPROPERTY(meta = (BindWidget))
