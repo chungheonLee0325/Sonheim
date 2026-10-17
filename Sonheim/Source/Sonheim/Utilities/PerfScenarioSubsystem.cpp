@@ -9,12 +9,20 @@
 #include "Misc/CommandLine.h"
 #include "Misc/Paths.h"
 #include "UnrealClient.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "ProfilingDebugging/CsvProfiler.h"
+#include "Sonheim/AreaObject/Player/SonheimPlayer.h"
 #include "Sonheim/AreaObject/Player/SonheimPlayerController.h"
+#include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
+#include "Sonheim/GameManager/SonheimGameInstance.h"
 #include "Sonheim/UI/Map/WorldMapWidget.h"
 #include "Sonheim/UI/MonsterDex/MonsterDexWidget.h"
 #include "Sonheim/UI/Notice/NoticeSubsystem.h"
 #include "Sonheim/UI/System/UIStackSubsystem.h"
+
+#if CSV_PROFILER
+CSV_DEFINE_CATEGORY(PerfUI, true);
+#endif
 
 namespace
 {
@@ -121,7 +129,17 @@ void UPerfScenarioSubsystem::SetUp(const FString& Scene)
 	if (APawn* Pawn = PC->GetPawn()) Pawn->SetActorLocation(PerfSpot, false, nullptr, ETeleportType::TeleportPhysics);
 	PC->SetControlRotation(PerfView);
 	NextNotice = 0.f;
+	Steps = 0;
 	if (Scene == TEXT("Inventory")) PC->OpenTab(UIScreen::Menu);
+	else if (Scene == TEXT("InvSwap"))
+	{
+		// Every slot holds an item, each with its tooltip, as a late game bag would.
+		if (UInventoryComponent* Inventory = Cast<ASonheimPlayer>(PC->GetPawn()) ? Cast<ASonheimPlayer>(PC->GetPawn())->GetInventoryComponent() : nullptr)
+			for (const TPair<int32, FItemData>& Item : USonheimGameInstance::Get(GetGameInstance()->GetWorld())->dt_Item)
+				Inventory->AddItem(Item.Key, 1);
+		PC->OpenTab(UIScreen::Menu);
+	}
+	else if (Scene == TEXT("OpenClose")) PC->ConsoleCommand(TEXT("DexMeet 100"));
 	else if (Scene == TEXT("Dex"))
 	{
 		// A met species, so the picture is the lit model and not a silhouette.
@@ -160,6 +178,30 @@ void UPerfScenarioSubsystem::Drive(const FString& Scene, const float Time)
 			const float Angle = Time * UE_TWO_PI / 6.f;
 			Map->SetView(FVector2D(0.5f + 0.15f * FMath::Cos(Angle), 0.5f + 0.15f * FMath::Sin(Angle)), 0.55f + 0.2f * FMath::Sin(Time * 0.9f));
 		}
+	}
+	else if (Scene == TEXT("OpenClose") && Time >= Steps * 0.6f)
+	{
+		// The inventory, the book and the map in turn: open for 0.6 s, closed for 0.6 s.
+		static const FName Screens[] = {UIScreen::Menu, UIScreen::MonsterDex, UIScreen::WorldMap};
+		const FName Screen = Screens[(Steps / 2) % UE_ARRAY_COUNT(Screens)];
+		// Each step is also a named scope in an Insights trace (-trace=cpu), to find its frames there.
+		const FString Event = FString::Printf(TEXT("%s %s"), Steps % 2 == 0 ? TEXT("Open") : TEXT("Close"), *Screen.ToString());
+		CSV_EVENT(PerfUI, TEXT("%s"), *Event);
+		TRACE_CPUPROFILER_EVENT_SCOPE_TEXT(*(TEXT("PerfUI ") + Event));
+		if (Steps % 2 == 0) PC->OpenTab(Screen);
+		else TearDown();
+		++Steps;
+	}
+	else if (Scene == TEXT("InvSwap") && Time >= Steps * 0.25f)
+	{
+		// The first and last slots trade places, as a drag and drop between them does.
+		if (UInventoryComponent* Inventory = Cast<ASonheimPlayer>(PC->GetPawn()) ? Cast<ASonheimPlayer>(PC->GetPawn())->GetInventoryComponent() : nullptr)
+		{
+			CSV_EVENT(PerfUI, TEXT("Swap"));
+			TRACE_CPUPROFILER_EVENT_SCOPE_STR("PerfUI Swap");
+			Inventory->SwapItems(0, Inventory->GetInventory().Num() - 1);
+		}
+		++Steps;
 	}
 	else if (Scene == TEXT("Dex") && Time < 0.1f)
 	{
