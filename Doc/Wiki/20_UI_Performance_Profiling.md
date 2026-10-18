@@ -251,4 +251,4 @@ UI 갱신은 원본 데이터 변경과 실제 위젯 속성 변경을 구분했
 
 **관련 문서:** [07. Inventory & Crafting](07_Inventory_Crafting.md) · [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) · [14. Unreal Editor Automation & Verification](14_Unreal_Editor_Automation_Verification.md) · [16. MonsterDex System](16_MonsterDex_System.md) · [18. UMG v2 Migration](18_UMG_v2_Migration.md) · [19. World Map & Fast Travel](19_World_Map_System.md)
 
-**관련 저장소:** [Agent MCP](https://github.com/chungheonLee0325/AgentMcp) · [Sonheim PR #6](https://github.com/chungheonLee0325/Sonheim/pull/6)
+**관련 저장소:** [Agent MCP](https://github.com/chungheonLee0325/AgentMcp) · [Sonheim PR #6](https://github.com/chungheonLee0325/Sonheim/pull/6) · [에이전트 조사 기록 — 측정하지 않았던 UI에서 끊김을 찾고 고친 실제 도구 결과](https://github.com/chungheonLee0325/AgentMcp/blob/main/Docs/Samples/SonheimUiPerf.ko.md)
