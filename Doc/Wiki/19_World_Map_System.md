@@ -43,22 +43,20 @@ flowchart LR
 
 ### 상태 변경과 화면 갱신
 
-`UWorldMapWidget`은 지도 화면이 열릴 때 `OnMapChanged`와 `OnQuestsChanged`에 `Redraw()`를 연결합니다.
+`UWorldMapWidget`은 지도 화면이 열릴 때(`NativeOnOpened`) `OnMapChanged`와 `OnQuestsChanged`에 `Redraw()`를 연결하고, 닫힐 때(`NativeOnClosed`) 연결을 해제합니다. 닫혀 있는 지도는 다시 그리지 않고, 다음에 열 때 현재 기록으로 그립니다.
 
 ~~~cpp
-// WorldMapWidget.cpp — NativeConstruct / Redraw 발췌
-if (Places.IsValid())
-    Places->OnMapChanged.AddUniqueDynamic(this, &UWorldMapWidget::Redraw);
-if (Quests.IsValid())
-    Quests->OnQuestsChanged.AddUniqueDynamic(this, &UWorldMapWidget::Redraw);
+// WorldMapWidget.cpp — NativeOnOpened / Redraw 발췌
+if (Places.IsValid()) Places->OnMapChanged.AddUniqueDynamic(this, &UWorldMapWidget::Redraw);
+if (Quests.IsValid()) Quests->OnQuestsChanged.AddUniqueDynamic(this, &UWorldMapWidget::Redraw);
+Redraw();
 
 // Redraw() — Map 유효성 확인 후
-Fog->Show(Places.IsValid() ? Places->GetExplored() : TArray<uint8>(),
-          Map->FogCells);
-QuestPlaces = SonheimMap::TrackedQuestPlaces(GetWorld(), Regions, Quests.Get());
+MapView = SonheimMap::BuildView(GetWorld(), Regions, Places.Get(), Quests.Get());
+Fog->Show(MapView.Explored, Map->FogCells);
 ~~~
 
-위 코드는 변경 경로를 보여주는 **발췌**입니다. `Redraw()`에서는 탐험 안개 데이터와 퀘스트 목적지를 갱신하고, `Discovered`를 기준으로 빠른 이동 목록을 다시 구성합니다. 미니맵은 PlayerState가 HUD보다 늦게 준비될 수 있어 `NativeTick`에서 컴포넌트 연결을 확인한 후 같은 Delegate를 바인딩합니다.
+위 코드는 변경 경로를 보여주는 **발췌**입니다. `SonheimMap::BuildView()`가 발견 ID·탐험 칸·퀘스트 목적지·활성화한 표석 목록을 `FWorldMapView`로 한 번에 만들고, `Redraw()`는 이 값으로 탐험 안개와 빠른 이동 목록을 다시 구성합니다. 마커와 지역 이름의 발견 여부도 같은 `FWorldMapView`를 기준으로 판단합니다. 미니맵은 PlayerState가 HUD보다 늦게 준비될 수 있어 `NativeTick`에서 컴포넌트 연결을 확인한 후 같은 Delegate를 바인딩합니다.
 
 모든 요소를 이벤트로만 갱신하지는 않습니다. **변경이 발생한 데이터**(탐험 기록·퀘스트 목표·목록)는 Delegate로, **계속 변하는 화면 위치**(플레이어·마커 위치, 뷰 영역)는 Tick에서 처리합니다. 전체 지도는 `PlaceMarkers()`, 미니맵은 `PlaceMarkers()`와 플레이어 중심 갱신을 사용합니다.
 
@@ -101,7 +99,7 @@ void UWorldMapWidget::Zoom(float Factor, const FVector2D& AroundUV)
 
 `Zoom()`에서 확대 후 중심을 보정하므로 **마우스 커서가 가리키던 위치를 유지한 채 확대**할 수 있습니다. 드래그는 화면 이동량을 `ViewSize()`의 UV 이동량으로 바꾸고, 게임패드는 왼쪽 스틱·트리거 입력을 같은 `Center`·`Span` 값에 반영합니다. 입력 장치별 처리는 달라도 화면 계산은 공유합니다.
 
-전체 지도는 기존 `UUIStackSubsystem`의 메뉴 탭으로 등록했습니다. `PlayerController`에서 M 키와 메뉴 확인·닫기 입력을 연결하고, 게임패드 메뉴 입력은 `IMC_Menu`를 사용합니다. 따라서 지도만 별도의 입력 모드나 커서 정책을 관리하지 않습니다.
+전체 지도는 `UI.Screen.WorldMap` 태그로 등록한 메뉴 탭 화면입니다([21. Game UI Framework](21_UI_Framework.md)). `PlayerController`에서 M 키와 메뉴 확인 입력을 연결하고, 닫기는 UI 매니저의 뒤로 가기로 처리하며, 게임패드 메뉴 입력은 `IMC_Menu`를 사용합니다. 따라서 지도만 별도의 입력 모드나 커서 정책을 관리하지 않습니다.
 
 ## 마커와 퀘스트 목적지
 
@@ -153,7 +151,7 @@ https://github.com/user-attachments/assets/588c9b6b-05d3-4048-9a93-99fa6ec5d54a
 
 표석 `AFastTravelPoint`는 공용 Actor지만, `PointId`의 활성화 기록은 각 플레이어의 `UWorldMapComponent`가 보유합니다. 상호작용은 기존 `IInteractableInterface` 경로로 받고, 서버에서 `Discover(PointId)`를 처리합니다.
 
-`Discovered`가 복제되면 `UWorldMapWidget::Redraw()`가 활성화한 표석만 `TravelBox`에 구성합니다. `UMapTravelEntryWidget`은 `PointId`를 보유하고 클릭·마우스 오버를 상위 지도에 전달합니다. 지도에서 선택하면 `UWorldMapWidget::Travel()`이 `ServerFastTravel(PointId)`을 요청하고 지도 화면을 닫습니다.
+`Discovered`가 복제되면 `UWorldMapWidget::Redraw()`가 `FWorldMapView`의 활성화한 표석만 `TravelBox`에 구성합니다. `UMapTravelEntryWidget`은 `PointId`를 보유하고 클릭·마우스 오버를 상위 지도에 전달합니다. 지도에서 선택하면 `UWorldMapWidget::Travel()`이 `ServerFastTravel(PointId)`을 요청하고 지도 화면을 닫습니다.
 
 ~~~cpp
 // WorldMapWidget.cpp
@@ -161,7 +159,7 @@ void UWorldMapWidget::Travel(const FName PointId)
 {
     if (!Places.IsValid() || !Places->IsDiscovered(PointId)) return;
     Places->ServerFastTravel(PointId);
-    UUIStackSubsystem::CloseWidget(this);
+    CloseSelf();
 }
 ~~~
 
@@ -173,15 +171,16 @@ void UWorldMapWidget::Travel(const FName PointId)
 
 ![도감 서식지와 '지도에서 보기' 버튼](../Media/Wiki/19_World_Map_System/19_dex_habitat.jpg)
 
-도감의 `Habitats`(지역 ID 목록)를 `UWorldMapWidget::ShowHabitat()`에 넘겨 서식지 마커와 지역 위치를 표시합니다. 도감과 지도가 같은 메뉴 탭을 쓰므로 **화면 교체 전에 필요한 데이터를 먼저 복사**합니다.
+도감의 `Habitats`(지역 ID 목록)를 `UWorldMapWidget::ShowHabitat()`에 넘겨 서식지 마커와 지역 위치를 표시합니다. 도감과 지도가 같은 메뉴 탭을 쓰므로 **화면 교체 전에 필요한 데이터를 먼저 복사**하고, 지도가 열린 뒤 호출되는 `OnReady` 콜백에서 전달합니다. 지도 클래스를 비동기로 로드하는 경우에도 지도가 열린 다음에 서식지를 표시합니다.
 
 ~~~cpp
 // MonsterDexWidget.cpp — ShowHabitat() 발췌
 const TArray<FName> Habitats = Page->Habitats;
 const FText Species = Page->Name;
-Controller->OpenTab(UIScreen::WorldMap);
-if (auto* Map = Cast<UWorldMapWidget>(UIStack->GetWidget(UIScreen::WorldMap)))
-    Map->ShowHabitat(Habitats, Species);
+Controller->OpenTab(UITags::WorldMap, [Habitats, Species](UGameUIScreenWidget& Map)
+{
+    CastChecked<UWorldMapWidget>(&Map)->ShowHabitat(Habitats, Species);
+});
 ~~~
 
 `ShowHabitat()`은 서식지 ID를 지역·던전 마커의 월드 위치로 변환한 다음, 모든 서식지가 들어오도록 `Center`와 `Span`을 계산합니다. 종 발견 여부와 지역 발견 여부에 따라 도감에 표시할 이름도 구분합니다.
@@ -193,4 +192,4 @@ if (auto* Map = Cast<UWorldMapWidget>(UIStack->GetWidget(UIScreen::WorldMap)))
 - [WorldMapDefinition.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/WorldMapDefinition.h) · [MapFog.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/MapFog.cpp) — 좌표·탐험 안개 렌더링
 - [WorldMapComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/AreaObject/Player/Utility/WorldMapComponent.cpp) · [WorldMapSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/WorldMapSubsystem.cpp) — 플레이어별 발견·복제·저장
 - [FastTravelPoint.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/GameObject/Map/FastTravelPoint.cpp) · [MonsterDexWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexWidget.cpp) — 빠른 이동·도감 화면 연동
-- [16. MonsterDex System](16_MonsterDex_System.md) · [17. Quest System](17_Quest_System.md) · [18. UMG v2 Migration](18_UMG_v2_Migration.md)
+- [16. MonsterDex System](16_MonsterDex_System.md) · [17. Quest System](17_Quest_System.md) · [18. UMG v2 Migration](18_UMG_v2_Migration.md) · [21. Game UI Framework](21_UI_Framework.md)
