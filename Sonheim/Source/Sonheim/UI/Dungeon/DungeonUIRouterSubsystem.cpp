@@ -93,7 +93,8 @@ void UDungeonUIRouterSubsystem::RefreshWidget()
 		ActiveWidget = nullptr; ActiveId = NAME_None; RequestedId = NAME_None; return;
 	}
 	const FName Id = (LatestView.Status == EDungeonRunStatus::Succeeded || LatestView.Status == EDungeonRunStatus::Failed) ? FName(TEXT("UI.Dungeon.Result")) : FName(TEXT("UI.Dungeon.HUD"));
-	if (ActiveId == Id && ActiveWidget && ActiveWidget->IsInViewport())
+	// The widget sits in the UI root's HUD layer, not on the viewport: it is up while it has a parent.
+	if (ActiveId == Id && IsValid(ActiveWidget) && ActiveWidget->GetParent())
 	{
 		ActiveWidget->ApplyViewData(LatestView);
 		UE_LOG(SONHEIM, Log, TEXT("[DungeonHUD] Controller=%s Revision=%d Count=%s Branch=%s"), *Owner->GetName(), LatestView.Revision, *LatestView.CountText.ToString(), *LatestView.BranchText.ToString());
