@@ -166,7 +166,7 @@ void ABaseContainer::Interact_Implementation(ASonheimPlayer* Player)
 
 진행 중에는 `ManualCollectDelay`를 확인해 작업 직후 자동으로 수령되는 상황을 제한합니다. 즉, **다형성으로 대상 Actor를 선택한 뒤, 해당 Actor 내부에서 다시 상태에 따라 행동을 결정**합니다.
 
-제작 재료·공동 작업·취소·수령의 상세 규칙은 [[07. Inventory & Crafting|07_Inventory_Crafting]]에서 다룹니다.
+제작 재료·공동 작업·취소·수령의 상세 규칙은 [07. Inventory & Crafting](07_Inventory_Crafting.md)에서 다룹니다.
 
 ### 던전 레버 — 실행을 Runtime에 위임
 
@@ -269,14 +269,14 @@ if (CurrentMode != HoldInitialModeCode)
 
 ## 관련 코드 및 문서
 
-- [InteractableInterface.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/InteractableInterface.h) — `BlueprintNativeEvent` 공통 계약
-- [InteractionComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/InteractionComponent.cpp) — 카메라 탐지·공통 입력·Hold·`Execute_Interact`
-- [BaseItem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Items/BaseItem.cpp) — 아이템 획득 구현
-- [BaseContainer.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Buildings/Storage/BaseContainer.cpp) — 보관함 열기 구현
-- [CraftingStation.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Buildings/Crafting/CraftingStation.cpp) — 제작 상태별 `Interact` 및 Hold 모드
-- [DungeonShortcutSwitch.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonShortcutSwitch.cpp) · [DungeonTestArea.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonTestArea.cpp) — 던전 입력 확장
-- [QuestGiver.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Quest/QuestGiver.cpp) · [QuestBuildSite.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Quest/QuestBuildSite.cpp) — 퀘스트 입력 확장
-- [[02. Gameplay Architecture|02_Gameplay_Architecture]] — Actor·Component·Interface 책임
-- [[07. Inventory & Crafting|07_Inventory_Crafting]] — 제작의 세부 실행 규칙
-- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — 레버와 스테이지 분기
-- [[17. Quest System|17_Quest_System]] — NPC 대화와 목표 진행
+- [InteractableInterface.h](../../Sonheim/Source/Sonheim/GameObject/InteractableInterface.h) — `BlueprintNativeEvent` 공통 계약
+- [InteractionComponent.cpp](../../Sonheim/Source/Sonheim/AreaObject/Player/Utility/InteractionComponent.cpp) — 카메라 탐지·공통 입력·Hold·`Execute_Interact`
+- [BaseItem.cpp](../../Sonheim/Source/Sonheim/GameObject/Items/BaseItem.cpp) — 아이템 획득 구현
+- [BaseContainer.cpp](../../Sonheim/Source/Sonheim/GameObject/Buildings/Storage/BaseContainer.cpp) — 보관함 열기 구현
+- [CraftingStation.cpp](../../Sonheim/Source/Sonheim/GameObject/Buildings/Crafting/CraftingStation.cpp) — 제작 상태별 `Interact` 및 Hold 모드
+- [DungeonShortcutSwitch.cpp](../../Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonShortcutSwitch.cpp) · [DungeonTestArea.cpp](../../Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonTestArea.cpp) — 던전 입력 확장
+- [QuestGiver.cpp](../../Sonheim/Source/Sonheim/GameObject/Quest/QuestGiver.cpp) · [QuestBuildSite.cpp](../../Sonheim/Source/Sonheim/GameObject/Quest/QuestBuildSite.cpp) — 퀘스트 입력 확장
+- [02. Gameplay Architecture](02_Gameplay_Architecture.md) — Actor·Component·Interface 책임
+- [07. Inventory & Crafting](07_Inventory_Crafting.md) — 제작의 세부 실행 규칙
+- [09. Branching Dungeon Runtime](09_Branching_Dungeon_Runtime.md) — 레버와 스테이지 분기
+- [17. Quest System](17_Quest_System.md) — NPC 대화와 목표 진행

@@ -410,7 +410,7 @@ bool IsVulnerable() const
 }
 ~~~
 
-보스는 **포획할 수 있는 상태만 FSM에서 결정**합니다. PalSphere 충돌 이후 포획 확률 판정·Reveal·보유 목록 등록은 공통 Pal 시스템을 사용합니다. 상세 과정은 [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]]에서 설명합니다.
+보스는 **포획할 수 있는 상태만 FSM에서 결정**합니다. PalSphere 충돌 이후 포획 확률 판정·Reveal·보유 목록 등록은 공통 Pal 시스템을 사용합니다. 상세 과정은 [08. Pal Capture & Partner Lifecycle](08_Pal_Capture_Partner_Lifecycle.md)에서 설명합니다.
 
 포획 Reveal 동안 보스의 `DeactivateMonster`는 `UBossFSM::Pause`도 호출합니다. 실패 후 다시 활성화할 때는 `Resume`으로 휴식/Down 시간에 포획 연출 동안의 시간을 보정합니다.
 
@@ -447,7 +447,7 @@ flowchart LR
 
 `UDungeonStageRuntimeSubsystem::HandleBossStatus`는 `Phase`·`ActionId`·Action 시간·Break·`IsVulnerable()` 값을 던전 Snapshot에 반영합니다. HUD는 이 Snapshot을 표시 데이터로 변환합니다.
 
-**현재 상태와 순간 연출을 별도 경로로 전송**합니다. Stage·Phase·Action 시간은 복제된 `FBossStatus`를 사용하고, Montage 시작·Section 이동·중단은 `NetMulticast`로 재생합니다. 보스가 늦게 relevant해진 클라이언트의 애니메이션 동기화와 관련성 문제는 [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]에서 다룹니다.
+**현재 상태와 순간 연출을 별도 경로로 전송**합니다. Stage·Phase·Action 시간은 복제된 `FBossStatus`를 사용하고, Montage 시작·Section 이동·중단은 `NetMulticast`로 재생합니다. 보스가 늦게 relevant해진 클라이언트의 애니메이션 동기화와 관련성 문제는 [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md)에서 다룹니다.
 
 ---
 
@@ -465,14 +465,14 @@ flowchart LR
 
 ## 관련 코드 및 문서
 
-- [BossPatternDataAsset.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossPatternDataAsset.h) — 패턴·Strike·Phase·Exhaust 설정
-- [BossPatternDataAsset.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossPatternDataAsset.cpp) — Pattern 설정 검증
-- [BossFSM.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossFSM.cpp) — 패턴 선택·시간축·상태 전환
-- [BossMonster.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossMonster.cpp) — 몽타주·타격·상태·효과
-- [BossTelegraph.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossTelegraph.cpp) — 텔레그래프 구성·복제·Follow
-- [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — `FAttackData` 기반 피해 경로
-- [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — 보스 포획의 공통 Pal 시스템
-- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — Boss 그룹·던전 진행
-- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Boss HUD 데이터 구성
-- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — 상태 복제와 연출 RPC
-- [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — 패턴·타격 타이밍 검증
+- [BossPatternDataAsset.h](../../Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossPatternDataAsset.h) — 패턴·Strike·Phase·Exhaust 설정
+- [BossPatternDataAsset.cpp](../../Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossPatternDataAsset.cpp) — Pattern 설정 검증
+- [BossFSM.cpp](../../Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossFSM.cpp) — 패턴 선택·시간축·상태 전환
+- [BossMonster.cpp](../../Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossMonster.cpp) — 몽타주·타격·상태·효과
+- [BossTelegraph.cpp](../../Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossTelegraph.cpp) — 텔레그래프 구성·복제·Follow
+- [05. Combat, Skill & Animation](05_Combat_Skill_Animation.md) — `FAttackData` 기반 피해 경로
+- [08. Pal Capture & Partner Lifecycle](08_Pal_Capture_Partner_Lifecycle.md) — 보스 포획의 공통 Pal 시스템
+- [09. Branching Dungeon Runtime](09_Branching_Dungeon_Runtime.md) — Boss 그룹·던전 진행
+- [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) — Boss HUD 데이터 구성
+- [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) — 상태 복제와 연출 RPC
+- [13. Content Authoring & Validation](13_Content_Authoring_Validation.md) — 패턴·타격 타이밍 검증
