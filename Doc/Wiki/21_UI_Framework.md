@@ -103,11 +103,13 @@ bool UGameUIManagerSubsystem::HandleBack()
 }
 ~~~
 
-팝업이 떠 있으면 Popup 레이어의 맨 위 화면이 뒤로 가기를 먼저 받으므로, Esc는 아래 인벤토리가 아니라 팝업만 닫습니다.
+팝업이 떠 있으면 Popup 레이어의 맨 위 화면이 뒤로 가기를 먼저 받으므로, Esc는 아래 인벤토리가 아니라 팝업만 닫습니다. [기존 중첩 메뉴 입력 복원 영상](https://github.com/user-attachments/assets/f9936033-7251-4304-b1cb-842750c13c59)에서 팝업 종료 후 인벤토리 입력과 커서가 복원되는 동작을 볼 수 있습니다.
 
 ## 태그로 화면 열기
 
 화면 태그와 Widget Blueprint 클래스의 연결은 `DA_UIScreens`(`UGameUIScreenRegistry`)에 있고, 레지스트리 위치는 프로젝트 설정 **Game > Game UI**(`UGameUISettings`)에서 지정합니다. 레지스트리는 클래스를 `TSoftClassPtr`로 갖기 때문에, 레지스트리를 불러와도 화면 클래스는 함께 로드되지 않습니다.
+
+레지스트리 에셋의 지정 경로와 루트·레이어 기본 설정은 [DefaultGame.ini의 GameUISettings](../../Sonheim/Config/DefaultGame.ini)에서 확인할 수 있습니다. 이 설정은 에셋 위치를 지정하며, 개별 화면의 태그·클래스 매핑은 `DA_UIScreens`에서 관리합니다.
 
 | 화면 태그 | Widget Blueprint | 클래스 기본값 |
 |---|---|---|
@@ -275,6 +277,8 @@ UI->Open<UConfirmWidget>(UITags::ItemQuantity, [this, View, SlotIndex, bDiscardM
 | `UI.Toast.Title` | `WBP_NoticeTitle` | `ReplaceShowing` — 새 알림이 표시 중인 알림을 바로 교체 |
 | `UI.Toast.Feed` | `WBP_NoticeFeed` | `Stack` — 대기 없이 위젯이 여러 줄을 함께 표시 |
 | `UI.Toast.Headline` | `WBP_NoticeHeadline` | `TakeTurns` — 차례대로 표시, 최대 3개 대기 |
+
+![Feed·Headline·Title 알림이 함께 표시된 게임 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg)
 
 알림 내용은 `FInstancedStruct`로 전달합니다. 플러그인은 내용의 타입을 알지 못하고, 게임의 `UNoticeWidget`이 `UGameUIToastWidget`을 상속해 `FNoticeData`를 꺼내 그립니다.
 
