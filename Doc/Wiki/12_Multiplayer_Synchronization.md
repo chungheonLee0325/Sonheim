@@ -61,7 +61,7 @@ DOREPLIFETIME(UInventoryComponent, CurrentWeaponSlot);
    → OnInventoryChanged → Slot UI
 ~~~
 
-[실제 인벤토리·보관함 조작 영상](https://github.com/user-attachments/assets/c594e8a3-2840-456c-ae04-cabaaeb4d8ca)에서는 복제 결과가 최종적으로 슬롯 UI에 반영되는 동작을 확인할 수 있습니다. 영상은 게임플레이 결과를 보여주며, OwnerOnly 전송 범위와 FastArray 경로의 근거는 위 코드입니다.
+슬롯 교환과 보관함 아이템 이동에 따른 화면 갱신은 [인벤토리·보관함 플레이 영상](https://github.com/user-attachments/assets/c594e8a3-2840-456c-ae04-cabaaeb4d8ca)에서 볼 수 있습니다.
 
 ### 공유 보관함
 
@@ -156,7 +156,7 @@ if (Snapshot.RunId == Latest.RunId &&
 
 같은 실행에서 이미 처리한 Revision 이하라면 `UDungeonStagePresenter`가 다시 반영하지 않습니다. 위젯을 나중에 열거나 다시 만들 때도 마지막 Snapshot을 기반으로 ViewData를 만들기 때문에 Stage·타이머가 UI 생성 시점에 초기화되지 않습니다.
 
-![던전 진행 상태와 별도 파티 데이터를 함께 표시하는 실제 HUD](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_dungeon_hud.png)
+![던전 진행 상태와 파티 HP를 표시하는 HUD](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_dungeon_hud.png)
 
 목표·Stage·타이머 등 던전 진행 정보는 Snapshot을 통해 전달하고, 파티 HP처럼 다른 컴포넌트가 소유하는 상태는 UI에서 별도로 조합합니다.
 
