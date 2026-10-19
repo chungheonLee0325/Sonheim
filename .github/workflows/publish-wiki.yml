@@ -30,6 +30,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          sparse-checkout: |
+            Doc/Wiki
+            Tools
 
       - uses: actions/setup-python@v5
         with:
