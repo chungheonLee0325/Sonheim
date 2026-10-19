@@ -1,6 +1,12 @@
 name: Publish GitHub Wiki
 
 on:
+  pull_request:
+    paths:
+      - 'Tools/wiki_publish.py'
+      - 'Tools/test_wiki_publish.py'
+      - '.github/workflows/publish-wiki.yml'
+      - 'Doc/Wiki/**'
   push:
     branches: [main]
     paths:
@@ -42,6 +48,7 @@ jobs:
             --profile sonheim
 
       - name: Publish to GitHub Wiki
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
