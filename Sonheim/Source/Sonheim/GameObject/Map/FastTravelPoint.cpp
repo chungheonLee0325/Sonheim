@@ -14,7 +14,8 @@
 #include "Sonheim/AreaObject/Player/Utility/WorldMapComponent.h"
 #include "Sonheim/Map/MapMarkerComponent.h"
 #include "Sonheim/UI/Notice/NoticeWidget.h"
-#include "Sonheim/UI/System/UIStackSubsystem.h"
+#include "GameUIManagerSubsystem.h"
+#include "Sonheim/UI/System/UITags.h"
 #include "Sonheim/UI/Widget/DetectWidget.h"
 #include "Sonheim/Utilities/StringTableIds.h"
 
@@ -132,7 +133,7 @@ void AFastTravelPoint::Interact_Implementation(ASonheimPlayer* Player)
 	// An active stone opens the map, to travel from here.
 	if (!State->m_WorldMapComponent->Discover(PointId))
 	{
-		Controller->Client_OpenTab(UIScreen::WorldMap);
+		Controller->Client_OpenTab(UITags::WorldMap);
 		return;
 	}
 	FNoticeData Data;

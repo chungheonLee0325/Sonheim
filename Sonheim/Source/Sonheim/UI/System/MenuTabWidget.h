@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "GameplayTagContainer.h"
 #include "MenuTabWidget.generated.h"
 
 class UBorder;
@@ -11,12 +12,12 @@ class UImage;
 class UTextBlock;
 class UTexture2D;
 
-/** One tab of the menu: the UIStack screen it opens, and its name and glyph. A tab with no screen yet is drawn dimmed. */
+/** One tab of the menu: the screen it opens, and its name and glyph. A tab with no screen yet is drawn dimmed. */
 USTRUCT(BlueprintType)
 struct FMenuTab
 {
 	GENERATED_BODY()
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) FName Screen;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(Categories="UI.Screen")) FGameplayTag Screen;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) FText Label;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) TSoftObjectPtr<UTexture2D> Icon;
 };
@@ -46,15 +47,19 @@ private:
 };
 
 /** The bar across the top of the menu's screens (inventory, monster book, quest journal): every tab, the showing one lit, and the
- * Q and E keys that step between them. UUIStackSubsystem shows it while a tab's screen is on top. */
+ * Q and E keys that step between them. It sits in WBP_UIRoot over the menu layer and shows itself while a tab's screen is on top. */
 UCLASS(Abstract)
 class SONHEIM_API UMenuTabBarWidget : public UUserWidget
 {
 	GENERATED_BODY()
 public:
-	void ShowActive(FName Screen);
+	bool HasTab(FGameplayTag Screen) const;
+	/** The tab Dir steps away from From (-1 left, 1 right), past the dimmed ones and round the ends; empty when From is no tab. */
+	FGameplayTag Step(FGameplayTag From, int32 Dir) const;
 	/** The tabs in order, set on the Widget Blueprint. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Tabs") TArray<FMenuTab> Tabs;
 protected:
+	virtual void NativeOnInitialized() override;
+	void ShowActive(FGameplayTag Screen);
 	UPROPERTY(meta=(BindWidget)) TObjectPtr<UDynamicEntryBox> TabBox;
 };

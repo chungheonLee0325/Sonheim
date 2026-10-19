@@ -7,6 +7,7 @@ class UCanvasPanel;
 class UImage;
 class UQuestComponent;
 class UTexture2D;
+class UWorldMapComponent;
 class UWorldMapDefinition;
 
 /** A named region of the island as the maps show it: its name, the line under it and where its label stands. */
@@ -21,8 +22,28 @@ struct FMapRegion
 	TArray<FBox> Boxes;
 };
 
+/** A found fast travel point as the map's travel list shows it. */
+struct FMapTravelView
+{
+	FName PointId;
+	FText Name;
+	FText Region;
+};
+
+/** What the world map shows of one player's records: the places found, the cells explored, where the tracked quests lead and the
+ * stones the player can travel to. The map widget draws only this, built anew on each change of the records. */
+struct FWorldMapView
+{
+	TSet<FName> Discovered;
+	TArray<uint8> Explored;
+	TArray<FVector> QuestPlaces;
+	/** The found points, in the world's order. */
+	TArray<FMapTravelView> TravelPoints;
+};
+
 namespace SonheimMap
 {
+	FWorldMapView BuildView(const UWorld* World, const TArray<FMapRegion>& Regions, const UWorldMapComponent* Places, const UQuestComponent* Quests);
 	/** The regions of the ARegionZone actors in the world, which stand on every machine. */
 	TArray<FMapRegion> CollectRegions(const UWorld* World);
 	/** The region a world point is in seen from above, the smallest zone first (as ARegionZone::ShowWhereStanding), or null. */

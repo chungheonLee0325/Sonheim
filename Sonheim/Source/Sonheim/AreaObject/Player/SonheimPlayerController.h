@@ -5,10 +5,13 @@
 #include "CoreMinimal.h"
 #include "SonheimPlayer.h"
 #include "GameFramework/PlayerController.h"
+#include "GameplayTagContainer.h"
 #include "Sonheim/UI/Notice/NoticeSubsystem.h"
 #include "SonheimPlayerController.generated.h"
 
 struct FInputActionValue;
+class UGameUIManagerSubsystem;
+class UGameUIScreenWidget;
 //DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCurrencyChangeDelegate, ECurrencyType, CurrencyType, int,
 //                                               CurrencyValue, int, Delta);
 
@@ -118,17 +121,20 @@ private:
 	void On_Dex_Pressed(const FInputActionValue& InputActionValue);
 	void On_Map_Pressed(const FInputActionValue& InputActionValue);
 	/** A tab's own key (K, J, M): closes its screen if it is open, opens it as the tab otherwise; not over a box or a station. */
-	void ToggleTab(FName Screen);
+	void ToggleTab(FGameplayTag Screen);
 public:
-	/** Opens a menu tab's screen (UIScreen::Menu, MonsterDex, QuestJournal) in place of the tab showing, if one is. */
-	void OpenTab(FName Screen);
+	/** Opens a menu tab's screen (UITags::Inventory, MonsterDex, QuestJournal, WorldMap) in place of the tab showing, if one is;
+	 * OnReady runs once it shows. */
+	void OpenTab(FGameplayTag Screen, TFunction<void(UGameUIScreenWidget&)> OnReady = nullptr);
 	/** The server opening a tab's screen on this player's machine, as an active fast travel stone opens the map. */
 	UFUNCTION(Client, Reliable)
-	void Client_OpenTab(FName Screen);
+	void Client_OpenTab(FGameplayTag Screen);
 private:
-	void OpenMenu();
+	void OpenMenu(TFunction<void(UGameUIScreenWidget&)> OnReady = nullptr);
 	/** The menu's tab actions (IMC_Menu: Q and E, the bumpers) step the tabs while a tab's screen is on top; returns whether they did. */
 	bool StepTab(int32 Dir);
+	/** The top screen when it is one of the menu bar's tabs, empty otherwise. */
+	FGameplayTag ShowingTab() const;
 private:
 	void On_Journal_Pressed(const FInputActionValue& InputActionValue);
 
@@ -160,12 +166,6 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UPlayerStatusWidget> StatusWidgetClass;
-
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<class UInventoryWidget> InventoryWidgetClass;
-
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<class UPlayerStatWidget> PlayerStatWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UUserWidget> MissionFailClass;
@@ -268,7 +268,7 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* CKeyAction;
 
-	class UUIStackSubsystem* GetUIStack() const;
+	UGameUIManagerSubsystem* GetUI() const;
 
 	// 점프 횟수 추적을 위한 변수
 	float LastJumpTime = 0.0f;
@@ -324,14 +324,6 @@ public:
 	void Server_Crafting_CancelUnfinished(class ACraftingStation* Station);
 
 private:
-	// 상자 UI 위젯 (열린 위젯은 UI 스택이 갖는다)
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<class UContainerInteractionWidget> ContainerInteractionWidgetClass;
-
-	// Crafting UI
-	UPROPERTY(EditDefaultsOnly, Category="UI")
-	TSubclassOf<class UCraftingWidget> CraftingWidgetClass;
-
 	// 검증 헬퍼 함수들
 	bool ValidateContainerAccess(class ABaseContainer* Container) const;
 	bool ValidateItemOperation(int32 ItemID, int32 Count) const;

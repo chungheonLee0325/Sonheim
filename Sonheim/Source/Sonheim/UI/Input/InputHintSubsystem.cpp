@@ -2,6 +2,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "Framework/Application/IInputProcessor.h"
 #include "Framework/Application/SlateApplication.h"
+#include "GameUIManagerSubsystem.h"
 #include "InputMappingContext.h"
 
 /** Watches Slate's input for the device the player last used. */
@@ -47,6 +48,10 @@ void UInputHintSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	if (auto* Input = Collection.InitializeDependency<UEnhancedInputLocalPlayerSubsystem>())
 	{
 		Input->ControlMappingsRebuiltDelegate.AddDynamic(this, &UInputHintSubsystem::MappingsRebuilt);
+	}
+	if (auto* UI = Collection.InitializeDependency<UGameUIManagerSubsystem>())
+	{
+		UI->OnInputStateChanged.AddUObject(this, &UInputHintSubsystem::SetMenuInput);
 	}
 	if (FSlateApplication::IsInitialized())
 	{

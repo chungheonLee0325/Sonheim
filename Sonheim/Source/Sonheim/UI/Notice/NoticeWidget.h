@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "GameUIToastWidget.h"
 #include "Engine/DataAsset.h"
 #include "NoticeWidget.generated.h"
 
@@ -106,25 +107,23 @@ protected:
 };
 
 /** A notice on the screen, the parent of every slot's Widget Blueprint. It shows what it is given, fades in, holds, fades out and
- * says when it is done; it never looks at game state. Every binding is optional and drawn where the layout has it: a feed row's icon
+ * says when it is done (OnFinished); it never looks at game state. Every binding is optional and drawn where the layout has it: a feed row's icon
  * plate and accent, a headline's band, emblem, lines and footer, a title's subtitle. */
 UCLASS(Abstract)
-class SONHEIM_API UNoticeWidget : public UUserWidget
+class SONHEIM_API UNoticeWidget : public UGameUIToastWidget
 {
 	GENERATED_BODY()
 public:
 	UFUNCTION(BlueprintCallable, Category="Notice") void Show(const FNoticeData& Data) { ShowFrom(NAME_None, Data); }
 	/** Shows a notice that came on a channel; a slot that stacks keeps each one's channel so it can take them back. */
 	virtual void ShowFrom(FName Channel, const FNoticeData& Data);
+	/** A toast whose payload is an FNoticeData. */
+	virtual void ShowToast(FName Channel, const FInstancedStruct& Payload) override;
 	/** Takes the notice off at once, as when its channel is cleared. */
-	void Stop();
-	/** Takes off what came on a channel, for a widget that shows several at once; one that shows a single notice leaves it to its
-	 * slot, which stops it. */
-	virtual void StopChannel(FName Channel) {}
+	virtual void Stop() override;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Style") TObjectPtr<UNoticeStyle> Style;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="Notice") FNoticeData ViewData;
 	FName ShowingChannel;
-	FSimpleDelegate OnFinished;
 protected:
 	virtual void NativePreConstruct() override;
 	virtual void NativeTick(const FGeometry& Geometry, float DeltaSeconds) override;

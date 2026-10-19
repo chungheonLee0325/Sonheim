@@ -336,8 +336,8 @@ InventoryComponent (ItemID · Count)
               ↓
           USlotWidget
 
-Drop / Discard → UConfirmWidget
-                     ↓ OnConfirm
+Drop / Discard → UConfirmWidget (UI.Popup.ItemQuantity)
+                     ↓ OnResult
                 InventoryWidget
                      ↓
              ServerDrop / ServerDiscard

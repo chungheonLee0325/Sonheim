@@ -7,10 +7,10 @@ Sonheim UI는 **상태를 관리하는 게임플레이 코드와 화면을 표�
 | 화면·기능 | 상태와 표시 데이터 | UI 갱신·관리 |
 |---|---|---|
 | **기본 HUD** | `UHealthComponent` · `UStaminaComponent` · `ULevelComponent` | 변경 Delegate → `UPlayerStatusWidget` |
-| **인벤토리·보관함·제작** | 아이템·레시피 정의 + 인벤토리·제작 상태 | 화면별 Widget + `UUIStackSubsystem` |
+| **인벤토리·보관함·제작** | 아이템·레시피 정의 + 인벤토리·제작 상태 | 화면별 Widget + `UGameUIManagerSubsystem` |
 | **도감·퀘스트** | 정의 데이터 + 플레이어별 복제 기록 | `MonsterDexView` / `QuestView` → UMG |
 | **던전 HUD·미니맵·결과** | 복제된 던전 Snapshot + 화면 설정·기존 컴포넌트 | `UDungeonStagePresenter` → ViewData → UI Router |
-| **알림** | `FNoticeData` + Slot·Channel | `UNoticeSubsystem` → `UNoticeWidget` |
+| **알림** | `FNoticeData` + Slot·Channel | `UNoticeSubsystem` → `UGameUIToastSubsystem` → `UNoticeWidget` |
 
 **정의 데이터**는 콘텐츠 설정, **런타임 상태**는 실행 중 변하는 값, **ViewData**는 위젯에서 사용할 표시용 값입니다. 화면에 따라 단순 Delegate 갱신과 ViewData 조합을 선택해 사용합니다.
 
@@ -107,20 +107,23 @@ flowchart LR
 
 ### 확인 팝업 — 게임플레이 요청과 분리
 
-아이템 버리기·폐기에는 `UInventoryWidget`이 `UConfirmWidget`을 열어 아이템과 수량을 확인합니다.
+아이템 버리기·폐기에는 `UInventoryWidget`이 `UI.Popup.ItemQuantity` 팝업(`UConfirmWidget`)을 열어 아이템과 수량을 확인합니다.
 
 ~~~text
-버리기 / 폐기 선택
+버리기 / 폐기 영역에 드롭
        ↓
-UConfirmWidget
- └─ 수량·동작 확인
-       ↓ OnConfirm
+UInventoryWidget::HandleTrashDrop
+ └─ FItemQuantityView(아이콘·이름·최대 수량·폐기 여부)로 팝업 열기
+       ↓
+UConfirmWidget (Popup 레이어)
+ └─ 수량 선택 → Finish(확인 / 취소)
+       ↓ OnResult
 UInventoryWidget
        ↓
 InventoryComponent의 버리기 / 폐기 요청
 ~~~
 
-확인 팝업 자체는 인벤토리 상태를 변경하지 않습니다. 부모 위젯이 결과를 받아 실제 요청을 처리하므로, 팝업은 화면 안에서 필요한 입력만 관리합니다.
+확인 팝업은 인벤토리 상태를 변경하지 않고, 아이템 데이터도 직접 조회하지 않습니다. 인벤토리가 넘긴 표시 데이터를 그리고, 결과를 콜백으로 한 번만 돌려줍니다. 팝업의 수명과 결과 전달 방식은 [21. Game UI Framework](21_UI_Framework.md#팝업-결과를-한-번만-전달하기)에서 설명합니다.
 
 인벤토리·보관함·제작의 게임플레이 처리와 복제 구조는 [[07. Inventory & Crafting|07_Inventory_Crafting]]에서 설명합니다.
 
@@ -128,32 +131,32 @@ InventoryComponent의 버리기 / 폐기 요청
 
 ## 화면 스택과 입력 정책
 
-여러 화면이 각자 `SetInputMode`와 커서 표시를 변경하면, 중첩된 화면을 닫을 때 입력 상태가 잘못 복원될 수 있습니다. 이를 줄이기 위해 일반 Screen의 열림·닫힘과 입력 정책은 `UUIStackSubsystem : ULocalPlayerSubsystem`에서 처리합니다.
+여러 화면이 각자 `SetInputMode`와 커서 표시를 변경하면, 중첩된 화면을 닫을 때 입력 상태가 잘못 복원될 수 있습니다. 이를 줄이기 위해 화면의 열림·닫힘과 입력 정책은 `GameUIFramework` 플러그인의 `UGameUIManagerSubsystem : ULocalPlayerSubsystem`에서 처리합니다. 화면마다 입력 정책은 Widget Blueprint의 클래스 기본값으로 둡니다.
 
 ~~~cpp
-// UIStackSubsystem.h — 필드 발췌
-struct FUIScreenRule
-{
-    FName Id;
-    TSoftClassPtr<UUserWidget> WidgetClass;
-    int32 ZOrder = 0;
-    EUIStackInputMode InputMode = EUIStackInputMode::GameAndUI;
-    bool bShowMouse = true;
-    bool bBlockGameInput = true;
-};
+// GameUIScreenWidget.h — 클래스 기본값 발췌
+UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Screen", meta=(Categories="UI.Layer"))
+FGameplayTag Layer;
+UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Screen") EGameUIInputMode InputMode = EGameUIInputMode::GameAndUI;
+UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Screen") bool bShowMouse = true;
+// …
+UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Screen") bool bBlockGameInput = true;
+// …
+UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Screen") bool bKeepWhenClosed = false;
+UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Screen") EGameUIBack Back = EGameUIBack::Close;
 ~~~
 
-`DefaultGame.ini`에 정의한 `FUIScreenRule`을 화면 ID로 조회합니다.
+화면은 `UI.Screen.*` 태그로 열고, 태그와 Widget Blueprint의 연결은 레지스트리 `DA_UIScreens`에 둡니다.
 
 | 동작 | 실제 처리 |
 |---|---|
-| `Open` | 화면 생성 또는 이미 열린 화면을 최상단으로 이동 |
-| `Close / CloseTop` | 화면 제거 후 남은 최상단 화면의 규칙 적용 |
-| `ApplyInputState` | `SetInputMode`·커서 표시·메뉴용 입력 매핑 갱신 |
+| `Open` | 화면 생성 또는 이미 열린 화면을 스택 맨 위로 이동. 클래스가 메모리에 없으면 비동기 로드 |
+| `Close / CloseTop` | 화면 제거 후 남은 맨 위 화면의 설정 적용 |
+| `HandleBack` | 맨 위 화면의 `Back` 설정에 따라 닫기·무시·화면별 처리 |
+| `ApplyInputState` | `SetInputMode`·커서 표시 적용, `OnInputStateChanged`·`OnTopScreenChanged` 알림 |
 | `IsGameplayBlocked` | 플레이어 이동·공격·상호작용 입력에서 게임플레이 차단 여부 확인 |
-| `Prune` | Viewport에서 사라진 화면의 스택 기록 정리 |
 
-인벤토리와 능력치처럼 **함께 열고 닫는 여러 Widget을 하나의 `FUIStackEntry`로 관리**할 수도 있습니다. 열린 화면이 없으면 `GameOnly`와 커서 숨김 상태로 복원합니다.
+인벤토리와 능력치는 `WBP_InventoryScreen` 한 화면 안에 함께 배치합니다. 열린 화면이 없으면 `GameOnly`와 커서 숨김 상태로 복원합니다. 레이어 구성과 화면 수명은 [21. Game UI Framework](21_UI_Framework.md)에서 설명합니다.
 
 **입력 모드와 게임플레이 입력 차단은 별개입니다.** 현재 일반 Screen은 `GameAndUI`를 사용하면서 `IsGameplayBlocked`로 이동·공격 등의 입력을 막습니다. `GameAndUI` 설정 자체가 모든 게임플레이 입력을 자동 차단하지는 않습니다.
 
@@ -161,7 +164,7 @@ struct FUIScreenRule
 
 `UInputHintSubsystem`은 Enhanced Input에 매핑된 키를 조회해 입력 안내를 만듭니다. Slate 입력을 바탕으로 마지막 사용 장치가 키보드·마우스인지 게임패드인지 구분하고, 입력 매핑이 갱신되면 글리프도 갱신합니다.
 
-메뉴 탭의 좌우 이동에 사용하는 입력 안내도 이 경로를 활용합니다. `UUIStackSubsystem`은 화면 상태에 따라 메뉴 `Input Mapping Context`의 활성화를 요청합니다.
+메뉴 탭의 좌우 이동에 사용하는 입력 안내도 이 경로를 활용합니다. `UInputHintSubsystem`은 UI 매니저의 `OnInputStateChanged`를 받아 메뉴 `Input Mapping Context`를 켜고 끕니다.
 
 ---
 
@@ -198,23 +201,25 @@ flowchart TB
 
 ## 알림 슬롯과 표시 정책
 
-레벨 상승, 첫 포획, 퀘스트 단계 갱신, 제작 완료, 던전 진행 알림은 현재 상태를 대신 저장하지 않는 **일회성 UI 피드백**입니다. `UNoticeSubsystem : ULocalPlayerSubsystem`이 메시지를 받아 종류별 화면 영역에 표시합니다.
+레벨 상승, 첫 포획, 퀘스트 단계 갱신, 제작 완료, 던전 진행 알림은 현재 상태를 대신 저장하지 않는 **일회성 UI 피드백**입니다. `UNoticeSubsystem : ULocalPlayerSubsystem`이 메시지를 받아 UI 루트의 Toast 레이어 슬롯으로 보냅니다.
 
 ~~~text
 게임플레이 코드 / 클라이언트 이벤트
              ↓
 FNoticeData + ENoticeSlot + Channel
              ↓
-UNoticeSubsystem
+UNoticeSubsystem  ─ ENoticeSlot을 UI.Toast.* 태그로 바꾸고 FInstancedStruct에 담음
              ↓
-UNoticeWidget / Widget Blueprint
+UGameUIToastSubsystem  ─ 슬롯별 순서 정책·채널 회수
+             ↓
+UNoticeWidget / Widget Blueprint (Toast 레이어)
 ~~~
 
 `FNoticeData`는 제목·분류·설명·아이콘·강조 색상 역할(`Tone`) 등의 정보를 담습니다. 실제 배치와 출력 방식은 슬롯 설정과 Widget Blueprint가 맡습니다.
 
 ### 슬롯별 동작
 
-현재 `DefaultGame.ini`에 설정된 정책입니다.
+현재 프로젝트 설정 **Game > Game UI**의 `ToastSlots`(`DefaultGame.ini`)에 설정된 정책입니다.
 
 | 슬롯 | 배치·용도 | 표시 방식 |
 |---|---|---|
@@ -222,9 +227,9 @@ UNoticeWidget / Widget Blueprint
 | **Headline** | 화면 중앙의 레벨업·첫 발견 등 주요 알림 | `TakeTurns` — 순서대로 표시, 최대 대기 3건 |
 | **Title** | 화면 상단의 지역명 | `ReplaceShowing` — 표시 중인 알림 교체 |
 
-`UNoticeSubsystem::Push`는 `Slot`과 `Channel`을 받아 알림을 전달합니다. 슬롯별 Widget 클래스·`UNoticeStyle`·`ZOrder`와 표시 순서는 `FNoticeSlotSettings`에 정의하며, 각 슬롯의 위젯은 해당 설정대로 배치합니다.
+`UNoticeSubsystem::Push`는 `Slot`과 `Channel`을 받아 알림을 전달합니다. 슬롯별 Widget 클래스와 표시 순서는 `FGameUIToastSlot`에 정의하고, 슬롯 위젯은 설정 순서대로 Toast 레이어에 붙습니다. `UNoticeStyle`은 각 알림 Widget Blueprint의 기본값입니다.
 
-`Channel`은 특정 기능에서 발생한 알림을 한꺼번에 정리하기 위한 식별자입니다. 예를 들어 던전에서 `UNoticeSubsystem::Clear("Dungeon")`을 호출하면 던전 알림만 정리하고 다른 기능의 알림은 유지합니다.
+`Channel`은 특정 기능에서 발생한 알림을 한꺼번에 정리하기 위한 식별자입니다. 예를 들어 던전에서 던전 채널로 `UNoticeSubsystem::Clear`를 호출하면 던전 알림만 정리하고 다른 기능의 알림은 유지합니다.
 
 ### 알림 시연 영상
 
@@ -377,7 +382,7 @@ if (Expected != Generation) return;
 
 던전에 참가해 진행 중인 동안 `HiddenDuringRun`에 지정된 기존 HUD를 숨깁니다. 숨기기 전 각 위젯의 `ESlateVisibility`를 저장하며, 던전 종료·이탈 시 **원래 값으로 복구**합니다. 진행 중 새로 생성된 대상 위젯도 화면 갱신 시 확인합니다.
 
-일반 인벤토리·도감·퀘스트 메뉴는 `UUIStackSubsystem`이 관리하지만, 던전 HUD/Result는 `UDungeonUIRouterSubsystem`이 관리합니다. 현재 던전 HUD·결과 화면은 비모달 `GameOnly` 방식이며, 일반 메뉴 입력 정책을 덮어쓰지 않도록 제한합니다.
+일반 인벤토리·도감·퀘스트 메뉴는 `UGameUIManagerSubsystem`이 관리하지만, 던전 HUD/Result는 `UDungeonUIRouterSubsystem`이 고릅니다. 라우터는 고른 위젯을 매니저의 `AddToLayer`로 HUD 레이어에 붙이며, 던전 HUD·결과 화면은 비모달 `GameOnly` 방식이라 일반 메뉴 입력 정책을 덮어쓰지 않습니다.
 
 ---
 
@@ -399,8 +404,8 @@ if (Expected != Generation) return;
 |---|---|---|
 | **Delegate 기반 갱신** | 독립 상태 변경을 즉시 UI에 전달 | 바인딩·해제·초기값 적용 |
 | **C++ Widget + WBP** | 데이터·동작과 화면 배치 분리 | `BindWidget` 이름·타입 일치 |
-| **UIStackSubsystem** | 중첩 화면의 입력·커서 복원 일원화 | 화면 ID·입력 정책과 예외 처리 |
-| **NoticeSubsystem** | 알림 슬롯·표시 순서·채널 분리 | 슬롯별 표시 제한·알림 수명 |
+| **GameUIManagerSubsystem** | 레이어별 화면 스택, 입력·커서 복원 일원화 | 화면 태그·레지스트리, 열기·닫기 시점의 구독 관리 |
+| **NoticeSubsystem + GameUIToastSubsystem** | 알림 슬롯·표시 순서·채널 분리 | 슬롯별 표시 제한·알림 수명 |
 | **Presenter + ViewData** | 복합 상태를 화면용 데이터로 조합 | 상태·표시 정의 간 매핑 코드 |
 | **DungeonUIRouterSubsystem** | 비동기 로딩·HUD 교체·상태 복구 | 이전 콜백·위젯 생명주기 |
 
@@ -412,10 +417,10 @@ if (Expected != Generation) return;
 
 - [SonheimPlayerController.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayerController.cpp) — 기본 HUD와 입력 연결
 - [InventoryWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/InventoryWidget.cpp) — 슬롯 표시·드래그·확인 팝업
-- [ConfirmWidget.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/ConfirmWidget.h) — 수량 확인·이벤트 반환
-- [UIStackSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/System/UIStackSubsystem.cpp) — 화면 스택·입력 모드
+- [ConfirmWidget.h](../../Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/ConfirmWidget.h) — 수량 확인 팝업·결과 반환
+- [GameUIManagerSubsystem.cpp](../../Sonheim/Plugins/GameUIFramework/Source/GameUIFramework/Private/GameUIManagerSubsystem.cpp) — 화면 스택·입력 모드
 - [InputHintSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Input/InputHintSubsystem.cpp) — 키보드·패드 안내
-- [NoticeSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Notice/NoticeSubsystem.cpp) — 슬롯별 알림 표시
+- [NoticeSubsystem.cpp](../../Sonheim/Source/Sonheim/UI/Notice/NoticeSubsystem.cpp) · [GameUIToastSubsystem.cpp](../../Sonheim/Plugins/GameUIFramework/Source/GameUIFramework/Private/GameUIToastSubsystem.cpp) — 슬롯별 알림 표시
 - [MonsterDexView.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexView.cpp) · [QuestView.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Quest/QuestView.cpp) — 플레이어 기록을 UI 표시 데이터로 변환
 - [DungeonStagePresenter.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Dungeon/DungeonStagePresenter.cpp) — 던전 ViewData 구성
 - [DungeonUIRouterSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Dungeon/DungeonUIRouterSubsystem.cpp) — HUD·결과 UI 수명

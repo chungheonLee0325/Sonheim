@@ -22,6 +22,7 @@
 * **UI & Presentation**
   * [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]
   * [[18. UMG v2 Migration & Editor Verification|18_UMG_v2_Migration]]
+  * [[21. Game UI Framework|21_UI_Framework]]
 
 * **Multiplayer**
   * [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]

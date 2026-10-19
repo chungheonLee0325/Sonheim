@@ -1,6 +1,6 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "GameUIScreenWidget.h"
 #include "Sonheim/ResourceManager/SonheimGameType.h"
 #include "CraftingWidget.generated.h"
 
@@ -17,7 +17,7 @@ class UInventoryComponent;
 class USonheimGameInstance;
 
 UCLASS()
-class SONHEIM_API UCraftingWidget : public UUserWidget
+class SONHEIM_API UCraftingWidget : public UGameUIScreenWidget
 {
 	GENERATED_BODY()
 
@@ -26,8 +26,8 @@ public:
 	void Initialise(ACraftingStation* InStation);
 
 protected:
-	virtual void NativeConstruct() override;
-	virtual void NativeDestruct() override;
+	virtual void NativeOnInitialized() override;
+	virtual void NativeOnClosed() override;
 
 	// 레시피 목록 UI를 데이터 테이블 기준으로 다시 구성(슬롯 생성/바인딩)하고 선택 상태를 유지한다. - UI 구성할때 한번만 호출
 	void RefreshRecipes();

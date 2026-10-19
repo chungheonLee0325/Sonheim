@@ -22,8 +22,8 @@ UMG v2에서는 인벤토리·도감·퀘스트·던전·HUD의 화면을 개편
 
 | 항목 | 적용 내용 |
 |---|---|
-| **중첩 메뉴 관리** | `UUIStackSubsystem`에서 Screen Stack과 입력 모드·커서·게임플레이 입력 정책 통합 |
-| **알림 표시** | `UNoticeSubsystem`에 `Feed / Headline / Title` 슬롯과 대기·교체·누적 정책 구성 |
+| **중첩 메뉴 관리** | `UGameUIManagerSubsystem`에서 레이어별 화면 스택과 입력 모드·커서·게임플레이 입력 정책 통합 |
+| **알림 표시** | `Feed / Headline / Title` 슬롯과 대기·교체·누적 정책을 Toast 레이어의 슬롯 큐로 구성 |
 | **입력 안내** | `UInputHintSubsystem`이 Enhanced Input 매핑과 최근 사용 장치에 따라 키 안내 변경 |
 | **Widget Blueprint** | C++ `BindWidget` 계약을 유지하며 인벤토리·도감·퀘스트·던전·HUD 화면 개편 |
 | **공통 보상 슬롯** | `USlotWidget::AddReadOnly`로 도감·퀘스트·던전 결과 보상과 던전 HUD 추가 목표 보너스(던전 정의 데이터)에 기존 아이템 슬롯 UI 재사용 |
@@ -44,54 +44,65 @@ UMG v2에서는 인벤토리·도감·퀘스트·던전·HUD의 화면을 개편
 
 ### 화면을 닫는 순서와 무관하게 입력 복원
 
-인벤토리·보관함·제작 등 일반 메뉴의 입력·커서 설정을 `UUIStackSubsystem : ULocalPlayerSubsystem`으로 모았습니다. 각 화면은 `FUIStackEntry`로 관리하고, `Open / Close / CloseTop` 이후 **스택의 최상단 화면에 설정된 규칙**을 다시 적용합니다. 중첩 메뉴를 어느 순서로 닫더라도 남아 있는 화면의 입력 상태를 기준으로 복원하는 구조입니다.
+인벤토리·보관함·제작 등 일반 메뉴의 입력·커서 설정을 `UGameUIManagerSubsystem : ULocalPlayerSubsystem`으로 모았습니다. 각 화면은 UI 루트의 스택 레이어에 쌓이고, `Open / Close / CloseTop / HandleBack` 이후 **입력을 받는 가장 위 레이어의 맨 위 화면에 설정된 값**을 다시 적용합니다. 중첩 메뉴를 어느 순서로 닫더라도 남아 있는 화면의 입력 상태를 기준으로 복원하는 구조입니다.
 
 ~~~mermaid
 flowchart TB
-    OPEN["Open · Close · CloseTop"] --> STACK["UUIStackSubsystem<br/>화면 스택"]
-    RULE["DefaultGame.ini<br/>FUIScreenRule"] --> STACK
-    STACK --> TOP["최상단 화면 조회"]
+    OPEN["Open · Close · CloseTop · HandleBack"] --> STACK["UGameUIStackLayer<br/>Menu · Popup 레이어의 화면 스택"]
+    RULE["화면 클래스 기본값<br/>InputMode · bShowMouse · bBlockGameInput"] --> TOP
+    STACK --> TOP["가장 위 레이어의 맨 위 화면"]
     TOP --> APPLY["ApplyInputState"]
     APPLY --> CURSOR["커서 표시"]
     APPLY --> MODE["GameOnly / GameAndUI / UIOnly"]
-    APPLY --> BLOCK["게임플레이 입력 차단"]
-    APPLY --> IMC["메뉴 Input Mapping Context"]
+    APPLY --> BLOCK["OnInputStateChanged<br/>게임플레이 입력 차단"]
+    BLOCK --> IMC["UInputHintSubsystem<br/>메뉴 Input Mapping Context"]
 ~~~
 
-`FUIScreenRule`은 화면 ID·ZOrder·입력 모드·커서·게임플레이 입력 차단 여부를 설정합니다. 현재 `DefaultGame.ini`에서는 Menu, Container, Crafting, MonsterDex, QuestDialog, QuestJournal에 `GameAndUI`와 `bBlockGameInput=True`를 사용합니다.
+입력 모드·커서·게임플레이 입력 차단 여부는 각 화면 Widget Blueprint의 클래스 기본값(`UGameUIScreenWidget`)입니다. 현재 인벤토리·보관함·제작·도감·지도·퀘스트 화면은 모두 기본값인 `GameAndUI`와 `bBlockGameInput=true`를 사용합니다.
 
 ~~~cpp
-// UIStackSubsystem.cpp — ApplyInputState 핵심 처리 발췌
-PC->SetShowMouseCursor(Rule.bShowMouse);
-if (UInputHintSubsystem* Hints = GetLocalPlayer()
-        ? GetLocalPlayer()->GetSubsystem<UInputHintSubsystem>() : nullptr)
+// GameUIManagerSubsystem.cpp — ApplyInputState 발췌
+const UGameUIScreenWidget* Top = GetTopScreen();
+const bool bBlocked = IsGameplayBlocked();
+if (APlayerController* Controller = GetController())
 {
-    Hints->SetMenuInput(Rule.bBlockGameInput);
+    const EGameUIInputMode Mode = Top ? Top->InputMode : EGameUIInputMode::GameOnly;
+    Controller->SetShowMouseCursor(Top && Top->bShowMouse);
+    switch (Mode)
+    {
+    case EGameUIInputMode::UIOnly:
+        Controller->SetInputMode(FInputModeUIOnly());
+        break;
+    case EGameUIInputMode::GameAndUI:
+        {
+            FInputModeGameAndUI GameAndUI;
+            GameAndUI.SetHideCursorDuringCapture(false);
+            Controller->SetInputMode(GameAndUI);
+            break;
+        }
+    default:
+        Controller->SetInputMode(FInputModeGameOnly());
+        break;
+    }
 }
-
-switch (Rule.InputMode)
+// …
+if (bBlocked != bLastBlocked)
 {
-case EUIStackInputMode::UIOnly:
-    PC->SetInputMode(FInputModeUIOnly());
-    break;
-case EUIStackInputMode::GameAndUI:
-    PC->SetInputMode(FInputModeGameAndUI());
-    break;
-default:
-    PC->SetInputMode(FInputModeGameOnly());
+    bLastBlocked = bBlocked;
+    OnInputStateChanged.Broadcast(bBlocked);
 }
 
 // SonheimPlayerController.cpp — 게임플레이 입력 측 정책 조회
 bool ASonheimPlayerController::IsUIBlockingInput() const
 {
-    const UUIStackSubsystem* UIStack = GetUIStack();
-    return UIStack && UIStack->IsGameplayBlocked();
+    const UGameUIManagerSubsystem* UI = GetUI();
+    return UI && UI->IsGameplayBlocked();
 }
 ~~~
 
-`GameAndUI`는 UI와 게임 입력을 함께 다룰 수 있는 입력 모드이고, `bBlockGameInput`은 이동·공격·상호작용 등 게임플레이 입력에서 조회하는 **별도의 차단 정책**입니다. 일반 메뉴가 모두 닫히면 `GameOnly`와 커서 숨김으로 복원합니다. 실제 `GameAndUI` 분기에는 커서 캡처 시 표시를 유지하는 설정도 적용합니다.
+`GameAndUI`는 UI와 게임 입력을 함께 다룰 수 있는 입력 모드이고, `bBlockGameInput`은 이동·공격·상호작용 등 게임플레이 입력에서 조회하는 **별도의 차단 정책**입니다. 열린 화면이 모두 닫히면 `GameOnly`와 커서 숨김으로 복원합니다. `GameAndUI` 분기는 커서 캡처 중에도 커서를 숨기지 않습니다.
 
-화면 하나가 여러 위젯으로 구성될 수도 있습니다. 예를 들어 메뉴를 열 때 인벤토리와 능력치 위젯을 함께 생성하지만 **하나의 `FUIStackEntry`**로 등록해 함께 열고 닫습니다. 이미 열린 화면을 다시 요청하면 최상단으로 올리고, Viewport에서 제거된 위젯의 기록은 `Prune`으로 정리합니다.
+인벤토리와 능력치는 `WBP_InventoryScreen` 한 화면에 함께 배치해 함께 열고 닫습니다. 이미 열린 화면을 다시 요청하면 스택 맨 위로 올립니다. 레이어 구성과 화면 수명은 [21. Game UI Framework](21_UI_Framework.md)에서 설명합니다.
 
 **중첩 메뉴 종료 후 입력 복원 — 플레이 영상**
 
@@ -99,13 +110,13 @@ https://github.com/user-attachments/assets/f9936033-7251-4304-b1cb-842750c13c59
 
 메뉴를 중첩해서 열고 닫을 때 최상단 화면의 입력 모드와 커서를 적용하고, 모든 메뉴가 닫히면 게임플레이 입력으로 복원하는 동작을 보여줍니다.
 
-던전 HUD·결과 화면은 일반 메뉴 스택과 별도로 `UDungeonUIRouterSubsystem`에서 관리합니다. `HUD / Result`를 비모달 `GameOnly`로 표시해 메뉴 스택의 입력·커서 정책과 분리하고, 던전 상태에 따라 화면을 교체합니다.
+던전 HUD·결과 화면은 일반 메뉴 스택과 별도로 `UDungeonUIRouterSubsystem`에서 고릅니다. `HUD / Result`를 UI 루트의 HUD 레이어에 비모달 `GameOnly`로 표시해 메뉴 스택의 입력·커서 정책과 분리하고, 던전 상태에 따라 화면을 교체합니다.
 
 ---
 
 ## 알림 영역 분리
 
-기존 알림 화면에서 **짧게 쌓이는 진행 알림, 중요한 달성 알림, 지역 이름**을 서로 다른 화면 영역으로 분리했습니다. 현재 `DefaultGame.ini`의 슬롯별 정책은 다음과 같습니다.
+기존 알림 화면에서 **짧게 쌓이는 진행 알림, 중요한 달성 알림, 지역 이름**을 서로 다른 화면 영역으로 분리했습니다. 현재 프로젝트 설정 **Game > Game UI**의 `ToastSlots`(`DefaultGame.ini`)에 설정된 슬롯별 정책은 다음과 같습니다.
 
 | 슬롯 | 화면 위치·대표 상황 | 표시 정책 |
 |---|---|---|
@@ -113,7 +124,7 @@ https://github.com/user-attachments/assets/f9936033-7251-4304-b1cb-842750c13c59
 | **Headline** | 중앙 — 레벨업, 몬스터 첫 발견 등 주요 달성 | `TakeTurns` — 하나씩 표시, 대기 최대 3건 |
 | **Title** | 화면 상단 — 지역 진입·장소 이름 | `ReplaceShowing` — 최신 제목으로 교체 |
 
-`UNoticeSubsystem::Push(Slot, Channel, Data)`는 메시지의 슬롯을 선택하고 해당 슬롯의 순서 정책을 적용합니다. `Feed`는 `UNoticeFeedWidget`의 행 목록에 카드를 추가하고, `Headline`은 표시 중인 카드가 끝난 뒤 대기 중인 카드를 꺼내며, `Title`은 새 지역 이름으로 표시를 교체합니다. 각 슬롯의 Widget Blueprint·스타일·ZOrder·출력 정책은 `FNoticeSlotSettings`로 설정합니다.
+`UNoticeSubsystem::Push(Slot, Channel, Data)`는 메시지의 슬롯을 `UI.Toast.*` 태그로 바꿔 `UGameUIToastSubsystem`에 넘기고, 토스트 서브시스템이 해당 슬롯의 순서 정책을 적용합니다. `Feed`는 `UNoticeFeedWidget`의 행 목록에 카드를 추가하고, `Headline`은 표시 중인 카드가 끝난 뒤 대기 중인 카드를 꺼내며, `Title`은 새 지역 이름으로 표시를 교체합니다. 각 슬롯의 Widget Blueprint와 출력 정책은 `FGameUIToastSlot`으로 설정하고, 스타일은 각 알림 Widget Blueprint의 기본값입니다.
 
 ### 도감 첫 발견 장면으로 확인하는 세 알림 영역
 
@@ -177,7 +188,7 @@ WBP_KeyHint
 
 `UInputHintSubsystem`은 Slate 입력으로 장치 변경을 감지하고, `ControlMappingsRebuiltDelegate`를 통해 Enhanced Input 매핑 변경을 반영합니다. 해당 장치의 키가 아이콘 세트에 있으면 아이콘을, 없으면 키 이름을 표시합니다.
 
-`UUIStackSubsystem::ApplyInputState`가 `UInputHintSubsystem::SetMenuInput`을 호출해 메뉴 전용 `IMC_Menu`를 켜고 끕니다. 메뉴 탭은 키보드 Q/E 또는 게임패드 LB/RB로 전환할 수 있도록 구성했습니다.
+`UInputHintSubsystem`이 UI 매니저의 `OnInputStateChanged`를 받아 `SetMenuInput`으로 메뉴 전용 `IMC_Menu`를 켜고 끕니다. 메뉴 탭은 키보드 Q/E 또는 게임패드 LB/RB로 전환할 수 있도록 구성했습니다.
 
 ---
 
@@ -275,15 +286,15 @@ flowchart LR
 
 | 관리 기능 | 실제 담당 | 역할 |
 |---|---|---|
-| 일반 메뉴·입력 | `UUIStackSubsystem` | Screen Stack과 커서·입력 정책 |
+| 일반 메뉴·입력 | `UGameUIManagerSubsystem` | 레이어별 화면 스택과 커서·입력 정책 |
 | 던전 HUD·결과 | `UDungeonUIRouterSubsystem` | 비모달 던전 화면·비동기 Widget 수명 |
-| 알림 출력 | `UNoticeSubsystem` | 슬롯별 표시 순서와 채널 정리 |
+| 알림 출력 | `UNoticeSubsystem` · `UGameUIToastSubsystem` | 슬롯별 표시 순서와 채널 정리 |
 | 키 안내 | `UInputHintSubsystem` | 액션 매핑과 입력 장치별 글리프 |
 | C++ / Blueprint 연결 | 각 `UUserWidget`의 `BindWidget` | 게임플레이 데이터·이벤트와 화면 구조 연결 |
 
-- [UIStackSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/System/UIStackSubsystem.cpp) — 중첩 메뉴 입력 복원
+- [GameUIManagerSubsystem.cpp](../../Sonheim/Plugins/GameUIFramework/Source/GameUIFramework/Private/GameUIManagerSubsystem.cpp) — 중첩 메뉴 입력 복원
 - [InputHintSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Input/InputHintSubsystem.cpp) — 입력 안내
-- [NoticeSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Notice/NoticeSubsystem.cpp) — 알림 슬롯과 표시 정책
+- [NoticeSubsystem.cpp](../../Sonheim/Source/Sonheim/UI/Notice/NoticeSubsystem.cpp) · [GameUIToastSubsystem.cpp](../../Sonheim/Plugins/GameUIFramework/Source/GameUIFramework/Private/GameUIToastSubsystem.cpp) — 알림 슬롯과 표시 정책
 - [DungeonUIRouterSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Dungeon/DungeonUIRouterSubsystem.cpp) — 던전 HUD·결과 수명
 - [SlotWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/SlotWidget.cpp) — 읽기 전용 아이템 보상 슬롯
 - [MonsterDexWidget.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexWidget.h) · [QuestWidget.h](https://github.com/chungheonLee0325/Sonheim/blob/main/Sonheim/Source/Sonheim/UI/Quest/QuestWidget.h) — `BindWidget` 화면 구성

@@ -105,7 +105,7 @@ https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
 도감 신규 등록, 퀘스트 갱신, 제작 완료, 지역 진입을 **각 기능이 개별 팝업을 만드는 대신 공통 알림 슬롯으로 표시**합니다.
 
 - **Feed / Headline / Title:** `UNoticeSubsystem`에서 알림 종류별 표시 위치·순서·채널을 관리합니다.
-- **일반 메뉴:** `UUIStackSubsystem`에서 인벤토리·제작·도감·퀘스트 화면의 중첩, 입력 모드와 커서를 처리합니다.
+- **일반 메뉴:** `GameUIFramework` 플러그인의 `UGameUIManagerSubsystem`이 인벤토리·제작·도감·퀘스트 화면을 태그로 열고, 레이어별 화면 중첩과 입력 모드·커서를 처리합니다([21. Game UI Framework](21_UI_Framework.md)).
 - **입력 안내:** `UInputHintSubsystem`이 키보드·게임패드 입력에 맞는 안내를 표시합니다.
 - **게임플레이 → UI:** 도감·퀘스트 기록은 각각 ViewData로, 던전은 GameState Snapshot을 Presenter가 변환해 HUD·미니맵·결과 화면에 전달합니다.
 
