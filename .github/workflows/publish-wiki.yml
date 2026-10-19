@@ -70,21 +70,26 @@ jobs:
           cp "$RUNNER_TEMP/wiki-pages/"*.md wiki-repo/
           cd wiki-repo
 
-          # Only retire exact 2025 Wiki page names whose sources are still
-          # preserved in Doc/Wiki. Git history is kept; no force push.
+          # 2025 documentation lives only in Doc/Legacy, not in GitHub Wiki.
+          # Delete the earlier Wiki-side Legacy index and individual old pages.
+          # The source files and full Git history remain intact.
           PYTHONPATH="$GITHUB_WORKSPACE/Tools" python3 - <<'PY'
           import os
           from pathlib import Path
           from wiki_publish import legacy_sources
 
-          saved = Path(os.environ["GITHUB_WORKSPACE"]) / "Doc/Wiki"
+          saved = Path(os.environ["GITHUB_WORKSPACE"]) / "Doc/Legacy"
           retired = []
           for source in legacy_sources(saved):
               page = Path.cwd() / source.name
               if page.is_file():
                   page.unlink()
                   retired.append(page.name)
-          print(f"Retired {len(retired)} 2025 Wiki pages (sources preserved in {saved}).")
+          legacy_index = Path.cwd() / "Legacy.md"
+          if legacy_index.is_file():
+              legacy_index.unlink()
+              retired.append(legacy_index.name)
+          print(f"Retired {len(retired)} Wiki archive pages; originals remain in {saved}.")
           PY
 
           git config user.name "github-actions[bot]"

@@ -32,7 +32,7 @@ def legacy_sources(source: Path) -> list[Path]:
 def sources_for(source: Path, profile: str) -> list[Path]:
     if profile == 'sonheim':
         return sorted(p for p in source.glob('*.md')
-                      if SONHEIM_PAGE.fullmatch(p.name) or p.name in {'Home.md', '_Sidebar.md', 'Legacy.md'})
+                      if SONHEIM_PAGE.fullmatch(p.name) or p.name in {'Home.md', '_Sidebar.md'})
     return sorted(source.rglob('*.md'))
 
 
