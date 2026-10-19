@@ -143,7 +143,7 @@ FastArray의 Delta 전송과 예측·보정 경로는 [12. Multiplayer Synchroni
 
 무기별 `FItemData::EquipmentData.SkillID`를 조회해 `ReplaceGrant`로 스킬을 교체합니다. 다른 장비나 기본 보유 스킬이 제공하는 Grant는 분리해 관리합니다.
 
-**곡괭이 ↔ Shotgun 전환 시 외형과 공격 방식이 함께 바뀌는 실제 영상**, Modifier 적용과 PlayerState/Pawn의 연결은 [04. Player & Character Systems](04_Player_Character_Systems.md)에서 볼 수 있습니다. 이 문서에서는 **인벤토리의 슬롯/아이템 API가 장비 전환을 시작한다는 경계**만 다룹니다.
+곡괭이·Shotgun 전환에 따른 외형과 공격 방식의 변화는 [04. Player & Character Systems](04_Player_Character_Systems.md)의 플레이 영상에서 볼 수 있습니다. 장비 슬롯 변경 이후 Modifier·스킬 Grant·무기 Mesh에 반영되는 흐름도 해당 문서에 정리했습니다.
 
 ---
 

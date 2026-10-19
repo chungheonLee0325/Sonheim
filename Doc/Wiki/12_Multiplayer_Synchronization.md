@@ -61,6 +61,8 @@ DOREPLIFETIME(UInventoryComponent, CurrentWeaponSlot);
    → OnInventoryChanged → Slot UI
 ~~~
 
+슬롯 교환과 보관함 아이템 이동에 따른 화면 갱신은 [인벤토리·보관함 플레이 영상](https://github.com/user-attachments/assets/c594e8a3-2840-456c-ae04-cabaaeb4d8ca)에서 볼 수 있습니다.
+
 ### 공유 보관함
 
 보관함은 공유 월드 Actor입니다. `UContainerComponent::PreReplication()`은 `Subscribers`가 있을 때만 `RepContainerItems`의 복제를 활성화합니다.

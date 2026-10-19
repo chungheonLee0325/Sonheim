@@ -103,11 +103,13 @@ bool UGameUIManagerSubsystem::HandleBack()
 }
 ~~~
 
-팝업이 떠 있으면 Popup 레이어의 맨 위 화면이 뒤로 가기를 먼저 받으므로, Esc는 아래 인벤토리가 아니라 팝업만 닫습니다.
+팝업이 떠 있으면 Popup 레이어의 맨 위 화면이 뒤로 가기를 먼저 받으므로, Esc는 아래 인벤토리가 아니라 팝업만 닫습니다. [중첩 메뉴 입력 복원 영상](https://github.com/user-attachments/assets/f9936033-7251-4304-b1cb-842750c13c59)에서 팝업을 닫은 뒤 인벤토리 입력과 커서가 복원되는 모습을 볼 수 있습니다.
 
 ## 태그로 화면 열기
 
 화면 태그와 Widget Blueprint 클래스의 연결은 `DA_UIScreens`(`UGameUIScreenRegistry`)에 있고, 레지스트리 위치는 프로젝트 설정 **Game > Game UI**(`UGameUISettings`)에서 지정합니다. 레지스트리는 클래스를 `TSoftClassPtr`로 갖기 때문에, 레지스트리를 불러와도 화면 클래스는 함께 로드되지 않습니다.
+
+루트 위젯·레지스트리 경로와 기본 레이어는 [UI 프로젝트 설정](../../Sonheim/Config/DefaultGame.ini)에서 확인할 수 있습니다. 화면 태그와 Widget Blueprint 클래스의 연결은 `DA_UIScreens`에서 관리합니다.
 
 | 화면 태그 | Widget Blueprint | 클래스 기본값 |
 |---|---|---|
@@ -192,7 +194,7 @@ void UMonsterDexWidget::GatherPreloadAssets(TArray<FSoftObjectPath>& OutPaths) c
 | 레이어에 붙은 직후, 열 때마다 | `NativeOnOpened` | 데이터 구독, View 생성, 렌더 타깃 연결 |
 | 레이어에서 떼기 직전, 닫을 때마다 | `NativeOnClosed` | 구독 해제, 렌더 타깃·Brush·풀링된 엔트리 해제 |
 
-`bKeepWhenClosed`를 켠 화면(인벤토리·도감·지도·보관함)은 닫아도 위젯 UObject를 매니저의 `Kept` 배열에 남기고, 다시 열 때 재사용합니다. 레이어에서 떼었다가 다시 붙이므로 Slate 위젯은 새로 만들어지고 `NativeConstruct`도 다시 실행됩니다. 재사용 비용과 효과는 [20. Agent MCP 기반 UI 성능 분석과 최적화](20_UI_Performance_Profiling.md)에 정리했습니다.
+`bKeepWhenClosed`를 켠 화면(인벤토리·도감·지도·보관함)은 닫아도 위젯 UObject를 매니저의 `Kept` 배열에 남기고, 다시 열 때 재사용합니다. 레이어에서 떼었다가 다시 붙이므로 Slate 위젯은 새로 만들어지고 `NativeConstruct`도 다시 실행됩니다. 재사용 비용과 효과는 [20. UI Performance](20_UI_Performance_Profiling.md)에 정리했습니다.
 
 인벤토리 화면은 열려 있는 동안에만 가방 변경을 구독합니다.
 
@@ -275,6 +277,8 @@ UI->Open<UConfirmWidget>(UITags::ItemQuantity, [this, View, SlotIndex, bDiscardM
 | `UI.Toast.Title` | `WBP_NoticeTitle` | `ReplaceShowing` — 새 알림이 표시 중인 알림을 바로 교체 |
 | `UI.Toast.Feed` | `WBP_NoticeFeed` | `Stack` — 대기 없이 위젯이 여러 줄을 함께 표시 |
 | `UI.Toast.Headline` | `WBP_NoticeHeadline` | `TakeTurns` — 차례대로 표시, 최대 3개 대기 |
+
+![Feed·Headline·Title 알림이 함께 표시된 게임 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg)
 
 알림 내용은 `FInstancedStruct`로 전달합니다. 플러그인은 내용의 타입을 알지 못하고, 게임의 `UNoticeWidget`이 `UGameUIToastWidget`을 상속해 `FNoticeData`를 꺼내 그립니다.
 
