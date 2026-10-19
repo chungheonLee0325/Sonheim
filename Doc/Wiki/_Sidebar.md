@@ -20,8 +20,10 @@
   * [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]]
 
 * **UI & Presentation**
-  * [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]
-  * [[18. UMG v2 Migration & Editor Verification|18_UMG_v2_Migration]]
+  * [[11. Client State Presentation|11_Client_State_Presentation_Pipeline]]
+  * [[18. UMG v2|18_UMG_v2_Migration]]
+  * [[20. UI Performance|20_UI_Performance_Profiling]]
+  * [[21. Game UI Framework|21_UI_Framework]]
 
 * **Multiplayer**
   * [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]

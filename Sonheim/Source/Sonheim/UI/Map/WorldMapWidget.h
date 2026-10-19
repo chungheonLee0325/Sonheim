@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "GameUIScreenWidget.h"
 #include "Sonheim/Map/MapView.h"
 #include "WorldMapWidget.generated.h"
 
@@ -63,9 +64,12 @@ private:
  * which a click or the confirm key travels to, and holds the legend.
  */
 UCLASS(Abstract)
-class SONHEIM_API UWorldMapWidget : public UUserWidget
+class SONHEIM_API UWorldMapWidget : public UGameUIScreenWidget
 {
 	GENERATED_BODY()
+public:
+	UWorldMapWidget() { bKeepWhenClosed = true; }
+private:
 public:
 	/** Asks the server to move the player to a found point, and closes the map. */
 	void Travel(FName PointId);
@@ -81,7 +85,9 @@ public:
 	bool IsKindShown(EMapMarkerKind Kind) const { return !HiddenKinds.Contains(Kind); }
 
 protected:
-	virtual void NativeConstruct() override;
+	virtual void NativeOnInitialized() override;
+	virtual void NativeOnOpened() override;
+	virtual void NativeOnClosed() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
@@ -149,7 +155,7 @@ private:
 	TArray<FMapRegion> Regions;
 	/** Per region, whether it is small enough to name only zoomed in. */
 	TArray<bool> SmallRegions;
-	TArray<FVector> QuestPlaces;
+	FWorldMapView MapView;
 	TArray<FVector> HabitatPlaces;
 	TSet<EMapMarkerKind> HiddenKinds;
 	FVector2D Center = FVector2D(0.5, 0.5);

@@ -4,7 +4,7 @@
 
 **Unreal Engine 5.5 / C++ 기반 서버 권위 멀티플레이 액션 어드벤처.**
 
-전투·탐험·아이템 수집·장비·협동 제작·몬스터 포획/Partner를 구현하고, **MonsterDex·Quest·UMG v2**를 추가했습니다. 분기형 던전 *Forgotten Ruins*에서는 기존 시스템을 함께 사용해 웨이브·지름길·보스·보상·기록까지 하나의 Run으로 진행합니다.
+전투·탐험·아이템 수집·장비·협동 제작·몬스터 포획/Partner를 구현하고, **MonsterDex·Quest·월드맵·UMG v2**를 추가했습니다. 분기형 던전 *Forgotten Ruins*에서는 기존 시스템을 함께 사용해 웨이브·지름길·보스·보상·기록까지 하나의 Run으로 진행합니다.
 
 초기 2인 팀 개발 이후 게임플레이와 콘텐츠를 확장하며 서버 상태, 데이터 정의, UI 표현의 역할을 분리했습니다.
 
@@ -16,7 +16,7 @@
 
 *이미지를 클릭하면 전체 프로젝트 플레이 영상으로 이동합니다.*
 
-## Latest Features — MonsterDex · Quest · UI v2
+## MonsterDex · Quest · UI
 
 | **MonsterDex — 발견·기록·보상** | **Quest — NPC·단계·월드 변화** |
 |:---|:---|
@@ -28,12 +28,22 @@
 
 ![Feed·Headline·Title을 사용한 게임플레이 알림](Doc/Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg)
 
-- **UI Stack:** 인벤토리·제작·도감·퀘스트 화면의 중첩·입력·커서 정책 통합
-- **Notice:** 도감 등록, 퀘스트 갱신, 레벨업, 제작 알림, 지역명을 `Feed / Headline / Title` 슬롯으로 표시
+- **GameUIFramework:** 메뉴·팝업·HUD·알림을 레이어로 분리하고, 화면별 입력·커서·수명 정책을 플러그인으로 관리
+- **Notice:** 도감·퀘스트·제작·지역 알림 데이터를 `Feed / Headline / Title` 슬롯으로 전달하고 표시 순서를 관리
 - **Input Hint:** 키보드·게임패드 입력 장치에 맞는 안내 갱신
 - **Dungeon UI:** 서버 GameState Snapshot → Presenter → ViewData → HUD·미니맵·결과
 
-[UI 개편 전후 및 에디터 검증](Doc/Wiki/18_UMG_v2_Migration.md) · [UI 데이터·입력 구조](Doc/Wiki/11_Client_State_Presentation_Pipeline.md)
+[화면 개편 전후](Doc/Wiki/18_UMG_v2_Migration.md) · [게임 데이터→UI 흐름](Doc/Wiki/11_Client_State_Presentation_Pipeline.md) · [UI 프레임워크 구현](Doc/Wiki/21_UI_Framework.md)
+
+### World Map — 탐험 기록·미니맵·빠른 이동
+
+![탐험 범위와 이동 지점이 표시된 전체 지도](Doc/Media/Wiki/19_World_Map_System/19_world_map.jpg)
+
+플레이어별 탐험 안개를 전체 지도와 HUD 미니맵에 공통 적용하고, 퀘스트 위치·도감 서식지·활성화한 빠른 이동 표석을 표시합니다. [지도 시스템 구현](Doc/Wiki/19_World_Map_System.md)
+
+### UI 조작 프레임 분석
+
+인벤토리 교환과 화면 열기에서 발생하는 순간적인 지연을 CSV·Unreal Insights로 조사했습니다. 1920×1080, RTX 2070 SUPER 측정에서 교환 이벤트 프레임은 **32.6 → 17.1ms**, 인벤토리 열기는 **57.5 → 22.1ms**로 감소했습니다. [측정과 수정](Doc/Wiki/20_UI_Performance_Profiling.md)
 
 ---
 
@@ -68,9 +78,11 @@
 | **Data-driven Content** | DataTable의 반복 데이터, Dungeon PrimaryDataAsset의 Stage/Branch, Boss DataAsset의 Pattern/Strike |
 | **Event-driven Progression** | `PlayerState::ReportDeed`로 처치·포획·제작·지역·던전 결과를 퀘스트와 도감 기록에 연결 |
 | **Authoring & Validation** | 던전 Stage Graph·분기 조건·Group 생산 경로와 보스 타격 시간·Montage Section 검증 |
+| **UI State & Lifecycle** | [GameUIFramework](Doc/Wiki/21_UI_Framework.md)으로 레이어·입력 상태·팝업 콜백·화면 재사용 관리 |
+| **UI Performance** | [조작 프레임 계측](Doc/Wiki/20_UI_Performance_Profiling.md)과 슬롯 변경분 갱신·Show Flag 조정·위젯 수명 개선 |
 | **Unreal Editor Tooling** | [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)로 Widget/Blueprint/Data 조회·편집, Compile·PIE·Viewport 확인 |
 
-**기술 문서:** [전체 목차 (01–18)](Doc/Wiki/Home.md) · [프로젝트 아키텍처](Doc/Wiki/02_Gameplay_Architecture.md) · [멀티플레이 동기화](Doc/Wiki/12_Multiplayer_Synchronization.md) · [콘텐츠 검증](Doc/Wiki/13_Content_Authoring_Validation.md) · [개발 변경 이력](Doc/Wiki/15_Development_History_Retrospective.md)
+**기술 문서:** [전체 목차 (01–21)](Doc/Wiki/Home.md) · [프로젝트 아키텍처](Doc/Wiki/02_Gameplay_Architecture.md) · [멀티플레이 동기화](Doc/Wiki/12_Multiplayer_Synchronization.md) · [콘텐츠 검증](Doc/Wiki/13_Content_Authoring_Validation.md) · [개발 변경 이력](Doc/Wiki/15_Development_History_Retrospective.md)
 
 ---
 

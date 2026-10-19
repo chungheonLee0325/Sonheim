@@ -1,10 +1,10 @@
-# 20. Agent MCP 기반 UI 성능 분석과 최적화
+# 20. UI Performance — 조작 프레임 지연 분석과 개선
 
-Unreal Engine의 UI 성능 문제를 에이전트가 반복 조사할 수 있도록 **[Agent MCP](https://github.com/chungheonLee0325/AgentMcp)에 측정·트레이스·GPU 프로파일 분석 도구와 `perf-investigation` 스킬을 구현**했습니다. Sonheim에는 화면 열기, 아이템 교환, 드래그, 보관함 조작을 재현하는 `UPerfScenarioSubsystem`을 추가하고, 이 환경으로 실제 게임의 병목을 찾아 수정했습니다.
+Sonheim의 **인벤토리 교환과 메뉴 진입에서 발생하는 프레임 지연**을 측정하고, 슬롯 속성 갱신과 위젯 생성 비용을 줄였습니다. RTX 2070 SUPER, 1920×1080 독립 실행 환경에서 조작 이벤트 프레임의 중앙값은 아이템 교환 **32.6 → 17.1ms**, 인벤토리 열기 **57.5 → 22.1ms**로 감소했습니다.
 
-분석에서는 평균 FPS보다 **플레이어가 조작한 프레임의 지연**을 우선했습니다. Unreal Insights로 원인 함수를 좁히고, CSV로 변경 전후를 비교했습니다. 그 결과 아이템 교환은 **32.6 → 17.1ms**, 인벤토리 열기는 **57.5 → 22.1ms**로 줄었습니다.
+반복 측정과 원인 분석에는 별도 [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)에 구현한 CSV·CPU Trace·GPU 프로파일 도구를 사용했습니다. Sonheim은 실제 UI 조작을 재현하는 `UPerfScenarioSubsystem`과 개선 코드를 담당합니다. 측정값은 아래 조건에서 수집한 **조작 순간의 프레임 시간**이며, 평균 FPS나 다른 환경의 결과를 뜻하지 않습니다.
 
-**Agent MCP는 프로젝트에 재사용할 조사 절차와 도구를, Sonheim은 게임별 측정 장면과 실제 개선 코드를 담당합니다.** 기존 UI 구조는 [18. UMG v2 Migration](18_UMG_v2_Migration.md), 구현 변경 내역은 [PR #6](https://github.com/chungheonLee0325/Sonheim/pull/6)에서 확인할 수 있습니다.
+기존 UI 개편은 [18. UMG v2](18_UMG_v2_Migration.md), 현재 화면 수명과 재사용 정책은 [21. Game UI Framework](21_UI_Framework.md)에 정리했습니다. 실제 코드 변경은 [PR #6](https://github.com/chungheonLee0325/Sonheim/pull/6)에서 확인할 수 있습니다.
 
 ## Sonheim 적용 결과
 
@@ -32,14 +32,14 @@ Unreal Engine의 UI 성능 문제를 에이전트가 반복 조사할 수 있도
 
 도감은 화면 열기 비용과 별도로 **3D 프리뷰의 매 프레임 SceneCapture 렌더링 비용**도 조사했습니다.
 
-## Agent MCP 성능 조사 기능 구현
+## 반복 측정·원인 분석을 위한 도구
 
 기존에는 UI가 끊기는 장면을 사람이 수동으로 재현하고, 프로파일러에서 함수를 찾고, 수정 전후를 각각 측정해야 했습니다. 이 과정을 에이전트가 반복 수행할 수 있도록 **측정 실행·결과 분석은 Agent MCP의 공통 도구로, 실제 UI 조작은 게임별 실행기로 분리**했습니다.
 
 | 구현 위치 | 담당 역할 |
 |---|---|
 | **[Agent MCP](https://github.com/chungheonLee0325/AgentMcp)** | `perf-investigation` 스킬, 반복 실행 스크립트, CSV 비교·CPU Trace·GPU 프로파일 분석 MCP 도구 |
-| **[Sonheim](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/Utilities/PerfScenarioSubsystem.cpp)** | `UPerfScenarioSubsystem`이 인벤토리·지도·도감·보관함 등 실제 게임의 UI 조작을 수행하고 이벤트를 기록 |
+| **[Sonheim](../../Sonheim/Source/Sonheim/Utilities/PerfScenarioSubsystem.cpp)** | `UPerfScenarioSubsystem`이 인벤토리·지도·도감·보관함 등 실제 게임의 UI 조작을 수행하고 이벤트를 기록 |
 | **코딩 에이전트** | 스킬에 따라 장면을 실행하고, 수치와 원인 함수를 확인한 뒤 코드 변경·재측정을 연결 |
 
 ### 구현한 도구와 분석 절차
@@ -69,14 +69,14 @@ perf_trace_hotspots / perf_read_gpu_profile로 원인 조사
 
 `run.py`는 에디터를 닫은 상태에서 독립 실행 게임으로 측정합니다. 워밍업과 외부 CPU 부하 확인을 거쳐 기록한 CSV는 에디터를 다시 실행한 후 MCP 도구에서 분석합니다. **계측을 위한 실행 조건 통제와 분석을 위한 에이전트 인터페이스를 구분**한 구조입니다.
 
-### 자동 조사 환경을 Sonheim에 적용한 사례
+### 기존에 측정하지 않았던 UI도 조사
 
 처음부터 문제가 알려진 인벤토리만 측정하지 않았습니다. 도구의 적용 범위를 확인하기 위해 보관함, 알림, 제작, 퀘스트, 전리품, 데미지 숫자 등의 장면으로 조사 대상을 넓혔습니다.
 
 | 조사 대상 | 확인한 문제·비용 | 실제 처리 |
 |---|---|---|
 | 인벤토리 교환 | 전체 슬롯·툴팁 반복 갱신, `SWidget::Invalidate` 11,635회 | 변경 슬롯의 속성만 갱신, 툴팁 지연 생성 |
-| 메뉴·보관함 재오픈 | `CreateWidget` 반복, 보관함 Delegate 바인딩 누적 | UIStack 재사용, 화면 종료 시 구독 해제 |
+| 메뉴·보관함 재오픈 | `CreateWidget` 반복, 보관함 Delegate 바인딩 누적 | 닫은 화면 재사용(`bKeepWhenClosed`), 화면 종료 시 구독 해제 |
 | 도감 프리뷰 | `SceneCapture`의 불필요한 렌더 패스와 종료 후 Render Target 참조 | Show Flag 제한, Brush 참조 정리 |
 | 알림 Feed | 항목 순회 중 제거로 발생한 ensure·프레임 지연 | 복사한 항목 목록을 순회하며 제거 |
 
@@ -101,7 +101,7 @@ Agent MCP가 어떤 게임에서도 같은 측정·분석 절차를 사용할 �
 
 이벤트를 `CSV_EVENT`와 CPU Trace Scope에 함께 기록하므로 **CSV에서 느린 프레임을 찾은 다음 Insights에서 해당 동작의 함수 비용을 추적**할 수 있습니다.
 
-[측정 장면 구현 — PerfScenarioSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/Utilities/PerfScenarioSubsystem.cpp)
+[측정 장면 구현 — PerfScenarioSubsystem.cpp](../../Sonheim/Source/Sonheim/Utilities/PerfScenarioSubsystem.cpp)
 
 ## 인벤토리: 데이터 갱신과 슬롯 렌더링 분리
 
@@ -141,20 +141,20 @@ void USlotWidget::SetItemData(const FItemData* ItemData, int32 NewQuantity)
 
 아이템 수가 많은 화면을 여는 순간에 **사용하지 않을 툴팁을 미리 만드는 비용**을 피하는 선택입니다.
 
-[InventoryWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/InventoryWidget.cpp) · [SlotWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/SlotWidget.cpp)
+[InventoryWidget.cpp](../../Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/InventoryWidget.cpp) · [SlotWidget.cpp](../../Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/SlotWidget.cpp)
 
-## UIStack: 닫힌 화면의 UObject 재사용
+## 닫힌 화면의 UObject 재사용
 
 ### 기존 비용과 선택한 방식
 
-UIStack은 화면을 닫을 때 `RemoveFromParent()`로 Viewport에서 제거했습니다. 이후 메뉴를 다시 열면 `CreateWidget`과 슬롯·탭 구성 비용이 반복됐습니다. 메뉴 상단의 탭 바도 탭이 하나도 없으면 지웠다가 다음 열기에 새로 만들고, 탭 항목은 엔트리 박스에서 삭제 후 다시 생성했습니다.
+화면을 닫을 때 위젯을 버리면, 메뉴를 다시 열 때마다 `CreateWidget`과 슬롯·탭 구성 비용이 반복됩니다. 메뉴 상단의 탭 바도 탭이 하나도 없으면 지웠다가 다음 열기에 새로 만들고, 탭 항목은 엔트리 박스에서 삭제 후 다시 생성했습니다.
 
-이번 변경에서는 `FUIScreenRule::bKeepWhenClosed`를 추가해 **자주 다시 여는 화면에만 재사용 정책**을 적용했습니다. 현재 설정 대상은 메뉴, 보관함, 도감, 월드맵입니다.
+화면 클래스 기본값 `bKeepWhenClosed`([21. Game UI Framework](21_UI_Framework.md)의 `UGameUIScreenWidget`)로 **자주 다시 여는 화면에만 재사용 정책**을 적용합니다. 현재 설정 대상은 인벤토리, 보관함, 도감, 월드맵입니다.
 
 ~~~mermaid
 flowchart LR
-    A["Open<br/>CreateWidget 또는 Kept 조회"] --> B["Viewport 표시<br/>Stack에 등록"]
-    B --> C["Close<br/>RemoveFromParent"]
+    A["Open<br/>CreateWidget 또는 Kept 조회"] --> B["스택 레이어에 추가<br/>OnOpened"]
+    B --> C["Close<br/>OnClosed · 레이어에서 제거"]
     C --> D{"bKeepWhenClosed"}
     D -->|true| E["Kept에 UObject 유지"]
     D -->|false| F["참조 해제 가능"]
@@ -163,7 +163,7 @@ flowchart LR
     G -->|불일치| A
 ~~~
 
-화면을 **Collapsed로 계속 Viewport에 남기는 방식은 아닙니다.** 닫을 때 Viewport에서 떼어 `NativeDestruct()`가 실행되도록 하고, UIStack의 `Kept` 배열에서 UObject만 유지합니다. 다시 열 때 OwningPlayer와 Widget Class를 검사해 재사용 가능하면 `AddToViewport()`로 복귀시킵니다. 이때 `NativeConstruct()`는 다시 실행되므로 바인딩과 화면 재진입 상태를 고려해야 합니다.
+화면을 **Collapsed로 계속 레이어에 남기는 방식은 아닙니다.** 닫을 때 레이어에서 떼어 `NativeDestruct()`가 실행되도록 하고, UI 매니저의 `Kept` 배열에서 UObject만 유지합니다. 다시 열 때 OwningPlayer와 Widget Class를 검사해 재사용 가능하면 스택 레이어에 다시 붙입니다. 이때 `NativeConstruct()`도 다시 실행되므로, 열 때마다 할 일은 `NativeOnOpened()`, 닫을 때 해제할 것은 `NativeOnClosed()`에 둡니다.
 
 ### 한 번 만드는 상태와 열 때마다 갱신할 상태 구분
 
@@ -171,31 +171,31 @@ flowchart LR
 - **재오픈 시 갱신하는 것:** 현재 플레이어 데이터, 지도 중심·표시 상태, 보관함 내용 및 Delegate 연결.
 - **닫을 때 해제하는 것:** 도감 3D 프리뷰 Stage와 오래된 Render Target을 가리키는 Brush 참조.
 
-예를 들어 월드맵은 최초 `NativeConstruct()`에서만 지역·라벨을 만들고, 다시 열 때에는 현재 플레이어의 지도·퀘스트 상태를 연결하고 `Redraw()`합니다. 탭 바도 화면이 닫혔다고 UObject를 지우지 않고, 재오픈 시 다시 표시합니다.
+예를 들어 월드맵은 `NativeOnInitialized()`에서 한 번만 지역·라벨을 만들고, 다시 열 때 `NativeOnOpened()`에서 현재 플레이어의 지도·퀘스트 상태를 연결하고 `Redraw()`합니다. 탭 바는 루트 레이아웃 `WBP_UIRoot`에 배치되어 화면이 닫혀도 남아 있고, Menu 레이어의 맨 위 화면이 탭이면 다시 표시됩니다.
 
-재사용은 **생성 비용 대신 메모리를 점유**합니다. 화면을 닫고 `obj gc` 후 `obj list`로 남은 객체를 비교하면, 탭 화면(메뉴·도감·지도)은 위젯 객체 메모리가 약 **1.8MB**, 보관함 화면은 약 **0.94MB** 늘어납니다. Slate 위젯 트리는 Viewport에서 떼어질 때 해제되므로 남는 것은 UObject입니다. 렌더 타깃과 동적 머티리얼 수는 보관하지 않을 때와 같습니다.
+재사용은 **생성 비용 대신 메모리를 점유**합니다. 화면을 닫고 `obj gc` 후 `obj list`로 남은 객체를 비교하면, 탭 화면(메뉴·도감·지도)은 위젯 객체 메모리가 약 **1.8MB**, 보관함 화면은 약 **0.94MB** 늘어납니다. Slate 위젯 트리는 레이어에서 떼어질 때 해제되므로 남는 것은 UObject입니다. 렌더 타깃과 동적 머티리얼 수는 보관하지 않을 때와 같습니다.
 
 다시 연 화면에도 Slate 트리 재구성과 `NativeConstruct` 비용은 남습니다. 평상시 게임 스레드가 약 2.7ms인 장면에서 다시 연 프레임은 메뉴 8.2ms, 보관함 9.2ms입니다. 화면을 Collapsed로 숨기면 이 비용도 없어지지만, 닫힌 화면의 Slate 트리를 메모리에 계속 두고 `NativeConstruct`·`NativeDestruct` 대신 별도의 표시·숨김 처리를 화면마다 두어야 합니다. 현재 구조는 이 비용을 감수하고 기존 위젯 수명 주기를 유지합니다.
 
-[UIStackSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/System/UIStackSubsystem.cpp) · [DefaultGame.ini](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Config/DefaultGame.ini) · [WorldMapWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/Map/WorldMapWidget.cpp)
+[GameUIManagerSubsystem.cpp](../../Sonheim/Plugins/GameUIFramework/Source/GameUIFramework/Private/GameUIManagerSubsystem.cpp) · [GameUILayer.cpp](../../Sonheim/Plugins/GameUIFramework/Source/GameUIFramework/Private/GameUILayer.cpp) · [WorldMapWidget.cpp](../../Sonheim/Source/Sonheim/UI/Map/WorldMapWidget.cpp)
 
 ## 보관함: 재사용 화면의 Delegate와 표시 데이터 관리
 
-보관함은 UIStack에서 화면을 재사용하도록 변경하면서, **언제 데이터를 구독하고 해제하는지**를 함께 수정했습니다.
+보관함 화면을 재사용하도록 바꾸면서, **언제 데이터를 구독하고 해제하는지**를 함께 정리했습니다.
 
-기존에는 `PlayerController`가 보관함 UI의 인벤토리 Delegate 바인딩과 해제를 직접 관리했습니다. 하지만 Tab 입력으로 UIStack이 먼저 화면을 닫으면 `Client_CloseContainerUI`가 이미 닫힌 위젯을 찾지 못해 `RemoveDynamic`이 실행되지 않았습니다. 그래서 보관함을 열고 닫을 때마다 `OnInventoryChanged`에 묶인 객체가 3 → 4 → 5 → 6으로 늘었습니다.
+기존에는 `PlayerController`가 보관함 UI의 인벤토리 Delegate 바인딩과 해제를 직접 관리했습니다. 하지만 Tab 입력으로 화면 스택이 먼저 화면을 닫으면 `Client_CloseContainerUI`가 이미 닫힌 위젯을 찾지 못해 `RemoveDynamic`이 실행되지 않았습니다. 그래서 보관함을 열고 닫을 때마다 `OnInventoryChanged`에 묶인 객체가 3 → 4 → 5 → 6으로 늘었습니다.
 
-수정 후에는 `UContainerInteractionWidget`이 `OpenContainer()`에서 플레이어 인벤토리 Delegate를 연결하고 `NativeDestruct()`에서 해제합니다. 화면을 다시 열 때 중복 등록하지 않도록 `AddUniqueDynamic`을 사용했습니다. 열고 닫기를 반복해도 묶인 객체 수는 호스트 2, 클라이언트 1로 유지됩니다.
+현재는 `UContainerInteractionWidget`이 `OpenContainer()`에서 플레이어 인벤토리 Delegate를 연결하고 `NativeOnClosed()`에서 해제합니다. 화면을 다시 열 때 중복 등록하지 않도록 `AddUniqueDynamic`을 사용했습니다. 열고 닫기를 반복해도 묶인 객체 수는 호스트 2, 클라이언트 1로 유지됩니다.
 
 ~~~text
 보관함 열기
-  → UIStack 화면 표시/재사용
+  → UI 매니저가 화면 표시/재사용
   → ContainerInteractionWidget::OpenContainer
   → InventoryComponent Delegate 연결 + 현재 보관함 표시
 
 보관함 닫기 (닫기 버튼 또는 Tab)
-  → UIStack에서 화면 제거
-  → NativeDestruct
+  → UI 매니저가 화면 제거
+  → NativeOnClosed
   → 보관함 종료 처리 + InventoryComponent Delegate 해제
 ~~~
 
@@ -203,7 +203,7 @@ flowchart LR
 
 같은 취지로 인벤토리·플레이어 스탯 등 반복적으로 연결될 수 있는 이벤트도 `AddUniqueDynamic`을 사용합니다. 여기서 중요한 점은 단순히 중복 등록을 막는 것뿐 아니라, **화면 수명에 맞는 등록·해제 책임을 UI가 가지도록 옮긴 것**입니다.
 
-[ContainerInteractionWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/Widget/GameObject/ContainerInteractionWidget.cpp) · [ContainerWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/Widget/GameObject/ContainerWidget.cpp)
+[ContainerInteractionWidget.cpp](../../Sonheim/Source/Sonheim/UI/Widget/GameObject/ContainerInteractionWidget.cpp) · [ContainerWidget.cpp](../../Sonheim/Source/Sonheim/UI/Widget/GameObject/ContainerWidget.cpp)
 
 ## 도감: SceneCapture 비용과 화면 종료 리소스 분리
 
@@ -213,7 +213,7 @@ flowchart LR
 
 같은 변경의 반복 장면 측정에서는 **Frame -0.83ms / GPU -0.62ms**를 기록했습니다. `ProfileGPU` 수치는 한 캡처의 패스 비용 분석이고, 장면 측정은 별도의 실행에서 수집한 전체 프레임 통계이므로 두 감소량을 동일 지표로 해석하지 않습니다. 또한 위 표의 *도감 열기 이벤트 프레임*과도 별개의 측정입니다.
 
-또한 도감 화면을 닫으면 Stage Actor는 파괴되지만, **재사용되는 위젯의 Image Brush가 이전 Render Target을 참조할 수 있습니다.** `obj refs`로 확인하면 프리뷰 Image와 엔트리 박스 풀에 들어간 목록 셀의 Brush가 파괴된 Stage의 렌더 타깃 7개(약 8.9MB)를 붙잡고 있었습니다. 이를 위해 `UMonsterDexWidget::NativeDestruct()`에서 프리뷰 Image와 현재 도감 목록 셀의 Brush 참조를 비우고, Stage 관련 참조도 초기화합니다. 닫힌 도감이 붙잡는 렌더 타깃은 0개이며, 다음 열기에는 새로운 Stage와 프리뷰가 연결됩니다.
+또한 도감 화면을 닫으면 Stage Actor는 파괴되지만, **재사용되는 위젯의 Image Brush가 이전 Render Target을 참조할 수 있습니다.** `obj refs`로 확인하면 프리뷰 Image와 엔트리 박스 풀에 들어간 목록 셀의 Brush가 파괴된 Stage의 렌더 타깃 7개(약 8.9MB)를 붙잡고 있었습니다. 이를 위해 `UMonsterDexWidget::NativeOnClosed()`에서 프리뷰 Image와 현재 도감 목록 셀의 Brush 참조를 비우고, Stage 관련 참조도 초기화합니다. 닫힌 도감이 붙잡는 렌더 타깃은 0개이며, 다음 열기에는 새로운 Stage와 프리뷰가 연결됩니다.
 
 ### 제외한 최적화
 
@@ -227,7 +227,7 @@ flowchart LR
 | 전리품 5개 줍기 | 해당 프레임 +2.2ms (아이템마다 퀘스트 추적기 갱신과 팝업 생성) | 한 프레임 비용이라 그대로 둠 |
 | 제작대 열기 / 퀘스트 선택 / 데미지 숫자 20개 | +3ms / +1.1ms / +0.6ms | 예산 안이라 그대로 둠 |
 
-[MonsterDexStage.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexStage.cpp) · [MonsterDexWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexWidget.cpp)
+[MonsterDexStage.cpp](../../Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexStage.cpp) · [MonsterDexWidget.cpp](../../Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexWidget.cpp)
 
 ## 알림 Feed: 순회 중 항목 제거 수정
 
@@ -241,14 +241,14 @@ for (UUserWidget* Entry : TArray<UUserWidget*>(RowBox->GetAllEntries()))
 }
 ~~~
 
-[NoticeWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/Notice/NoticeWidget.cpp)
+[NoticeWidget.cpp](../../Sonheim/Source/Sonheim/UI/Notice/NoticeWidget.cpp)
 
 ## 구현 결과
 
-**Agent MCP에는 성능 측정·비교·CPU/GPU 원인 분석의 공통 절차를 구현**하고, **Sonheim에는 실제 UI 조작 장면과 최적화 코드를 구현**했습니다. 조사 도구를 만들면서 인벤토리의 불필요한 속성 갱신, 화면 재생성, Delegate 수명, Render Target 참조와 렌더 패스 등 서로 다른 문제를 확인하고 수정했습니다.
+Sonheim에서는 인벤토리 슬롯의 불필요한 속성 갱신과 화면 재생성 비용을 줄이고, 보관함 Delegate 수명과 도감 Render Target 참조, SceneCapture 렌더 패스를 조정했습니다. 반복 측정과 원인 분석에 사용한 CSV·Trace·GPU 분석 도구는 AgentMcp에 구현했습니다.
 
-UI 갱신은 원본 데이터 변경과 실제 위젯 속성 변경을 구분했고, 화면 수명은 UObject 유지·Viewport 표시·Delegate 구독·GPU 리소스 참조를 각각 관리하도록 조정했습니다. 이 과정에서 개선 효과가 측정 편차보다 작은 변경은 유지하지 않았습니다.
+UI 갱신은 원본 데이터 변경과 실제 위젯 속성 변경을 구분했고, 화면 수명은 UObject 유지·레이어 표시·Delegate 구독·GPU 리소스 참조를 각각 관리하도록 조정했습니다. 이 과정에서 개선 효과가 측정 편차보다 작은 변경은 유지하지 않았습니다.
 
 **관련 문서:** [07. Inventory & Crafting](07_Inventory_Crafting.md) · [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) · [14. Unreal Editor Automation & Verification](14_Unreal_Editor_Automation_Verification.md) · [16. MonsterDex System](16_MonsterDex_System.md) · [18. UMG v2 Migration](18_UMG_v2_Migration.md) · [19. World Map & Fast Travel](19_World_Map_System.md)
 
-**관련 저장소:** [Agent MCP](https://github.com/chungheonLee0325/AgentMcp) · [Sonheim PR #6](https://github.com/chungheonLee0325/Sonheim/pull/6) · [에이전트 조사 기록 — 측정하지 않았던 UI에서 끊김을 찾고 고친 실제 도구 결과](https://github.com/chungheonLee0325/AgentMcp/blob/main/Docs/Samples/SonheimUiPerf.ko.md)
+**관련 저장소:** [AgentMcp](https://github.com/chungheonLee0325/AgentMcp) · [Sonheim PR #6](https://github.com/chungheonLee0325/Sonheim/pull/6) · [실제 성능 조사 기록](https://github.com/chungheonLee0325/AgentMcp/blob/main/Docs/Samples/SonheimUiPerf.ko.md)

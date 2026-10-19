@@ -5,8 +5,10 @@
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Engine/AssetManager.h"
 #include "Engine/LocalPlayer.h"
+#include "GameUIManagerSubsystem.h"
 #include "GameFramework/PlayerController.h"
 #include "Sonheim/UI/Notice/NoticeSubsystem.h"
+#include "Sonheim/UI/System/UITags.h"
 #include "Sonheim/Utilities/LogMacro.h"
 const FName UDungeonUIRouterSubsystem::NoticeChannel(TEXT("Dungeon"));
 void UDungeonUIRouterSubsystem::Attach(APlayerController* Controller)
@@ -69,11 +71,11 @@ void UDungeonUIRouterSubsystem::RefreshHidden()
 	// Checked on every update, so a screen the world adds during the run is hidden too.
 	for (const TSoftClassPtr<UUserWidget>& Class : Registry->HiddenDuringRun)
 	{
-		// A class that is not loaded has no screen up.
+		// A class that is not loaded has no screen up. Screens sit in the UI root's layers, so nested widgets are searched too.
 		UClass* Loaded = Class.Get();
 		if (!Loaded) continue;
 		TArray<UUserWidget*> Found;
-		UWidgetBlueprintLibrary::GetAllWidgetsOfClass(Owner.Get(), Found, Loaded, true);
+		UWidgetBlueprintLibrary::GetAllWidgetsOfClass(Owner.Get(), Found, Loaded, false);
 		for (UUserWidget* Widget : Found)
 			if (!HiddenWidgets.Contains(Widget))
 			{
@@ -91,7 +93,8 @@ void UDungeonUIRouterSubsystem::RefreshWidget()
 		ActiveWidget = nullptr; ActiveId = NAME_None; RequestedId = NAME_None; return;
 	}
 	const FName Id = (LatestView.Status == EDungeonRunStatus::Succeeded || LatestView.Status == EDungeonRunStatus::Failed) ? FName(TEXT("UI.Dungeon.Result")) : FName(TEXT("UI.Dungeon.HUD"));
-	if (ActiveId == Id && ActiveWidget && ActiveWidget->IsInViewport())
+	// The widget sits in the UI root's HUD layer, not on the viewport: it is up while it has a parent.
+	if (ActiveId == Id && IsValid(ActiveWidget) && ActiveWidget->GetParent())
 	{
 		ActiveWidget->ApplyViewData(LatestView);
 		UE_LOG(SONHEIM, Log, TEXT("[DungeonHUD] Controller=%s Revision=%d Count=%s Branch=%s"), *Owner->GetName(), LatestView.Revision, *LatestView.CountText.ToString(), *LatestView.BranchText.ToString());
@@ -128,7 +131,7 @@ void UDungeonUIRouterSubsystem::RefreshWidget()
 	if (ActiveWidget)
 	{
 		ActiveId = Id;
-		ActiveWidget->AddToPlayerScreen(Entry->Layer == EDungeonUILayer::HUD ? 1800 : 1900);
+		if (auto* UI = GetLocalPlayer()->GetSubsystem<UGameUIManagerSubsystem>()) UI->AddToLayer(UITags::LayerHUD, ActiveWidget);
 		ActiveWidget->ApplyViewData(LatestView);
 		UE_LOG(SONHEIM, Log, TEXT("[DungeonHUD] Created=%s Controller=%s Revision=%d Count=%s"), *Id.ToString(), *Owner->GetName(), LatestView.Revision, *LatestView.CountText.ToString());
 	}

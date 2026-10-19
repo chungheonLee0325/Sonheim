@@ -9,7 +9,8 @@
 #include "Sonheim/AreaObject/Player/Utility/QuestComponent.h"
 #include "Sonheim/GameObject/InteractableInterface.h"
 #include "Sonheim/UI/MonsterDex/MonsterDexWidget.h"
-#include "Sonheim/UI/System/UIStackSubsystem.h"
+#include "GameUIManagerSubsystem.h"
+#include "Sonheim/UI/System/UITags.h"
 #include "Sonheim/Utilities/StringTableIds.h"
 
 namespace
@@ -59,9 +60,9 @@ UQuestComponent* UQuestScreenWidget::Quests() const
 	return QuestsOf(*this);
 }
 
-void UQuestScreenWidget::NativeConstruct()
+void UQuestScreenWidget::NativeOnOpened()
 {
-	Super::NativeConstruct();
+	Super::NativeOnOpened();
 	if (UQuestComponent* Component = Quests())
 	{
 		Bound = Component;
@@ -70,10 +71,10 @@ void UQuestScreenWidget::NativeConstruct()
 	Redraw();
 }
 
-void UQuestScreenWidget::NativeDestruct()
+void UQuestScreenWidget::NativeOnClosed()
 {
 	if (Bound.IsValid()) Bound->OnQuestsChanged.RemoveDynamic(this, &UQuestScreenWidget::Redraw);
-	Super::NativeDestruct();
+	Super::NativeOnClosed();
 }
 
 const FQuestView* UQuestScreenWidget::PickedView() const
@@ -162,12 +163,12 @@ void UQuestDialogWidget::Act()
 	if (Quest->State == EQuestViewState::ReadyToTurnIn) Component->ServerTurnIn(Quest->QuestID, Target.Get());
 	else if (Quest->State == EQuestViewState::Offered) Component->ServerAccept(Quest->QuestID, Target.Get());
 	// The server's answer arrives as a notice; the dialog has said what it had to.
-	UUIStackSubsystem::CloseWidget(this);
+	CloseSelf();
 }
 
 void UQuestDialogWidget::HandleClose()
 {
-	UUIStackSubsystem::CloseWidget(this);
+	CloseSelf();
 }
 
 void UQuestJournalWidget::NativeOnInitialized()

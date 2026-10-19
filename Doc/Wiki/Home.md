@@ -2,7 +2,7 @@
 
 **Unreal Engine 5.5 · C++ · Listen Server 기반 멀티플레이 액션 어드벤처**
 
-전투·제작·포획으로 시작한 게임플레이를 **몬스터 도감·퀘스트·분기 던전·보스 전투**까지 확장했습니다. 이 Wiki에는 실제 게임 화면과 함께 **C++ 구현, 서버 동기화, 데이터 설계, UI 작업 과정**을 정리했습니다.
+전투·제작·포획으로 시작한 게임플레이를 **몬스터 도감·퀘스트·분기 던전·보스 전투**까지 확장했습니다. 실제 게임 화면과 함께 C++ 게임플레이 구현, 데이터·서버 동기화, UI 갱신과 성능 개선을 정리했습니다.
 
 **처음 방문했다면 [01. Project Overview](01_Project_Overview.md)에서 전체 게임플레이와 개발 범위를 확인할 수 있습니다.**
 
@@ -39,8 +39,8 @@
 | **전투와 데이터 기반 패턴** | [05. Combat, Skill & Animation](05_Combat_Skill_Animation.md) · [10. Boss Encounter Runtime](10_Boss_Encounter_Runtime.md) |
 | **아이템·제작·Partner** | [07. Inventory & Crafting](07_Inventory_Crafting.md) · [08. Pal Capture & Partner Lifecycle](08_Pal_Capture_Partner_Lifecycle.md) |
 | **서버 권위·복제** | [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) — RPC, FastArray, UObject, OwnerOnly, Snapshot |
-| **UI 상태·화면 생명주기** | [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) · [18. UMG v2 Migration](18_UMG_v2_Migration.md) · [20. Agent MCP 기반 UI 성능 분석](20_UI_Performance_Profiling.md) |
-| **AI 에이전트·성능 조사 자동화** | [20. Agent MCP 기반 UI 성능 분석과 최적화](20_UI_Performance_Profiling.md) · [Agent MCP perf-investigation](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Skills/perf-investigation/SKILL.md) |
+| **UI 상태·화면 생명주기** | [21. Game UI Framework](21_UI_Framework.md) · [11. Client State Presentation](11_Client_State_Presentation_Pipeline.md) · [18. UMG v2 Migration](18_UMG_v2_Migration.md) · [20. UI Performance](20_UI_Performance_Profiling.md) |
+| **UI 성능 조사 환경** | [20. UI Performance](20_UI_Performance_Profiling.md) · [Agent MCP perf-investigation](https://github.com/chungheonLee0325/AgentMcp/blob/main/Plugins/AgentMcp/Skills/perf-investigation/SKILL.md) |
 | **지도·안개·머티리얼 UI** | [19. World Map & Fast Travel](19_World_Map_System.md) — 좌표·뷰 변환, 퀘스트 마커, UImage 재사용, 탐험 안개 머티리얼 |
 | **콘텐츠 데이터·검증** | [03. Data & Content Architecture](03_Data_Content_Architecture.md) · [13. Content Authoring & Validation](13_Content_Authoring_Validation.md) |
 | **에디터 자동화·개발 이력** | [14. Unreal Editor Automation & Verification](14_Unreal_Editor_Automation_Verification.md) · [15. Development History & Retrospective](15_Development_History_Retrospective.md) |
@@ -75,7 +75,7 @@
 |---|---|
 | [09. Branching Dungeon Runtime](09_Branching_Dungeon_Runtime.md) | 분기 규칙·이벤트 큐·목표·장벽·기록 |
 | [10. Boss Encounter Runtime](10_Boss_Encounter_Runtime.md) | PatternClock·텔레그래프·Break·포획 |
-| [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) | UI Stack·Notice·던전 Presenter/ViewData |
+| [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) | 게임 데이터→ViewData→Widget 갱신·던전 Presenter |
 | [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) | 요청과 상태의 분리·복제·예측·RPC |
 
 ### 13–15 · 제작 도구와 변경 이력
@@ -86,15 +86,16 @@
 | [14. Unreal Editor Automation & Verification](14_Unreal_Editor_Automation_Verification.md) | AgentMcp로 Inspect·Edit·Compile·PIE 확인 |
 | [15. Development History & Retrospective](15_Development_History_Retrospective.md) | 실제 커밋으로 확인하는 시스템 구조 개선 |
 
-### 16–20 · 도감·퀘스트·UI·지도 확장 및 최적화
+### 16–21 · 도감·퀘스트·UI·지도 확장 및 최적화
 
 | 문서 | 내용 |
 |---|---|
-| [16. MonsterDex System](16_MonsterDex_System.md) | 종별 처치·포획 기록, 보상·3D 프리뷰 |
+| [16. MonsterDex System](16_MonsterDex_System.md) | 처치·포획 기록, 보상·3D 프리뷰·서식지 지도 연동 |
 | [17. Quest System](17_Quest_System.md) | 단계별 목표·NPC·월드 오브젝트·보상 |
-| [18. UMG v2 Migration & Editor Verification](18_UMG_v2_Migration.md) | 화면 개편 전후, 입력 정책·알림·에디터 검증 |
+| [18. UMG v2](18_UMG_v2_Migration.md) | 화면 개편 전후, 입력·알림·키 안내·Widget Blueprint |
 | [19. World Map & Fast Travel](19_World_Map_System.md) | 탐험 안개·미니맵·지도 탭·빠른 이동 표석·도감 서식지 |
-| [20. Agent MCP 기반 UI 성능 분석과 최적화](20_UI_Performance_Profiling.md) | 에이전트용 CSV·Trace·GPU 분석 도구 구현, Sonheim의 UI 병목 조사·최적화 |
+| [20. Agent MCP 기반 UI 성능 분석과 최적화](20_UI_Performance_Profiling.md) | 이벤트 프레임 측정·인벤토리/화면 생성 비용 개선·CPU/GPU 분석 |
+| [21. Game UI Framework](21_UI_Framework.md) | 게임과 분리한 UI 플러그인: 태그 레이어, 화면·팝업 수명, 비동기 열기, 알림 큐 |
 
 ---
 

@@ -12,7 +12,7 @@ Sonheim은 **플레이어가 보유하는 데이터, 월드에서 실행되는 �
 | 현재 던전 실행 | `UDungeonStageRuntimeSubsystem` (`UWorldSubsystem`) | 스테이지·이벤트·전환·실패·보상 |
 | 여러 클라이언트가 볼 던전 상태 | `ASonheimGameState` | `FDungeonStageRuntimeState` 복제 |
 | 에셋 로딩·저장된 진행 기록 | `UGameInstanceSubsystem` | DungeonAsset·DungeonProgress·MonsterDex·Quest |
-| 로컬 플레이어 화면 | `ULocalPlayerSubsystem` | UIStack·DungeonUIRouter·Notice |
+| 로컬 플레이어 화면 | `ULocalPlayerSubsystem` | GameUIManager·GameUIToast·DungeonUIRouter·Notice |
 
 **데이터의 보관 위치, 변경 권한, 네트워크 전송 범위는 서로 다른 결정**입니다. 예를 들어 Inventory 기록은 PlayerState의 컴포넌트에 있지만 실제 변경은 서버가 처리하고, 슬롯 상태는 소유 클라이언트에 복제합니다.
 
@@ -118,7 +118,7 @@ Inventory를 Pawn의 생성·파괴에 함께 묶지 않기 위한 구조입니�
 
 | 로컬 시스템 | 관리 내용 |
 |---|---|
-| `UUIStackSubsystem` | 메뉴·인벤토리·도감·퀘스트 화면의 열림/닫힘, 최상단 화면의 입력 모드·커서 |
+| `UGameUIManagerSubsystem` | 메뉴·인벤토리·도감·퀘스트 화면의 열림/닫힘, 레이어별 맨 위 화면의 입력 모드·커서 |
 | `UDungeonUIRouterSubsystem` | 던전 HUD·결과 화면 생성·교체, ViewData 보관, 기존 HUD 숨김·복원 |
 | `UNoticeSubsystem` | `Feed`·`Headline`·`Title` 슬롯별 알림 표시 순서·채널 |
 
@@ -163,7 +163,7 @@ flowchart TB
 
 `UInteractionComponent`는 상호작용 가능한 대상을 찾고 입력·Hold 진행을 처리합니다. 각 대상은 표시할 안내, Hold 시간·취소 규칙, 실제 실행 동작을 인터페이스로 제공합니다.
 
-새 오브젝트를 추가해도 플레이어 입력 코드에 오브젝트 종류별 분기를 늘리는 대신, 대상이 인터페이스를 구현하도록 했습니다. 자세한 판정·서버 실행은 [[06. World Interaction Systems|06_World_Interaction_Systems]]에서 설명합니다.
+새 오브젝트를 추가해도 플레이어 입력 코드에 오브젝트 종류별 분기를 늘리는 대신, 대상이 인터페이스를 구현하도록 했습니다. 자세한 판정·서버 실행은 [06. World Interaction Systems](06_World_Interaction_Systems.md)에서 설명합니다.
 
 ---
 
@@ -303,17 +303,17 @@ UNoticeSubsystem
 
 ## 관련 코드 및 문서
 
-- [AreaObject.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Base/AreaObject.h) — 공통 캐릭터 API·컴포넌트
-- [SonheimPlayerState.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayerState.cpp) — 플레이어별 컴포넌트와 스탯 처리
-- [InteractionComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/InteractionComponent.cpp) — 인터페이스 기반 상호작용
-- [DungeonStageRuntimeSubsystem.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonStageRuntimeSubsystem.h) — 던전 서버 실행
-- [SonheimGameState.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameManager/SonheimGameState.cpp) — 던전 상태 복제
-- [DungeonStagePresenter.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Dungeon/DungeonStagePresenter.cpp) — 던전 화면용 데이터 생성
-- [DungeonUIRouterSubsystem.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Dungeon/DungeonUIRouterSubsystem.h) — 던전 UI 수명 관리
-- [UIStackSubsystem.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/System/UIStackSubsystem.h) · [NoticeSubsystem.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Notice/NoticeSubsystem.h) — 로컬 UI 관리
-- [[03. Data & Content Architecture|03_Data_Content_Architecture]] — DataTable·DataAsset·식별자·로딩
-- [[04. Player & Character Systems|04_Player_Character_Systems]] — PlayerState·Pawn·Stat·Skill
-- [[06. World Interaction Systems|06_World_Interaction_Systems]] — 공통 상호작용
-- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — 던전 이벤트와 분기
-- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — 실제 UI 연결·갱신
-- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — RPC·FastArray·동기화 범위
+- [AreaObject.h](../../Sonheim/Source/Sonheim/AreaObject/Base/AreaObject.h) — 공통 캐릭터 API·컴포넌트
+- [SonheimPlayerState.cpp](../../Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayerState.cpp) — 플레이어별 컴포넌트와 스탯 처리
+- [InteractionComponent.cpp](../../Sonheim/Source/Sonheim/AreaObject/Player/Utility/InteractionComponent.cpp) — 인터페이스 기반 상호작용
+- [DungeonStageRuntimeSubsystem.h](../../Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonStageRuntimeSubsystem.h) — 던전 서버 실행
+- [SonheimGameState.cpp](../../Sonheim/Source/Sonheim/GameManager/SonheimGameState.cpp) — 던전 상태 복제
+- [DungeonStagePresenter.cpp](../../Sonheim/Source/Sonheim/UI/Dungeon/DungeonStagePresenter.cpp) — 던전 화면용 데이터 생성
+- [DungeonUIRouterSubsystem.h](../../Sonheim/Source/Sonheim/UI/Dungeon/DungeonUIRouterSubsystem.h) — 던전 UI 수명 관리
+- [GameUIManagerSubsystem.h](../../Sonheim/Plugins/GameUIFramework/Source/GameUIFramework/Public/GameUIManagerSubsystem.h) · [NoticeSubsystem.h](../../Sonheim/Source/Sonheim/UI/Notice/NoticeSubsystem.h) — 로컬 UI 관리
+- [03. Data & Content Architecture](03_Data_Content_Architecture.md) — DataTable·DataAsset·식별자·로딩
+- [04. Player & Character Systems](04_Player_Character_Systems.md) — PlayerState·Pawn·Stat·Skill
+- [06. World Interaction Systems](06_World_Interaction_Systems.md) — 공통 상호작용
+- [09. Branching Dungeon Runtime](09_Branching_Dungeon_Runtime.md) — 던전 이벤트와 분기
+- [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) — 실제 UI 연결·갱신
+- [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) — RPC·FastArray·동기화 범위

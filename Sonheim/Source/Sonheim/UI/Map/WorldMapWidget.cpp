@@ -1,5 +1,4 @@
 #include "WorldMapWidget.h"
-#include "EngineUtils.h"
 #include "EnhancedInputSubsystems.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
@@ -13,12 +12,12 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/Utility/QuestComponent.h"
 #include "Sonheim/AreaObject/Player/Utility/WorldMapComponent.h"
-#include "Sonheim/GameObject/Map/FastTravelPoint.h"
 #include "Sonheim/Map/MapFog.h"
 #include "Sonheim/Map/WorldMapDefinition.h"
 #include "Sonheim/Map/WorldMapSubsystem.h"
 #include "Sonheim/UI/Input/InputHintSubsystem.h"
-#include "Sonheim/UI/System/UIStackSubsystem.h"
+#include "GameUIManagerSubsystem.h"
+#include "Sonheim/UI/System/UITags.h"
 
 namespace
 {
@@ -82,25 +81,15 @@ void UMapLegendEntryWidget::HandleClicked()
 	if (Map.IsValid()) Map->ToggleKind(Kind);
 }
 
-void UWorldMapWidget::NativeConstruct()
+void UWorldMapWidget::NativeOnInitialized()
 {
-	Super::NativeConstruct();
+	Super::NativeOnInitialized();
+	// The map is kept after it closes (bKeepWhenClosed), so its region names are made once.
 	const UWorldMapSubsystem* Subsystem = SubsystemOf(*this);
 	const UWorldMapDefinition* Map = Subsystem ? Subsystem->GetDefinition() : nullptr;
-	MapMaterial = MapImage->GetDynamicMaterial();
-	// Kept by the UI stack after it closes, the map makes its region names once and only takes up the player's state again.
-	const bool bFirst = !Fog;
-	if (bFirst)
-	{
-		Regions = SonheimMap::CollectRegions(GetWorld());
-		Fog = NewObject<UMapFog>(this);
-	}
-	if (Map && MapMaterial)
-	{
-		MapMaterial->SetTextureParameterValue(TEXT("Art"), Map->Art);
-		MapMaterial->SetScalarParameterValue(TEXT("Round"), 0.f);
-	}
-	if (bFirst) for (const FMapRegion& Region : Regions)
+	Regions = SonheimMap::CollectRegions(GetWorld());
+	Fog = NewObject<UMapFog>(this);
+	for (const FMapRegion& Region : Regions)
 	{
 		UTextBlock* Label = NewObject<UTextBlock>(MarkerLayer);
 		Label->SetFont(RegionLabelStyle->GetFont());
@@ -127,6 +116,19 @@ void UWorldMapWidget::NativeConstruct()
 		SmallRegions.Add(Biggest / (Extent.X * Extent.Y) < SmallRegion);
 	}
 	(RegionLabelStyle->GetParent() ? static_cast<UWidget*>(RegionLabelStyle->GetParent()) : RegionLabelStyle.Get())->SetVisibility(ESlateVisibility::Collapsed);
+}
+
+void UWorldMapWidget::NativeOnOpened()
+{
+	Super::NativeOnOpened();
+	const UWorldMapSubsystem* Subsystem = SubsystemOf(*this);
+	const UWorldMapDefinition* Map = Subsystem ? Subsystem->GetDefinition() : nullptr;
+	MapMaterial = MapImage->GetDynamicMaterial();
+	if (Map && MapMaterial)
+	{
+		MapMaterial->SetTextureParameterValue(TEXT("Art"), Map->Art);
+		MapMaterial->SetScalarParameterValue(TEXT("Round"), 0.f);
+	}
 	// The banner shows with its plate, the panel it sits on.
 	(HabitatBanner->GetParent() ? static_cast<UWidget*>(HabitatBanner->GetParent()) : HabitatBanner.Get())->SetVisibility(ESlateVisibility::Collapsed);
 
@@ -144,28 +146,29 @@ void UWorldMapWidget::NativeConstruct()
 	Redraw();
 }
 
+void UWorldMapWidget::NativeOnClosed()
+{
+	// A closed map does not redraw as the player finds places; the next opening draws them.
+	if (Places.IsValid()) Places->OnMapChanged.RemoveDynamic(this, &UWorldMapWidget::Redraw);
+	if (Quests.IsValid()) Quests->OnQuestsChanged.RemoveDynamic(this, &UWorldMapWidget::Redraw);
+	Super::NativeOnClosed();
+}
+
 void UWorldMapWidget::Redraw()
 {
 	const UWorldMapSubsystem* Subsystem = SubsystemOf(*this);
 	const UWorldMapDefinition* Map = Subsystem ? Subsystem->GetDefinition() : nullptr;
 	if (!Map) return;
-	Fog->Show(Places.IsValid() ? Places->GetExplored() : TArray<uint8>(), Map->FogCells);
-	QuestPlaces = SonheimMap::TrackedQuestPlaces(GetWorld(), Regions, Quests.Get());
+	MapView = SonheimMap::BuildView(GetWorld(), Regions, Places.Get(), Quests.Get());
+	Fog->Show(MapView.Explored, Map->FogCells);
 
-	// The found points, in the world's order; the first is selected until the player picks one.
+	// The first found point is selected until the player picks one.
 	TravelBox->Reset(true);
-	TArray<const AFastTravelPoint*> Found;
-	for (TActorIterator<AFastTravelPoint> It(GetWorld()); It; ++It)
-		if (Places.IsValid() && Places->IsDiscovered(It->PointId)) Found.Add(*It);
-	if (!Found.ContainsByPredicate([this](const AFastTravelPoint* Point) { return Point->PointId == Selected; }))
-		Selected = Found.Num() ? Found[0]->PointId : NAME_None;
-	for (const AFastTravelPoint* Point : Found)
-	{
-		const FMapRegion* Region = SonheimMap::RegionAt(Regions, Point->GetActorLocation());
-		TravelBox->CreateEntry<UMapTravelEntryWidget>()->Show(this, Point->PointId, Point->DisplayName, Region ? Region->Name : FText::GetEmpty(),
-		                                                     Point->PointId == Selected);
-	}
-	TravelEmpty->SetVisibility(Found.Num() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	if (!MapView.TravelPoints.ContainsByPredicate([this](const FMapTravelView& Point) { return Point.PointId == Selected; }))
+		Selected = MapView.TravelPoints.Num() ? MapView.TravelPoints[0].PointId : NAME_None;
+	for (const FMapTravelView& Point : MapView.TravelPoints)
+		TravelBox->CreateEntry<UMapTravelEntryWidget>()->Show(this, Point.PointId, Point.Name, Point.Region, Point.PointId == Selected);
+	TravelEmpty->SetVisibility(MapView.TravelPoints.Num() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 
 	LegendBox->Reset(true);
 	for (const EMapMarkerKind Kind : LegendKinds)
@@ -220,7 +223,7 @@ void UWorldMapWidget::Travel(const FName PointId)
 {
 	if (!Places.IsValid() || !Places->IsDiscovered(PointId)) return;
 	Places->ServerFastTravel(PointId);
-	UUIStackSubsystem::CloseWidget(this);
+	CloseSelf();
 }
 
 void UWorldMapWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
@@ -259,7 +262,7 @@ void UWorldMapWidget::DrawSidePanel(const FMapRegion* Region)
 {
 	ShownRegion = Region;
 	bShownRegionSet = true;
-	const bool bFound = Region && Places.IsValid() && Places->IsDiscovered(Region->Id);
+	const bool bFound = Region && MapView.Discovered.Contains(Region->Id);
 	RegionNameText->SetText(!Region ? FText::GetEmpty() : bFound ? Region->Name : UnknownName);
 	RegionSubtitleText->SetText(bFound ? Region->Subtitle : FText::GetEmpty());
 	RegionStateText->SetText(!Region ? FText::GetEmpty() : bFound ? FoundText : UnknownText);
@@ -366,7 +369,7 @@ void UWorldMapWidget::PlaceMarkers()
 	{
 		const UMapMarkerComponent* Marker = Weak.Get();
 		if (!Marker || Marker->GetOwner() == Pawn || !IsKindShown(Marker->Kind)) continue;
-		if (!Marker->DiscoveryId.IsNone() && !(Places.IsValid() && Places->IsDiscovered(Marker->DiscoveryId))) continue;
+		if (!Marker->DiscoveryId.IsNone() && !MapView.Discovered.Contains(Marker->DiscoveryId)) continue;
 		const FMapMarkerStyle* Style = Map->MarkerStyles.Find(Marker->Kind);
 		const FVector2D Point = At(Marker->GetMarkerLocation());
 		if (!Style || !Style->Icon || !InView(Point)) continue;
@@ -379,7 +382,7 @@ void UWorldMapWidget::PlaceMarkers()
 		            SonheimMap::LayerOf(Marker->Kind) + (bPicked ? 5 : 0), FVector2D(0.5), Name});
 	}
 	if (const FMapMarkerStyle* Style = Map->MarkerStyles.Find(EMapMarkerKind::QuestTarget); Style && Style->Icon && IsKindShown(EMapMarkerKind::QuestTarget))
-		for (const FVector& Place : QuestPlaces)
+		for (const FVector& Place : MapView.QuestPlaces)
 			if (InView(At(Place)))
 				Placed.Add({Style->Icon, Style->Color, Style->Size * 1.3f, At(Place), 0.f, SonheimMap::LayerOf(EMapMarkerKind::QuestTarget),
 				            SonheimMap::PinTip, KindNames.FindRef(EMapMarkerKind::QuestTarget)});
@@ -427,7 +430,7 @@ void UWorldMapWidget::PlaceMarkers()
 	for (int32 Index = 0; Index < Regions.Num(); ++Index)
 	{
 		const FMapRegion& Region = Regions[Index];
-		const bool bFound = Places.IsValid() && Places->IsDiscovered(Region.Id);
+		const bool bFound = MapView.Discovered.Contains(Region.Id);
 		FVector2D Point = At(Region.Center);
 		const bool bShown = InView(Point) && (!SmallRegions[Index] || Span <= LabelZoom);
 		RegionPlates[Index]->SetVisibility(bShown ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);

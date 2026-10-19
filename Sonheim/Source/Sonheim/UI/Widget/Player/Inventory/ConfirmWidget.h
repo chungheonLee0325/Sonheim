@@ -1,27 +1,35 @@
 ﻿#pragma once
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "GameUIPopupWidget.h"
 #include "ConfirmWidget.generated.h"
 
-UDELEGATE()
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnConfirmItemAction, int32, Count, bool, bDiscardMode);
+class UTexture2D;
 
+/** What the drop/discard popup asks about: the item, how many of it there are, and whether it is thrown away for good. */
+struct FItemQuantityView
+{
+	UTexture2D* Icon = nullptr;
+	FText Name;
+	int32 MaxCount = 1;
+	/** True: discarded for good; false: dropped on the ground. */
+	bool bDiscard = false;
+};
+
+/** Asks how many of an item to drop or discard (UI.Popup.ItemQuantity); the opener reads GetCount from its answer. */
 UCLASS()
-class SONHEIM_API UConfirmWidget : public UUserWidget
+class SONHEIM_API UConfirmWidget : public UGameUIPopupWidget
 {
 	GENERATED_BODY()
 
 public:
-	virtual void NativeOnInitialized() override;
-
-	// 팝업 초기화: ItemID(아이콘/이름 표시용), MaxCount(스택 수량), bDiscardMode(true=폐기/삭제, false=버리기/바닥)
-	UFUNCTION(BlueprintCallable)
-	void Setup(int32 InItemID, int32 InMaxCount, bool bInDiscardMode);
-
-	UPROPERTY(BlueprintAssignable, Category="Event")
-	FOnConfirmItemAction OnConfirm;
+	void Setup(const FItemQuantityView& View);
+	/** The count picked, 1 to the item's count. */
+	int32 GetCount() const;
 
 protected:
+	virtual void NativeOnInitialized() override;
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeo, const FKeyEvent& InKeyEvent) override;
+
 	UPROPERTY(meta=(BindWidget))
 	class UImage* ImgIcon = nullptr;
 	UPROPERTY(meta=(BindWidget))
@@ -35,17 +43,10 @@ protected:
 	UPROPERTY(meta=(BindWidget))
 	class UButton* BtnCancel = nullptr;
 
-	int32 ItemID = 0;
 	int32 MaxCount = 1;
-	bool bDiscardMode = false;
-
-
-	UFUNCTION()
-	void SetItemVisual(int32 InItemID, int32 InMaxCount) const;
 
 	UFUNCTION()
 	void OnClickedConfirm();
 	UFUNCTION()
 	void OnClickedCancel();
-	virtual FReply NativeOnKeyDown(const FGeometry& InGeo, const FKeyEvent& InKeyEvent) override;
 };

@@ -54,7 +54,7 @@ flowchart TB
 
 `PlayerState`에 둔 `UPalInventoryComponent`는 **어떤 Pal을 소유하고 선택했는지**를 관리합니다. Pawn의 `UPalCaptureComponent`와 `UPalPartnerSkillComponent`는 **투척·연출·소환·스킬 입력의 실행 과정**을 맡습니다.
 
-두 컴포넌트는 `ASonheimPlayer::InitializeByPlayerState`에서 소유 목록에 연결됩니다. 전체 PlayerState/Pawn 책임은 [[04. Player & Character Systems|04_Player_Character_Systems]]에서 설명합니다.
+두 컴포넌트는 `ASonheimPlayer::InitializeByPlayerState`에서 소유 목록에 연결됩니다. 전체 PlayerState/Pawn 책임은 [04. Player & Character Systems](04_Player_Character_Systems.md)에서 설명합니다.
 
 ---
 
@@ -319,7 +319,7 @@ bool ABossMonster::CanCapture() const
 
 현재 `FBossStatus::IsVulnerable`은 `Stage == EBossStage::Resting`일 때 참입니다. 따라서 보스는 **Resting 상태의 포획 가능 시간**에만 PalSphere의 `CanCapture` 검사를 통과합니다. 실제 포획률에는 몬스터 정의의 `bCapturable` 조건도 적용됩니다.
 
-성공 판정·Reveal·보유 목록 등록은 일반 Pal과 같은 `UPalCaptureComponent` 경로를 사용합니다. 보스의 Resting 전환과 패턴·전투 상태는 [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]]에서 다룹니다.
+성공 판정·Reveal·보유 목록 등록은 일반 Pal과 같은 `UPalCaptureComponent` 경로를 사용합니다. 보스의 Resting 전환과 패턴·전투 상태는 [10. Boss Encounter Runtime](10_Boss_Encounter_Runtime.md)에서 다룹니다.
 
 ---
 
@@ -337,16 +337,16 @@ bool ABossMonster::CanCapture() const
 
 ## 관련 코드 및 문서
 
-- [PalCaptureComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/PalCaptureComponent.cpp) — 조준·포획률·Reveal·최종 보유 처리
-- [PalSphere.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/Element/Derived/Parabola/PalSphere.cpp) — 투사체 충돌·Reveal Widget
-- [PalInventoryComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/PalInventoryComponent.cpp) — 보유·선택·OwnerOnly 복제
-- [PalPartnerSkillComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/PalPartnerSkillComponent.cpp) — 소환·회수·Partner Skill
-- [BaseMonster.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/BaseMonster.cpp) — 포획 조건·소유권·활성 전환·피아식별
-- [PartnerPatrolMode.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/AI/Derived/AiMonster/BasePartnerAiState/PartnerPatrolMode.cpp) — 소유자 추종·순찰·순간이동
-- [PartnerSkillMode.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/AI/Derived/AiMonster/BasePartnerAiState/PartnerSkillMode.cpp) — Partner Skill 부착
-- [BossMonster.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossMonster.cpp) — Resting 포획 조건
-- [[04. Player & Character Systems|04_Player_Character_Systems]] — PlayerState와 Pawn 기능 연결
-- [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Monster·Partner 전투 경로
-- [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — 보스의 포획 가능 단계
-- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — Pal 선택 복제·Reveal와 상태 분리
-- [[16. MonsterDex System|16_MonsterDex_System]] — 포획 이후 도감 기록·등록 알림
+- [PalCaptureComponent.cpp](../../Sonheim/Source/Sonheim/AreaObject/Player/Utility/PalCaptureComponent.cpp) — 조준·포획률·Reveal·최종 보유 처리
+- [PalSphere.cpp](../../Sonheim/Source/Sonheim/Element/Derived/Parabola/PalSphere.cpp) — 투사체 충돌·Reveal Widget
+- [PalInventoryComponent.cpp](../../Sonheim/Source/Sonheim/AreaObject/Player/Utility/PalInventoryComponent.cpp) — 보유·선택·OwnerOnly 복제
+- [PalPartnerSkillComponent.cpp](../../Sonheim/Source/Sonheim/AreaObject/Player/Utility/PalPartnerSkillComponent.cpp) — 소환·회수·Partner Skill
+- [BaseMonster.cpp](../../Sonheim/Source/Sonheim/AreaObject/Monster/BaseMonster.cpp) — 포획 조건·소유권·활성 전환·피아식별
+- [PartnerPatrolMode.cpp](../../Sonheim/Source/Sonheim/AreaObject/Monster/AI/Derived/AiMonster/BasePartnerAiState/PartnerPatrolMode.cpp) — 소유자 추종·순찰·순간이동
+- [PartnerSkillMode.cpp](../../Sonheim/Source/Sonheim/AreaObject/Monster/AI/Derived/AiMonster/BasePartnerAiState/PartnerSkillMode.cpp) — Partner Skill 부착
+- [BossMonster.cpp](../../Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossMonster.cpp) — Resting 포획 조건
+- [04. Player & Character Systems](04_Player_Character_Systems.md) — PlayerState와 Pawn 기능 연결
+- [05. Combat, Skill & Animation](05_Combat_Skill_Animation.md) — Monster·Partner 전투 경로
+- [10. Boss Encounter Runtime](10_Boss_Encounter_Runtime.md) — 보스의 포획 가능 단계
+- [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) — Pal 선택 복제·Reveal와 상태 분리
+- [16. MonsterDex System](16_MonsterDex_System.md) — 포획 이후 도감 기록·등록 알림

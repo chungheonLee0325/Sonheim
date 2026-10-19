@@ -7,20 +7,16 @@
 #include "Sonheim/AreaObject/Player/SonheimPlayerState.h"
 #include "Sonheim/AreaObject/Player/Utility/InventoryComponent.h"
 #include "Sonheim/GameObject/Buildings/Storage/BaseContainer.h"
-#include "Sonheim/UI/System/UIStackSubsystem.h"
+#include "GameUIManagerSubsystem.h"
+#include "Sonheim/UI/System/UITags.h"
 
-void UContainerInteractionWidget::NativeConstruct()
+void UContainerInteractionWidget::NativeOnInitialized()
 {
-	Super::NativeConstruct();
-	
-	// 닫기 버튼 이벤트 바인딩 (닫아 둔 화면을 다시 열 때도 다시 불리므로 한 번만)
-	if (CloseButton)
-	{
-		CloseButton->OnClicked.AddUniqueDynamic(this, &UContainerInteractionWidget::OnCloseButtonClicked);
-	}
+	Super::NativeOnInitialized();
+	if (CloseButton) CloseButton->OnClicked.AddDynamic(this, &UContainerInteractionWidget::OnCloseButtonClicked);
 }
 
-void UContainerInteractionWidget::NativeDestruct()
+void UContainerInteractionWidget::NativeOnClosed()
 {
 	// Tab 등으로 스택이 먼저 닫아도 서버의 상자를 놓아준다.
 	ReleaseContainer();
@@ -30,8 +26,7 @@ void UContainerInteractionWidget::NativeDestruct()
 		InventoryComponent->OnInventoryChanged.RemoveDynamic(PlayerInventoryWidget, &UInventoryWidget::UpdateInventoryFromData);
 		InventoryComponent->OnEquipmentChanged.RemoveDynamic(PlayerInventoryWidget, &UInventoryWidget::UpdateEquipmentFromData);
 	}
-
-	Super::NativeDestruct();
+	Super::NativeOnClosed();
 }
 
 void UContainerInteractionWidget::OpenContainer(ABaseContainer* Container)
@@ -71,7 +66,7 @@ void UContainerInteractionWidget::CloseContainer()
 {
 	ReleaseContainer();
 	// 입력 모드와 커서는 UI 스택이 남은 화면에 맞춘다.
-	UUIStackSubsystem::CloseWidget(this);
+	CloseSelf();
 }
 
 void UContainerInteractionWidget::ReleaseContainer()

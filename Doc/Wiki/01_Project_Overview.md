@@ -96,16 +96,14 @@ https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
 
 ---
 
-## UMG v2 — 플레이 상태와 알림을 한 화면에서 보여주기
-
-
+## UMG v2 — 화면과 알림
 
 ![도감 등록 시 Feed·Headline·Title이 함께 표시되는 UMG v2 게임 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg)
 
 도감 신규 등록, 퀘스트 갱신, 제작 완료, 지역 진입을 **각 기능이 개별 팝업을 만드는 대신 공통 알림 슬롯으로 표시**합니다.
 
-- **Feed / Headline / Title:** `UNoticeSubsystem`에서 알림 종류별 표시 위치·순서·채널을 관리합니다.
-- **일반 메뉴:** `UUIStackSubsystem`에서 인벤토리·제작·도감·퀘스트 화면의 중첩, 입력 모드와 커서를 처리합니다.
+- **Feed / Headline / Title:** `UNoticeSubsystem`은 알림 데이터를 전달하고, `UGameUIToastSubsystem`은 슬롯별 표시·대기 정책을 관리합니다.
+- **일반 메뉴:** `GameUIFramework` 플러그인의 `UGameUIManagerSubsystem`이 인벤토리·제작·도감·퀘스트 화면을 태그로 열고, 레이어별 화면 중첩과 입력 모드·커서를 처리합니다([21. Game UI Framework](21_UI_Framework.md)).
 - **입력 안내:** `UInputHintSubsystem`이 키보드·게임패드 입력에 맞는 안내를 표시합니다.
 - **게임플레이 → UI:** 도감·퀘스트 기록은 각각 ViewData로, 던전은 GameState Snapshot을 Presenter가 변환해 HUD·미니맵·결과 화면에 전달합니다.
 
@@ -123,7 +121,7 @@ https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
 | **전투·제작** | Animation Notify·근접 Trace 보간, 장비별 Skill Grant, 공유 제작 진행·부분 완료·환불 |
 | **화면·콘텐츠 검증** | Delegate·Presenter/ViewData, Dungeon Stage Graph·Boss Pattern Validation, AgentMcp 에디터 작업 |
 
-게임플레이의 판정과 보상은 서버가 결정합니다. **클라이언트는 복제된 진행 상태와 일회성 알림을 각 화면에 맞게 표현**하며, 플레이어별 도감·퀘스트 기록과 던전의 공유 상태는 서로 다른 경로로 동기화합니다.
+게임플레이의 판정과 보상은 서버가 결정합니다. **클라이언트는 복제된 상태를 화면 데이터로 변환하고 필요한 알림을 표시**하며, 플레이어별 도감·퀘스트 기록과 던전의 공유 상태는 서로 다른 경로로 동기화합니다.
 
 설계의 세부 구현은 아래 기술 문서에서 확인할 수 있습니다.
 
@@ -135,6 +133,6 @@ https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
 | **UI·멀티플레이** | [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) · [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) |
 | **검증·개발 이력** | [13. Content Authoring & Validation](13_Content_Authoring_Validation.md) · [14. Unreal Editor Automation & Verification](14_Unreal_Editor_Automation_Verification.md) · [15. Development History & Retrospective](15_Development_History_Retrospective.md) |
 
-**[01–18 전체 기술 문서 목록 →](Home.md)**
+**[전체 기술 문서 목록 (01–21) →](Home.md)**
 
 **저장소:** [Sonheim](https://github.com/chungheonLee0325/Sonheim) · [Source-only Mirror](https://github.com/chungheonLee0325/Sonheim.Source) · [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)

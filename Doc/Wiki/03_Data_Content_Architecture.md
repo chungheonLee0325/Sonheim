@@ -78,7 +78,7 @@ struct FSkillData : public FTableRowBase
 
 같은 방식으로 `FItemData`, `FAreaObjectData`, `FLevelData`를 관리하며, 최근 콘텐츠의 `FQuestData`와 `FMonsterDexData`도 DataTable 행 구조를 사용합니다.
 
-스킬의 실제 실행 상태와 판정은 [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]]에서 다룹니다.
+스킬의 실제 실행 상태와 판정은 [05. Combat, Skill & Animation](05_Combat_Skill_Animation.md)에서 다룹니다.
 
 ---
 
@@ -107,7 +107,7 @@ public:
 
 *던전 정의를 하나의 에셋으로 관리하는 에디터 화면입니다. 스킬의 DataTable 행과 달리 던전 단위 설정을 함께 관리합니다.*
 
-데이터 검증과 그래프 생성은 [[13. Content Authoring & Validation|13_Content_Authoring_Validation]]에서 별도로 설명합니다.
+데이터 검증과 그래프 생성은 [13. Content Authoring & Validation](13_Content_Authoring_Validation.md)에서 별도로 설명합니다.
 
 ---
 
@@ -229,7 +229,7 @@ flowchart TB
 
 같은 원칙을 사용하는 다른 사례도 있습니다. **도감**은 `FMonsterDexData`와 `FMonsterDexEntry`를 조합해 `FMonsterDexPageView`를 만들고, **퀘스트**는 `FQuestData`와 `FQuestRecord`를 조합해 `FQuestView`를 만듭니다.
 
-자세한 화면 처리와 데이터 갱신은 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]], [[16. MonsterDex System|16_MonsterDex_System]], [[17. Quest System|17_Quest_System]]에서 설명합니다.
+자세한 화면 처리와 데이터 갱신은 [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md), [16. MonsterDex System](16_MonsterDex_System.md), [17. Quest System](17_Quest_System.md)에서 설명합니다.
 
 ---
 
@@ -279,13 +279,13 @@ StringTable은 **화면 문구를 관리하는 방식**이지 DataTable이나 Da
 
 ## 관련 코드 및 문서
 
-- [SonheimGameType.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/ResourceManager/SonheimGameType.h) — `FSkillData`·`FItemData` 등의 행 구조
-- [DungeonDefinitionDataAsset.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonDefinitionDataAsset.h) — Catalog·던전 정의
-- [DungeonStageDefinition.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonStageDefinition.h) — 이벤트·조건·액션·전환 데이터
-- [BossPatternDataAsset.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossPatternDataAsset.h) — 보스 패턴 정의
-- [DungeonAssetSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonAssetSubsystem.cpp) — 비동기 에셋 로딩
-- [DungeonPresentationDataAsset.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonPresentationDataAsset.h) — 화면 표시용 정의
-- [StringTableIds.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/Utilities/StringTableIds.h) — 텍스트 테이블 ID
-- [[02. Gameplay Architecture|02_Gameplay_Architecture]] — 데이터와 실행 상태의 역할
-- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — 데이터 기반 던전 진행
-- [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — 정의 데이터 검증
+- [SonheimGameType.h](../../Sonheim/Source/Sonheim/ResourceManager/SonheimGameType.h) — `FSkillData`·`FItemData` 등의 행 구조
+- [DungeonDefinitionDataAsset.h](../../Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonDefinitionDataAsset.h) — Catalog·던전 정의
+- [DungeonStageDefinition.h](../../Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonStageDefinition.h) — 이벤트·조건·액션·전환 데이터
+- [BossPatternDataAsset.h](../../Sonheim/Source/Sonheim/AreaObject/Monster/Boss/BossPatternDataAsset.h) — 보스 패턴 정의
+- [DungeonAssetSubsystem.cpp](../../Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonAssetSubsystem.cpp) — 비동기 에셋 로딩
+- [DungeonPresentationDataAsset.h](../../Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonPresentationDataAsset.h) — 화면 표시용 정의
+- [StringTableIds.h](../../Sonheim/Source/Sonheim/Utilities/StringTableIds.h) — 텍스트 테이블 ID
+- [02. Gameplay Architecture](02_Gameplay_Architecture.md) — 데이터와 실행 상태의 역할
+- [09. Branching Dungeon Runtime](09_Branching_Dungeon_Runtime.md) — 데이터 기반 던전 진행
+- [13. Content Authoring & Validation](13_Content_Authoring_Validation.md) — 정의 데이터 검증

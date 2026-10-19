@@ -38,6 +38,8 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
 	const FMonsterDexData* FindPage(int32 AreaObjectID) const;
+	/** The classes the book's stages show, from the config's page table, for loading them ahead of the book. */
+	static void GatherDisplayClasses(TArray<FSoftObjectPath>& OutPaths);
 	/** Every page, in book order. */
 	const TArray<FMonsterDexData>& GetPages() const { return Pages; }
 

@@ -5,7 +5,6 @@
 #include "Components/SpinBox.h"
 #include "Components/Button.h"
 #include "InputCoreTypes.h"
-#include "Sonheim/GameManager/SonheimGameInstance.h"
 
 void UConfirmWidget::NativeOnInitialized()
 {
@@ -14,53 +13,40 @@ void UConfirmWidget::NativeOnInitialized()
 	if (BtnCancel) BtnCancel->OnClicked.AddDynamic(this, &UConfirmWidget::OnClickedCancel);
 }
 
-void UConfirmWidget::Setup(int32 InItemID, int32 InMaxCount, bool bInDiscardMode)
+void UConfirmWidget::Setup(const FItemQuantityView& View)
 {
-	ItemID = InItemID;
-	MaxCount = FMath::Max(1, InMaxCount);
-	bDiscardMode = bInDiscardMode;
+	MaxCount = FMath::Max(1, View.MaxCount);
 
-	const FText Caption = bDiscardMode
+	const FText Caption = View.bDiscard
 		                      ? FText::FromString(TEXT("정말로 폐기하시겠습니까?\n(아이템이 영구 삭제됩니다)"))
 		                      : FText::FromString(TEXT("정말로 버리시겠습니까?\n(아이템이 바닥에 떨어집니다)"));
 	if (TxtCaption) TxtCaption->SetText(Caption);
 
-	const bool bAllowCount = (MaxCount > 1);
 	if (SpinCount)
 	{
 		SpinCount->SetMinValue(1.0);
 		SpinCount->SetMaxValue((double)MaxCount);
 		SpinCount->SetValue(1.0);
-		SpinCount->SetVisibility(bAllowCount ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		SpinCount->SetVisibility(MaxCount > 1 ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
-
-	SetItemVisual(ItemID, MaxCount);
+	if (View.Icon) ImgIcon->SetBrushFromTexture(View.Icon);
+	TxtName->SetText(View.Name);
 }
 
-void UConfirmWidget::SetItemVisual(int32 InItemID, int32 InMaxCount) const
+int32 UConfirmWidget::GetCount() const
 {
-	auto ItemData = USonheimGameInstance::Get(GetWorld())->GetDataItem(InItemID);
-	if (ItemData)
-	{
-		ImgIcon->SetBrushFromTexture(ItemData->ItemIcon);
-		TxtName->SetText(ItemData->ItemName);
-	}
+	if (!SpinCount || SpinCount->GetVisibility() != ESlateVisibility::Visible) return 1;
+	return FMath::Clamp((int32)FMath::RoundHalfFromZero(SpinCount->GetValue()), 1, MaxCount);
 }
 
 void UConfirmWidget::OnClickedConfirm()
 {
-	int32 FinalCount = 1;
-	if (SpinCount && SpinCount->GetVisibility() == ESlateVisibility::Visible)
-	{
-		FinalCount = FMath::Clamp((int32)FMath::RoundHalfFromZero(SpinCount->GetValue()), 1, MaxCount);
-	}
-	OnConfirm.Broadcast(FinalCount, bDiscardMode);
-	RemoveFromParent();
+	Finish(true);
 }
 
 void UConfirmWidget::OnClickedCancel()
 {
-	RemoveFromParent();
+	Finish(false);
 }
 
 FReply UConfirmWidget::NativeOnKeyDown(const FGeometry& InGeo, const FKeyEvent& InKeyEvent)
@@ -68,12 +54,12 @@ FReply UConfirmWidget::NativeOnKeyDown(const FGeometry& InGeo, const FKeyEvent& 
 	const FKey Key = InKeyEvent.GetKey();
 	if (Key == EKeys::Enter || Key == EKeys::Virtual_Accept)
 	{
-		OnClickedConfirm();
+		Finish(true);
 		return FReply::Handled();
 	}
 	if (Key == EKeys::Escape || Key == EKeys::Virtual_Back)
 	{
-		OnClickedCancel();
+		Finish(false);
 		return FReply::Handled();
 	}
 	return Super::NativeOnKeyDown(InGeo, InKeyEvent);
