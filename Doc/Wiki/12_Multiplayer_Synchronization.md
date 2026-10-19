@@ -156,10 +156,6 @@ if (Snapshot.RunId == Latest.RunId &&
 
 같은 실행에서 이미 처리한 Revision 이하라면 `UDungeonStagePresenter`가 다시 반영하지 않습니다. 위젯을 나중에 열거나 다시 만들 때도 마지막 Snapshot을 기반으로 ViewData를 만들기 때문에 Stage·타이머가 UI 생성 시점에 초기화되지 않습니다.
 
-![던전 진행 상태와 파티 HP를 표시하는 HUD](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_dungeon_hud.png)
-
-목표·Stage·타이머 등 던전 진행 정보는 Snapshot을 통해 전달하고, 파티 HP처럼 다른 컴포넌트가 소유하는 상태는 UI에서 별도로 조합합니다.
-
 Listen Server 호스트는 `PublishDungeonStageState()`에서 `OnRep_DungeonStageState()`를 직접 호출해 서버 로컬 UI에도 변경 알림을 전달합니다. **던전 Snapshot은 UI의 복구에 필요한 현재 값**, 진행 알림이나 보스 Montage RPC는 **발생 시점의 이벤트**라는 구분입니다.
 
 표시 데이터 변환은 [11. Client State Presentation](11_Client_State_Presentation_Pipeline.md), 각각의 게임플레이 구현은 [08. Pal Capture](08_Pal_Capture_Partner_Lifecycle.md)·[10. Boss Encounter](10_Boss_Encounter_Runtime.md)에 정리했습니다.
