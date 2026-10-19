@@ -12,6 +12,7 @@ HTML_LINK = re.compile(r'''((?:src|href)\s*=\s*["'])([^"']+)(["'])''')
 IMAGE_EXT = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.avif'}
 VIDEO_EXT = {'.mp4', '.webm', '.mov'}
 SONHEIM_PAGE = re.compile(r'^(?:0[1-9]|1[0-9]|2[01])_[^/]+\.md$')
+LEGACY_PAGE = re.compile(r'^\d+\.\d+_[^/]+\.md$')
 
 
 def page_name(path: Path, source: Path, profile: str) -> str:
@@ -23,10 +24,15 @@ def page_name(path: Path, source: Path, profile: str) -> str:
     return rel.name
 
 
+def legacy_sources(source: Path) -> list[Path]:
+    """2025-era pages preserved in the main repository, not republished individually."""
+    return sorted(p for p in source.glob('*.md') if LEGACY_PAGE.fullmatch(p.name))
+
+
 def sources_for(source: Path, profile: str) -> list[Path]:
     if profile == 'sonheim':
         return sorted(p for p in source.glob('*.md')
-                      if SONHEIM_PAGE.fullmatch(p.name) or p.name in {'Home.md', '_Sidebar.md'})
+                      if SONHEIM_PAGE.fullmatch(p.name) or p.name in {'Home.md', '_Sidebar.md', 'Legacy.md'})
     return sorted(source.rglob('*.md'))
 
 
