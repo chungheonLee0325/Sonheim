@@ -194,7 +194,7 @@ void UMonsterDexWidget::GatherPreloadAssets(TArray<FSoftObjectPath>& OutPaths) c
 | 레이어에 붙은 직후, 열 때마다 | `NativeOnOpened` | 데이터 구독, View 생성, 렌더 타깃 연결 |
 | 레이어에서 떼기 직전, 닫을 때마다 | `NativeOnClosed` | 구독 해제, 렌더 타깃·Brush·풀링된 엔트리 해제 |
 
-`bKeepWhenClosed`를 켠 화면(인벤토리·도감·지도·보관함)은 닫아도 위젯 UObject를 매니저의 `Kept` 배열에 남기고, 다시 열 때 재사용합니다. 레이어에서 떼었다가 다시 붙이므로 Slate 위젯은 새로 만들어지고 `NativeConstruct`도 다시 실행됩니다. 재사용 비용과 효과는 [20. Agent MCP 기반 UI 성능 분석과 최적화](20_UI_Performance_Profiling.md)에 정리했습니다.
+`bKeepWhenClosed`를 켠 화면(인벤토리·도감·지도·보관함)은 닫아도 위젯 UObject를 매니저의 `Kept` 배열에 남기고, 다시 열 때 재사용합니다. 레이어에서 떼었다가 다시 붙이므로 Slate 위젯은 새로 만들어지고 `NativeConstruct`도 다시 실행됩니다. 재사용 비용과 효과는 [20. UI Performance](20_UI_Performance_Profiling.md)에 정리했습니다.
 
 인벤토리 화면은 열려 있는 동안에만 가방 변경을 구독합니다.
 
