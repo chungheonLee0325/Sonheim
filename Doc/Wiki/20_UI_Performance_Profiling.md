@@ -245,7 +245,7 @@ for (UUserWidget* Entry : TArray<UUserWidget*>(RowBox->GetAllEntries()))
 
 ## 구현 결과
 
-Sonheim에서 슬롯 속성 갱신, 화면 재생성, Delegate 수명, Render Target 참조와 SceneCapture 렌더 패스 비용을 확인해 수정했습니다. 원인 조사에 사용한 CSV·Trace·GPU 분석 도구는 AgentMcp에 분리했습니다. 조사 도구를 만들면서 인벤토리의 불필요한 속성 갱신, 화면 재생성, Delegate 수명, Render Target 참조와 렌더 패스 등 서로 다른 문제를 확인하고 수정했습니다.
+Sonheim에서는 인벤토리 슬롯의 불필요한 속성 갱신과 화면 재생성 비용을 줄이고, 보관함 Delegate 수명과 도감 Render Target 참조, SceneCapture 렌더 패스를 조정했습니다. 반복 측정과 원인 분석에 사용한 CSV·Trace·GPU 분석 도구는 AgentMcp에 구현했습니다.
 
 UI 갱신은 원본 데이터 변경과 실제 위젯 속성 변경을 구분했고, 화면 수명은 UObject 유지·레이어 표시·Delegate 구독·GPU 리소스 참조를 각각 관리하도록 조정했습니다. 이 과정에서 개선 효과가 측정 편차보다 작은 변경은 유지하지 않았습니다.
 
