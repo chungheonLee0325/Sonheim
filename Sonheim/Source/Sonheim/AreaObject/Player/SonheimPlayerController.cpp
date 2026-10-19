@@ -755,10 +755,11 @@ void ASonheimPlayerController::OpenMenu()
 	if (Widgets.Num() != 2) return;
 	UInventoryWidget* InventoryWidget = Cast<UInventoryWidget>(Widgets[0]);
 	InventoryWidget->SetInventoryComponent(m_PlayerState->m_InventoryComponent);
-	m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(InventoryWidget,
-	                                                                   &UInventoryWidget::UpdateInventoryFromData);
-	m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(InventoryWidget,
-	                                                                   &UInventoryWidget::UpdateEquipmentFromData);
+	// The menu's widgets are kept and opened again (UIStack), so they are bound once.
+	m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddUniqueDynamic(InventoryWidget,
+	                                                                         &UInventoryWidget::UpdateInventoryFromData);
+	m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddUniqueDynamic(InventoryWidget,
+	                                                                         &UInventoryWidget::UpdateEquipmentFromData);
 	Cast<UPlayerStatWidget>(Widgets[1])->InitializePlayerStatWidget(m_PlayerState);
 }
 
@@ -928,32 +929,15 @@ void ASonheimPlayerController::Client_OpenContainerUI_Implementation(ABaseContai
 	// 기존 상자 UI가 열려있으면 닫기 (위젯이 서버에 그 상자를 놓아준다)
 	UIStack->Close(UIScreen::Container);
 
-	UContainerInteractionWidget* Widget = UIStack->Open<UContainerInteractionWidget>(UIScreen::Container, ContainerInteractionWidgetClass);
-	if (!Widget) return;
-	m_PlayerState->m_InventoryComponent->OnInventoryChanged.AddDynamic(
-		Widget->GetPlayerInventoryWidget(),
-		&UInventoryWidget::UpdateInventoryFromData);
-	m_PlayerState->m_InventoryComponent->OnEquipmentChanged.AddDynamic(
-		Widget->GetPlayerInventoryWidget(),
-		&UInventoryWidget::UpdateEquipmentFromData);
-	Widget->OpenContainer(Container);
+	// 위젯이 가방에 묶이고 닫힐 때 풀린다. 닫은 상자 화면은 남겨 두었다가 다시 쓴다(bKeepWhenClosed).
+	if (UContainerInteractionWidget* Widget = UIStack->Open<UContainerInteractionWidget>(UIScreen::Container, ContainerInteractionWidgetClass))
+		Widget->OpenContainer(Container);
 }
 
 void ASonheimPlayerController::Client_CloseContainerUI_Implementation()
 {
-	UUIStackSubsystem* UIStack = GetUIStack();
-	UContainerInteractionWidget* Widget = UIStack ? Cast<UContainerInteractionWidget>(UIStack->GetWidget(UIScreen::Container)) : nullptr;
-	if (Widget && m_PlayerState)
-	{
-		m_PlayerState->m_InventoryComponent->OnInventoryChanged.RemoveDynamic(
-			Widget->GetPlayerInventoryWidget(),
-			&UInventoryWidget::UpdateInventoryFromData);
-		m_PlayerState->m_InventoryComponent->OnEquipmentChanged.RemoveDynamic(
-			Widget->GetPlayerInventoryWidget(),
-			&UInventoryWidget::UpdateEquipmentFromData);
-	}
 	// 위젯이 먼저 닫혔어도 스택에서 거두어 입력 모드를 되돌린다.
-	if (UIStack) UIStack->Close(UIScreen::Container);
+	if (UUIStackSubsystem* UIStack = GetUIStack()) UIStack->Close(UIScreen::Container);
 }
 
 void ASonheimPlayerController::Server_ContainerOperation_Implementation(

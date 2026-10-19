@@ -74,6 +74,8 @@ public:
 	/** From the monster book: marks where a species lives (regions, or Dungeon for the dungeon's gate), names it over the map and
 	 * fits the view to those places. */
 	void ShowHabitat(const TArray<FName>& Habitats, const FText& Species);
+	/** Puts the view on a point of the map (UV) at a zoom, as dragging and the wheel do; the perf scenes drive the map with it. */
+	void SetView(const FVector2D& InCenter, float InSpan) { Center = InCenter; Span = InSpan; ApplyView(); }
 	void Select(FName PointId);
 	void ToggleKind(EMapMarkerKind Kind);
 	bool IsKindShown(EMapMarkerKind Kind) const { return !HiddenKinds.Contains(Kind); }

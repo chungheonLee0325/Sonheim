@@ -41,7 +41,11 @@ AMonsterDexStage::AMonsterDexStage()
 	Capture->bCaptureEveryFrame = true;
 	Capture->bCaptureOnMovement = false;
 	Capture->FOVAngle = FieldOfView;
-	for (const TCHAR* Flag : {TEXT("Atmosphere"), TEXT("Fog"), TEXT("VolumetricFog"), TEXT("Cloud"), TEXT("Particles")})
+	// The picture holds one skeletal mesh lit by the stage's own light, so the world's passes stay off: its sky and fog, and the
+	// shadows, Nanite geometry and ambient occlusion that would otherwise run for this view too (ProfileGPU: about 1 ms a frame).
+	for (const TCHAR* Flag : {TEXT("Atmosphere"), TEXT("Fog"), TEXT("VolumetricFog"), TEXT("Cloud"), TEXT("Particles"), TEXT("DynamicShadows"),
+	                          TEXT("ContactShadows"), TEXT("CapsuleShadows"), TEXT("NaniteMeshes"), TEXT("AmbientOcclusion"), TEXT("DistanceFieldAO"),
+	                          TEXT("LumenGlobalIllumination"), TEXT("LumenReflections")})
 	{
 		Capture->ShowFlagSettings.Add(FEngineShowFlagsSetting{Flag, false});
 	}
