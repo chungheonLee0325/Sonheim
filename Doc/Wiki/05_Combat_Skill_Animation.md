@@ -59,7 +59,7 @@ flowchart TB
     FINISH --> SPEC
 ~~~
 
-서버 요청과 실제 실행은 별개입니다. `TryCastSkillById`는 클라이언트에서 `Server_TryCastSkill`을 호출하며, 서버가 `IsSkillAllowed`와 `CanCastSkill`을 다시 확인합니다. 실행에 성공하면 `OnServerSkillActivated`로 복제 상태를 갱신하고 `AAreaObject::MultiCast_CastSkill`로 Montage를 재생합니다.
+`TryCastSkillById`는 클라이언트에서 `Server_TryCastSkill`을 요청하고, 서버는 `IsSkillAllowed`와 `CanCastSkill`을 검사합니다. 승인되면 `OnServerSkillActivated`로 상태를 갱신하고 `MultiCast_CastSkill`로 Montage를 재생합니다.
 
 `AAreaObject::Tick`은 서버에서 현재 `UBaseSkill::Tick`을 호출합니다. 따라서 근접 공격은 **Montage Notify가 판정 구간을 열고, 서버 Tick이 해당 구간의 충돌을 검사**하는 구조입니다.
 
@@ -123,7 +123,7 @@ Ready
 Cancel → CoolTime
 ~~~
 
-이 Phase는 실행 객체의 상태입니다. 위의 `SkillSpecs`는 별도의 시전 여부·종료 시각 요약을 저장합니다. **두 구조를 하나의 상태 객체로 취급하지 않습니다.**
+`UBaseSkill`의 Phase는 실행 상태이며, `SkillSpecs`는 UI·네트워크에 필요한 시전 여부와 쿨타임 종료 시각을 요약합니다.
 
 ---
 
@@ -170,7 +170,7 @@ TMap<int32, int32> GrantRefCounts;
 
 `USonheimSkillComponent::IsSkillAllowed`는 기본 `OwnedSkillIds` 또는 `GrantRefCounts`로 사용 가능 여부를 결정합니다. `ReplaceGrant`는 특정 Grant의 스킬 목록만 바꿉니다.
 
-**RefCount가 0이 됐다고 `SkillInstances`의 UObject를 즉시 Destroy하는 것은 아닙니다.** 현재 구현의 회수는 주로 **사용 권한의 변경**이며, 저장한 인스턴스와 허용 여부를 구별해야 합니다.
+Grant의 `RefCount`가 0이 되면 사용 권한을 회수합니다. 캐시된 `SkillInstances` UObject는 즉시 파괴하지 않으므로 인스턴스 수명과 스킬 사용 권한을 따로 관리합니다.
 
 ---
 
@@ -190,7 +190,7 @@ UBaseSkill::Activate
 SkillSpecs 갱신 + Montage 재생
 ~~~
 
-클라이언트에서 먼저 검사하거나 RPC를 보냈더라도, **서버에서 `Activate`가 성공해야 실제 시전 상태로 들어갑니다.**
+스킬은 서버에서 사용 조건을 다시 검사하고 `Activate`가 성공할 때 시전 상태로 전환합니다.
 
 ### OnActivate·OnFire·OnComplete
 
@@ -370,7 +370,7 @@ flowchart TB
 
 ## 스킬 상태의 네트워크 동기화
 
-**`FSonheimSkillSpecItem`만 복제하고 `UBaseSkill`은 복제하지 않는 구조가 아닙니다.** 현재 스킬은 두 복제 경로를 함께 사용합니다.
+스킬 상태는 `SkillSpecs` FastArray와 `UBaseSkill` 서브오브젝트의 두 경로로 복제합니다.
 
 | 경로 | 복제 필드·대상 |
 |---|---|
@@ -380,7 +380,7 @@ flowchart TB
 
 `EnsureSkillInstance`는 `BaseSkill_<ID>`의 안정적인 UObject 이름을 사용하고, `AAreaObject::GetSubobjectsWithStableNamesForNetworking`에서 스킬 객체를 등록합니다. 실제 복제는 `AAreaObject::ReplicateSubobjects`에서 `Channel->ReplicateSubobject`를 호출합니다.
 
-따라서 **서버가 실행을 승인하는 권한**, **클라이언트에 유지하는 상태**, **몽타주를 시작하는 Multicast**를 각각 구분해야 합니다. 네트워크 관련성·OwnerOnly·Snapshot과의 비교는 [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md)에서 다룹니다.
+서버는 시전 권한을 검증하고, FastArray·서브오브젝트 복제는 지속 상태를 전달하며, Multicast는 Montage 연출을 시작합니다. 복제 범위는 [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md)에서 다룹니다.
 
 ---
 
@@ -396,7 +396,7 @@ flowchart TB
 | **프레임 간 Socket 보간** | 빠른 Swing의 타격 누락 위험 감소 | 추가 Sweep·중복 제거·디버깅 비용 |
 | **동일한 Damage Context** | 플레이어·몬스터·보스의 피해 처리 공유 | AttackData의 범위·Socket·Index 설정 검증 필요 |
 
-핵심은 **타격 시점은 Montage에 맞추되 실제 판정·비용·피해는 서버 게임플레이 경로에서 확정**한다는 점입니다. 콘텐츠는 `FSkillData`와 `FAttackData`로 조정하고, 복제·시각 효과는 각자의 목적에 맞는 경로로 전달합니다.
+Montage Notify는 공격 시점을 지정하며, 서버의 스킬·피해 처리 경로가 비용과 타격 결과를 확정합니다.
 
 ## 관련 코드 및 문서
 

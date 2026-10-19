@@ -1,6 +1,6 @@
 # 10. Boss Encounter Runtime
 
-**기존 몬스터의 전투·피해·포획 기능 위에 보스 전용 FSM과 데이터 기반 패턴 실행기를 구성**했습니다. `UBossFSM`은 거리·쿨타임·가중치로 패턴을 선택하고, 하나의 `PatternClock`에서 타겟 추적, 텔레그래프, 타격, Montage Section 전환을 제어합니다. HP와 Break는 Phase 전환·Down·Resting을 결정합니다.
+`ABossMonster`는 기존 몬스터의 피해·포획 기능을 사용하고, `UBossFSM`과 Pattern DataAsset으로 보스 행동을 실행합니다. 패턴은 거리·쿨타임·가중치로 선택하며 `PatternClock`으로 추적·경고·타격·Montage Section 전환 시점을 제어합니다. Break와 HP는 Down·Resting 상태 전환에 사용합니다.
 
 ## 전투 시연
 
@@ -16,7 +16,9 @@ https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
 
 공격 형태에 맞는 경고 영역이 먼저 나타나고, `FBossStrike`의 형상·기준 위치에 따라 타격이 실행됩니다.
 
-## 핵심 구현
+## 실행 흐름과 담당 코드
+
+**패턴 후보 선택(`ChoosePattern`) → 시간축 실행(`PatternClock`) → 경고·피해(`FBossStrike`) → 복제·HUD(`FBossStatus`)**
 
 | 구현 | 역할 |
 |---|---|
@@ -101,18 +103,9 @@ if (const double* Ready = ReadyAt.Find(Pattern.PatternId);
 
 후보가 있으면 **직전 패턴을 제외한 후보를 먼저 구성**합니다. 선택 가능한 대안이 없다면 직전 패턴도 허용하고, 최종 후보를 `Weight`에 비례한 랜덤 선택으로 결정합니다.
 
-~~~mermaid
-flowchart TB
-    TARGET["PickTarget<br/>Arena 안의 가장 가까운 공격 가능 플레이어"] --> FILTER["Phase · Range · Cooldown · Weight 검사"]
-    FILTER --> ALTERNATE{"직전 패턴을 제외해도<br/>후보가 있는가?"}
-    ALTERNATE -->|"예"| DISTINCT["직전 패턴 제외"]
-    ALTERNATE -->|"아니오"| REPEAT["반복 허용"]
-    DISTINCT --> ROLL["Weighted Random"]
-    REPEAT --> ROLL
-    ROLL --> BEGIN["Begin(Pattern)<br/>Montage · PatternClock 시작"]
-~~~
+`PickTarget`으로 Arena 안의 공격 가능 대상을 선택한 뒤, Phase·거리·Cooldown을 통과한 후보에서 가중 랜덤으로 패턴을 결정합니다.
 
-패턴이 끝나면 `EndPattern`에서 `ReadyAt[PatternId]`를 갱신하고 다음 패턴 선택까지 `GapSecondsMin / GapSecondsMax` 간격을 둡니다. **패턴 후보가 없다면 가까이 이동**합니다.
+`EndPattern`은 `ReadyAt[PatternId]`를 갱신하고 `GapSecondsMin / GapSecondsMax` 동안 대기합니다. 사용 가능한 패턴이 없으면 접근 이동을 선택합니다.
 
 ---
 
@@ -190,11 +183,7 @@ FBossPattern.Seconds
                          등장    Section
 ~~~
 
-- `PatternClock`는 `DeltaSeconds × Tempo()`로 증가합니다.
-- `FBossSectionCue::Seconds`에서 `JumpToSection`을 실행합니다.
-- `FBossStrike::MarkSeconds`에 텔레그래프를 생성하고 `StrikeSeconds`에 타격합니다.
-- `LeapStartSeconds / LeapEndSeconds`가 설정되면 해당 구간의 이동을 실행합니다.
-- `Pattern.Seconds`에 도달하면 패턴을 종료하고 다음 패턴 대기 구간으로 들어갑니다.
+`PatternClock`은 `DeltaSeconds × Tempo()`로 진행하며 `FBossSectionCue::Seconds`에서 Montage Section을 전환합니다. `FBossStrike`의 `MarkSeconds / StrikeSeconds`가 경고와 타격을 구분하고, Leap 구간과 전체 종료 시점도 패턴 데이터에서 결정합니다.
 
 패턴별 Root Motion 강도는 `RootMotionScale`로 조절하고 패턴 종료 시 원래 값으로 복구합니다. **Animation의 Section 배치와 실제 타격 시간을 하나의 데이터 정의에서 조율**하는 구조입니다.
 
@@ -252,14 +241,7 @@ struct FBossStrike
 
 ### Boss 기준과 Target 기준
 
-~~~mermaid
-flowchart LR
-    STRIKE["FBossStrike<br/>Shape · Anchor · MarkSeconds"] --> CHOOSE{"Anchor"}
-    CHOOSE -->|"Boss"| FOLLOW["보스 발밑 기준<br/>표시가 Boss Transform 추종"]
-    CHOOSE -->|"Target"| FIXED["Mark 시점 타겟 위치 저장<br/>고정된 경고 영역"]
-    FOLLOW --> HIT["StrikeSeconds<br/>LandStrike"]
-    FIXED --> HIT
-~~~
+`Anchor`에 따라 보스의 현재 발 위치를 따라가거나, Mark 시점의 타겟 위치에 경고 영역을 고정합니다.
 
 - **Boss Anchor:** `ABossTelegraph::FeetTransform`으로 보스 발밑 기준 위치를 만들고 `Follow`를 설정합니다. 표시와 타격은 Strike 실행 시점의 보스 위치를 따릅니다.
 - **Target Anchor:** `Mark` 시점의 타겟 발밑 위치와 방향을 `FStrikeRun::Where`에 보관합니다. 이후 플레이어가 이동해도 경고·영역 타격의 기준은 유지됩니다.
@@ -373,17 +355,7 @@ if (Next.Break >= 1.f)
 
 `ExhaustHealth`는 HP 비율 임계값 배열입니다. `TryExhaust`는 HP가 다음 임계값 이하로 떨어지면 **현재 패턴을 중단하고 Resting으로 전환**합니다.
 
-~~~text
-ExhaustHealth = [0.3, 0.1] (DataAsset 기본값)
-    ↓
-HP가 다음 임계값 이하가 됨
-    ↓
-TryExhaust → EndPattern(true)
-    ↓
-Resting · ExhaustMontage
-    ↓
-ExhaustSeconds 경과 → Fighting
-~~~
+기본 `ExhaustHealth` 임계값은 `[0.3, 0.1]`입니다. `TryExhaust`가 다음 임계값 통과를 감지하면 현재 패턴을 종료하고 `ExhaustSeconds` 동안 Resting 상태를 유지한 뒤 전투로 복귀합니다.
 
 한 번의 큰 피해로 여러 임계값을 통과했더라도 `ExhaustsTaken`을 진행시켜 **한 번의 Resting만 발생**시킵니다. `Down`과 `Resting`은 각각 다른 조건으로 진입하며, `Resting` 도중에는 Break를 누적하지 않습니다.
 
@@ -410,7 +382,7 @@ bool IsVulnerable() const
 }
 ~~~
 
-보스는 **포획할 수 있는 상태만 FSM에서 결정**합니다. PalSphere 충돌 이후 포획 확률 판정·Reveal·보유 목록 등록은 공통 Pal 시스템을 사용합니다. 상세 과정은 [08. Pal Capture & Partner Lifecycle](08_Pal_Capture_Partner_Lifecycle.md)에서 설명합니다.
+보스 FSM은 Resting에서 포획 가능 여부만 결정하고, 실제 확률 판정·Reveal·보유 등록은 공통 Pal 시스템으로 전달합니다. [08. Pal Capture & Partner Lifecycle](08_Pal_Capture_Partner_Lifecycle.md)
 
 포획 Reveal 동안 보스의 `DeactivateMonster`는 `UBossFSM::Pause`도 호출합니다. 실패 후 다시 활성화할 때는 `Resume`으로 휴식/Down 시간에 포획 연출 동안의 시간을 보정합니다.
 
@@ -473,6 +445,6 @@ flowchart LR
 - [05. Combat, Skill & Animation](05_Combat_Skill_Animation.md) — `FAttackData` 기반 피해 경로
 - [08. Pal Capture & Partner Lifecycle](08_Pal_Capture_Partner_Lifecycle.md) — 보스 포획의 공통 Pal 시스템
 - [09. Branching Dungeon Runtime](09_Branching_Dungeon_Runtime.md) — Boss 그룹·던전 진행
-- [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) — Boss HUD 데이터 구성
+- [11. Client State Presentation](11_Client_State_Presentation_Pipeline.md) — Boss HUD 데이터 구성
 - [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) — 상태 복제와 연출 RPC
 - [13. Content Authoring & Validation](13_Content_Authoring_Validation.md) — 패턴·타격 타이밍 검증

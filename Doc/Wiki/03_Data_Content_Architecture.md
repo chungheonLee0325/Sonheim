@@ -101,7 +101,7 @@ public:
 
 `Stages` 안에는 스테이지별 이벤트·조건·액션·전환 규칙이 포함됩니다. 정의 에셋은 `ValidateDefinition`으로 이러한 관계를 검사하며, `BuildStageGraph()`로 실제 설정에서 스테이지 그래프를 생성합니다.
 
-`UPrimaryDataAsset`을 사용한 던전 정의는 `FPrimaryAssetId`로 조회할 수 있습니다. 반면 보스 패턴은 `UBossPatternDataAsset : UDataAsset`에 패턴·타이밍·타격 정보를 정의합니다. **모든 DataAsset을 PrimaryDataAsset으로 만든 것은 아닙니다.**
+던전 정의는 `UPrimaryDataAsset`으로 만들어 `FPrimaryAssetId`로 조회하고, 보스의 패턴·타이밍·타격 정보는 `UBossPatternDataAsset : UDataAsset`에 정의했습니다.
 
 ![던전 정의 DataAsset 편집 화면 — 콘텐츠 단위 설정](https://github.com/user-attachments/assets/e34540c3-2627-4d42-8912-4f0776413304)
 
@@ -138,7 +138,7 @@ flowchart TB
 
 서버의 `UDungeonStageRuntimeSubsystem`은 입구의 Catalog 행을 조회하고 레벨 등 입장 조건을 검사합니다. 입장에 사용할 `DefinitionAssetId`를 확보한 뒤 `UDungeonAssetSubsystem::LoadDefinition`으로 실제 던전 정의를 로드합니다.
 
-이처럼 **입구에서 필요한 정보와 실행할 콘텐츠의 상세 설정을 분리**했습니다. Catalog는 콘텐츠 선택·조회 정보를 담고, DataAsset은 실행 규칙을 담습니다.
+Catalog는 입장 조건과 정의 에셋 ID를 보관하고, DataAsset은 던전의 실행 규칙을 보관합니다.
 
 ---
 
@@ -198,7 +198,7 @@ flowchart TB
 
 구현에서는 `UAssetManager::GetStreamableManager().RequestAsyncLoad`를 사용하고, 요청별 `FStreamableHandle`을 보관합니다. 에셋 ID를 찾지 못하거나 정의·참조 검사에 실패하면 로딩 결과로 오류를 전달합니다. 로딩 요청이 항상 성공한다고 가정하지 않습니다.
 
-**Soft Reference 자체가 비동기 로딩을 수행하는 것은 아닙니다.** 또한 모든 게임 데이터가 Soft Reference인 것은 아닙니다. 앞서 본 `FSkillData::Montage`처럼 일반 UObject 참조를 쓰는 데이터도 있습니다.
+Soft Reference의 실제 로딩은 `RequestAsyncLoad`가 수행합니다. `FSkillData::Montage`처럼 일반 UObject 참조를 사용한 필드도 있습니다.
 
 ---
 
@@ -229,7 +229,7 @@ flowchart TB
 
 같은 원칙을 사용하는 다른 사례도 있습니다. **도감**은 `FMonsterDexData`와 `FMonsterDexEntry`를 조합해 `FMonsterDexPageView`를 만들고, **퀘스트**는 `FQuestData`와 `FQuestRecord`를 조합해 `FQuestView`를 만듭니다.
 
-자세한 화면 처리와 데이터 갱신은 [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md), [16. MonsterDex System](16_MonsterDex_System.md), [17. Quest System](17_Quest_System.md)에서 설명합니다.
+자세한 화면 처리와 데이터 갱신은 [11. Client State Presentation](11_Client_State_Presentation_Pipeline.md), [16. MonsterDex System](16_MonsterDex_System.md), [17. Quest System](17_Quest_System.md)에서 설명합니다.
 
 ---
 
@@ -252,30 +252,23 @@ LOCTABLE(SONHEIM_ST_DUNGEON, "Boss.CaptureHint")
 
 코드에는 테이블 경로와 키를 두고, 실제 문구는 StringTable 에셋에서 관리합니다. 반면 번역할 필요가 없는 고정 기호·형식은 `INVTEXT`로 정의하는 경우가 있습니다.
 
-StringTable은 **화면 문구를 관리하는 방식**이지 DataTable이나 DataAsset을 대체하는 콘텐츠 정의 형식은 아닙니다.
+StringTable은 문구의 키와 번역 가능한 텍스트를 관리하고, DataTable·DataAsset에는 콘텐츠 정의를 저장합니다.
 
 ---
 
 ## 선택 기준과 비용
 
-| 결정할 사항 | 선택과 근거 |
-|---|---|
-| 같은 필드 구조의 데이터가 여러 건인가? | **DataTable** — 스킬·아이템·도감·퀘스트의 행 정의 |
-| 여러 단계·규칙을 하나의 에셋으로 관리하는가? | **DataAsset** — 던전 정의·보스 패턴 |
-| AssetManager가 콘텐츠 정의를 ID로 찾도록 하는가? | **PrimaryDataAsset** — 던전 정의 |
-| 콘텐츠의 계층 관계를 식별해야 하는가? | **GameplayTag** — 스테이지·그룹·분기 |
-| 로딩 시점을 별도로 제어해야 하는 에셋인가? | **Soft Reference + 명시적인 로딩 처리** |
-| 여러 화면에서 같은 번역 가능한 문구를 사용하는가? | **FText / StringTable** |
+| 대상 | 사용 기술 | 선택 이유 | 관리할 부분 |
+|---|---|---|---|
+| 아이템·스킬·퀘스트 등 반복 정의 | `DataTable` | 같은 필드 구조의 데이터를 행 단위로 조회 | 큰 중첩 그래프는 행으로 표현하기 불편 |
+| 던전·보스 콘텐츠 설정 | `DataAsset` | 단계·규칙·타격 구성을 하나의 에셋에 저장 | 에셋 간 참조와 검증 |
+| ID로 조회할 던전 정의 | `UPrimaryDataAsset` | `FPrimaryAssetId`로 로딩 대상 식별 | Catalog ID·실제 에셋 대응 |
+| Stage·Group·Branch 식별자 | `GameplayTag` | 계층형 이름으로 콘텐츠 참조 | 태그 변경·참조 일치 |
+| 런타임에 로딩하는 에셋 | Soft Reference + `AssetManager` | 참조와 메모리 로드 시점 분리 | 로딩 완료·실패·이전 요청 해제 |
+| UI에서 공유하는 문구 | `FText` / StringTable | 코드와 문구 분리 | 테이블 경로·키 |
+| 던전 진행·화면 표시 | Definition + Presentation DataAsset | 진행 규칙과 문구·아이콘을 별도 수정 | 같은 Stage ID로 데이터 연결 |
 
-| 선택 | 효과 | 관리 비용 |
-|---|---|---|
-| DataTable | 동일 구조의 데이터를 모아 편집·조회 | 큰 중첩 그래프는 행 단위로 다루기 불편 |
-| DataAsset | 콘텐츠 단위로 설정·검증 가능 | 에셋 수와 참조 관계 관리 |
-| GameplayTag | 계층형 식별·에디터 선택 지원 | 태그 네임스페이스와 변경 관리 |
-| Soft Reference | 참조 보유와 에셋 로드 시점 분리 | 로딩 완료·실패·요청 해제 처리 필요 |
-| 게임플레이/UI 데이터 분리 | 규칙과 표시를 개별 수정 가능 | ID 대응과 화면용 데이터 변환 코드 추가 |
-
-핵심은 하나의 형식을 모든 데이터에 적용하는 것이 아니라, **정의 데이터의 구조·조회 방식·실행 중 변경 여부·로딩 요구사항**에 따라 조합하는 것입니다.
+데이터 형식의 선택과 런타임 상태의 소유권은 구분했습니다. 예를 들어 던전 Definition은 에셋이지만 현재 진행 상태는 서버 Runtime과 GameState에서 관리합니다.
 
 ## 관련 코드 및 문서
 

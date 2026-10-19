@@ -58,7 +58,7 @@ m_QuestComponent = CreateDefaultSubobject<UQuestComponent>(TEXT("Quest"));
 | `UMonsterDexComponent` | 발견·처치·포획·보상 수령 기록 |
 | `UQuestComponent` | 퀘스트 단계·목표 진행·완료 기록 |
 
-각 컴포넌트의 **복제 대상과 저장 방식은 같지 않습니다.** 예를 들어 도감·퀘스트는 소유 플레이어에게 변경 기록을 복제하고 서버 저장 기능도 사용합니다. PlayerState에 배치했다는 사실 자체가 SaveGame 저장을 보장하지는 않습니다.
+컴포넌트마다 복제·저장 방식을 별도로 정했습니다. 도감·퀘스트는 소유 클라이언트에 기록을 복제하고, 서버에서는 SaveGame 처리도 수행합니다. PlayerState에 배치한 것만으로 디스크에 저장되지는 않습니다.
 
 ### Pawn — 캐릭터의 현재 행동과 외형
 
@@ -139,7 +139,7 @@ WeaponMesh + AnimInstance 정보
 로컬 CurrentWeaponType / 크로스헤어 반영
 ~~~
 
-**Inventory의 아이템 기록**, **현재 무기 외형**, **스킬 사용 권한**을 하나의 Widget에서 임의로 변경하지 않고 각 소유 시스템에 전달하는 구조입니다.
+무기 슬롯 변경은 Inventory가 처리하고, 스탯·스킬 권한·외형 반영은 각 담당 컴포넌트와 Pawn이 수행합니다.
 
 ---
 
@@ -186,7 +186,7 @@ struct FStatModifier
 
 위 표는 **현재 `StatChanged`에서 실제로 처리하는 스탯**입니다. 작업 속도·스태미나·최대 무게 등의 최종 값은 PlayerState에 계산·보관되지만, 이 함수의 switch에 모두 포함된 것은 아닙니다.
 
-이를 통해 **장비 Modifier와 스탯 계산은 PlayerState 측**, **전투·이동 값의 적용은 Pawn 측**에서 수행합니다.
+최종 스탯은 PlayerState에서 계산하고, 캐릭터의 HP·공격/방어·Movement 설정은 Pawn에서 적용합니다.
 
 ---
 
@@ -279,7 +279,7 @@ enum class EConditionBitsType : uint32
 | 복제 | `ConditionFlags` 프로퍼티 복제 |
 | 클라이언트 반영 | `OnRep_ConditionFlags`에서 추가·제거된 비트 계산 |
 
-**한 종류의 Condition에 여러 출처의 독립 만료 시간을 쌓는 구조는 아닙니다.** 같은 종류는 Timer 하나를 갱신하는 방식입니다.
+같은 Condition을 재적용하면 기존 Timer를 교체하므로 종류별 만료 시간은 하나만 유지합니다.
 
 ---
 
@@ -300,7 +300,7 @@ enum class EConditionBitsType : uint32
 
 글라이더는 `Server_SetGliding`에서 허용 여부를 검사한 뒤 상태를 복제합니다. `ApplyGliderState`는 글라이더 Mesh·Animation·중력·공중 제어를 변경하고, `UpdateGliding`은 활성 상태의 이동 속도를 갱신합니다.
 
-이 문서는 **플레이어 상태가 이동·외형에 미치는 영향**에 초점을 둡니다. 네트워크 전송 조건·예측의 상세는 [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md)에 있습니다.
+복제 조건과 예측·보정은 [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md)에서 다룹니다.
 
 ---
 
@@ -325,7 +325,7 @@ PalCaptureComponent->InitializeWithPlayerState(S_PlayerState);
 PalPartnerSkillComponent->InitializeWithPlayerState(S_PlayerState);
 ~~~
 
-Pawn이 PlayerState를 참조해야 하는 지점을 명시적으로 두어 **Pal 보유 기록과 현재 Pawn의 포획·소환 기능을 연결**합니다. Pal의 실제 서버 판정과 소유 목록 변경은 [08. Pal Capture & Partner Lifecycle](08_Pal_Capture_Partner_Lifecycle.md)에서 설명합니다.
+서버 Possess와 클라이언트 `OnRep_PlayerState` 양쪽에서 Pal 컴포넌트를 연결합니다. 포획 판정과 보유 목록 변경은 [08. Pal Capture & Partner Lifecycle](08_Pal_Capture_Partner_Lifecycle.md)에서 다룹니다.
 
 ---
 
@@ -340,7 +340,7 @@ Pawn이 PlayerState를 참조해야 하는 지점을 명시적으로 두어 **Pa
 | **ConditionFlags + Timer** | 조합 가능한 상태와 시간 만료 관리 | 같은 Condition에 출처별 독립 Duration은 없음 |
 | **상태 복제 + OnRep** | 클라이언트 무기·이동·외형 갱신 | 로컬 입력 피드백과 서버 결과 정합성 |
 
-장비·행동·조건 상태를 하나의 거대한 Player 클래스에 모두 저장하지 않고, **각 상태의 원본은 컴포넌트에 두고 캐릭터의 실제 행동 변경만 Pawn에 반영**하도록 구성했습니다.
+장비·스탯·조건 상태는 담당 컴포넌트에 유지하고, Pawn은 현재 행동과 외형에 필요한 값을 반영합니다.
 
 ## 관련 코드 및 문서
 

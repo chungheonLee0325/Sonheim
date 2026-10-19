@@ -6,7 +6,7 @@
 
 https://github.com/user-attachments/assets/57246d79-bd3b-473f-85fc-762670023729
 
-PalSphere를 던지고 포획 확률·단계별 Reveal·성공/실패 결과가 표시되는 실제 게임 화면입니다.
+PalSphere 투척부터 확률·Reveal·성공/실패 표시까지의 게임 화면입니다.
 
 ## 핵심 구현
 
@@ -121,7 +121,7 @@ bool ABaseMonster::CanCapture() const
 | `StartDelay` · `InterStageDelay` · `EndDelay` | 연출의 시작·단계 사이·종료 간격 |
 | `FailStageOverride` | 실패 시 어느 단계에서 멈추는지 |
 
-성공률 구간에 따라 Reveal 단계 수를 1~4개로 정하고, 실패라면 `PickFailStage`로 정지 위치를 선택합니다. `Multicast_BeginCaptureReveal`을 받은 `APalSphere`는 **서버가 결정한 동일 파라미터**로 진행 위젯을 재생합니다.
+서버는 성공률 구간에 따라 Reveal 단계를 1~4개로 정하고, 실패 시 `PickFailStage`로 정지 위치를 선택합니다. 각 클라이언트의 `APalSphere`는 Multicast로 받은 동일한 파라미터를 재생합니다.
 
 ~~~mermaid
 sequenceDiagram
@@ -167,7 +167,7 @@ else
 
 성공 시에는 몬스터 소유자와 Pal 목록을 갱신하고, 실패 시에는 몬스터를 다시 활성화해 포획을 시도한 플레이어를 Aggro 대상으로 설정합니다.
 
-**랜덤 결과를 확정하는 시점과 실제 소유권을 적용하는 시점을 분리**한 이유는 Capture Reveal이 끝날 때까지 대상 상태를 유지하고, 그 사이 달라질 수 있는 보유 공간을 적용 직전에 확인하기 위해서입니다.
+서버는 먼저 포획 성공 여부를 확정하지만 `PartnerOwner`와 보유 목록은 Reveal 종료 시 갱신합니다. 연출 중 보유 공간이 달라질 수 있어 적용 직전에 다시 검사합니다.
 
 ---
 
@@ -246,7 +246,7 @@ ProcessPendingSummon
 
 `MultiCast_PlaySummonAnimation`은 플레이어의 무기·PalSphere Mesh를 바꾸고 Montage를 재생합니다. Montage 종료 Delegate에서는 각 클라이언트의 외형을 복구하고, **서버이며 Montage가 중단되지 않았을 때만** `ProcessPendingSummon`을 호출합니다.
 
-`SummonedPal`은 일반 프로퍼티로 복제되고, `OnRep_SummonedPal`이 UI 등의 `OnPalSummoned / OnPalDismissed` Delegate를 발생시킵니다.
+`SummonedPal` 복제 후 `OnRep_SummonedPal`이 UI의 `OnPalSummoned / OnPalDismissed` Delegate를 호출합니다.
 
 ### 기존 Monster Actor 활성화·비활성화
 
@@ -281,13 +281,13 @@ ProcessPendingSummon
 
 `UPalPartnerSkillComponent::UpdateNearestEnemy`는 서버에서 `SummonedPal`이 있을 때 몬스터를 조회하고, 소유자 주변 800 유닛 이내의 적을 찾아 Aggro Target으로 설정합니다.
 
-**선택한 상대와 실제 공격 방식은 몬스터의 기존 FSM·Skill 시스템**을 사용합니다. 포획 성공 시 새 Partner 전용 캐릭터를 Spawn하는 구조가 아닙니다.
+타겟 선정 이후의 공격은 기존 몬스터 FSM과 Skill 시스템이 처리하며, 별도의 Partner 캐릭터를 생성하지 않습니다.
 
 ### Partner Skill — 소환과 다른 상태
 
 `TogglePartnerSkill`은 소환된 Pal에 `PartnerSkillStart / PartnerSkillEnd`를 호출하고, `SetPartnerSkillTrigger`는 버튼 입력을 `PartnerSkillTrigger`에 전달합니다. 일부 Pal은 `UPartnerSkillMode`에서 플레이어의 `PartnerWeapon` Socket에 부착되며, `bIsAttach`의 복제로 클라이언트 부착 상태를 맞춥니다.
 
-`UPalPartnerSkillComponent`는 `SummonedPal`과 `bUsingPartnerSkill`을 각각 복제합니다. **소환된 상태와 Partner Skill을 사용 중인 상태는 같은 값이 아닙니다.**
+`UPalPartnerSkillComponent`는 소환된 Actor(`SummonedPal`)와 Partner Skill 사용 여부(`bUsingPartnerSkill`)를 각각 복제합니다.
 
 ### PartnerOwner를 이용한 공격 가능 대상 구분
 
@@ -301,7 +301,7 @@ ProcessPendingSummon
 | Partner Pal | 야생 몬스터 | 허용 |
 | Partner Pal | 플레이어·소유자가 있는 Pal | 제한 |
 
-포획 후 `PartnerOwner`가 설정되면 **동일한 Monster 클래스에서 AI 경로와 피아식별 규칙이 함께 바뀝니다.**
+포획 후 `PartnerOwner`를 기준으로 기존 Monster의 AI와 피아식별이 전환됩니다.
 
 ---
 

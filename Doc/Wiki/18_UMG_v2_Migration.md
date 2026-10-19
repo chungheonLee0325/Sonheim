@@ -140,7 +140,7 @@ RegistryLoad = UAssetManager::GetStreamableManager().RequestAsyncLoad(
 
 ## 관련 코드
 
-- [UIStackSubsystem.cpp](../../Sonheim/Source/Sonheim/UI/System/UIStackSubsystem.cpp) — 화면 Stack·입력 복원
+- [GameUIManagerSubsystem.cpp](../../Sonheim/Plugins/GameUIFramework/Source/GameUIFramework/Private/GameUIManagerSubsystem.cpp) — 화면 레이어·입력 모드·뒤로 가기 관리
 - [NoticeSubsystem.cpp](../../Sonheim/Source/Sonheim/UI/Notice/NoticeSubsystem.cpp) · [NoticeWidget.cpp](../../Sonheim/Source/Sonheim/UI/Notice/NoticeWidget.cpp) — 알림 표시 정책·수명
 - [InputHintSubsystem.cpp](../../Sonheim/Source/Sonheim/UI/Input/InputHintSubsystem.cpp) · [KeyHintWidget.cpp](../../Sonheim/Source/Sonheim/UI/Input/KeyHintWidget.cpp) — 액션 매핑·키 안내
 - [DungeonUIRouterSubsystem.cpp](../../Sonheim/Source/Sonheim/UI/Dungeon/DungeonUIRouterSubsystem.cpp) — 던전 HUD·Result 생성·갱신
