@@ -106,7 +106,7 @@ FastArray의 Delta 전송과 예측·보정 경로는 [12. Multiplayer Synchroni
 
 `UInventoryComponent::AddItem(ItemID, ItemCount, IsDirectAcquisition)`은 서버에서 스택을 채우거나 새 슬롯에 추가하고, `IsDirectAcquisition`일 때만 `OnItemAdded`를 발생시킵니다. 획득 가능한 수량이 슬롯 한도를 넘으면 잔여 아이템을 월드에 드롭합니다.
 
-**Slot 변경 알림과 획득 알림을 별도로 제공**하므로 단순 드래그·장비 해제가 획득 토스트를 발생시키지 않습니다.
+슬롯 교환·장비 해제는 `OnInventoryChanged`만 사용하고, 직접 획득 시에만 `OnItemAdded`로 알림을 발생시킵니다.
 
 ### 클라이언트 조작 피드백
 
@@ -176,7 +176,7 @@ DOREPLIFETIME_ACTIVE_OVERRIDE(
 
 구독자가 없다면 보관함 내부 슬롯의 프로퍼티 복제를 비활성화합니다. 구독 중에는 Actor 관련성 및 복제 조건에 따라 상태를 전달합니다. **현재 구현은 구독자 유무에 따라 프로퍼티 전체를 활성화하며, 연결별 별도 수신자 필터를 구성하지 않습니다.**
 
-인벤토리와 보관함의 **드래그·이동 UI는 같은 `USlotWidget`와 슬롯 이벤트**를 재사용합니다.
+보관함 UI도 인벤토리의 `USlotWidget`과 슬롯 이동 이벤트를 사용합니다.
 
 ---
 
@@ -314,9 +314,7 @@ for (const auto& P : R->RequiredMaterials)
 }
 ~~~
 
-예를 들어 **5개를 시작해 2개를 완성한 경우**, 취소하면 남은 3개에 해당하는 재료가 반환되고 완성된 2개는 `CompletedToCollect`에 유지됩니다.
-
-재료는 실제 제작 시작 시 한 번 소비하되, 취소할 때는 **남은 제작 단위 수에 맞춰 환불**합니다. 완료한 단위의 진행률과 미완료 작업의 누적 Work를 구분한 구조입니다.
+예를 들어 5개를 시작해 2개를 완성했다면 취소 시 남은 3개분의 재료를 환불하고, 완료된 2개는 `CompletedToCollect`에 유지합니다. 재료는 제작 시작 때 소비하며, 미완료 단위에 대해서만 환불합니다.
 
 ---
 
@@ -324,24 +322,11 @@ for (const auto& P : R->RequiredMaterials)
 
 ### 슬롯 표현 재사용
 
-`UInventoryWidget`는 `OnInventoryChanged`를 받아 슬롯을 갱신하고, `OnEquipmentChanged`에 따라 장비 슬롯을 갱신합니다. 아이템 ID·수량은 컴포넌트에서, **이름·아이콘·장비 분류**는 `FItemData`에서 조회합니다.
+`UInventoryWidget`은 `OnInventoryChanged`로 일반 슬롯을, `OnEquipmentChanged`로 장비 슬롯을 갱신합니다.
 
-`USlotWidget`는 인벤토리·장비·보관함·제작 레시피 슬롯에 사용되며, 드래그와 Drop/Discard 확인은 `UInventoryWidget`의 입력 처리로 연결됩니다.
+`USlotWidget`은 인벤토리·장비·보관함·제작 재료의 아이템 표현을 공유합니다. 더 자세한 Widget 갱신·성능 측정은 [11. Client State Presentation](11_Client_State_Presentation_Pipeline.md)과 [20. UI Performance](20_UI_Performance_Profiling.md)를 참고할 수 있습니다.
 
-~~~text
-InventoryComponent (ItemID · Count)
-       + FItemData (이름 · 아이콘)
-              ↓
-       UInventoryWidget
-              ↓
-          USlotWidget
-
-Drop / Discard → UConfirmWidget (UI.Popup.ItemQuantity)
-                     ↓ OnResult
-                InventoryWidget
-                     ↓
-             ServerDrop / ServerDiscard
-~~~
+아이템 ID·수량은 `UInventoryComponent`에서, 이름·아이콘은 `FItemData`에서 읽습니다. Drop/Discard 확인은 `UConfirmWidget`의 결과를 `UInventoryWidget`이 받아 서버 요청으로 전달합니다.
 
 ### 제작 레시피 변경과 수량 변경의 갱신 구분
 
@@ -355,13 +340,9 @@ Drop / Discard → UConfirmWidget (UI.Popup.ItemQuantity)
 
 재료 행은 `RequiredRowPool`이 소유하며, **필요한 재료 종류 수보다 부족할 때만 위젯을 추가 생성**합니다. 사용하지 않는 행은 `Collapsed`로 보관하고 이후 다른 레시피에서 재사용합니다.
 
-~~~text
-레시피 A : 재료 4종 → Row 4개 생성
-레시피 B : 재료 2종 → Row 2개만 Visible
-레시피 C : 재료 3종 → 기존 Row 3개 재사용
-~~~
+재료가 4종인 레시피에서 생성한 Row는 다음 레시피가 2종·3종을 요구할 때 기존 Row를 재사용합니다.
 
-변하지 않는 아이콘·배치와 자주 바뀌는 수량·진행도를 분리해, **작업 진행 중마다 Material Row를 다시 만들지 않도록 구성**했습니다.
+작업 진행·수량 변경에는 Row를 다시 만들지 않고 숫자·버튼·진행도만 갱신합니다.
 
 ---
 

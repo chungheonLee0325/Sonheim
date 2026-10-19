@@ -1,6 +1,6 @@
 # 06. World Interaction Systems
 
-**`IInteractableInterface`를 통해 서로 다른 월드 Actor를 하나의 입력 흐름으로 처리**합니다. 플레이어는 대상이 아이템·보관함·제작대·레버인지 구분하지 않습니다. `UInteractionComponent`가 대상 탐색과 입력·Hold를 처리하고, 각 Actor가 인터페이스의 함수를 구현해 **자신의 안내 문구와 상호작용 결과**를 결정합니다.
+`UInteractionComponent`가 아이템·보관함·제작대·던전 레버를 동일한 Trace·입력·Hold 흐름으로 처리합니다. 대상 Actor는 `IInteractableInterface`에서 안내 문구, 사용 조건, 실제 실행 동작을 구현합니다.
 
 ## 게임 화면
 
@@ -17,7 +17,7 @@ https://github.com/user-attachments/assets/4ecbc1bc-8c72-4493-8a66-a7b2a0918a36
 | 즉시 실행·Hold 진행·취소 입력 | `GetHoldDuration`·`CanHoldCancel`·`GetInteractionModeCode` |
 | 서버에 실행 요청 전달 | `Interact` — 아이템 획득·UI 열기·제작·던전 이벤트 등 |
 
-**새 오브젝트를 추가해도 플레이어의 입력 분기문을 수정할 필요가 없습니다.** 공통 인터페이스를 구현하는 Actor만 추가하면 같은 입력 경로를 사용합니다.
+새 상호작용 Actor는 공통 인터페이스만 구현하면 기존 입력 경로를 사용합니다.
 
 ## 목차
 
@@ -83,7 +83,7 @@ flowchart TB
     CALL --> NPC["AQuestGiver<br/>퀘스트 대화"]
 ~~~
 
-이것이 다형성을 적용한 지점입니다. `Execute_Interact`는 Unreal의 인터페이스 이벤트 호출 경로를 사용하므로 **대상 클래스의 C++ `Interact_Implementation` 또는 Blueprint 구현**이 실행됩니다. 플레이어 코드에 `Cast<ABaseItem>` / `Cast<ACraftingStation>` 같은 종류별 분기를 만들지 않습니다.
+`Execute_Interact`는 Unreal 인터페이스 이벤트로 대상 Actor의 C++ `Interact_Implementation` 또는 Blueprint 구현을 호출합니다. 플레이어 코드에는 대상 클래스별 `Cast` 분기가 없습니다.
 
 ---
 
@@ -236,13 +236,11 @@ if (CurrentMode != HoldInitialModeCode)
 }
 ~~~
 
-덕분에 **제작이 끝나 행동이 '제작'에서 '수령'으로 바뀌었는데 기존 Hold가 새로운 행동으로 이어지는 상황**을 방지합니다. 같은 모드가 유지되는 경우 제작 작업을 반복 가산할 수 있습니다.
+Hold 도중 제작이 완료되어 입력 의미가 '제작'에서 '수령'으로 바뀌면 기존 Hold를 종료합니다. 같은 ModeCode인 동안에는 작업량을 계속 가산할 수 있습니다.
 
 ---
 
 ## 콘텐츠 확장 사례
-
-인터페이스를 구현한 대상이 늘어나도 `UInteractionComponent`의 탐지·입력·Hold 코드는 그대로 사용합니다.
 
 | 추가한 Actor | 구현한 `Interact`의 역할 |
 |---|---|
@@ -251,7 +249,7 @@ if (CurrentMode != HoldInitialModeCode)
 | `AQuestGiver` | `UQuestComponent::Interact` 처리 후 퀘스트 대화창 열기 |
 | `AQuestBuildSite` | `UQuestComponent::Interact`로 자재 전달·목표 진행 |
 
-던전의 스테이지 전환과 퀘스트 목표 집계까지 공통 인터페이스로 옮긴 것은 아닙니다. **입력 진입점만 공통화하고, 각 기능의 규칙은 대상 Actor나 해당 시스템에 유지**했습니다.
+공통 인터페이스는 입력 진입점만 제공합니다. 던전 스테이지 전환과 퀘스트 목표 집계는 각 Runtime·Component가 수행합니다.
 
 ---
 
@@ -264,8 +262,6 @@ if (CurrentMode != HoldInitialModeCode)
 | **공통 탐지·Hold 컴포넌트** | 대상마다 카메라 Trace·입력 Timer를 재구현하지 않음 | 대상 교체·Hold 중단·입력 상태 처리 |
 | **대상별 상태 처리** | 하나의 `Interact`로 서로 다른 결과 실행 | Actor별 서버 상태 검사와 요청 처리 |
 | **ModeCode** | Hold 중 동작 의미 변경 시 연쇄 입력 차단 | 상태가 바뀔 때 ModeCode도 일관되게 변경 |
-
-**핵심은 플레이어 코드에 오브젝트 종류를 추가하는 대신, 오브젝트가 동일한 계약을 구현하도록 한 것**입니다. 아이템부터 던전·퀘스트까지 새로운 시스템이 들어와도 탐지·입력 체계를 재사용할 수 있습니다.
 
 ## 관련 코드 및 문서
 
