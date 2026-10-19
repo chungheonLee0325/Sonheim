@@ -94,7 +94,7 @@
 | [17. Quest System](17_Quest_System.md) | 단계별 목표·NPC·월드 오브젝트·보상 |
 | [18. UMG v2](18_UMG_v2_Migration.md) | 화면 개편 전후, 입력·알림·키 안내·Widget Blueprint |
 | [19. World Map & Fast Travel](19_World_Map_System.md) | 탐험 안개·미니맵·지도 탭·빠른 이동 표석·도감 서식지 |
-| [20. Agent MCP 기반 UI 성능 분석과 최적화](20_UI_Performance_Profiling.md) | 이벤트 프레임 측정·인벤토리/화면 생성 비용 개선·CPU/GPU 분석 |
+| [20. UI Performance](20_UI_Performance_Profiling.md) | 이벤트 프레임 측정·인벤토리/화면 생성 비용 개선·CPU/GPU 분석 |
 | [21. Game UI Framework](21_UI_Framework.md) | 게임과 분리한 UI 플러그인: 태그 레이어, 화면·팝업 수명, 비동기 열기, 알림 큐 |
 
 ---
