@@ -103,6 +103,10 @@ Agent MCP가 어떤 게임에서도 같은 측정·분석 절차를 사용할 �
 
 ## 인벤토리: 데이터 갱신과 슬롯 렌더링 분리
 
+인벤토리는 **42개 가방 슬롯**에 아이템 아이콘·수량을 표시하고, 아이템 교환과 마우스 호버 시 슬롯·툴팁을 갱신하는 화면입니다. 이 장에서는 아이템 두 개를 교환할 때 발생하던 전체 슬롯 갱신 비용을 다룹니다. 시스템의 아이템·복제 구조는 [07. Inventory & Crafting](07_Inventory_Crafting.md)에서 확인할 수 있습니다.
+
+![Sonheim 인벤토리 UI — 가방 슬롯과 아이템 정보가 표시된 실제 게임 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_inventory_after.jpg)
+
 ### 원인 — 하나의 아이템만 바뀌어도 슬롯 전체 갱신
 
 기존 `UInventoryWidget::UpdateInventoryFromData()`는 인벤토리 변경 Delegate를 받으면 **모든 슬롯을 먼저 비우고**, 각 슬롯에 아이템 정보를 다시 설정했습니다. 교환으로 실제 데이터가 바뀐 슬롯이 두 개여도 42칸 전부에 같은 비용이 발생했습니다.
@@ -204,6 +208,10 @@ flowchart LR
 [ContainerInteractionWidget.cpp](../../Sonheim/Source/Sonheim/UI/Widget/GameObject/ContainerInteractionWidget.cpp) · [ContainerWidget.cpp](../../Sonheim/Source/Sonheim/UI/Widget/GameObject/ContainerWidget.cpp)
 
 ## 도감: SceneCapture 비용과 화면 종료 리소스 분리
+
+도감은 몬스터 목록·처치/포획 기록·보상을 보여주면서 선택한 몬스터의 **3D 프리뷰를 별도 영역**에 렌더링합니다. 여기서 조사한 비용은 프리뷰 렌더 패스와 화면 종료 후 남는 Render Target 참조입니다. 도감의 기록·보상 구현은 [16. MonsterDex System](16_MonsterDex_System.md)에서 설명합니다.
+
+![Sonheim 몬스터 도감 UI — 목록, 3D 프리뷰, 기록과 보상 영역 안내](../Media/Wiki/16_MonsterDex_System/16_dex_screen_areas.svg)
 
 도감의 3D 프리뷰는 별도 `AMonsterDexStage`와 `SceneCaptureComponent2D`를 사용합니다. 프리뷰에는 몬스터 메시와 전용 조명을 표시하므로, 메인 월드의 모든 렌더링 효과가 필요하지 않습니다.
 
