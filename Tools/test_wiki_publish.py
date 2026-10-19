@@ -29,6 +29,7 @@ class WikiPublishingTest(unittest.TestCase):
             encoding='utf-8')
         (source / '01_Test.md').write_text('# Overview\n', encoding='utf-8')
         (source / '1.1_Legacy.md').write_text('# Old\n', encoding='utf-8')
+        (source / 'Legacy.md').write_text('# Legacy\n[old](1.1_Legacy.md)\n', encoding='utf-8')
         out = self.root / 'wiki'
         publish(source, out, 'example/Sonheim', 'main', 'sonheim')
         content = (out / 'Home.md').read_text(encoding='utf-8')
@@ -38,6 +39,11 @@ class WikiPublishingTest(unittest.TestCase):
         self.assertIn('[keep](ignored.md)', content)
         self.assertIn('[example](missing.md)', content)
         self.assertFalse((out / '1.1_Legacy.md').exists())
+        self.assertTrue((out / 'Legacy.md').exists())
+        self.assertIn('github.com/example/Sonheim/blob/main/Doc/Wiki/1.1_Legacy.md',
+                      (out / 'Legacy.md').read_text(encoding='utf-8'))
+        from wiki_publish import legacy_sources
+        self.assertEqual([p.name for p in legacy_sources(source)], ['1.1_Legacy.md'])
 
     def test_agentmcp_flatten_english_and_korean(self):
         source = self.root / 'Docs'
