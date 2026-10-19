@@ -120,9 +120,9 @@ Inventory를 Pawn의 생성·파괴에 함께 묶지 않기 위한 구조입니�
 |---|---|
 | `UGameUIManagerSubsystem` | 메뉴·인벤토리·도감·퀘스트 화면의 열림/닫힘, 레이어별 맨 위 화면의 입력 모드·커서 |
 | `UDungeonUIRouterSubsystem` | 던전 HUD·결과 화면 생성·교체, ViewData 보관, 기존 HUD 숨김·복원 |
-| `UNoticeSubsystem` | `Feed`·`Headline`·`Title` 슬롯별 알림 표시 순서·채널 |
+| `UNoticeSubsystem` / `UGameUIToastSubsystem` | 게임 알림 데이터 구성·채널 관리 / 슬롯별 표시 순서·대기 처리 |
 
-세 클래스는 `ULocalPlayerSubsystem`으로, **각 로컬 플레이어의 화면**을 담당합니다. 전투 상태 자체나 던전 진행 규칙은 이 안에 두지 않습니다.
+로컬 플레이어의 메뉴·HUD·알림 관리는 이 계층에서 처리하고, 게임플레이 상태와 던전 진행 규칙은 각각 원본 시스템이 소유합니다.
 
 ---
 
@@ -192,98 +192,31 @@ USonheimSkillComponent
 
 ### 던전의 정의·진행·화면 표시
 
-~~~mermaid
-flowchart TB
-    DEF["UDungeonDefinitionDataAsset<br/>스테이지·이벤트·전환 정의"] --> RUN["UDungeonStageRuntimeSubsystem<br/>서버 실행"]
-    RUN --> SNAP["ASonheimGameState<br/>FDungeonStageRuntimeState"]
-    SNAP --> PRES["UDungeonStagePresenter"]
-    DATA["UDungeonPresentationDataAsset<br/>목표 문구·아이콘·미니맵 설정"] --> PRES
-    PRES --> VIEW["FDungeonStageViewData"]
-    VIEW --> ROUTER["UDungeonUIRouterSubsystem"]
-    ROUTER --> WIDGET["UMG · HUD / Minimap / Result"]
-~~~
+`UDungeonDefinitionDataAsset`은 스테이지·전환 규칙을 정의합니다. 서버 `UDungeonStageRuntimeSubsystem`은 실행 결과를 `FDungeonStageRuntimeState`로 발행하고, `UDungeonStagePresenter`는 화면 설정을 결합해 `FDungeonStageViewData`를 구성합니다. 전체 흐름은 위의 처리 구조도, UI 구현은 [11. Client State Presentation](11_Client_State_Presentation_Pipeline.md)에서 확인할 수 있습니다.
 
-던전 UI는 스냅샷의 `StageId`, 목표 진행도, 분기·보스 상태 등을 읽어 화면을 구성합니다. `UDungeonStagePresenter`는 `UDungeonPresentationDataAsset`의 문구·아이콘·지도 정보와 결합해 `FDungeonStageViewData`로 변환하고, Router가 화면 위젯을 관리합니다.
-
-위젯이 **스테이지 전환 조건이나 GameplayTag 해석 규칙을 직접 구현하지 않도록** 분리한 구조입니다.
-
-도감과 퀘스트도 같은 원칙으로 정의 데이터와 플레이어 기록을 조합합니다.
-
-- **도감** — `FMonsterDexData + FMonsterDexEntry → FMonsterDexPageView`
-- **퀘스트** — `FQuestData + FQuestRecord → FQuestView`
-
-표시 데이터 생성은 화면 특성에 맞춰 `MonsterDexView::Build`, `QuestView::Build`와 던전 Presenter 등으로 구현했습니다. **모든 UI에 동일한 Presenter 클래스나 별도의 MVVM 체계를 강제하지 않았습니다.**
+도감과 퀘스트도 정의와 기록을 각각 `MonsterDexView::Build`, `QuestView::Build`에서 결합합니다. 단일 컴포넌트의 HP나 인벤토리에는 별도 Presenter를 두지 않고 Delegate를 사용합니다.
 
 ---
 
 ## 상태 변경과 화면 갱신
 
-UI 갱신은 변경되는 데이터의 범위에 따라 세 가지 경로를 사용합니다.
+| 데이터 | 갱신 경로 | 적용 화면 |
+|---|---|---|
+| HP·인벤토리 | `UHealthComponent::OnHealthChanged`, `UInventoryComponent::OnInventoryChanged` | HUD·인벤토리 |
+| 던전 진행 | 서버 Runtime → GameState Snapshot → Presenter → ViewData | 던전 HUD·미니맵·결과 |
+| 일회성 이벤트 | `UNoticeSubsystem` → `UGameUIToastSubsystem` | Feed·Headline·Title |
 
-### 1. 독립 컴포넌트 상태
+던전 진행은 GameState Snapshot에서 읽지만 참가자의 HP는 각 `UHealthComponent`에서 구독합니다. 같은 HP를 스냅샷에 중복 보관하지 않습니다. 타이머는 서버 기준 시작·종료 시각으로 계산하므로 HUD를 다시 열어도 현재 진행 시간을 표시합니다.
 
-~~~text
-HealthComponent / InventoryComponent
-    ↓ Replication·RepNotify 또는 상태 변경
-OnHealthChanged / OnInventoryChanged
-    ↓
-HUD / Inventory Widget 갱신
-~~~
-
-HP는 `UHealthComponent::OnHealthChanged`, 인벤토리는 `UInventoryComponent::OnInventoryChanged` 등을 사용합니다. 해당 컴포넌트가 상태를 관리하고, 이를 사용하는 UI가 변경 알림을 구독합니다.
-
-### 2. 복합 콘텐츠 상태
-
-~~~text
-Dungeon Runtime
-    ↓
-GameState Snapshot
-    ↓
-UDungeonStagePresenter
-    ↓
-FDungeonStageViewData
-    ↓
-Dungeon UI Router → HUD / Result
-~~~
-
-던전은 단계·파티·보스·목표 상태를 함께 표시하므로 복제된 스냅샷과 별도 상태를 조합합니다. 예를 들어 **던전 진행은 GameState 스냅샷**, **파티 HP는 각 HealthComponent**에서 가져오므로 동일한 HP를 던전 스냅샷에 중복 저장하지 않습니다.
-
-현재 시간을 기준으로 변하는 던전 타이머도 서버 시간 정보를 이용해 계산하므로, HUD를 새로 만들어도 해당 스테이지의 진행 시간을 이어서 표시할 수 있습니다.
-
-### 3. 일회성 알림
-
-~~~text
-레벨 상승 / 첫 포획 / 퀘스트 갱신 / 제작 완료
-    ↓
-알림 데이터 전달
-    ↓
-UNoticeSubsystem
-    ├─ Feed : 진행·갱신 알림
-    ├─ Headline : 주요 달성 알림
-    └─ Title : 지역 이름
-~~~
-
-이 알림은 UI가 잠시 보여주는 이벤트입니다. **레벨·퀘스트 진행도 같은 실제 현재 상태를 대신 저장하거나 복제하는 수단은 아닙니다.** 플레이어가 나중에 UI를 열었을 때 필요한 정보는 원래 컴포넌트나 스냅샷에서 다시 읽습니다.
+알림은 현재 상태를 저장하는 수단이 아닙니다. 화면을 다시 열면 실제 HP·퀘스트·인벤토리 기록은 각 원본 컴포넌트에서 읽습니다.
 
 ---
 
 ## 던전에서 기존 시스템 재사용
 
-분기형 던전은 개별적으로 구축한 시스템이 실제 콘텐츠에서 함께 동작하는 사례입니다.
+Forgotten Ruins는 `IInteractableInterface`로 입구·레버 입력을 받고, 몬스터 처치·포획 결과를 던전 목표에 연결합니다. 보상은 기존 `UInventoryComponent`로 지급하며 보스의 피해·포획은 몬스터 공통 경로를 사용합니다.
 
-| 기존 기능 | 던전에서의 사용 |
-|---|---|
-| `IInteractableInterface` | 던전 입구·지름길 레버 등 월드 상호작용 |
-| `ASonheimGameState`의 던전 스냅샷 | 장벽·보상 상자 등이 현재 단계·완료 상태에 맞춰 월드 표현 갱신 |
-| 전투·포획 결과 | 스폰 그룹과 던전 목표 진행 |
-| `UInventoryComponent` | 던전 보상 아이템 지급 |
-| 기존 몬스터·포획 구조 | 수호자 보스와 포획 가능 상태 |
-| `FAttackData / FCustomDamageEvent` | 보스 패턴의 실제 타격·데미지 처리 |
-| `UNoticeSubsystem` | 단계 갱신·완료·지역 이름 알림 |
-
-예를 들어 지름길 레버는 상호작용 사실과 식별자를 던전 실행 시스템에 전달하고, **실제 분기 선택은 던전 정의의 이벤트·전환 규칙**이 결정합니다. 레버 Actor에 다음 스테이지를 하드코딩하지 않습니다.
-
-이처럼 새로운 콘텐츠에서는 기존 컴포넌트와 인터페이스를 재사용하고, 콘텐츠 고유의 진행 규칙은 `UDungeonStageRuntimeSubsystem`과 정의 데이터에 둡니다.
+레버는 상호작용 사실과 ID만 Runtime에 전달합니다. 실제 지름길 선택은 던전 Definition의 전환 규칙이 결정합니다. [09. Branching Dungeon Runtime](09_Branching_Dungeon_Runtime.md)에서 규칙과 이벤트 처리를 설명합니다.
 
 ---
 
@@ -299,7 +232,7 @@ UNoticeSubsystem
 | **Presenter / ViewData** | 복합 상태를 UI에서 직접 해석하지 않음 | 화면용 데이터 변환 코드 |
 | **LocalPlayer UI Subsystem** | 화면별 입력·수명 정책을 한곳에서 관리 | 화면과 게임플레이 간 입력 정책 |
 
-**모든 상태를 별도 ViewData로 만들거나, 모든 시스템을 Subsystem으로 옮기는 것이 목적은 아닙니다.** 상태 수명과 실제 사용 범위에 필요한 만큼만 역할을 분리했습니다.
+단일 컴포넌트의 변경은 Delegate로 전달하고, 여러 출처의 데이터를 결합해야 하는 던전 화면에 ViewData를 구성했습니다. 상태의 소유 위치는 객체 수명과 복제 범위를 기준으로 정했습니다.
 
 ## 관련 코드 및 문서
 
@@ -315,5 +248,5 @@ UNoticeSubsystem
 - [04. Player & Character Systems](04_Player_Character_Systems.md) — PlayerState·Pawn·Stat·Skill
 - [06. World Interaction Systems](06_World_Interaction_Systems.md) — 공통 상호작용
 - [09. Branching Dungeon Runtime](09_Branching_Dungeon_Runtime.md) — 던전 이벤트와 분기
-- [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) — 실제 UI 연결·갱신
+- [11. Client State Presentation](11_Client_State_Presentation_Pipeline.md) — 실제 UI 연결·갱신
 - [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) — RPC·FastArray·동기화 범위

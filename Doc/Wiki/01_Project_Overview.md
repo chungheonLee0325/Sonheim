@@ -14,7 +14,7 @@
 
 ---
 
-## 전투와 탐험의 결과가 다음 플레이로 이어집니다
+## 게임플레이 이벤트와 진행 기록 연결
 
 ~~~mermaid
 flowchart LR
@@ -28,9 +28,9 @@ flowchart LR
     DUNGEON --> RESULT["보상 · 최고 기록 · 등급"]
 ~~~
 
-기존의 전투·포획·제작 이벤트를 **새로운 콘텐츠가 다시 활용하도록 연결**한 것이 확장 과정의 핵심입니다. 도감과 퀘스트는 플레이어별 진행을 관리하고, 던전은 서버가 현재 Stage와 목표를 판정합니다.
+`PlayerState::ReportDeed`를 통해 처치·포획·제작·탐험 결과를 도감·퀘스트 진행에 전달합니다. 던전은 별도 서버 Runtime이 Stage와 목표를 판정합니다.
 
-### MonsterDex — 처음 발견한 몬스터가 기록으로 남습니다
+### MonsterDex — 처치·포획 기록과 보상
 
 ![MonsterDex: 몬스터 목록, 상세 3D 프리뷰, 처치·포획 기록과 단계별 보상](../Media/Wiki/16_MonsterDex_System/16_dex_screen_areas.svg)
 
@@ -42,7 +42,7 @@ flowchart LR
 
 [도감 등록 영상](https://github.com/user-attachments/assets/d1d96b5f-1076-4e29-872d-3399a540acac) · [보상 수령 영상](https://github.com/user-attachments/assets/f498002f-d15e-45ab-ac9b-1380ac0ad82b) · [16. MonsterDex 구현](16_MonsterDex_System.md)
 
-### Quest — NPC에서 시작한 목표가 실제 플레이와 연결됩니다
+### Quest — 게임플레이 이벤트로 단계 진행
 
 | 퀘스트 일지 | NPC 수락·완료 보고 |
 |---|---|
@@ -60,7 +60,7 @@ https://github.com/user-attachments/assets/356d1438-7c3c-417d-8bd4-b8dcb7a3efb6
 
 ---
 
-## 기존 게임플레이를 하나의 콘텐츠로 — Forgotten Ruins
+## Forgotten Ruins — 시스템을 연결한 분기 던전
 
 Forgotten Ruins는 **분기형 멀티플레이 던전**으로, 입장·레버 상호작용, 몬스터 처치·포획, 보스 패턴, 보상과 기록을 하나의 Run에서 연결합니다.
 
@@ -100,14 +100,14 @@ https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
 
 ![도감 등록 시 Feed·Headline·Title이 함께 표시되는 UMG v2 게임 화면](../Media/Wiki/16_UMG_Migration_with_Claude/16_toast_after_dex_title.jpg)
 
-도감 신규 등록, 퀘스트 갱신, 제작 완료, 지역 진입을 **각 기능이 개별 팝업을 만드는 대신 공통 알림 슬롯으로 표시**합니다.
+도감 등록·퀘스트 갱신·제작 완료·지역 진입 알림을 공통 슬롯(`Feed / Headline / Title`)에 표시합니다.
 
 - **Feed / Headline / Title:** `UNoticeSubsystem`은 알림 데이터를 전달하고, `UGameUIToastSubsystem`은 슬롯별 표시·대기 정책을 관리합니다.
 - **일반 메뉴:** `GameUIFramework` 플러그인의 `UGameUIManagerSubsystem`이 인벤토리·제작·도감·퀘스트 화면을 태그로 열고, 레이어별 화면 중첩과 입력 모드·커서를 처리합니다([21. Game UI Framework](21_UI_Framework.md)).
 - **입력 안내:** `UInputHintSubsystem`이 키보드·게임패드 입력에 맞는 안내를 표시합니다.
 - **게임플레이 → UI:** 도감·퀘스트 기록은 각각 ViewData로, 던전은 GameState Snapshot을 Presenter가 변환해 HUD·미니맵·결과 화면에 전달합니다.
 
-도감·퀘스트·던전 HUD·인벤토리의 **개편 전후 화면**은 [18. UMG v2 Migration & Editor Verification](18_UMG_v2_Migration.md)에서 비교할 수 있습니다.
+[18. UMG v2](18_UMG_v2_Migration.md)에서 화면 개편 전후를 비교할 수 있습니다.
 
 ---
 
@@ -123,14 +123,12 @@ https://github.com/user-attachments/assets/cd81b345-d192-4374-9573-904b561f40bd
 
 게임플레이의 판정과 보상은 서버가 결정합니다. **클라이언트는 복제된 상태를 화면 데이터로 변환하고 필요한 알림을 표시**하며, 플레이어별 도감·퀘스트 기록과 던전의 공유 상태는 서로 다른 경로로 동기화합니다.
 
-설계의 세부 구현은 아래 기술 문서에서 확인할 수 있습니다.
-
 | 더 알아볼 내용 | 문서 |
 |---|---|
 | **전체 구조·데이터 설계** | [02. Gameplay Architecture](02_Gameplay_Architecture.md) · [03. Data & Content Architecture](03_Data_Content_Architecture.md) |
 | **캐릭터·전투·상호작용** | [04. Player & Character Systems](04_Player_Character_Systems.md) · [05. Combat, Skill & Animation](05_Combat_Skill_Animation.md) · [06. World Interaction Systems](06_World_Interaction_Systems.md) |
 | **장비·협동 제작** | [07. Inventory & Crafting](07_Inventory_Crafting.md) |
-| **UI·멀티플레이** | [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) · [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) |
+| **UI·멀티플레이** | [11. Client State Presentation](11_Client_State_Presentation_Pipeline.md) · [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) |
 | **검증·개발 이력** | [13. Content Authoring & Validation](13_Content_Authoring_Validation.md) · [14. Unreal Editor Automation & Verification](14_Unreal_Editor_Automation_Verification.md) · [15. Development History & Retrospective](15_Development_History_Retrospective.md) |
 
 **[전체 기술 문서 목록 (01–21) →](Home.md)**
