@@ -80,8 +80,6 @@ perf_trace_hotspots / perf_read_gpu_profile로 원인 조사
 | 도감 프리뷰 | `SceneCapture`의 불필요한 렌더 패스와 종료 후 Render Target 참조 | Show Flag 제한, Brush 참조 정리 |
 | 알림 Feed | 항목 순회 중 제거로 발생한 ensure·프레임 지연 | 복사한 항목 목록을 순회하며 제거 |
 
-이처럼 **도구 개발을 Sonheim의 최적화로 연결**했고, 새로운 UI에도 장면을 추가하면 동일한 조사 절차를 적용할 수 있도록 구성했습니다.
-
 ## Sonheim 측정 장면 실행기
 
 Agent MCP가 어떤 게임에서도 같은 측정·분석 절차를 사용할 수 있도록 하고, **게임별 조작은 Sonheim의 `UPerfScenarioSubsystem : UGameInstanceSubsystem`에서 실행**하도록 했습니다. 화면 열기·드래그·아이템 교환처럼 짧게 발생하는 비용을 이벤트 프레임으로 구분해 측정합니다.
