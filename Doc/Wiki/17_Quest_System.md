@@ -120,7 +120,7 @@ flowchart TD
 
 ### 데이터 변경과 위젯 갱신
 
-`UQuestScreenWidget::NativeConstruct`는 `OnQuestsChanged`를 구독하고, `NativeDestruct`에서 해제합니다. 퀘스트 진행이 변경되면 `Redraw()`에서 최신 `FQuestView` 목록을 다시 만들고, `DynamicEntryBox`의 목록·목표·보상 항목을 구성합니다.
+`UQuestScreenWidget`은 화면이 열릴 때 `NativeOnOpened()`에서 `OnQuestsChanged`를 구독하고, 닫을 때 `NativeOnClosed()`에서 해제합니다. 퀘스트 진행이 변경되면 `Redraw()`에서 최신 `FQuestView` 목록을 다시 만들고, `DynamicEntryBox`의 목록·목표·보상 항목을 구성합니다.
 
 ~~~cpp
 // QuestWidget.cpp — UQuestScreenWidget::Redraw() 발췌
