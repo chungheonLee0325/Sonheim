@@ -1,9 +1,8 @@
 # 09. Branching Dungeon Runtime
 
-**던전의 스테이지·목표·분기·장벽을 DataAsset으로 정의하고, 서버 Runtime이 게임플레이 이벤트를 해석해 진행합니다.** 레버 사용은 지름길의 조건만 기록하고, 몬스터 웨이브가 끝났을 때 해당 조건을 평가해 실제 경로를 선택합니다. 이 때문에 새로운 분기 규칙을 추가할 때 레버나 몬스터 Actor의 진행 코드를 변경할 필요가 없습니다.
+던전의 Stage·목표·분기·장벽을 `UDungeonDefinitionDataAsset`에 정의하고, 서버 `UDungeonStageRuntimeSubsystem`이 Event·Action·Transition으로 진행합니다. 레버는 RunTag를 기록하고, Wave 완료 시점에 분기 조건을 평가합니다.
 
 ## 분기 플레이 영상
-
 
 
 ### 지름길 — 레버를 사용한 경우
@@ -128,7 +127,7 @@ flowchart LR
 
 ![Dungeon Definition — Wave 완료 후 분기 조건](../Media/Wiki/09_Branching_Dungeon_Runtime/09_dungeon_definition_condition.png)
 
-이렇게 **상호작용 사실을 전달하는 Actor**, **조건을 보유한 Definition**, **조건을 평가하는 서버 Runtime**을 분리했습니다. `ProcessQueue`는 Transition을 선언된 순서대로 평가하고 **가장 먼저 만족한 전환**을 적용합니다. 위 사례에서는 `HasRunTag` 경로가 `Always`보다 먼저 정의돼야 합니다.
+`ProcessQueue`는 Definition의 Transition을 배열 순서대로 검사하고, 처음 만족한 경로로 전환합니다. 따라서 위 설정에서 `HasRunTag` 전환이 `Always`보다 먼저 와야 합니다. 레버 Actor는 RunTag 이벤트만 전달합니다.
 
 ### GameplayTag로 연결하는 콘텐츠 ID
 
@@ -203,7 +202,7 @@ const auto* Rule = Stage->EventRules.FindByPredicate(
     });
 ~~~
 
-새 스테이지의 `StageEntered` 이벤트도 큐에 넣습니다. 그래서 Stage 진입 Action이 다시 이벤트를 발생시키거나 다음 Stage로 연결되더라도 **동일한 처리 루프에서 순차적으로 실행**할 수 있습니다.
+`EnterStage`도 `StageEntered`를 큐에 넣습니다. 진입 Action이 후속 이벤트를 발생시켜도 `ProcessQueue`가 재귀 호출하지 않고 순차적으로 처리합니다.
 
 ---
 
@@ -361,7 +360,7 @@ UDungeonStageRuntimeSubsystem (서버)
     → HUD · 미니맵 · 결과 UI
 ~~~
 
-**Definition과 서버 Event Queue를 클라이언트가 다시 실행하는 것이 아닙니다.** 서버가 결정한 현재 결과를 Snapshot으로 전달합니다. UI의 구독·재생성과 Revision 필터링은 [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md)에서, 동기화 범위는 [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md)에서 설명합니다.
+서버의 Event Queue가 결과를 확정하고, 클라이언트는 복제된 Snapshot으로 장벽·HUD·결과 화면을 갱신합니다. Revision 처리와 UI 수명은 [11. Client State Presentation](11_Client_State_Presentation_Pipeline.md), 복제 범위는 [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md)에서 다룹니다.
 
 ---
 
@@ -378,7 +377,7 @@ UDungeonStageRuntimeSubsystem (서버)
 | **Stage별 SealedBarriers** | World Actor를 상태 기반으로 제어 | Definition과 배치 Actor의 ID 일치 |
 | **State Snapshot** | 여러 클라이언트에서 목표·장벽·결과 표현 동기화 | 상태 변경 시 Publish·Revision 관리 |
 
-자산 입력 제약, 실패하는 Definition의 검사, 그래프 검증 결과는 [13. Content Authoring & Validation](13_Content_Authoring_Validation.md)에서 상세히 다룹니다.
+Definition·Stage Graph 검증 기준은 [13. Content Authoring & Validation](13_Content_Authoring_Validation.md)에 정리했습니다.
 
 ## 관련 코드 및 문서
 
@@ -393,5 +392,5 @@ UDungeonStageRuntimeSubsystem (서버)
 - [03. Data & Content Architecture](03_Data_Content_Architecture.md) — PrimaryDataAsset·Catalog·GameplayTag
 - [07. Inventory & Crafting](07_Inventory_Crafting.md) — 보상 아이템 지급 경로
 - [10. Boss Encounter Runtime](10_Boss_Encounter_Runtime.md) — 보스 패턴·Break·포획 조건
-- [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) — Snapshot→HUD·미니맵·결과 UI
+- [11. Client State Presentation](11_Client_State_Presentation_Pipeline.md) — Snapshot→HUD·미니맵·결과 UI
 - [13. Content Authoring & Validation](13_Content_Authoring_Validation.md) — 정의·그래프·Editor 검증
