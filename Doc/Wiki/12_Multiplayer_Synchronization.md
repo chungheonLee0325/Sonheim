@@ -158,7 +158,7 @@ if (Snapshot.RunId == Latest.RunId &&
 
 ![던전 진행 상태와 별도 파티 데이터를 함께 표시하는 실제 HUD](../Media/Wiki/11_Client_State_Presentation_Pipeline/11_dungeon_hud.png)
 
-목표·Stage·타이머 등 던전 진행 정보는 Snapshot을 통해 전달하고, 파티 HP처럼 다른 컴포넌트가 소유하는 상태는 UI에서 별도로 조합합니다. 화면의 데이터 결합 과정은 [11. Client State Presentation](11_Client_State_Presentation_Pipeline.md)에 정리했습니다.
+목표·Stage·타이머 등 던전 진행 정보는 Snapshot을 통해 전달하고, 파티 HP처럼 다른 컴포넌트가 소유하는 상태는 UI에서 별도로 조합합니다.
 
 Listen Server 호스트는 `PublishDungeonStageState()`에서 `OnRep_DungeonStageState()`를 직접 호출해 서버 로컬 UI에도 변경 알림을 전달합니다. **던전 Snapshot은 UI의 복구에 필요한 현재 값**, 진행 알림이나 보스 Montage RPC는 **발생 시점의 이벤트**라는 구분입니다.
 
