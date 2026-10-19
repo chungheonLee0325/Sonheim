@@ -166,7 +166,7 @@ void ABaseContainer::Interact_Implementation(ASonheimPlayer* Player)
 
 진행 중에는 `ManualCollectDelay`를 확인해 작업 직후 자동으로 수령되는 상황을 제한합니다. 즉, **다형성으로 대상 Actor를 선택한 뒤, 해당 Actor 내부에서 다시 상태에 따라 행동을 결정**합니다.
 
-레시피 선택부터 여러 플레이어의 작업량 누적·완성품 수령까지는 [기존 협동 제작 플레이 영상](https://github.com/user-attachments/assets/df9a30d1-8d52-4b86-9f18-790474fdbda2)에서 볼 수 있습니다. 제작 재료·취소·수령의 상세 규칙은 [07. Inventory & Crafting](07_Inventory_Crafting.md)에서 다룹니다.
+레시피 선택부터 공동 작업·완성품 수령까지의 플레이는 [협동 제작 영상](https://github.com/user-attachments/assets/df9a30d1-8d52-4b86-9f18-790474fdbda2)에서 볼 수 있습니다. 제작 재료·작업 누적·취소·수령의 처리 방식은 [07. Inventory & Crafting](07_Inventory_Crafting.md)에서 다룹니다.
 
 ### 던전 레버 — 실행을 Runtime에 위임
 
