@@ -1,0 +1,71 @@
+name: Publish GitHub Wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Doc/Wiki/**'
+      - 'Tools/wiki_publish.py'
+      - 'Tools/test_wiki_publish.py'
+      - '.github/workflows/publish-wiki.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-github-wiki
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate link conversion
+        run: python3 -m unittest discover -s Tools -p 'test_wiki_publish.py' -v
+
+      - name: Render flat Wiki pages
+        run: |
+          python3 Tools/wiki_publish.py \
+            --source Doc/Wiki \
+            --output "$RUNNER_TEMP/wiki-pages" \
+            --repo "$GITHUB_REPOSITORY" \
+            --branch main \
+            --profile sonheim
+
+      - name: Publish to GitHub Wiki
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          WIKI_URL="https://github.com/$GITHUB_REPOSITORY.wiki.git"
+          AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          # Wiki repository exists after the first page is created in the GitHub Wiki tab.
+          if ! git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH" \
+              clone --quiet "$WIKI_URL" wiki-repo; then
+            echo "::error::Create a first page in Settings > Features > Wikis, then Wiki > Create the first page, and re-run this workflow."
+            exit 1
+          fi
+
+          cp "$RUNNER_TEMP/wiki-pages/"*.md wiki-repo/
+          cd wiki-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- '*.md'
+          if git diff --cached --quiet; then
+            echo "Wiki is up to date."
+            exit 0
+          fi
+
+          git commit -m "docs(wiki): publish from $GITHUB_SHA"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH" push origin HEAD
