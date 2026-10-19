@@ -1,10 +1,10 @@
-# 20. Agent MCP 기반 UI 성능 분석과 최적화
+# 20. UI Performance — 조작 프레임 지연 분석과 개선
 
-Unreal Engine의 UI 성능 문제를 에이전트가 반복 조사할 수 있도록 **[Agent MCP](https://github.com/chungheonLee0325/AgentMcp)에 측정·트레이스·GPU 프로파일 분석 도구와 `perf-investigation` 스킬을 구현**했습니다. Sonheim에는 화면 열기, 아이템 교환, 드래그, 보관함 조작을 재현하는 `UPerfScenarioSubsystem`을 추가하고, 이 환경으로 실제 게임의 병목을 찾아 수정했습니다.
+Sonheim의 **인벤토리 교환과 메뉴 진입에서 발생하는 프레임 지연**을 측정하고, 슬롯 속성 갱신과 위젯 생성 비용을 줄였습니다. RTX 2070 SUPER, 1920×1080 독립 실행 환경에서 조작 이벤트 프레임의 중앙값은 아이템 교환 **32.6 → 17.1ms**, 인벤토리 열기 **57.5 → 22.1ms**로 감소했습니다.
 
-분석에서는 평균 FPS보다 **플레이어가 조작한 프레임의 지연**을 우선했습니다. Unreal Insights로 원인 함수를 좁히고, CSV로 변경 전후를 비교했습니다. 그 결과 아이템 교환은 **32.6 → 17.1ms**, 인벤토리 열기는 **57.5 → 22.1ms**로 줄었습니다.
+반복 측정과 원인 분석에는 별도 [AgentMcp](https://github.com/chungheonLee0325/AgentMcp)에 구현한 CSV·CPU Trace·GPU 프로파일 도구를 사용했습니다. Sonheim은 실제 UI 조작을 재현하는 `UPerfScenarioSubsystem`과 개선 코드를 담당합니다. 측정값은 아래 조건에서 수집한 **조작 순간의 프레임 시간**이며, 평균 FPS나 다른 환경의 결과를 뜻하지 않습니다.
 
-**Agent MCP는 프로젝트에 재사용할 조사 절차와 도구를, Sonheim은 게임별 측정 장면과 실제 개선 코드를 담당합니다.** 기존 UI 구조는 [18. UMG v2 Migration](18_UMG_v2_Migration.md), 구현 변경 내역은 [PR #6](https://github.com/chungheonLee0325/Sonheim/pull/6)에서 확인할 수 있습니다.
+기존 UI 개편은 [18. UMG v2](18_UMG_v2_Migration.md), 현재 화면 수명과 재사용 정책은 [21. Game UI Framework](21_UI_Framework.md)에 정리했습니다. 실제 코드 변경은 [PR #6](https://github.com/chungheonLee0325/Sonheim/pull/6)에서 확인할 수 있습니다.
 
 ## Sonheim 적용 결과
 
@@ -32,14 +32,14 @@ Unreal Engine의 UI 성능 문제를 에이전트가 반복 조사할 수 있도
 
 도감은 화면 열기 비용과 별도로 **3D 프리뷰의 매 프레임 SceneCapture 렌더링 비용**도 조사했습니다.
 
-## Agent MCP 성능 조사 기능 구현
+## 반복 측정·원인 분석을 위한 도구
 
 기존에는 UI가 끊기는 장면을 사람이 수동으로 재현하고, 프로파일러에서 함수를 찾고, 수정 전후를 각각 측정해야 했습니다. 이 과정을 에이전트가 반복 수행할 수 있도록 **측정 실행·결과 분석은 Agent MCP의 공통 도구로, 실제 UI 조작은 게임별 실행기로 분리**했습니다.
 
 | 구현 위치 | 담당 역할 |
 |---|---|
 | **[Agent MCP](https://github.com/chungheonLee0325/AgentMcp)** | `perf-investigation` 스킬, 반복 실행 스크립트, CSV 비교·CPU Trace·GPU 프로파일 분석 MCP 도구 |
-| **[Sonheim](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/Utilities/PerfScenarioSubsystem.cpp)** | `UPerfScenarioSubsystem`이 인벤토리·지도·도감·보관함 등 실제 게임의 UI 조작을 수행하고 이벤트를 기록 |
+| **[Sonheim](../../Sonheim/Source/Sonheim/Utilities/PerfScenarioSubsystem.cpp)** | `UPerfScenarioSubsystem`이 인벤토리·지도·도감·보관함 등 실제 게임의 UI 조작을 수행하고 이벤트를 기록 |
 | **코딩 에이전트** | 스킬에 따라 장면을 실행하고, 수치와 원인 함수를 확인한 뒤 코드 변경·재측정을 연결 |
 
 ### 구현한 도구와 분석 절차
@@ -69,7 +69,7 @@ perf_trace_hotspots / perf_read_gpu_profile로 원인 조사
 
 `run.py`는 에디터를 닫은 상태에서 독립 실행 게임으로 측정합니다. 워밍업과 외부 CPU 부하 확인을 거쳐 기록한 CSV는 에디터를 다시 실행한 후 MCP 도구에서 분석합니다. **계측을 위한 실행 조건 통제와 분석을 위한 에이전트 인터페이스를 구분**한 구조입니다.
 
-### 자동 조사 환경을 Sonheim에 적용한 사례
+### 기존에 측정하지 않았던 UI도 조사
 
 처음부터 문제가 알려진 인벤토리만 측정하지 않았습니다. 도구의 적용 범위를 확인하기 위해 보관함, 알림, 제작, 퀘스트, 전리품, 데미지 숫자 등의 장면으로 조사 대상을 넓혔습니다.
 
@@ -101,7 +101,7 @@ Agent MCP가 어떤 게임에서도 같은 측정·분석 절차를 사용할 �
 
 이벤트를 `CSV_EVENT`와 CPU Trace Scope에 함께 기록하므로 **CSV에서 느린 프레임을 찾은 다음 Insights에서 해당 동작의 함수 비용을 추적**할 수 있습니다.
 
-[측정 장면 구현 — PerfScenarioSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/Utilities/PerfScenarioSubsystem.cpp)
+[측정 장면 구현 — PerfScenarioSubsystem.cpp](../../Sonheim/Source/Sonheim/Utilities/PerfScenarioSubsystem.cpp)
 
 ## 인벤토리: 데이터 갱신과 슬롯 렌더링 분리
 
@@ -141,7 +141,7 @@ void USlotWidget::SetItemData(const FItemData* ItemData, int32 NewQuantity)
 
 아이템 수가 많은 화면을 여는 순간에 **사용하지 않을 툴팁을 미리 만드는 비용**을 피하는 선택입니다.
 
-[InventoryWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/InventoryWidget.cpp) · [SlotWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/SlotWidget.cpp)
+[InventoryWidget.cpp](../../Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/InventoryWidget.cpp) · [SlotWidget.cpp](../../Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/SlotWidget.cpp)
 
 ## 닫힌 화면의 UObject 재사용
 
@@ -203,7 +203,7 @@ flowchart LR
 
 같은 취지로 인벤토리·플레이어 스탯 등 반복적으로 연결될 수 있는 이벤트도 `AddUniqueDynamic`을 사용합니다. 여기서 중요한 점은 단순히 중복 등록을 막는 것뿐 아니라, **화면 수명에 맞는 등록·해제 책임을 UI가 가지도록 옮긴 것**입니다.
 
-[ContainerInteractionWidget.cpp](../../Sonheim/Source/Sonheim/UI/Widget/GameObject/ContainerInteractionWidget.cpp) · [ContainerWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/Widget/GameObject/ContainerWidget.cpp)
+[ContainerInteractionWidget.cpp](../../Sonheim/Source/Sonheim/UI/Widget/GameObject/ContainerInteractionWidget.cpp) · [ContainerWidget.cpp](../../Sonheim/Source/Sonheim/UI/Widget/GameObject/ContainerWidget.cpp)
 
 ## 도감: SceneCapture 비용과 화면 종료 리소스 분리
 
@@ -227,7 +227,7 @@ flowchart LR
 | 전리품 5개 줍기 | 해당 프레임 +2.2ms (아이템마다 퀘스트 추적기 갱신과 팝업 생성) | 한 프레임 비용이라 그대로 둠 |
 | 제작대 열기 / 퀘스트 선택 / 데미지 숫자 20개 | +3ms / +1.1ms / +0.6ms | 예산 안이라 그대로 둠 |
 
-[MonsterDexStage.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexStage.cpp) · [MonsterDexWidget.cpp](../../Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexWidget.cpp)
+[MonsterDexStage.cpp](../../Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexStage.cpp) · [MonsterDexWidget.cpp](../../Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexWidget.cpp)
 
 ## 알림 Feed: 순회 중 항목 제거 수정
 
@@ -241,14 +241,14 @@ for (UUserWidget* Entry : TArray<UUserWidget*>(RowBox->GetAllEntries()))
 }
 ~~~
 
-[NoticeWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-perf/Sonheim/Source/Sonheim/UI/Notice/NoticeWidget.cpp)
+[NoticeWidget.cpp](../../Sonheim/Source/Sonheim/UI/Notice/NoticeWidget.cpp)
 
 ## 구현 결과
 
-**Agent MCP에는 성능 측정·비교·CPU/GPU 원인 분석의 공통 절차를 구현**하고, **Sonheim에는 실제 UI 조작 장면과 최적화 코드를 구현**했습니다. 조사 도구를 만들면서 인벤토리의 불필요한 속성 갱신, 화면 재생성, Delegate 수명, Render Target 참조와 렌더 패스 등 서로 다른 문제를 확인하고 수정했습니다.
+Sonheim에서 슬롯 속성 갱신, 화면 재생성, Delegate 수명, Render Target 참조와 SceneCapture 렌더 패스 비용을 확인해 수정했습니다. 원인 조사에 사용한 CSV·Trace·GPU 분석 도구는 AgentMcp에 분리했습니다. 조사 도구를 만들면서 인벤토리의 불필요한 속성 갱신, 화면 재생성, Delegate 수명, Render Target 참조와 렌더 패스 등 서로 다른 문제를 확인하고 수정했습니다.
 
 UI 갱신은 원본 데이터 변경과 실제 위젯 속성 변경을 구분했고, 화면 수명은 UObject 유지·레이어 표시·Delegate 구독·GPU 리소스 참조를 각각 관리하도록 조정했습니다. 이 과정에서 개선 효과가 측정 편차보다 작은 변경은 유지하지 않았습니다.
 
 **관련 문서:** [07. Inventory & Crafting](07_Inventory_Crafting.md) · [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) · [14. Unreal Editor Automation & Verification](14_Unreal_Editor_Automation_Verification.md) · [16. MonsterDex System](16_MonsterDex_System.md) · [18. UMG v2 Migration](18_UMG_v2_Migration.md) · [19. World Map & Fast Travel](19_World_Map_System.md)
 
-**관련 저장소:** [Agent MCP](https://github.com/chungheonLee0325/AgentMcp) · [Sonheim PR #6](https://github.com/chungheonLee0325/Sonheim/pull/6)
+**관련 저장소:** [AgentMcp](https://github.com/chungheonLee0325/AgentMcp) · [Sonheim PR #6](https://github.com/chungheonLee0325/Sonheim/pull/6) · [실제 성능 조사 기록](https://github.com/chungheonLee0325/AgentMcp/blob/main/Docs/Samples/SonheimUiPerf.ko.md)

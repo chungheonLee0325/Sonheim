@@ -89,7 +89,7 @@ DOREPLIFETIME(UInventoryComponent, CurrentWeaponSlot);
 
 `RepItems`와 `EquippedSlots`는 소유자 전용이고, 현재 무기 슬롯은 일반 복제입니다. **아이템 슬롯의 복제 범위와 다른 플레이어에게 보일 무기 상태는 구분**합니다.
 
-FastArray의 Delta 전송과 예측·보정 경로는 [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]에서 다룹니다.
+FastArray의 Delta 전송과 예측·보정 경로는 [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md)에서 다룹니다.
 
 ---
 
@@ -143,7 +143,7 @@ FastArray의 Delta 전송과 예측·보정 경로는 [[12. Multiplayer Synchron
 
 무기별 `FItemData::EquipmentData.SkillID`를 조회해 `ReplaceGrant`로 스킬을 교체합니다. 다른 장비나 기본 보유 스킬이 제공하는 Grant는 분리해 관리합니다.
 
-**곡괭이 ↔ Shotgun 전환 시 외형과 공격 방식이 함께 바뀌는 실제 영상**, Modifier 적용과 PlayerState/Pawn의 연결은 [[04. Player & Character Systems|04_Player_Character_Systems]]에서 볼 수 있습니다. 이 문서에서는 **인벤토리의 슬롯/아이템 API가 장비 전환을 시작한다는 경계**만 다룹니다.
+**곡괭이 ↔ Shotgun 전환 시 외형과 공격 방식이 함께 바뀌는 실제 영상**, Modifier 적용과 PlayerState/Pawn의 연결은 [04. Player & Character Systems](04_Player_Character_Systems.md)에서 볼 수 있습니다. 이 문서에서는 **인벤토리의 슬롯/아이템 API가 장비 전환을 시작한다는 경계**만 다룹니다.
 
 ---
 
@@ -283,7 +283,7 @@ WorkAccumulated    현재 3번째 단위의 작업량
 
 **완료 수량은 다음 단위의 작업 진행과 분리**됩니다. 진행 중에도 `ManualCollectDelay`가 지난 뒤 다시 상호작용하면 완성품을 수령할 수 있습니다. 수령 직후 `Client_StopInteractionHold`로 연속 입력을 정리합니다.
 
-상호작용 Hold 자체의 다형성과 입력 처리 방식은 [[06. World Interaction Systems|06_World_Interaction_Systems]]에서 설명합니다.
+상호작용 Hold 자체의 다형성과 입력 처리 방식은 [06. World Interaction Systems](06_World_Interaction_Systems.md)에서 설명합니다.
 
 ---
 
@@ -379,14 +379,14 @@ Drop / Discard → UConfirmWidget (UI.Popup.ItemQuantity)
 
 ## 관련 코드 및 문서
 
-- [InventoryComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/InventoryComponent.cpp) · [InventoryComponent.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/InventoryComponent.h) — 인벤토리·장비·FastArray·이벤트
-- [ContainerComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Buildings/Utility/ContainerComponent.cpp) — 공유 보관함·Viewer
-- [CraftingStation.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Buildings/Crafting/CraftingStation.cpp) · [CraftingStation.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Buildings/Crafting/CraftingStation.h) — 제작 서버 상태·레시피·부분 수령·취소
-- [InventoryResourceProvider.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/Utilities/InventoryResourceProvider.cpp) — 제작 수량 계산·재료 소비
-- [CraftingWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Widget/GameObject/Crafting/CraftingWidget.cpp) — 정적/동적 UI 갱신·RequiredRowPool
-- [InventoryWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/InventoryWidget.cpp) — 슬롯 표시·Drop/Discard
-- [[04. Player & Character Systems|04_Player_Character_Systems]] — 장비·스탯·스킬 전환 영상과 구현
-- [[06. World Interaction Systems|06_World_Interaction_Systems]] — 제작대·보관함 입력
-- [[09. Branching Dungeon Runtime|09_Branching_Dungeon_Runtime]] — 던전 보상에서 기존 인벤토리 사용
-- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — 입력·화면 수명 및 Delegate
-- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — FastArray·OwnerOnly·예측
+- [InventoryComponent.cpp](../../Sonheim/Source/Sonheim/AreaObject/Player/Utility/InventoryComponent.cpp) · [InventoryComponent.h](../../Sonheim/Source/Sonheim/AreaObject/Player/Utility/InventoryComponent.h) — 인벤토리·장비·FastArray·이벤트
+- [ContainerComponent.cpp](../../Sonheim/Source/Sonheim/GameObject/Buildings/Utility/ContainerComponent.cpp) — 공유 보관함·Viewer
+- [CraftingStation.cpp](../../Sonheim/Source/Sonheim/GameObject/Buildings/Crafting/CraftingStation.cpp) · [CraftingStation.h](../../Sonheim/Source/Sonheim/GameObject/Buildings/Crafting/CraftingStation.h) — 제작 서버 상태·레시피·부분 수령·취소
+- [InventoryResourceProvider.cpp](../../Sonheim/Source/Sonheim/Utilities/InventoryResourceProvider.cpp) — 제작 수량 계산·재료 소비
+- [CraftingWidget.cpp](../../Sonheim/Source/Sonheim/UI/Widget/GameObject/Crafting/CraftingWidget.cpp) — 정적/동적 UI 갱신·RequiredRowPool
+- [InventoryWidget.cpp](../../Sonheim/Source/Sonheim/UI/Widget/Player/Inventory/InventoryWidget.cpp) — 슬롯 표시·Drop/Discard
+- [04. Player & Character Systems](04_Player_Character_Systems.md) — 장비·스탯·스킬 전환 영상과 구현
+- [06. World Interaction Systems](06_World_Interaction_Systems.md) — 제작대·보관함 입력
+- [09. Branching Dungeon Runtime](09_Branching_Dungeon_Runtime.md) — 던전 보상에서 기존 인벤토리 사용
+- [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) — 입력·화면 수명 및 Delegate
+- [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) — FastArray·OwnerOnly·예측

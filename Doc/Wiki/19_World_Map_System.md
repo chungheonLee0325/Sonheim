@@ -187,9 +187,9 @@ Controller->OpenTab(UITags::WorldMap, [Habitats, Species](UGameUIScreenWidget& M
 
 ## 관련 코드
 
-- [WorldMapWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/UI/Map/WorldMapWidget.cpp) · [MinimapWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/UI/Map/MinimapWidget.cpp) — 두 지도 위젯·뷰 처리·입력
-- [MapView.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/MapView.cpp) · [MapMarkerComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/MapMarkerComponent.cpp) — 퀘스트 목적지 변환·마커 표시
-- [WorldMapDefinition.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/WorldMapDefinition.h) · [MapFog.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/MapFog.cpp) — 좌표·탐험 안개 렌더링
-- [WorldMapComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/AreaObject/Player/Utility/WorldMapComponent.cpp) · [WorldMapSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/Map/WorldMapSubsystem.cpp) — 플레이어별 발견·복제·저장
-- [FastTravelPoint.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/GameObject/Map/FastTravelPoint.cpp) · [MonsterDexWidget.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-world-map/Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexWidget.cpp) — 빠른 이동·도감 화면 연동
+- [WorldMapWidget.cpp](../../Sonheim/Source/Sonheim/UI/Map/WorldMapWidget.cpp) · [MinimapWidget.cpp](../../Sonheim/Source/Sonheim/UI/Map/MinimapWidget.cpp) — 두 지도 위젯·뷰 처리·입력
+- [MapView.cpp](../../Sonheim/Source/Sonheim/Map/MapView.cpp) · [MapMarkerComponent.cpp](../../Sonheim/Source/Sonheim/Map/MapMarkerComponent.cpp) — 퀘스트 목적지 변환·마커 표시
+- [WorldMapDefinition.h](../../Sonheim/Source/Sonheim/Map/WorldMapDefinition.h) · [MapFog.cpp](../../Sonheim/Source/Sonheim/Map/MapFog.cpp) — 좌표·탐험 안개 렌더링
+- [WorldMapComponent.cpp](../../Sonheim/Source/Sonheim/AreaObject/Player/Utility/WorldMapComponent.cpp) · [WorldMapSubsystem.cpp](../../Sonheim/Source/Sonheim/Map/WorldMapSubsystem.cpp) — 플레이어별 발견·복제·저장
+- [FastTravelPoint.cpp](../../Sonheim/Source/Sonheim/GameObject/Map/FastTravelPoint.cpp) · [MonsterDexWidget.cpp](../../Sonheim/Source/Sonheim/UI/MonsterDex/MonsterDexWidget.cpp) — 빠른 이동·도감 화면 연동
 - [16. MonsterDex System](16_MonsterDex_System.md) · [17. Quest System](17_Quest_System.md) · [18. UMG v2 Migration](18_UMG_v2_Migration.md) · [21. Game UI Framework](21_UI_Framework.md)

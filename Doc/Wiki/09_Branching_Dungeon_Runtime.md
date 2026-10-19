@@ -144,7 +144,7 @@ Dungeon.ForgottenRuins.PointSet.*
 
 `FGameplayTag`는 Definition과 월드에 배치한 스위치·지역·장벽, Runtime State를 연결하는 식별자입니다. `TransitionId`는 해당 Definition 안에서 전환 로그를 식별하는 `FName`으로, 저장 기록의 키는 `DungeonNumber`로 분리했습니다.
 
-실제 DataAsset과 Catalog 구성 기준은 [[03. Data & Content Architecture|03_Data_Content_Architecture]]에서 설명합니다.
+실제 DataAsset과 Catalog 구성 기준은 [03. Data & Content Architecture](03_Data_Content_Architecture.md)에서 설명합니다.
 
 ---
 
@@ -361,7 +361,7 @@ UDungeonStageRuntimeSubsystem (서버)
     → HUD · 미니맵 · 결과 UI
 ~~~
 
-**Definition과 서버 Event Queue를 클라이언트가 다시 실행하는 것이 아닙니다.** 서버가 결정한 현재 결과를 Snapshot으로 전달합니다. UI의 구독·재생성과 Revision 필터링은 [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]]에서, 동기화 범위는 [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]에서 설명합니다.
+**Definition과 서버 Event Queue를 클라이언트가 다시 실행하는 것이 아닙니다.** 서버가 결정한 현재 결과를 Snapshot으로 전달합니다. UI의 구독·재생성과 Revision 필터링은 [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md)에서, 동기화 범위는 [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md)에서 설명합니다.
 
 ---
 
@@ -378,20 +378,20 @@ UDungeonStageRuntimeSubsystem (서버)
 | **Stage별 SealedBarriers** | World Actor를 상태 기반으로 제어 | Definition과 배치 Actor의 ID 일치 |
 | **State Snapshot** | 여러 클라이언트에서 목표·장벽·결과 표현 동기화 | 상태 변경 시 Publish·Revision 관리 |
 
-자산 입력 제약, 실패하는 Definition의 검사, 그래프 검증 결과는 [[13. Content Authoring & Validation|13_Content_Authoring_Validation]]에서 상세히 다룹니다.
+자산 입력 제약, 실패하는 Definition의 검사, 그래프 검증 결과는 [13. Content Authoring & Validation](13_Content_Authoring_Validation.md)에서 상세히 다룹니다.
 
 ## 관련 코드 및 문서
 
-- [DungeonDefinitionDataAsset.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonDefinitionDataAsset.h) — Definition·Catalog·등급·그래프 생성
-- [DungeonStageDefinition.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonStageDefinition.h) — Event·Condition·Action·Transition 구조
-- [DungeonStageRuntimeSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonStageRuntimeSubsystem.cpp) — 입장·이벤트 큐·Stage 전환·정산
-- [DungeonObjectiveTracker.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonObjectiveTracker.cpp) — 웨이브·포획·처치 집계
-- [DungeonStageRuntimeTypes.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonStageRuntimeTypes.h) — Runtime Snapshot
-- [DungeonBarrier.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonBarrier.cpp) — Stage별 장벽 반영
-- [DungeonProgressSubsystem.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonProgressSubsystem.cpp) — 기록 저장
-- [SonheimGameState.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/GameManager/SonheimGameState.cpp) — Snapshot 복제·Revision
-- [[03. Data & Content Architecture|03_Data_Content_Architecture]] — PrimaryDataAsset·Catalog·GameplayTag
-- [[07. Inventory & Crafting|07_Inventory_Crafting]] — 보상 아이템 지급 경로
-- [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — 보스 패턴·Break·포획 조건
-- [[11. UI Architecture & Client Presentation|11_Client_State_Presentation_Pipeline]] — Snapshot→HUD·미니맵·결과 UI
-- [[13. Content Authoring & Validation|13_Content_Authoring_Validation]] — 정의·그래프·Editor 검증
+- [DungeonDefinitionDataAsset.h](../../Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonDefinitionDataAsset.h) — Definition·Catalog·등급·그래프 생성
+- [DungeonStageDefinition.h](../../Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonStageDefinition.h) — Event·Condition·Action·Transition 구조
+- [DungeonStageRuntimeSubsystem.cpp](../../Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonStageRuntimeSubsystem.cpp) — 입장·이벤트 큐·Stage 전환·정산
+- [DungeonObjectiveTracker.cpp](../../Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonObjectiveTracker.cpp) — 웨이브·포획·처치 집계
+- [DungeonStageRuntimeTypes.h](../../Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonStageRuntimeTypes.h) — Runtime Snapshot
+- [DungeonBarrier.cpp](../../Sonheim/Source/Sonheim/GameObject/Dungeon/DungeonBarrier.cpp) — Stage별 장벽 반영
+- [DungeonProgressSubsystem.cpp](../../Sonheim/Source/Sonheim/GameManager/Dungeon/DungeonProgressSubsystem.cpp) — 기록 저장
+- [SonheimGameState.cpp](../../Sonheim/Source/Sonheim/GameManager/SonheimGameState.cpp) — Snapshot 복제·Revision
+- [03. Data & Content Architecture](03_Data_Content_Architecture.md) — PrimaryDataAsset·Catalog·GameplayTag
+- [07. Inventory & Crafting](07_Inventory_Crafting.md) — 보상 아이템 지급 경로
+- [10. Boss Encounter Runtime](10_Boss_Encounter_Runtime.md) — 보스 패턴·Break·포획 조건
+- [11. UI Architecture & Client Presentation](11_Client_State_Presentation_Pipeline.md) — Snapshot→HUD·미니맵·결과 UI
+- [13. Content Authoring & Validation](13_Content_Authoring_Validation.md) — 정의·그래프·Editor 검증

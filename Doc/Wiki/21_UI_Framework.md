@@ -2,7 +2,7 @@
 
 Sonheim의 화면을 게임에 묶이지 않는 UI 프레임워크 위에서 동작하도록 정리했습니다. 프레임워크는 `Sonheim/Plugins/GameUIFramework` 플러그인이며, Sonheim 모듈을 참조하지 않습니다. 플러그인은 화면을 **레이어에 배치하고, 열고 닫는 시점을 알리고, 입력 모드와 뒤로 가기를 관리**합니다. 인벤토리·도감·지도·퀘스트·알림 같은 화면 내용은 게임 모듈에 남아 플러그인의 기반 클래스를 상속합니다.
 
-화면은 `UI.Screen.Inventory` 같은 Gameplay Tag로 엽니다. 어느 레이어에 놓일지, 입력을 어떻게 받을지, 닫은 뒤에도 유지할지는 각 Widget Blueprint의 클래스 기본값으로 정합니다. 구현 변경 내역은 [PR #7](https://github.com/chungheonLee0325/Sonheim/pull/7)에서 확인할 수 있습니다.
+화면은 `UI.Screen.Inventory` 같은 Gameplay Tag로 엽니다. 어느 레이어에 놓일지, 입력을 어떻게 받을지, 닫은 뒤에도 유지할지는 각 Widget Blueprint의 클래스 기본값으로 정합니다. 플러그인의 화면 관리와 게임플레이 데이터 갱신은 별개입니다. UI 데이터 변환은 [11. Client State Presentation](11_Client_State_Presentation_Pipeline.md), 구현 변경은 [PR #7](https://github.com/chungheonLee0325/Sonheim/pull/7)에서 확인할 수 있습니다.
 
 ## 화면 구성
 

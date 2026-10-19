@@ -19,7 +19,7 @@ https://github.com/user-attachments/assets/2079af91-4ad9-4f93-99e1-3e21efbca57f
 | **상태 조건** | `UConditionComponent` | `Dead / Invincible / Hidden` 비트 조합·시간 만료 |
 | **월드 캐릭터** | `ASonheimPlayer : AAreaObject` | 카메라·무기·스프린트·락온·글라이더·Pal 관련 행동 |
 
-PlayerState/Pawn을 나눈 이유와 전체 시스템 소유권은 [[02. Gameplay Architecture|02_Gameplay_Architecture]]에서 설명합니다. 이 문서는 **플레이어 기능 간 실제 데이터·이벤트 연결**을 중심으로 다룹니다.
+PlayerState/Pawn을 나눈 이유와 전체 시스템 소유권은 [02. Gameplay Architecture](02_Gameplay_Architecture.md)에서 설명합니다. 이 문서는 **플레이어 기능 간 실제 데이터·이벤트 연결**을 중심으로 다룹니다.
 
 ## 목차
 
@@ -121,7 +121,7 @@ if (SkillId > 0)
 Comp->ReplaceGrant(ActiveWeaponGrantId, Skills);
 ~~~
 
-`ActiveWeaponGrantId`로 무기 출처의 스킬 집합을 교체하므로, **기본 보유 스킬이나 다른 Grant에서 제공한 스킬과 구분**할 수 있습니다. Grant 참조 카운트·스킬 객체의 수명은 [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]]에서 설명합니다.
+`ActiveWeaponGrantId`로 무기 출처의 스킬 집합을 교체하므로, **기본 보유 스킬이나 다른 Grant에서 제공한 스킬과 구분**할 수 있습니다. Grant 참조 카운트·스킬 객체의 수명은 [05. Combat, Skill & Animation](05_Combat_Skill_Animation.md)에서 설명합니다.
 
 ### 3. 다른 플레이어도 무기 변경 결과를 확인
 
@@ -247,7 +247,7 @@ if (CanPerformAction(CurrentPlayerState, "OnlyRotate"))
   → NORMAL : 일반 동작 복귀
 ~~~
 
-이 흐름은 해당 Notify를 배치한 공격의 **입력 가능 구간을 애니메이션 타임라인에서 조절**하기 위한 것입니다. 실제 스킬 실행과 타격 Notify는 [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]]에서 설명합니다.
+이 흐름은 해당 Notify를 배치한 공격의 **입력 가능 구간을 애니메이션 타임라인에서 조절**하기 위한 것입니다. 실제 스킬 실행과 타격 Notify는 [05. Combat, Skill & Animation](05_Combat_Skill_Animation.md)에서 설명합니다.
 
 ---
 
@@ -300,7 +300,7 @@ enum class EConditionBitsType : uint32
 
 글라이더는 `Server_SetGliding`에서 허용 여부를 검사한 뒤 상태를 복제합니다. `ApplyGliderState`는 글라이더 Mesh·Animation·중력·공중 제어를 변경하고, `UpdateGliding`은 활성 상태의 이동 속도를 갱신합니다.
 
-이 문서는 **플레이어 상태가 이동·외형에 미치는 영향**에 초점을 둡니다. 네트워크 전송 조건·예측의 상세는 [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]에 있습니다.
+이 문서는 **플레이어 상태가 이동·외형에 미치는 영향**에 초점을 둡니다. 네트워크 전송 조건·예측의 상세는 [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md)에 있습니다.
 
 ---
 
@@ -325,7 +325,7 @@ PalCaptureComponent->InitializeWithPlayerState(S_PlayerState);
 PalPartnerSkillComponent->InitializeWithPlayerState(S_PlayerState);
 ~~~
 
-Pawn이 PlayerState를 참조해야 하는 지점을 명시적으로 두어 **Pal 보유 기록과 현재 Pawn의 포획·소환 기능을 연결**합니다. Pal의 실제 서버 판정과 소유 목록 변경은 [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]]에서 설명합니다.
+Pawn이 PlayerState를 참조해야 하는 지점을 명시적으로 두어 **Pal 보유 기록과 현재 Pawn의 포획·소환 기능을 연결**합니다. Pal의 실제 서버 판정과 소유 목록 변경은 [08. Pal Capture & Partner Lifecycle](08_Pal_Capture_Partner_Lifecycle.md)에서 설명합니다.
 
 ---
 
@@ -344,15 +344,15 @@ Pawn이 PlayerState를 참조해야 하는 지점을 명시적으로 두어 **Pa
 
 ## 관련 코드 및 문서
 
-- [SonheimPlayerState.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayerState.cpp) — 보유 컴포넌트·스탯 계산·이벤트
-- [SonheimPlayer.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayer.cpp) · [SonheimPlayer.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayer.h) — 상태 제한·무기 외형·복제·연결
-- [AreaObject.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Base/AreaObject.cpp) — 캐릭터 공통 컴포넌트
-- [StatBonusComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Attribute/StatBonusComponent.cpp) — Modifier·Source·활성 무기 슬롯
-- [InventoryComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Player/Utility/InventoryComponent.cpp) — 무기 전환·Stat/Skill 연동
-- [ConditionComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Attribute/ConditionComponent.cpp) — ConditionFlags·Timer
-- [SetPlayerStateNotify.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/Animation/Player/SetPlayerStateNotify.cpp) — Animation에 따른 행동 상태 전환
-- [[02. Gameplay Architecture|02_Gameplay_Architecture]] — PlayerState·Pawn·컴포넌트 책임
-- [[05. Combat, Skill & Animation|05_Combat_Skill_Animation]] — Skill Grant·Montage Notify·타격 판정
-- [[07. Inventory & Crafting|07_Inventory_Crafting]] — 아이템·장비·제작
-- [[08. Pal Capture & Partner Lifecycle|08_Pal_Capture_Partner_Lifecycle]] — Pal 소유·포획·Partner 기능
-- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — 복제 범위와 서버 권한
+- [SonheimPlayerState.cpp](../../Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayerState.cpp) — 보유 컴포넌트·스탯 계산·이벤트
+- [SonheimPlayer.cpp](../../Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayer.cpp) · [SonheimPlayer.h](../../Sonheim/Source/Sonheim/AreaObject/Player/SonheimPlayer.h) — 상태 제한·무기 외형·복제·연결
+- [AreaObject.cpp](../../Sonheim/Source/Sonheim/AreaObject/Base/AreaObject.cpp) — 캐릭터 공통 컴포넌트
+- [StatBonusComponent.cpp](../../Sonheim/Source/Sonheim/AreaObject/Attribute/StatBonusComponent.cpp) — Modifier·Source·활성 무기 슬롯
+- [InventoryComponent.cpp](../../Sonheim/Source/Sonheim/AreaObject/Player/Utility/InventoryComponent.cpp) — 무기 전환·Stat/Skill 연동
+- [ConditionComponent.cpp](../../Sonheim/Source/Sonheim/AreaObject/Attribute/ConditionComponent.cpp) — ConditionFlags·Timer
+- [SetPlayerStateNotify.cpp](../../Sonheim/Source/Sonheim/Animation/Player/SetPlayerStateNotify.cpp) — Animation에 따른 행동 상태 전환
+- [02. Gameplay Architecture](02_Gameplay_Architecture.md) — PlayerState·Pawn·컴포넌트 책임
+- [05. Combat, Skill & Animation](05_Combat_Skill_Animation.md) — Skill Grant·Montage Notify·타격 판정
+- [07. Inventory & Crafting](07_Inventory_Crafting.md) — 아이템·장비·제작
+- [08. Pal Capture & Partner Lifecycle](08_Pal_Capture_Partner_Lifecycle.md) — Pal 소유·포획·Partner 기능
+- [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) — 복제 범위와 서버 권한

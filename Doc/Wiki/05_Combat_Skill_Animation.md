@@ -87,7 +87,7 @@ struct FSkillData : public FTableRowBase
 };
 ~~~
 
-한 행의 `SkillClass`가 실행 로직을 정하고, `Montage`와 `AttackData`가 공격 시점·범위·데미지를 연결합니다. `NextSkillID`는 연계 스킬을 지정합니다. 행 구조와 에셋 분류 기준은 [[03. Data & Content Architecture|03_Data_Content_Architecture]]에서 설명합니다.
+한 행의 `SkillClass`가 실행 로직을 정하고, `Montage`와 `AttackData`가 공격 시점·범위·데미지를 연결합니다. `NextSkillID`는 연계 스킬을 지정합니다. 행 구조와 에셋 분류 기준은 [03. Data & Content Architecture](03_Data_Content_Architecture.md)에서 설명합니다.
 
 ### SkillSpecs — 보유·시전 요약 상태
 
@@ -240,7 +240,7 @@ Montage
 
 `USetPlayerStateNotify`는 `ASonheimPlayer::SetPlayerState`를 호출해 공격 중 이동·다음 행동 제한을 조정합니다. `CANACTION`과 `NORMAL` 전환 시에는 `ClearCurrentSkill`도 호출합니다.
 
-이처럼 Animation은 **언제 행동 제한을 풀지**를 결정하고, 캐릭터 상태와 `FActionRestrictions`가 **실제로 어떤 입력이 가능한지**를 관리합니다. 플레이어 상태 규칙은 [[04. Player & Character Systems|04_Player_Character_Systems]]에서 다룹니다.
+이처럼 Animation은 **언제 행동 제한을 풀지**를 결정하고, 캐릭터 상태와 `FActionRestrictions`가 **실제로 어떤 입력이 가능한지**를 관리합니다. 플레이어 상태 규칙은 [04. Player & Character Systems](04_Player_Character_Systems.md)에서 다룹니다.
 
 ---
 
@@ -364,7 +364,7 @@ flowchart TB
 
 **Hit Stop과 넉백은 `TakeDamage` 내부에서 `FCustomDamageEvent` 정보를 확인한 뒤 처리**하며, 이후 실제 HP·Stamina 갱신과 데미지 표시·효과를 전달합니다. 단순 float 데미지뿐 아니라 공격의 맥락을 Target에 보존하는 구조입니다.
 
-보스의 `ABossMonster::LandStrike`도 `FAttackData`와 기존 `CalcDamage`를 사용합니다. 보스가 추가하는 책임은 **어떤 패턴을 언제 어디에 실행할지**이며, 실제 대상 피해 처리 경로는 공유합니다. [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] 참고.
+보스의 `ABossMonster::LandStrike`도 `FAttackData`와 기존 `CalcDamage`를 사용합니다. 보스가 추가하는 책임은 **어떤 패턴을 언제 어디에 실행할지**이며, 실제 대상 피해 처리 경로는 공유합니다. [10. Boss Encounter Runtime](10_Boss_Encounter_Runtime.md) 참고.
 
 ---
 
@@ -380,7 +380,7 @@ flowchart TB
 
 `EnsureSkillInstance`는 `BaseSkill_<ID>`의 안정적인 UObject 이름을 사용하고, `AAreaObject::GetSubobjectsWithStableNamesForNetworking`에서 스킬 객체를 등록합니다. 실제 복제는 `AAreaObject::ReplicateSubobjects`에서 `Channel->ReplicateSubobject`를 호출합니다.
 
-따라서 **서버가 실행을 승인하는 권한**, **클라이언트에 유지하는 상태**, **몽타주를 시작하는 Multicast**를 각각 구분해야 합니다. 네트워크 관련성·OwnerOnly·Snapshot과의 비교는 [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]]에서 다룹니다.
+따라서 **서버가 실행을 승인하는 권한**, **클라이언트에 유지하는 상태**, **몽타주를 시작하는 Multicast**를 각각 구분해야 합니다. 네트워크 관련성·OwnerOnly·Snapshot과의 비교는 [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md)에서 다룹니다.
 
 ---
 
@@ -400,16 +400,16 @@ flowchart TB
 
 ## 관련 코드 및 문서
 
-- [SonheimGameType.h](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/ResourceManager/SonheimGameType.h) — `FSkillData`·`FAttackData`·`FHitBoxData`
-- [SonheimSkillComponent.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Skill/SonheimSkillComponent.cpp) — SkillSpecs·Grant·RPC·인스턴스
-- [BaseSkill.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Skill/Base/BaseSkill.cpp) — Phase·비용·완료·복제
-- [AreaObject.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Base/AreaObject.cpp) — 서버 Tick·시전·서브오브젝트 복제·데미지
-- [MeleeAttack.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/AreaObject/Skill/Common/MeleeAttack.cpp) — Socket Sweep·보간·중복 타격 방지
-- [SkillFireNotify.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/Animation/Common/Notify/SkillFireNotify.cpp) — Fire Notify 및 서버 경로
-- [MeleeAttackNotifyState.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/Animation/Common/Notify/MeleeAttackNotifyState.cpp) — 서버 타격 구간
-- [SetPlayerStateNotify.cpp](https://github.com/chungheonLee0325/Sonheim/blob/feat-ui-dex/Sonheim/Source/Sonheim/Animation/Player/SetPlayerStateNotify.cpp) — 공격 상태·취소 가능 시점
-- [[03. Data & Content Architecture|03_Data_Content_Architecture]] — DataTable·정의 데이터 기준
-- [[04. Player & Character Systems|04_Player_Character_Systems]] — Action State·장비·스탯
-- [[07. Inventory & Crafting|07_Inventory_Crafting]] — 장비 교체·Skill Grant
-- [[10. Boss Encounter Runtime|10_Boss_Encounter_Runtime]] — Boss Pattern·Strike에서 Damage Context 재사용
-- [[12. Multiplayer Synchronization|12_Multiplayer_Synchronization]] — 스킬·상태 복제·RPC
+- [SonheimGameType.h](../../Sonheim/Source/Sonheim/ResourceManager/SonheimGameType.h) — `FSkillData`·`FAttackData`·`FHitBoxData`
+- [SonheimSkillComponent.cpp](../../Sonheim/Source/Sonheim/AreaObject/Skill/SonheimSkillComponent.cpp) — SkillSpecs·Grant·RPC·인스턴스
+- [BaseSkill.cpp](../../Sonheim/Source/Sonheim/AreaObject/Skill/Base/BaseSkill.cpp) — Phase·비용·완료·복제
+- [AreaObject.cpp](../../Sonheim/Source/Sonheim/AreaObject/Base/AreaObject.cpp) — 서버 Tick·시전·서브오브젝트 복제·데미지
+- [MeleeAttack.cpp](../../Sonheim/Source/Sonheim/AreaObject/Skill/Common/MeleeAttack.cpp) — Socket Sweep·보간·중복 타격 방지
+- [SkillFireNotify.cpp](../../Sonheim/Source/Sonheim/Animation/Common/Notify/SkillFireNotify.cpp) — Fire Notify 및 서버 경로
+- [MeleeAttackNotifyState.cpp](../../Sonheim/Source/Sonheim/Animation/Common/Notify/MeleeAttackNotifyState.cpp) — 서버 타격 구간
+- [SetPlayerStateNotify.cpp](../../Sonheim/Source/Sonheim/Animation/Player/SetPlayerStateNotify.cpp) — 공격 상태·취소 가능 시점
+- [03. Data & Content Architecture](03_Data_Content_Architecture.md) — DataTable·정의 데이터 기준
+- [04. Player & Character Systems](04_Player_Character_Systems.md) — Action State·장비·스탯
+- [07. Inventory & Crafting](07_Inventory_Crafting.md) — 장비 교체·Skill Grant
+- [10. Boss Encounter Runtime](10_Boss_Encounter_Runtime.md) — Boss Pattern·Strike에서 Damage Context 재사용
+- [12. Multiplayer Synchronization](12_Multiplayer_Synchronization.md) — 스킬·상태 복제·RPC
